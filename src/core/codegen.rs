@@ -110,18 +110,20 @@ struct TemplateFlag {
     flag: String,
     flag_snake: String,
     description: String,
-    display_groups: Vec<String>,
     compat_aliases: Vec<String>,
+    /// Field names resolved at code-generation time from `display_groups`,
+    /// `fields`, and `patterns`.  Baked into the generated `expand()` method.
+    resolved_fields: Vec<String>,
 }
 
 impl TemplateFlag {
-    fn from_group(fg: &FieldGroup) -> Self {
+    fn from_group(fg: &FieldGroup, all_fields: &[FieldDef]) -> Self {
         Self {
             flag_snake: fg.flag.replace('-', "_"),
             flag: fg.flag.clone(),
             description: fg.description.clone(),
-            display_groups: fg.display_groups.clone(),
             compat_aliases: fg.compat_aliases.clone(),
+            resolved_fields: resolve_fields(fg, all_fields),
         }
     }
 }
@@ -232,7 +234,7 @@ fn build_template_index(
         .map(|opts| {
             opts.field_groups
                 .iter()
-                .map(TemplateFlag::from_group)
+                .map(|fg| TemplateFlag::from_group(fg, raw_fields))
                 .collect()
         })
         .unwrap_or_default();
@@ -242,6 +244,60 @@ fn build_template_index(
         fields,
         groups,
         flags,
+    }
+}
+
+/// Resolve all field names for a flag from its `display_groups`, explicit
+/// `fields`, and glob `patterns`, deduplicating while preserving order.
+fn resolve_fields(fg: &FieldGroup, all_fields: &[FieldDef]) -> Vec<String> {
+    let mut seen: std::collections::HashSet<String> = std::collections::HashSet::new();
+    let mut result: Vec<String> = Vec::new();
+
+    let mut add = |name: String| {
+        if seen.insert(name.clone()) {
+            result.push(name);
+        }
+    };
+
+    // 1. Fields whose display_group matches one of the listed groups.
+    for group in &fg.display_groups {
+        for field in all_fields {
+            if field.display_group.as_deref() == Some(group.as_str()) {
+                add(field.name.clone());
+            }
+        }
+    }
+
+    // 2. Explicit field names.
+    for name in &fg.fields {
+        add(name.clone());
+    }
+
+    // 3. Glob patterns: `prefix*`, `*suffix`, `*contains*`.
+    for pattern in &fg.patterns {
+        for field in all_fields {
+            if matches_pattern(&field.name, pattern) {
+                add(field.name.clone());
+            }
+        }
+    }
+
+    result
+}
+
+/// Return `true` when `name` matches the glob `pattern`.
+///
+/// Supported forms: `prefix*`, `*suffix`, `*contains*`.  A pattern with no
+/// wildcard matches exactly.
+fn matches_pattern(name: &str, pattern: &str) -> bool {
+    match (pattern.starts_with('*'), pattern.ends_with('*')) {
+        (false, true) => name.starts_with(pattern.trim_end_matches('*')),
+        (true, false) => name.ends_with(pattern.trim_start_matches('*')),
+        (true, true) => {
+            let inner = pattern.trim_matches('*');
+            inner.is_empty() || name.contains(inner)
+        }
+        (false, false) => name == pattern,
     }
 }
 
@@ -339,6 +395,8 @@ mod tests {
                             flag: "genome-size".to_string(),
                             description: "Genome size fields".to_string(),
                             display_groups: vec!["genome_size".to_string()],
+                            fields: vec![],
+                            patterns: vec![],
                             compat_aliases: vec![],
                         }],
                     },
@@ -382,5 +440,45 @@ mod tests {
         assert!(rendered.contains_key("src/cli_meta.rs"));
         assert!(rendered.contains_key("src/generated/fields.rs"));
         assert!(rendered.contains_key("src/generated/mod.rs"));
+    }
+
+    #[test]
+    fn matches_pattern_prefix_wildcard() {
+        assert!(matches_pattern("busco_completeness", "busco_*"));
+        assert!(!matches_pattern("genome_size", "busco_*"));
+    }
+
+    #[test]
+    fn matches_pattern_suffix_wildcard() {
+        assert!(matches_pattern("genome_size_kmer", "*_kmer"));
+        assert!(!matches_pattern("genome_size", "*_kmer"));
+    }
+
+    #[test]
+    fn matches_pattern_contains_wildcard() {
+        assert!(matches_pattern("c_value_method", "*value*"));
+        assert!(!matches_pattern("genome_size", "*value*"));
+    }
+
+    #[test]
+    fn matches_pattern_exact() {
+        assert!(matches_pattern("genome_size", "genome_size"));
+        assert!(!matches_pattern("genome_size_draft", "genome_size"));
+    }
+
+    #[test]
+    fn resolve_fields_deduplicates_across_sources() {
+        use crate::core::config::FieldGroup;
+        let fields = sample_fields(); // genome_size (group: genome_size), assembly_level (group: assembly)
+        let fg = FieldGroup {
+            flag: "test".to_string(),
+            description: "test".to_string(),
+            display_groups: vec!["genome_size".to_string()],
+            fields: vec!["genome_size".to_string()], // duplicate of display_group result
+            patterns: vec!["genome_*".to_string()],  // also matches genome_size
+            compat_aliases: vec![],
+        };
+        let resolved = resolve_fields(&fg, &fields);
+        assert_eq!(resolved, vec!["genome_size"]);
     }
 }

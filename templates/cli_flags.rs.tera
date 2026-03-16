@@ -21,21 +21,19 @@ pub struct {{ index.name | capitalize }}Flags {
 impl {{ index.name | capitalize }}Flags {
     /// Expand all enabled flags into the list of field names they represent.
     ///
-    /// Respects the `--fields` override and appends any extra names to the
-    /// result.
+    /// Field names are resolved at code-generation time from `display_groups`,
+    /// explicit `fields`, and `patterns` in the site cli-options config.
+    /// Duplicates across flags are removed while preserving order.
     pub fn expand(&self) -> Vec<&'static str> {
 {% if index.flags %}
-        let groups = super::groups::{{ index.name }}_groups();
         let mut result: Vec<&'static str> = Vec::new();
-
-{% for flag in index.flags %}        if self.{{ flag.flag_snake }} {
-            for &group in &[{% for g in flag.display_groups %}"{{ g }}", {% endfor %}] {
-                if let Some(fields) = groups.get(group) {
-                    result.extend_from_slice(fields);
-                }
-            }
+{% for flag in index.flags %}{% if flag.resolved_fields %}        if self.{{ flag.flag_snake }} {
+            result.extend_from_slice(&[{% for f in flag.resolved_fields %}"{{ f }}", {% endfor %}]);
         }
-{% endfor %}
+{% endif %}{% endfor %}
+        // Deduplicate while preserving order (multiple flags may share fields).
+        let mut seen = std::collections::HashSet::new();
+        result.retain(|f| seen.insert(*f));
         result
 {% else %}
         Vec::new()

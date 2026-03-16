@@ -120,7 +120,17 @@ pub struct IndexOptions {
     pub field_groups: Vec<FieldGroup>,
 }
 
-/// A single CLI flag that selects one or more `display_group` values.
+/// A single CLI flag that selects one or more fields.
+///
+/// Fields are resolved at code-generation time from three sources (all
+/// optional, all additive, duplicates are dropped):
+///
+/// * `display_groups` — all fields whose API `display_group` matches.
+/// * `fields` — explicit field names included unconditionally.
+/// * `patterns` — glob-style patterns matched against field names:
+///   `"busco_*"` matches any name starting with `busco_`;
+///   `"*_date"` matches any name ending with `_date`;
+///   `"*busco*"` matches any name containing `busco`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FieldGroup {
     /// Flag name without leading dashes, e.g. `"genome-size"`.
@@ -128,7 +138,15 @@ pub struct FieldGroup {
     /// Short help text shown in `--help` output.
     pub description: String,
     /// API `display_group` values enabled by this flag.
+    #[serde(default)]
     pub display_groups: Vec<String>,
+    /// Explicit field names to include regardless of display group.
+    #[serde(default)]
+    pub fields: Vec<String>,
+    /// Glob patterns matched against field names at code-generation time.
+    /// Supports `prefix*`, `*suffix`, and `*contains*` forms.
+    #[serde(default)]
+    pub patterns: Vec<String>,
     /// Legacy flag aliases emitted when `compat.goat_cli` is enabled.
     #[serde(default)]
     pub compat_aliases: Vec<String>,

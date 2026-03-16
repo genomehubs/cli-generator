@@ -24,8 +24,8 @@ indexes:
 
       - flag: busco
         description: "Include BUSCO completeness fields"
-        display_groups:
-          - busco
+        patterns:
+          - "busco_*"
 
       - flag: country-list
         description: "Include country-of-origin fields"
@@ -130,8 +130,8 @@ indexes:
 
       - flag: busco
         description: "Include BUSCO completeness fields"
-        display_groups:
-          - busco
+        patterns:
+          - "busco_*"
 
       - flag: contig
         description: "Include contig-level statistics"
