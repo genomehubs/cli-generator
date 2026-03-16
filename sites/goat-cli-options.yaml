@@ -1,0 +1,162 @@
+# CLI flag groups for GoaT.
+#
+# Each entry maps a --flag (with optional goat-cli compat aliases) to the
+# display_groups it should expand into when building a resultFields query.
+
+indexes:
+  taxon:
+    field_groups:
+      - flag: assembly
+        description: "Include assembly-level fields for taxa"
+        display_groups:
+          - assembly_level
+          - assembly_span
+          - chromosome_number
+          - haploid_number
+        compat_aliases:
+          - assembly_level
+          - assembly_span
+
+      - flag: bioproject
+        description: "Include BioProject accession fields"
+        display_groups:
+          - bioproject
+
+      - flag: busco
+        description: "Include BUSCO completeness fields"
+        display_groups:
+          - busco
+
+      - flag: country-list
+        description: "Include country-of-origin fields"
+        display_groups:
+          - country_list
+        compat_aliases:
+          - country_list
+
+      - flag: cvalues
+        description: "Include C-value (genome size estimate) fields"
+        display_groups:
+          - c_values
+        compat_aliases:
+          - c_values
+
+      - flag: date
+        description: "Include date-related metadata fields"
+        display_groups:
+          - date
+
+      - flag: gc-percent
+        description: "Include GC percentage fields"
+        display_groups:
+          - gc_percent
+        compat_aliases:
+          - gc_percent
+
+      - flag: gene-count
+        description: "Include gene count fields"
+        display_groups:
+          - gene_count
+        compat_aliases:
+          - gene_count
+
+      - flag: genome-size
+        description: "Include genome size fields"
+        display_groups:
+          - genome_size
+        compat_aliases:
+          - genome_size
+
+      - flag: karyotype
+        description: "Include karyotype fields"
+        display_groups:
+          - karyotype
+
+      - flag: legislation
+        description: "Include legislation / protection status fields"
+        display_groups:
+          - legislation
+
+      - flag: mitochondrion
+        description: "Include mitochondrial assembly fields"
+        display_groups:
+          - mitochondrion
+
+      - flag: n50
+        description: "Include N50 contig/scaffold statistics"
+        display_groups:
+          - n50
+
+      - flag: names
+        description: "Include common name and synonym fields"
+        display_groups:
+          - names
+
+      - flag: plastid
+        description: "Include plastid / chloroplast assembly fields"
+        display_groups:
+          - plastid
+
+      - flag: ploidy
+        description: "Include ploidy fields"
+        display_groups:
+          - ploidy
+
+      - flag: sex-determination
+        description: "Include sex-determination system fields"
+        display_groups:
+          - sex_determination
+        compat_aliases:
+          - sex_determination
+
+      - flag: status
+        description: "Include sequencing-status / target-list membership"
+        display_groups:
+          - status
+
+      - flag: target-lists
+        description: "Include target-list flags"
+        display_groups:
+          - target_lists
+        compat_aliases:
+          - target_lists
+
+  assembly:
+    field_groups:
+      - flag: btk
+        description: "Include BlobToolKit summary fields"
+        display_groups:
+          - btk
+
+      - flag: busco
+        description: "Include BUSCO completeness fields"
+        display_groups:
+          - busco
+
+      - flag: contig
+        description: "Include contig-level statistics"
+        display_groups:
+          - contig
+
+      - flag: gc
+        description: "Include GC percentage fields"
+        display_groups:
+          - gc_percent
+
+      - flag: gene
+        description: "Include gene count fields"
+        display_groups:
+          - gene_count
+
+      - flag: karyotype
+        description: "Include karyotype fields"
+        display_groups:
+          - karyotype
+
+      - flag: scaffold
+        description: "Include scaffold-level statistics"
+        display_groups:
+          - scaffold
+
+  sample:
+    field_groups: []

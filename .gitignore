@@ -1,0 +1,31 @@
+# Rust build artefacts
+/target/
+
+# Python
+__pycache__/
+*.py[cod]
+*.so
+*.pyd
+dist/
+*.egg-info/
+.venv/
+venv/
+.python-version
+
+# Maturin wheel output
+*.whl
+
+# Hypothesis — commit examples/ (failure database) but not the rest
+.hypothesis/*
+!.hypothesis/examples/
+
+# Environment / secrets
+.env
+.env.*
+
+# macOS
+.DS_Store
+
+# IDE
+.idea/
+*.iml

@@ -1,0 +1,5 @@
+# YAML config snapshots live here.
+#
+# When using the CLI generator, the config file(s) that produced the current
+# version of generated code are stored here for auditability.
+# Diff old vs new config to produce targeted updates rather than full regeneration.

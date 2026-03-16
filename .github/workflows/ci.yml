@@ -1,0 +1,117 @@
+name: CI
+
+# This workflow is designed for generated projects.
+# It will not pass on the uninstantiated template repo itself (template
+# variables like {{project-name}} in Cargo.toml are not valid identifiers),
+# which is expected — see README.md for details.
+
+on:
+    push:
+        branches: [main]
+    pull_request:
+
+env:
+    CARGO_TERM_COLOR: always
+    RUST_BACKTRACE: 1
+
+jobs:
+    # ── Rust: format, lint, and test ─────────────────────────────────────────
+    rust-checks:
+        name: Rust checks
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+
+            - name: Install Rust stable with rustfmt + clippy
+              uses: dtolnay/rust-toolchain@stable
+              with:
+                  components: rustfmt, clippy
+
+            - name: Cache Cargo registry and build artefacts
+              uses: actions/cache@v4
+              with:
+                  path: |
+                      ~/.cargo/registry
+                      ~/.cargo/git
+                      target/
+                  key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+                  restore-keys: |
+                      ${{ runner.os }}-cargo-
+
+            - name: cargo fmt --check
+              run: cargo fmt --all -- --check
+
+            - name: cargo clippy (deny warnings)
+              run: cargo clippy --all-targets -- -D warnings
+
+            # cargo test runs without --features extension-module so it links without
+            # libpython. proptest cases are controlled by PROPTEST_CASES.
+            - name: cargo test
+              run: cargo test
+              env:
+                  PROPTEST_CASES: 512
+
+    # ── Python: format and type-check ────────────────────────────────────────
+    python-checks:
+        name: Python checks
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+
+            - name: Set up Python
+              uses: actions/setup-python@v5
+              with:
+                  python-version: "3.12"
+
+            - name: Install formatting and type-checking tools
+              run: pip install black isort pyright
+
+            - name: black --check
+              run: black --check --line-length 120 python/ tests/python/
+
+            - name: isort --check
+              run: isort --check-only --profile black --line-length 120 python/ tests/python/
+
+            # Pyright uses the .pyi stubs in the python package so
+            # the compiled Rust extension does not need to be built for this step.
+            - name: pyright
+              run: pyright python/ tests/python/
+
+    # ── Integration: build the extension and run pytest ──────────────────────
+    integration-tests:
+        name: Build and test (maturin + pytest)
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+
+            - name: Install Rust stable
+              uses: dtolnay/rust-toolchain@stable
+
+            - name: Cache Cargo registry and build artefacts
+              uses: actions/cache@v4
+              with:
+                  path: |
+                      ~/.cargo/registry
+                      ~/.cargo/git
+                      target/
+                  key: ${{ runner.os }}-cargo-integ-${{ hashFiles('**/Cargo.lock') }}
+                  restore-keys: |
+                      ${{ runner.os }}-cargo-integ-
+
+            - name: Set up Python
+              uses: actions/setup-python@v5
+              with:
+                  python-version: "3.12"
+
+            - name: Install Python test dependencies
+              run: pip install maturin pytest "hypothesis[cli]"
+
+            # Builds the extension module in the current venv; no wheel file needed.
+            - name: maturin develop
+              run: maturin develop --features extension-module
+
+            # CI=1 activates the "ci" Hypothesis profile (derandomize, more examples).
+            - name: pytest
+              run: pytest tests/python/ -v
+              env:
+                  CI: "1"

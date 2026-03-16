@@ -1,0 +1,61 @@
+[package]
+name = "cli-generator"
+version = "0.1.0"
+edition = "2021"
+authors = ["genomehubs <genomehubs@genomehubs.org>"]
+description = "Generic CLI generator for genomehubs instances"
+license = "MIT"
+readme = "README.md"
+
+# `cdylib`  — shared library loaded by Python (maturin builds this into a wheel).
+# `rlib`    — Rust lib used by the binary and by `cargo test` (no libpython needed).
+# The `extension-module` feature is NOT in `default` so that `cargo test` can
+# link without libpython. Maturin passes `--features extension-module` when
+# building the wheel.
+[lib]
+name = "cli_generator"
+crate-type = ["cdylib", "rlib"]
+
+[[bin]]
+name = "cli-generator"
+path = "src/main.rs"
+
+[dependencies]
+clap       = { version = "4", features = ["derive"] }
+pyo3       = { version = "0.22", features = ["abi3-py39"] }
+serde      = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_yaml = "0.9"
+tera       = "1"
+reqwest    = { version = "0.12", features = ["json", "blocking"] }
+tokio      = { version = "1", features = ["rt", "rt-multi-thread", "macros"] }
+sha2       = "0.10"
+hex        = "0.4"
+dirs       = "5"
+which      = "6"
+anyhow     = "1"
+thiserror  = "1"
+chrono     = { version = "0.4", features = ["serde"] }
+
+[dev-dependencies]
+proptest = "1"
+tempfile = "3"
+
+[features]
+default          = []
+extension-module = ["pyo3/extension-module"]
+
+# ---------------------------------------------------------------------------
+# Metadata used by the CLI generator tool.
+# Do not edit manually — updated automatically on generation/refresh.
+# ---------------------------------------------------------------------------
+[package.metadata.cli-gen]
+generator-version = ""
+config-hash       = ""
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+cognitive_complexity = "warn"
+too_many_arguments   = "warn"

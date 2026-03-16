@@ -1,0 +1,4 @@
+[default]
+# Number of random test cases generated per proptest property.
+# Raise this in CI via the PROPTEST_CASES env variable without changing code.
+cases = 512

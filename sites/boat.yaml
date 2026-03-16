@@ -1,0 +1,14 @@
+# Site configuration for BoaT (Biodiversity on a Tree)
+name: boat
+display_name: "BoaT"
+api_base: "https://boat.genomehubs.org/api"
+api_version: "v2"
+
+indexes:
+  - name: taxon
+  - name: assembly
+  - name: sample
+  - name: feature
+
+compat:
+  goat_cli: false

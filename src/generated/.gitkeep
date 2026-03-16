@@ -1,0 +1,5 @@
+# Generated source files live here.
+#
+# Convention: the CLI generator tool only writes to this directory.
+# Hand-written logic in src/core/ is never modified by the generator.
+# This separation makes config-driven updates safe and reviewable via git diff.

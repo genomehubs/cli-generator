@@ -1,0 +1,33 @@
+{
+  // ── Rust ──────────────────────────────────────────────────────────────────
+  "[rust]": {
+    "editor.defaultFormatter": "rust-lang.rust-analyzer",
+    "editor.formatOnSave": true
+  },
+  // Run clippy (not just cargo check) on save for richer diagnostics.
+  "rust-analyzer.check.command": "clippy",
+  "rust-analyzer.check.extraArgs": ["--", "-D", "warnings"],
+
+  // ── Python ────────────────────────────────────────────────────────────────
+  "[python]": {
+    "editor.defaultFormatter": "ms-python.black-formatter",
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      // Triggers the isort extension to sort imports on every save.
+      "source.organizeImports": "explicit"
+    }
+  },
+  "black-formatter.args": ["--line-length", "120"],
+  "isort.args": ["--profile", "black", "--line-length", "120"],
+
+  // ── TOML ──────────────────────────────────────────────────────────────────
+  "[toml]": {
+    "editor.defaultFormatter": "tamasfe.even-better-toml",
+    "editor.formatOnSave": true
+  },
+
+  // ── Editor ────────────────────────────────────────────────────────────────
+  "editor.rulers": [120],
+  "files.trimTrailingWhitespace": true,
+  "files.insertFinalNewline": true
+}

@@ -1,0 +1,75 @@
+# CLI flag groups for BoaT.
+#
+# Inherits the same taxon/assembly/sample groups as GoaT and adds a
+# feature index with display groups specific to BoaT.
+
+indexes:
+  taxon:
+    field_groups:
+      - flag: assembly
+        description: "Include assembly-level fields for taxa"
+        display_groups:
+          - assembly_level
+          - assembly_span
+
+      - flag: busco
+        description: "Include BUSCO completeness fields"
+        display_groups:
+          - busco
+
+      - flag: genome-size
+        description: "Include genome size fields"
+        display_groups:
+          - genome_size
+
+      - flag: karyotype
+        description: "Include karyotype fields"
+        display_groups:
+          - karyotype
+
+      - flag: names
+        description: "Include common name and synonym fields"
+        display_groups:
+          - names
+
+      - flag: status
+        description: "Include sequencing-status / target-list membership"
+        display_groups:
+          - status
+
+  assembly:
+    field_groups:
+      - flag: busco
+        description: "Include BUSCO completeness fields"
+        display_groups:
+          - busco
+
+      - flag: contig
+        description: "Include contig-level statistics"
+        display_groups:
+          - contig
+
+      - flag: scaffold
+        description: "Include scaffold-level statistics"
+        display_groups:
+          - scaffold
+
+  sample:
+    field_groups: []
+
+  feature:
+    field_groups:
+      - flag: merian-unit
+        description: "Include Merian unit / synteny block fields"
+        display_groups:
+          - merian_unit
+
+      - flag: nigon-unit
+        description: "Include Nigon unit fields"
+        display_groups:
+          - nigon_unit
+
+      - flag: mollusca-alg
+        description: "Include Mollusca ALG (Ancestral Linkage Group) fields"
+        display_groups:
+          - mollusca_alg

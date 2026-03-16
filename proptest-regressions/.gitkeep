@@ -1,0 +1,3 @@
+# proptest writes failure-reproducing seeds here on first test failure.
+# Committing this directory ensures CI replays every known-failing case.
+# See: https://proptest-rs.github.io/proptest/proptest/failure-persistence.html

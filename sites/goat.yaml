@@ -1,0 +1,13 @@
+# Site configuration for GoaT (Genomes on a Tree)
+name: goat
+display_name: "GoaT"
+api_base: "https://goat.genomehubs.org/api"
+api_version: "v2"
+
+indexes:
+  - name: taxon
+  - name: assembly
+  - name: sample
+
+compat:
+  goat_cli: true

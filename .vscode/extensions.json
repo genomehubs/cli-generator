@@ -1,0 +1,13 @@
+{
+  "recommendations": [
+    // Rust: language server, formatter, linter
+    "rust-lang.rust-analyzer",
+    // Python: language server (Pylance), formatter (black), import sorter (isort)
+    "ms-python.python",
+    "ms-python.pylance",
+    "ms-python.black-formatter",
+    "ms-python.isort",
+    // TOML: syntax highlighting and formatting
+    "tamasfe.even-better-toml"
+  ]
+}
