@@ -8,7 +8,7 @@ indexes:
     field_groups:
       - flag: assembly
         description: "Include assembly-level fields for taxa"
-        display_groups:
+        fields:
           - assembly_level
           - assembly_span
           - chromosome_number
@@ -19,7 +19,7 @@ indexes:
 
       - flag: bioproject
         description: "Include BioProject accession fields"
-        display_groups:
+        fields:
           - bioproject
 
       - flag: busco
@@ -80,12 +80,12 @@ indexes:
       - flag: mitochondrion
         description: "Include mitochondrial assembly fields"
         display_groups:
-          - mitochondrion
+          - mitochondrion_assembly
 
       - flag: n50
         description: "Include N50 contig/scaffold statistics"
-        display_groups:
-          - n50
+        patterns:
+          - "*_n50"
 
       - flag: names
         description: "Include common name and synonym fields"
@@ -95,7 +95,7 @@ indexes:
       - flag: plastid
         description: "Include plastid / chloroplast assembly fields"
         display_groups:
-          - plastid
+          - plastid_assembly
 
       - flag: ploidy
         description: "Include ploidy fields"

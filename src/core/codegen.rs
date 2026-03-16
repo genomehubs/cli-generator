@@ -59,6 +59,11 @@ fn make_tera() -> Result<Tera> {
         include_str!("../../templates/GETTING_STARTED.md.tera"),
     )
     .context("loading GETTING_STARTED.md template")?;
+    tera.add_raw_template(
+        "autoupdate.yml",
+        include_str!("../../templates/autoupdate.yml.tera"),
+    )
+    .context("loading autoupdate.yml template")?;
     Ok(tera)
 }
 
@@ -176,6 +181,7 @@ impl CodeGenerator {
             "generated_mod.rs",
             "main.rs",
             "GETTING_STARTED.md",
+            "autoupdate.yml",
         ] {
             let rendered = self
                 .tera
@@ -207,6 +213,7 @@ impl CodeGenerator {
         ctx.insert("site_display_name", &site.display_name);
         ctx.insert("api_base", &site.api_base);
         ctx.insert("api_version", &site.api_version);
+        ctx.insert("archive", &site.archive);
         ctx.insert("goat_cli_compat", &site.compat.goat_cli);
         ctx.insert("indexes", &indexes);
         ctx
@@ -268,15 +275,33 @@ fn resolve_fields(fg: &FieldGroup, all_fields: &[FieldDef]) -> Vec<String> {
         }
     }
 
-    // 2. Explicit field names.
+    // 2. Explicit field names — also match against synonyms so that the
+    //    deprecated alias resolves to the canonical field name.
     for name in &fg.fields {
-        add(name.clone());
+        // Try exact canonical match first.
+        let canonical_exact = all_fields.iter().find(|f| &f.name == name);
+        if canonical_exact.is_some() {
+            add(name.clone());
+            continue;
+        }
+        // Fall back to synonym lookup.
+        if let Some(field) = all_fields.iter().find(|f| f.synonyms.contains(name)) {
+            add(field.name.clone());
+        } else {
+            // Unknown name — include as-is so the user gets a clear compile
+            // error rather than a silent omission.
+            add(name.clone());
+        }
     }
 
     // 3. Glob patterns: `prefix*`, `*suffix`, `*contains*`.
+    //    Also match against synonym names so patterns like `ebp_metric_*`
+    //    resolve to the canonical `ebp_standard_*` field.
     for pattern in &fg.patterns {
         for field in all_fields {
-            if matches_pattern(&field.name, pattern) {
+            if matches_pattern(&field.name, pattern)
+                || field.synonyms.iter().any(|s| matches_pattern(s, pattern))
+            {
                 add(field.name.clone());
             }
         }
@@ -334,6 +359,7 @@ fn template_name_to_dest(template_name: &str) -> String {
         "cli_meta.rs" => "src/cli_meta.rs".to_string(),
         "main.rs" => "src/main.rs".to_string(),
         "GETTING_STARTED.md" => "GETTING_STARTED.md".to_string(),
+        "autoupdate.yml" => ".github/workflows/autoupdate.yml".to_string(),
         "generated_mod.rs" => "src/generated/mod.rs".to_string(),
         other => format!("src/generated/{other}"),
     }
@@ -358,6 +384,7 @@ mod tests {
                 result_fields_endpoint: None,
             }],
             compat: CompatConfig::default(),
+            archive: false,
         }
     }
 
@@ -371,6 +398,7 @@ mod tests {
                 field_type: Some("long".to_string()),
                 constraint: None,
                 display_level: Some(1),
+                synonyms: vec![],
             },
             FieldDef {
                 name: "assembly_level".to_string(),
@@ -380,6 +408,7 @@ mod tests {
                 field_type: Some("keyword".to_string()),
                 constraint: None,
                 display_level: Some(1),
+                synonyms: vec![],
             },
         ]
     }
@@ -429,6 +458,14 @@ mod tests {
     }
 
     #[test]
+    fn template_name_to_dest_maps_autoupdate_workflow() {
+        assert_eq!(
+            template_name_to_dest("autoupdate.yml"),
+            ".github/workflows/autoupdate.yml"
+        );
+    }
+
+    #[test]
     fn codegen_renders_all_templates_without_error() {
         let gen = CodeGenerator::new().unwrap();
         let site = sample_site();
@@ -440,6 +477,7 @@ mod tests {
         assert!(rendered.contains_key("src/cli_meta.rs"));
         assert!(rendered.contains_key("src/generated/fields.rs"));
         assert!(rendered.contains_key("src/generated/mod.rs"));
+        assert!(rendered.contains_key(".github/workflows/autoupdate.yml"));
     }
 
     #[test]
@@ -480,5 +518,55 @@ mod tests {
         };
         let resolved = resolve_fields(&fg, &fields);
         assert_eq!(resolved, vec!["genome_size"]);
+    }
+
+    #[test]
+    fn resolve_fields_resolves_synonym_in_fields_list() {
+        use crate::core::config::FieldGroup;
+        let fields = vec![FieldDef {
+            name: "ebp_standard_date".to_string(),
+            display_group: Some("assembly".to_string()),
+            display_name: None,
+            description: None,
+            field_type: None,
+            constraint: None,
+            display_level: None,
+            synonyms: vec!["ebp_metric_date".to_string()],
+        }];
+        let fg = FieldGroup {
+            flag: "ebp".to_string(),
+            description: "EBP fields".to_string(),
+            display_groups: vec![],
+            fields: vec!["ebp_metric_date".to_string()], // deprecated alias
+            patterns: vec![],
+            compat_aliases: vec![],
+        };
+        let resolved = resolve_fields(&fg, &fields);
+        assert_eq!(resolved, vec!["ebp_standard_date"]);
+    }
+
+    #[test]
+    fn resolve_fields_resolves_synonym_via_pattern() {
+        use crate::core::config::FieldGroup;
+        let fields = vec![FieldDef {
+            name: "ebp_standard_date".to_string(),
+            display_group: Some("assembly".to_string()),
+            display_name: None,
+            description: None,
+            field_type: None,
+            constraint: None,
+            display_level: None,
+            synonyms: vec!["ebp_metric_date".to_string()],
+        }];
+        let fg = FieldGroup {
+            flag: "ebp".to_string(),
+            description: "EBP fields".to_string(),
+            display_groups: vec![],
+            fields: vec![],
+            patterns: vec!["ebp_metric_*".to_string()], // matches the synonym
+            compat_aliases: vec![],
+        };
+        let resolved = resolve_fields(&fg, &fields);
+        assert_eq!(resolved, vec!["ebp_standard_date"]);
     }
 }

@@ -37,7 +37,7 @@ pub fn run(
 
     let cache_dir = FieldFetcher::default_cache_dir(site_name)
         .context("could not determine OS cache directory")?;
-    let fetcher = FieldFetcher::new(cache_dir, force_fresh);
+    let fetcher = FieldFetcher::new(cache_dir, force_fresh).with_archive_mode(site.archive);
     let fields_by_index = fetcher
         .fetch_all(&site)
         .with_context(|| format!("fetching field definitions for site '{site_name}'"))?;

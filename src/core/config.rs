@@ -35,6 +35,11 @@ pub struct SiteConfig {
     /// Optional compatibility flags for this site.
     #[serde(default)]
     pub compat: CompatConfig,
+    /// When `true` this site points to a frozen archive API (e.g.
+    /// `api_version: "2025.04.21"`).  Field definitions are cached
+    /// indefinitely — the schema of an archived API never changes.
+    #[serde(default)]
+    pub archive: bool,
 }
 
 fn default_api_version() -> String {

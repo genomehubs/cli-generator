@@ -53,6 +53,12 @@ pub struct FieldDef {
     /// Display priority level (1 = primary, 2 = secondary).
     #[serde(default)]
     pub display_level: Option<u8>,
+    /// Alternative names by which this field is also known, e.g. `["ebp_metric_date"]`.
+    ///
+    /// When a flag's `fields` list or `patterns` references a synonym, the
+    /// canonical field name is included in the resolved field set.
+    #[serde(default)]
+    pub synonyms: Vec<String>,
 }
 
 /// Constraint metadata for a field, used to enumerate keyword values.
@@ -79,6 +85,8 @@ struct CacheEnvelope {
 pub struct FieldFetcher {
     cache_dir: PathBuf,
     force_fresh: bool,
+    /// When `true` the cache never expires: archive APIs have frozen schemas.
+    archive_mode: bool,
 }
 
 impl FieldFetcher {
@@ -86,11 +94,19 @@ impl FieldFetcher {
     ///
     /// `cache_dir` is typically `~/.cache/genomehubs-cli-generator/{site}`.
     /// Set `force_fresh` to `true` to bypass the cache and always hit the network.
+    /// Set `archive_mode` to `true` to keep cached data indefinitely (for frozen archive APIs).
     pub fn new(cache_dir: PathBuf, force_fresh: bool) -> Self {
         Self {
             cache_dir,
             force_fresh,
+            archive_mode: false,
         }
+    }
+
+    /// Enable archive mode: cached field lists are kept indefinitely.
+    pub fn with_archive_mode(mut self, archive: bool) -> Self {
+        self.archive_mode = archive;
+        self
     }
 
     /// Build the default cache directory for a named site.
@@ -143,6 +159,8 @@ impl FieldFetcher {
     }
 
     /// Load and validate the cache; return `None` if missing or stale.
+    ///
+    /// In archive mode the TTL check is skipped — a frozen API's schema never changes.
     fn load_cache(&self, path: &Path) -> Result<Option<Vec<FieldDef>>> {
         if !path.exists() {
             return Ok(None);
@@ -151,14 +169,17 @@ impl FieldFetcher {
         let envelope: CacheEnvelope =
             serde_json::from_str(&text).context("deserialising cache file")?;
 
-        let age = Utc::now()
-            .signed_duration_since(envelope.fetched_at)
-            .to_std()
-            .unwrap_or(CACHE_TTL);
+        if !self.archive_mode {
+            let age = Utc::now()
+                .signed_duration_since(envelope.fetched_at)
+                .to_std()
+                .unwrap_or(CACHE_TTL);
 
-        if age >= CACHE_TTL {
-            return Ok(None);
+            if age >= CACHE_TTL {
+                return Ok(None);
+            }
         }
+
         Ok(Some(envelope.fields))
     }
 
@@ -277,6 +298,29 @@ mod tests {
     }
 
     #[test]
+    fn parse_single_field_deserialises_synonyms() {
+        let value = serde_json::json!({
+            "display_group": "assembly",
+            "display_name": "EBP metric date",
+            "type": "date",
+            "synonyms": ["ebp_metric_date"]
+        });
+        let field = parse_single_field("ebp_standard_date", &value).unwrap();
+        assert_eq!(field.name, "ebp_standard_date");
+        assert_eq!(field.synonyms, vec!["ebp_metric_date"]);
+    }
+
+    #[test]
+    fn parse_single_field_defaults_synonyms_to_empty() {
+        let value = serde_json::json!({
+            "display_group": "assembly",
+            "type": "keyword"
+        });
+        let field = parse_single_field("no_synonyms_field", &value).unwrap();
+        assert!(field.synonyms.is_empty());
+    }
+
+    #[test]
     fn cache_roundtrip_restores_fields() {
         let dir = tempfile::tempdir().unwrap();
         let fetcher = FieldFetcher::new(dir.path().to_path_buf(), false);
@@ -288,11 +332,49 @@ mod tests {
             field_type: Some("long".to_string()),
             constraint: None,
             display_level: Some(1),
+            synonyms: vec![],
         }];
         let cache_path = dir.path().join("site").join("fields-taxon.json");
         fetcher.write_cache(&cache_path, &fields).unwrap();
         let loaded = fetcher.load_cache(&cache_path).unwrap().unwrap();
         assert_eq!(loaded.len(), 1);
         assert_eq!(loaded[0].name, "genome_size");
+    }
+
+    #[test]
+    fn archive_mode_cache_never_expires() {
+        use chrono::Duration as ChronoDuration;
+
+        let dir = tempfile::tempdir().unwrap();
+        let fetcher = FieldFetcher::new(dir.path().to_path_buf(), false).with_archive_mode(true);
+
+        // Write a cache entry whose timestamp is 48 hours in the past.
+        let cache_path = dir.path().join("site").join("fields-taxon.json");
+        let stale_envelope = CacheEnvelope {
+            fetched_at: Utc::now() - ChronoDuration::hours(48),
+            fields: vec![FieldDef {
+                name: "old_field".to_string(),
+                display_group: None,
+                display_name: None,
+                description: None,
+                field_type: None,
+                constraint: None,
+                display_level: None,
+                synonyms: vec![],
+            }],
+        };
+        if let Some(parent) = cache_path.parent() {
+            std::fs::create_dir_all(parent).unwrap();
+        }
+        std::fs::write(
+            &cache_path,
+            serde_json::to_string_pretty(&stale_envelope).unwrap(),
+        )
+        .unwrap();
+
+        // In archive mode the stale entry must still be returned.
+        let loaded = fetcher.load_cache(&cache_path).unwrap();
+        assert!(loaded.is_some(), "archive mode should return stale cache");
+        assert_eq!(loaded.unwrap()[0].name, "old_field");
     }
 }
