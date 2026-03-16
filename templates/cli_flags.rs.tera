@@ -24,6 +24,7 @@ impl {{ index.name | capitalize }}Flags {
     /// Respects the `--fields` override and appends any extra names to the
     /// result.
     pub fn expand(&self) -> Vec<&'static str> {
+{% if index.flags %}
         let groups = super::groups::{{ index.name }}_groups();
         let mut result: Vec<&'static str> = Vec::new();
 
@@ -36,6 +37,9 @@ impl {{ index.name | capitalize }}Flags {
         }
 {% endfor %}
         result
+{% else %}
+        Vec::new()
+{% endif %}
     }
 }
 {% endfor %}

@@ -52,6 +52,13 @@ fn make_tera() -> Result<Tera> {
         include_str!("../../templates/generated_mod.rs.tera"),
     )
     .context("loading generated_mod.rs template")?;
+    tera.add_raw_template("main.rs", include_str!("../../templates/main.rs.tera"))
+        .context("loading main.rs template")?;
+    tera.add_raw_template(
+        "GETTING_STARTED.md",
+        include_str!("../../templates/GETTING_STARTED.md.tera"),
+    )
+    .context("loading GETTING_STARTED.md template")?;
     Ok(tera)
 }
 
@@ -165,6 +172,8 @@ impl CodeGenerator {
             "client.rs",
             "output.rs",
             "generated_mod.rs",
+            "main.rs",
+            "GETTING_STARTED.md",
         ] {
             let rendered = self
                 .tera
@@ -267,6 +276,8 @@ fn build_groups(fields: &[FieldDef]) -> Vec<TemplateGroup> {
 fn template_name_to_dest(template_name: &str) -> String {
     match template_name {
         "cli_meta.rs" => "src/cli_meta.rs".to_string(),
+        "main.rs" => "src/main.rs".to_string(),
+        "GETTING_STARTED.md" => "GETTING_STARTED.md".to_string(),
         "generated_mod.rs" => "src/generated/mod.rs".to_string(),
         other => format!("src/generated/{other}"),
     }

@@ -6,6 +6,22 @@ use anyhow::{Context, Result};
 
 const API_BASE: &str = super::super::cli_meta::API_BASE;
 
+/// Percent-encode a string using RFC 3986 unreserved characters.
+///
+/// Unreserved chars (A–Z a–z 0–9 - _ . ~) are passed through; every other
+/// byte is encoded as `%XX`.  This means spaces become `%20`, parentheses
+/// become `%28`/`%29`, commas become `%2C`, etc.
+fn pct_encode(s: &str) -> String {
+    s.bytes()
+        .map(|b| match b {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
+                (b as char).to_string()
+            }
+            _ => format!("%{b:02X}"),
+        })
+        .collect()
+}
+
 /// Perform a search query against the {{ site_display_name }} API.
 ///
 /// Returns the raw response body as a string (TSV, JSON, or CSV depending
@@ -17,12 +33,15 @@ pub fn search(
     size: usize,
     accept: &str,
 ) -> Result<String> {
-    let fields_param = fields.join(",");
+    let fields_encoded = pct_encode(&fields.join(","));
     let url = format!(
-        "{API_BASE}/search?query={query}&result={index}&fields={fields_param}&size={size}"
+        "{API_BASE}/search?query={}&result={}&fields={}&size={size}",
+        pct_encode(query),
+        index.as_str(),
+        fields_encoded,
     );
     let client = reqwest::blocking::Client::new();
-    let body = client
+    client
         .get(&url)
         .header("Accept", accept)
         .send()
@@ -30,19 +49,19 @@ pub fn search(
         .error_for_status()
         .with_context(|| format!("non-2xx response from {url}"))?
         .text()
-        .context("reading response body")?;
-    Ok(body)
+        .context("reading response body")
 }
 
 /// Perform a count query against the {{ site_display_name }} API.
 ///
 /// Returns the hit count as a `u64`.
 pub fn count(index: super::indexes::Index, query: &str) -> Result<u64> {
-    let url = format!("{API_BASE}/count?query={query}&result={index}");
-    let client = reqwest::blocking::Client::new();
-    let body: serde_json::Value = client
-        .get(&url)
-        .send()
+    let url = format!(
+        "{API_BASE}/count?query={}&result={}",
+        pct_encode(query),
+        index.as_str(),
+    );
+    let body: serde_json::Value = reqwest::blocking::get(&url)
         .with_context(|| format!("HTTP GET {url}"))?
         .error_for_status()
         .with_context(|| format!("non-2xx response from {url}"))?
@@ -58,7 +77,9 @@ pub fn count(index: super::indexes::Index, query: &str) -> Result<u64> {
 /// Returns the raw response body.
 pub fn lookup(index: super::indexes::Index, search_term: &str, size: usize) -> Result<String> {
     let url = format!(
-        "{API_BASE}/lookup?searchTerm={search_term}&result={index}&size={size}"
+        "{API_BASE}/lookup?searchTerm={}&result={}&size={size}",
+        pct_encode(search_term),
+        index.as_str(),
     );
     reqwest::blocking::get(&url)
         .with_context(|| format!("HTTP GET {url}"))?
@@ -67,3 +88,5 @@ pub fn lookup(index: super::indexes::Index, search_term: &str, size: usize) -> R
         .text()
         .context("reading response body")
 }
+
+

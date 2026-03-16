@@ -148,7 +148,8 @@ fn copy_config_files(site_name: &str, sites_dir: &Path, repo_dir: &Path) -> Resu
     Ok(())
 }
 
-/// Write `[package.metadata.cli-gen]` fields into the generated repo's `Cargo.toml`.
+/// Write `[package.metadata.cli-gen]` fields into the generated repo's `Cargo.toml`
+/// and inject the additional dependencies that the generated code requires.
 fn stamp_cargo_toml(repo_dir: &Path, site: &SiteConfig) -> Result<()> {
     use sha2::{Digest, Sha256};
 
@@ -178,8 +179,51 @@ fn stamp_cargo_toml(repo_dir: &Path, site: &SiteConfig) -> Result<()> {
         );
     }
 
+    // Inject deps required by the generated code that are not in the base template.
+    text = inject_generated_deps(text);
+
     std::fs::write(&cargo_toml_path, text).context("writing stamped Cargo.toml")?;
     Ok(())
+}
+
+/// Ensure the generated repo's `Cargo.toml` has the deps needed by
+/// `src/generated/client.rs` and `src/main.rs`.
+///
+/// We add deps idempotently — if the key is already present (e.g. on a
+/// second `update` run) we leave it alone.
+fn inject_generated_deps(mut text: String) -> String {
+    // Make pyo3 optional so `cargo run` works without libpython.
+    text = text.replace(
+        "pyo3   = { version = \"0.22\", features = [\"abi3-py39\"] }",
+        "pyo3   = { version = \"0.22\", features = [\"abi3-py39\"], optional = true }",
+    );
+    // Fix feature to use dep: syntax.
+    text = text.replace(
+        "extension-module = [\"pyo3/extension-module\"]",
+        "extension-module = [\"dep:pyo3\", \"pyo3/extension-module\"]",
+    );
+
+    // Append missing deps after the serde line.
+    let required_deps = [
+        ("serde_json", "serde_json = \"1\""),
+        (
+            "reqwest",
+            "reqwest    = { version = \"0.12\", features = [\"json\", \"blocking\"] }",
+        ),
+        ("anyhow", "anyhow     = \"1\""),
+    ];
+    for (key, dep_line) in required_deps {
+        if !text.contains(key) {
+            // Insert after the serde line.
+            text = text.replacen(
+                "serde  = { version = \"1\",  features = [\"derive\"] }",
+                &format!("serde  = {{ version = \"1\",  features = [\"derive\"] }}\n{dep_line}"),
+                1,
+            );
+        }
+    }
+
+    text
 }
 
 /// Load site config from `{sites_dir}/{site_name}.yaml`.

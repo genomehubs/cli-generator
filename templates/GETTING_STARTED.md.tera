@@ -1,0 +1,88 @@
+# Getting started with {{ site_display_name }} CLI
+
+This is a generated CLI for the [{{ site_display_name }}]({{ api_base }}) genomehubs
+instance. It is maintained by
+[cli-generator](https://github.com/genomehubs/cli-generator) — see
+`config/site.yaml` for the site configuration and `config/cli-options.yaml`
+for the flag group definitions.
+
+---
+
+## Prerequisites
+
+| Tool          | Install                                                            |
+| ------------- | ------------------------------------------------------------------ |
+| Rust (stable) | `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \| sh` |
+| Python ≥ 3.9  | [python.org](https://www.python.org/downloads/) or `pyenv`         |
+| maturin       | `pip install maturin`                                              |
+
+---
+
+## Build and run the CLI
+
+```bash
+cargo build
+cargo run -- --help
+```
+
+Each API index has a subcommand with `search`, `count`, and `lookup`:
+
+```bash
+# Search the taxon index
+cargo run -- taxon search --query "tax_name(Homo sapiens)" --genome-size --busco
+
+# Count results
+cargo run -- taxon count --query "tax_name(Homo sapiens)"
+
+# Look up by name
+cargo run -- taxon lookup --search-term "Homo sapiens"
+```
+
+Available indexes:
+{% for index in indexes %}
+- `{{ index.name }}`
+{% endfor %}
+
+---
+
+## Update generated files
+
+When the {{ site_display_name }} API schema changes, refresh the generated code
+without touching any hand-written files:
+
+```bash
+cli-generator update .
+```
+
+Or check whether generated files are in sync with the config:
+
+```bash
+cli-generator validate .
+```
+
+---
+
+## Build the Python wheel
+
+```bash
+maturin develop --features extension-module
+python -c "import {{ site_name }}_cli; print({{ site_name }}_cli.version())"
+```
+
+---
+
+## Project layout
+
+```
+config/site.yaml          — site configuration (source of truth for regeneration)
+config/cli-options.yaml   — flag → display_group mappings
+src/main.rs               — CLI entry point (hand-written, yours to extend)
+src/cli_meta.rs           — generated constants (NAME, ABOUT, API_BASE)
+src/generated/            — fully generated; do not edit by hand
+  indexes.rs              — Index enum
+  fields.rs               — field definitions
+  groups.rs               — display_group → [field] map
+  cli_flags.rs            — per-index flag structs
+  client.rs               — HTTP search/count/lookup
+  output.rs               — TSV/JSON/CSV output formatting
+```
