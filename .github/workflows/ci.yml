@@ -119,3 +119,63 @@ jobs:
         run: pytest tests/python/ -v
         env:
           CI: "1"
+
+  # ── Generated CLI: build, test URLs, upload artifact ─────────────────────
+  generated-cli-tests:
+    name: Generated CLI tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Cargo registry and build artefacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target/
+          key: ${{ runner.os }}-cargo-gen-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-gen-
+
+      # Content-checking tests: generate goat-cli and assert file contents.
+      # Fast — no second compile needed.
+      - name: cargo test (generated-cli content tests)
+        run: cargo test --test generated_goat_cli
+
+      # Full build of the generated binary for URL-assertion and artifact.
+      - name: Generate goat-cli
+        run: cargo run -- new goat --output-dir /tmp/generated
+
+      - name: Build goat-cli (release)
+        run: cargo build --release
+        working-directory: /tmp/generated/goat-cli
+
+      - name: Assert URL outputs
+        run: |
+          bin=/tmp/generated/goat-cli/target/release/goat-cli
+
+          check() {
+            local desc="$1"; shift
+            local url
+            url=$("$bin" "$@" --url 2>&1)
+            echo "$desc: $url"
+            echo "$url" | grep -q "$desc" || { echo "FAIL: '$desc' not found in URL"; exit 1; }
+          }
+
+          check "busco_completeness"  taxon search --taxon Mammalia --busco
+          check "includeEstimates"    taxon search --taxon Mammalia --busco
+          check "tax_name"            taxon search --taxon Mammalia --busco
+          check "genome_size"         taxon search --taxon Insecta --genome-size
+          check "habreg_2017"         taxon search --taxon "Homo sapiens" --legislation
+          check "includeEstimates=false" taxon search --taxon Mammalia --busco --include-estimates=false
+
+      - name: Upload goat-cli binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: goat-cli-linux-x86_64
+          path: /tmp/generated/goat-cli/target/release/goat-cli
+          retention-days: 14

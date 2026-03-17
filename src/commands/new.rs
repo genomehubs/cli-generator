@@ -77,9 +77,12 @@ fn resolve_template(override_path: Option<&Path>) -> String {
         return format!("--path {}", p.display());
     }
     // Try a sibling `rust-py-template` directory first (typical dev setup).
+    // Use canonicalize so the path stays valid after current_dir() changes.
     let sibling = PathBuf::from("../rust-py-template");
-    if sibling.is_dir() {
-        return format!("--path {}", sibling.display());
+    if let Ok(abs) = sibling.canonicalize() {
+        if abs.is_dir() {
+            return format!("--path {}", abs.display());
+        }
     }
     "--git https://github.com/genomehubs/rust-py-template".to_string()
 }

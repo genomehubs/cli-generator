@@ -194,7 +194,6 @@ indexes:
         description: "Include date and EBP metric fields"
         fields:
           - last_updated
-          - ebp_metric_date
           - ebp_standard_date
           - ebp_standard_criteria
 
