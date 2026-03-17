@@ -1,7 +1,13 @@
 # CLI flag groups for GoaT.
 #
-# Each entry maps a --flag (with optional goat-cli compat aliases) to the
-# display_groups it should expand into when building a resultFields query.
+# Each entry maps a --flag to the field names it should include.
+# Use explicit `fields:` lists for stable known field names (most flags).
+# Use `patterns:` for wildcard matching (e.g. busco_*, sequencing_status_*).
+# Use `display_groups:` only when the API display_group exactly matches what you want.
+#
+# Field names and display_groups verified against:
+#   GET /api/v2/resultFields?result=taxon&size=1000    (139 fields, 2026-03-17)
+#   GET /api/v2/resultFields?result=assembly&size=1000 (49 fields, 2026-03-17)
 
 indexes:
   taxon:
@@ -11,152 +17,211 @@ indexes:
         fields:
           - assembly_level
           - assembly_span
-          - chromosome_number
+          - chromosome_count
           - haploid_number
         compat_aliases:
           - assembly_level
           - assembly_span
 
       - flag: bioproject
-        description: "Include BioProject accession fields"
+        description: "Include BioProject and BioSample accession fields"
         fields:
           - bioproject
+          - biosample
 
       - flag: busco
         description: "Include BUSCO completeness fields"
-        patterns:
-          - "busco_*"
+        fields:
+          - busco_completeness
+          - odb10_lineage
+          - busco_lineage
+          - busco_string
 
       - flag: country-list
         description: "Include country-of-origin fields"
-        display_groups:
+        fields:
           - country_list
         compat_aliases:
           - country_list
 
       - flag: cvalues
         description: "Include C-value (genome size estimate) fields"
-        display_groups:
-          - c_values
+        fields:
+          - c_value
+          - c_value_cell_type
+          - c_value_method
         compat_aliases:
           - c_values
 
       - flag: date
         description: "Include date-related metadata fields"
-        display_groups:
-          - date
-
-      - flag: gc-percent
-        description: "Include GC percentage fields"
-        display_groups:
-          - gc_percent
-        compat_aliases:
-          - gc_percent
+        fields:
+          - assembly_date
+          - ebp_standard_date
+          - ebp_standard_criteria
 
       - flag: gene-count
         description: "Include gene count fields"
-        display_groups:
+        fields:
           - gene_count
         compat_aliases:
           - gene_count
 
       - flag: genome-size
         description: "Include genome size fields"
-        display_groups:
+        fields:
           - genome_size
+          - genome_size_kmer
+          - genome_size_draft
         compat_aliases:
           - genome_size
 
       - flag: karyotype
         description: "Include karyotype fields"
-        display_groups:
-          - karyotype
+        fields:
+          - chromosome_number
+          - haploid_number
+          - ploidy
+          - ploidy_inferred
 
       - flag: legislation
         description: "Include legislation / protection status fields"
-        display_groups:
-          - legislation
+        fields:
+          - isb_wildlife_act_1976
+          - habreg_2017
+          - marhabreg-2017
+          - waca_1981
+          - protection_of_badgers_act_1992
+          - echabs92
+          - cites_category
+          - conservation_list
 
       - flag: mitochondrion
         description: "Include mitochondrial assembly fields"
-        display_groups:
-          - mitochondrion_assembly
+        fields:
+          - mitochondrion_assembly_span
+          - mitochondrion_gc_percent
 
       - flag: n50
         description: "Include N50 contig/scaffold statistics"
-        patterns:
-          - "*_n50"
+        fields:
+          - scaffold_n50
+          - contig_n50
 
       - flag: names
-        description: "Include common name and synonym fields"
-        display_groups:
-          - names
+        description: "Include common name and synonym fields (passed as &names= param)"
+        fields:
+          - common_name
+          - synonym
+          - tolid_prefix
 
       - flag: plastid
         description: "Include plastid / chloroplast assembly fields"
-        display_groups:
-          - plastid_assembly
+        fields:
+          - plastid_assembly_span
+          - plastid_gc_percent
 
       - flag: ploidy
         description: "Include ploidy fields"
-        display_groups:
+        fields:
           - ploidy
+          - ploidy_inferred
+          - ploidy_descriptive
+          - programmed_dna_elimination
 
       - flag: sex-determination
         description: "Include sex-determination system fields"
-        display_groups:
+        fields:
           - sex_determination
         compat_aliases:
           - sex_determination
 
       - flag: status
-        description: "Include sequencing-status / target-list membership"
+        description: "Include sequencing-status and sample tracking fields"
+        fields:
+          - sequencing_status
+          - sample_collected
+          - sample_acquired
+          - in_progress
+          - insdc_submitted
+          - insdc_open
+          - published
+          - sample_collected_by
         display_groups:
-          - status
+          - sequencing_status
 
       - flag: target-lists
         description: "Include target-list flags"
-        display_groups:
-          - target_lists
+        fields:
+          - long_list
+          - other_priority
+          - family_representative
+          - contributing_project_lab
         compat_aliases:
           - target_lists
 
   assembly:
     field_groups:
+      - flag: assembly
+        description: "Include assembly-level summary fields"
+        fields:
+          - assembly_level
+          - assembly_span
+          - assembly_type
+          - assembly_status
+
       - flag: btk
         description: "Include BlobToolKit summary fields"
-        display_groups:
-          - btk
+        fields:
+          - btk_nohit
+          - btk_target
 
       - flag: busco
         description: "Include BUSCO completeness fields"
-        patterns:
-          - "busco_*"
+        fields:
+          - busco_completeness
+          - busco_lineage
+          - busco_string
 
       - flag: contig
         description: "Include contig-level statistics"
-        display_groups:
-          - contig
+        fields:
+          - contig_count
+          - contig_l50
+          - contig_n50
+
+      - flag: date
+        description: "Include date and EBP metric fields"
+        fields:
+          - last_updated
+          - ebp_metric_date
+          - ebp_standard_date
+          - ebp_standard_criteria
 
       - flag: gc
         description: "Include GC percentage fields"
-        display_groups:
+        fields:
           - gc_percent
 
       - flag: gene
         description: "Include gene count fields"
-        display_groups:
+        fields:
           - gene_count
+          - noncoding_gene_count
+          - protein_count
+          - pseudogene_count
 
       - flag: karyotype
         description: "Include karyotype fields"
-        display_groups:
-          - karyotype
+        fields:
+          - chromosome_count
 
       - flag: scaffold
         description: "Include scaffold-level statistics"
-        display_groups:
-          - scaffold
+        fields:
+          - scaffold_count
+          - scaffold_l50
+          - scaffold_n50
 
   sample:
     field_groups: []

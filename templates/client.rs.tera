@@ -33,13 +33,7 @@ pub fn search(
     size: usize,
     accept: &str,
 ) -> Result<String> {
-    let fields_encoded = pct_encode(&fields.join(","));
-    let url = format!(
-        "{API_BASE}/search?query={}&result={}&fields={}&size={size}",
-        pct_encode(query),
-        index.as_str(),
-        fields_encoded,
-    );
+    let url = search_url(index, query, fields, size);
     let client = reqwest::blocking::Client::new();
     client
         .get(&url)
@@ -50,6 +44,21 @@ pub fn search(
         .with_context(|| format!("non-2xx response from {url}"))?
         .text()
         .context("reading response body")
+}
+
+/// Build the search URL without performing an HTTP request.
+pub fn search_url(
+    index: super::indexes::Index,
+    query: &str,
+    fields: &[&str],
+    size: usize,
+) -> String {
+    format!(
+        "{API_BASE}/search?query={}&result={}&fields={}&size={size}",
+        pct_encode(query),
+        index.as_str(),
+        pct_encode(&fields.join(",")),
+    )
 }
 
 /// Perform a count query against the {{ site_display_name }} API.

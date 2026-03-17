@@ -245,10 +245,10 @@ fn inject_generated_deps(mut text: String) -> String {
     ];
     for (key, dep_line) in required_deps {
         if !text.contains(key) {
-            // Insert after the serde line.
+            // Insert immediately before [dev-dependencies] (always present in the template).
             text = text.replacen(
-                "serde  = { version = \"1\",  features = [\"derive\"] }",
-                &format!("serde  = {{ version = \"1\",  features = [\"derive\"] }}\n{dep_line}"),
+                "\n[dev-dependencies]",
+                &format!("\n{dep_line}\n\n[dev-dependencies]"),
                 1,
             );
         }

@@ -9,9 +9,12 @@
 #[cfg(feature = "extension-module")]
 use pyo3::prelude::*;
 
+#[cfg(feature = "extension-module")]
 use crate::generated::field_meta::FieldMeta;
 
+#[cfg(feature = "extension-module")]
 const API_BASE_URL: &str = super::super::cli_meta::API_BASE_URL;
+#[cfg(feature = "extension-module")]
 const API_VERSION: &str = super::super::cli_meta::API_VERSION;
 
 // ── build_url ─────────────────────────────────────────────────────────────────

@@ -7,9 +7,20 @@
 //! Add hand-written subcommands here; the generated index subcommands below
 //! provide search/count/lookup for each API index.
 
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
 
 use {{ site_name | replace(from="-", to="_") }}_cli::{cli_meta, generated};
+
+/// How to apply the taxon filter to the query.
+#[derive(Debug, Clone, ValueEnum)]
+enum TaxonFilter {
+    /// Match the exact taxon name (`tax_name`).
+    Name,
+    /// Match all descendants (`tax_tree`).
+    Tree,
+    /// Match all ancestors (`tax_lineage`).
+    Lineage,
+}
 
 #[derive(Parser)]
 #[command(name = cli_meta::NAME, about = cli_meta::ABOUT, version)]
@@ -35,13 +46,25 @@ enum Commands {
 enum {{ index.name | capitalize }}Commands {
     /// Search the `{{ index.name }}` index.
     Search {
-        /// Query string (e.g. `tax_name(Homo sapiens)`).
+        /// Taxon name or ID to filter by (e.g. `Mammalia`, `Homo sapiens`).
+        #[arg(short = 't', long)]
+        taxon: Option<String>,
+
+        /// How to apply the taxon filter.
+        #[arg(long, value_enum, default_value = "name")]
+        taxon_filter: TaxonFilter,
+
+        /// Additional query string to AND with the taxon filter.
         #[arg(long, default_value = "")]
         query: String,
 
         /// Maximum number of results to return.
-        #[arg(long, default_value = "10")]
+        #[arg(long, default_value = "50")]
         size: usize,
+
+        /// Print the API URL and exit without fetching.
+        #[arg(long)]
+        url: bool,
 
         /// Output format.
         #[arg(long, value_enum, default_value = "tsv")]
@@ -87,12 +110,32 @@ fn run(cli: Cli) -> anyhow::Result<()> {
     match cli.command {
 {% for index in indexes %}
         Commands::{{ index.name | capitalize }} { subcommand } => match subcommand {
-            {{ index.name | capitalize }}Commands::Search { query, size, format, flags } => {
+            {{ index.name | capitalize }}Commands::Search { taxon, taxon_filter, query, size, url, format, flags } => {
+                let taxon_clause = taxon.as_deref().map(|t| match taxon_filter {
+                    TaxonFilter::Name     => format!("tax_name({t})"),
+                    TaxonFilter::Tree     => format!("tax_tree({t})"),
+                    TaxonFilter::Lineage  => format!("tax_lineage({t})"),
+                });
+                let full_query = match (taxon_clause, query.is_empty()) {
+                    (Some(tc), true)  => tc,
+                    (Some(tc), false) => format!("{tc} AND {query}"),
+                    (None, _)         => query.clone(),
+                };
                 let fields = flags.expand();
                 let accept = format.accept_header();
+                if url {
+                    let query_url = generated::client::search_url(
+                        generated::indexes::Index::{{ index.name | capitalize }},
+                        &full_query,
+                        &fields,
+                        size,
+                    );
+                    println!("{query_url}");
+                    return Ok(());
+                }
                 let body = generated::client::search(
                     generated::indexes::Index::{{ index.name | capitalize }},
-                    &query,
+                    &full_query,
                     &fields,
                     size,
                     accept,
