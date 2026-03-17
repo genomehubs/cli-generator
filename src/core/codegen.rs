@@ -69,6 +69,17 @@ fn make_tera() -> Result<Tera> {
         include_str!("../../templates/field_meta.rs.tera"),
     )
     .context("loading field_meta.rs template")?;
+    tera.add_raw_template("sdk.rs", include_str!("../../templates/sdk.rs.tera"))
+        .context("loading sdk.rs template")?;
+    tera.add_raw_template("lib.rs", include_str!("../../templates/lib.rs.tera"))
+        .context("loading lib.rs template")?;
+    tera.add_raw_template("query.py", include_str!("../../templates/query.py.tera"))
+        .context("loading query.py template")?;
+    tera.add_raw_template(
+        "site_cli.pyi",
+        include_str!("../../templates/site_cli.pyi.tera"),
+    )
+    .context("loading site_cli.pyi template")?;
     Ok(tera)
 }
 
@@ -204,17 +215,21 @@ impl CodeGenerator {
             "client.rs",
             "output.rs",
             "field_meta.rs",
+            "sdk.rs",
+            "lib.rs",
             "generated_mod.rs",
             "main.rs",
             "GETTING_STARTED.md",
             "autoupdate.yml",
+            "query.py",
+            "site_cli.pyi",
         ] {
             let rendered = self
                 .tera
                 .render(template_name, &ctx)
                 .with_context(|| format!("rendering template '{template_name}'"))?;
 
-            let dest_path = template_name_to_dest(template_name);
+            let dest_path = template_name_to_dest(template_name, &site.name);
             out.insert(dest_path, rendered);
         }
 
@@ -404,7 +419,7 @@ fn build_groups(fields: &[FieldDef]) -> Vec<TemplateGroup> {
 }
 
 /// Map a template name to its destination path in the generated repo.
-fn template_name_to_dest(template_name: &str) -> String {
+fn template_name_to_dest(template_name: &str, site_name: &str) -> String {
     match template_name {
         "cli_meta.rs" => "src/cli_meta.rs".to_string(),
         "main.rs" => "src/main.rs".to_string(),
@@ -412,6 +427,10 @@ fn template_name_to_dest(template_name: &str) -> String {
         "autoupdate.yml" => ".github/workflows/autoupdate.yml".to_string(),
         "generated_mod.rs" => "src/generated/mod.rs".to_string(),
         "field_meta.rs" => "src/generated/field_meta.rs".to_string(),
+        "sdk.rs" => "src/generated/sdk.rs".to_string(),
+        "lib.rs" => "src/lib.rs".to_string(),
+        "query.py" => format!("python/{site_name}/query.py"),
+        "site_cli.pyi" => format!("python/{site_name}/{site_name}_cli.pyi"),
         other => format!("src/generated/{other}"),
     }
 }
@@ -506,13 +525,16 @@ mod tests {
 
     #[test]
     fn template_name_to_dest_maps_cli_meta() {
-        assert_eq!(template_name_to_dest("cli_meta.rs"), "src/cli_meta.rs");
+        assert_eq!(
+            template_name_to_dest("cli_meta.rs", "goat"),
+            "src/cli_meta.rs"
+        );
     }
 
     #[test]
     fn template_name_to_dest_maps_generated_files() {
         assert_eq!(
-            template_name_to_dest("fields.rs"),
+            template_name_to_dest("fields.rs", "goat"),
             "src/generated/fields.rs"
         );
     }
@@ -520,8 +542,16 @@ mod tests {
     #[test]
     fn template_name_to_dest_maps_autoupdate_workflow() {
         assert_eq!(
-            template_name_to_dest("autoupdate.yml"),
+            template_name_to_dest("autoupdate.yml", "goat"),
             ".github/workflows/autoupdate.yml"
+        );
+    }
+
+    #[test]
+    fn template_name_to_dest_maps_query_py() {
+        assert_eq!(
+            template_name_to_dest("query.py", "goat"),
+            "python/goat/query.py"
         );
     }
 

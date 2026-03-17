@@ -54,6 +54,7 @@ pub fn run(
     write_generated_files(&repo_dir, &rendered)?;
     copy_config_files(site_name, sites_dir, &repo_dir)?;
     stamp_cargo_toml(&repo_dir, &site)?;
+    patch_pyproject_toml(&repo_dir)?;
 
     println!("✓  Generated '{repo_name}' in {}", repo_dir.display());
     Ok(())
@@ -150,6 +151,28 @@ fn copy_config_files(site_name: &str, sites_dir: &Path, repo_dir: &Path) -> Resu
 
 /// Write `[package.metadata.cli-gen]` fields into the generated repo's `Cargo.toml`
 /// and inject the additional dependencies that the generated code requires.
+/// Patch the generated repo's `pyproject.toml` to add runtime and dev deps
+/// needed by the generated Python code (`pyyaml` for `QueryBuilder` serialisation).
+///
+/// Idempotent — skips if the dep is already present.  Silent no-op if
+/// `pyproject.toml` does not exist in the template output.
+fn patch_pyproject_toml(repo_dir: &Path) -> Result<()> {
+    let path = repo_dir.join("pyproject.toml");
+    if !path.exists() {
+        return Ok(());
+    }
+    let mut text = std::fs::read_to_string(&path).context("reading generated pyproject.toml")?;
+    if !text.contains("pyyaml") {
+        text = text.replacen(
+            "maturin>=1.0\",",
+            "maturin>=1.0\",\n    \"pyyaml>=6.0\",",
+            1,
+        );
+    }
+    std::fs::write(&path, text).context("writing patched pyproject.toml")?;
+    Ok(())
+}
+
 fn stamp_cargo_toml(repo_dir: &Path, site: &SiteConfig) -> Result<()> {
     use sha2::{Digest, Sha256};
 
@@ -211,6 +234,14 @@ fn inject_generated_deps(mut text: String) -> String {
             "reqwest    = { version = \"0.12\", features = [\"json\", \"blocking\"] }",
         ),
         ("anyhow", "anyhow     = \"1\""),
+        (
+            "phf",
+            "phf        = { version = \"0.11\", features = [\"macros\"] }",
+        ),
+        (
+            "cli-generator",
+            "cli-generator = { git = \"https://github.com/genomehubs/cli-generator\" }",
+        ),
     ];
     for (key, dep_line) in required_deps {
         if !text.contains(key) {

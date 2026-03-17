@@ -31,6 +31,11 @@
   "files.trimTrailingWhitespace": true,
   "files.insertFinalNewline": true,
   "chat.tools.terminal.autoApprove": {
-    "cargo test": true
+    "cargo test": true,
+    "pyright": true,
+    "/^python -m pyright python/ tests/python/ 2>&1$/": {
+      "approve": true,
+      "matchCommandLine": true
+    }
   }
 }

@@ -6,5 +6,6 @@ of all exported symbols.
 """
 
 from .cli_generator import build_url, version
+from .query import QueryBuilder
 
-__all__ = ["build_url", "version"]
+__all__ = ["build_url", "QueryBuilder", "version"]

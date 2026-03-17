@@ -1,12 +1,12 @@
 [build-system]
-requires      = ["maturin>=1.0,<2.0"]
+requires = ["maturin>=1.0,<2.0"]
 build-backend = "maturin"
 
 [project]
-name             = "cli-generator"
-requires-python  = ">=3.9"
-license          = { file = "LICENSE" }
-classifiers      = [
+name = "cli-generator"
+requires-python = ">=3.9"
+license = { file = "LICENSE" }
+classifiers = [
     "Programming Language :: Rust",
     "Programming Language :: Python :: 3",
     "Development Status :: 3 - Alpha",
@@ -22,6 +22,7 @@ dev = [
     "hypothesis[cli]>=6.100",
     "maturin>=1.0",
     "pyright>=1.1",
+    "pyyaml>=6.0",
 ]
 
 # ---------------------------------------------------------------------------
@@ -32,47 +33,47 @@ dev = [
 # package directory during development.
 python-source = "python"
 # Always activate the extension-module feature when maturin builds a wheel.
-features      = ["extension-module"]
-bindings      = "pyo3"
+features = ["extension-module"]
+bindings = "pyo3"
 
 # ---------------------------------------------------------------------------
 # Black
 # ---------------------------------------------------------------------------
 [tool.black]
-line-length     = 120
-target-version  = ["py39", "py310", "py311", "py312"]
+line-length = 120
+target-version = ["py39", "py310", "py311", "py312"]
 
 # ---------------------------------------------------------------------------
 # isort
 # ---------------------------------------------------------------------------
 [tool.isort]
-profile     = "black"
+profile = "black"
 line_length = 120
-src_paths   = ["python", "tests/python"]
+src_paths = ["python", "tests/python"]
 
 # ---------------------------------------------------------------------------
 # pytest
 # ---------------------------------------------------------------------------
 [tool.pytest.ini_options]
 testpaths = ["tests/python"]
-addopts   = ["-ra", "--strict-markers"]
+addopts = ["-ra", "--strict-markers"]
 
 # ---------------------------------------------------------------------------
 # Hypothesis
 # ---------------------------------------------------------------------------
 [tool.hypothesis]
-max_examples           = 100
-suppress_health_check  = []
-derandomize            = false
+max_examples = 100
+suppress_health_check = []
+derandomize = false
 
 # ---------------------------------------------------------------------------
 # Pyright
 # ---------------------------------------------------------------------------
 [tool.pyright]
-pythonVersion     = "3.9"
-typeCheckingMode  = "strict"
-pythonPlatform    = "All"
+pythonVersion = "3.9"
+typeCheckingMode = "strict"
+pythonPlatform = "All"
 # Tell pyright that packages live in python/ so imports like `import cli_generator`
 # resolve via the stub at python/cli_generator/cli_generator.pyi.
-extraPaths        = ["python"]
-include           = ["python", "tests/python"]
+extraPaths = ["python"]
+include = ["python", "tests/python"]

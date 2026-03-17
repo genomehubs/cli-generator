@@ -9,5 +9,11 @@ pub const NAME: &str = "{{ site_name }}";
 /// Short description shown in `--help`.
 pub const ABOUT: &str = "CLI for {{ site_display_name }}";
 
-/// API base URL for {{ site_display_name }}.
+/// API base URL for {{ site_display_name }} (includes version path component).
 pub const API_BASE: &str = "{{ api_base }}/{{ api_version }}";
+
+/// API base URL without the version path component.
+pub const API_BASE_URL: &str = "{{ api_base }}";
+
+/// API version path component, e.g. `"v2"`.
+pub const API_VERSION: &str = "{{ api_version }}";
