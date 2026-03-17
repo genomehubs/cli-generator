@@ -31,9 +31,10 @@ pub fn search(
     query: &str,
     fields: &[&str],
     size: usize,
+    include_estimates: bool,
     accept: &str,
 ) -> Result<String> {
-    let url = search_url(index, query, fields, size);
+    let url = search_url(index, query, fields, size, include_estimates);
     let client = reqwest::blocking::Client::new();
     client
         .get(&url)
@@ -52,9 +53,10 @@ pub fn search_url(
     query: &str,
     fields: &[&str],
     size: usize,
+    include_estimates: bool,
 ) -> String {
     format!(
-        "{API_BASE}/search?query={}&result={}&fields={}&size={size}",
+        "{API_BASE}/search?query={}&result={}&fields={}&size={size}&includeEstimates={include_estimates}",
         pct_encode(query),
         index.as_str(),
         pct_encode(&fields.join(",")),
