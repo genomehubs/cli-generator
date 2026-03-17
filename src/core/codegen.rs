@@ -64,6 +64,8 @@ fn make_tera() -> Result<Tera> {
         include_str!("../../templates/autoupdate.yml.tera"),
     )
     .context("loading autoupdate.yml template")?;
+    tera.add_raw_template("ci.yml", include_str!("../../templates/ci.yml.tera"))
+        .context("loading ci.yml template")?;
     tera.add_raw_template(
         "field_meta.rs",
         include_str!("../../templates/field_meta.rs.tera"),
@@ -221,6 +223,7 @@ impl CodeGenerator {
             "main.rs",
             "GETTING_STARTED.md",
             "autoupdate.yml",
+            "ci.yml",
             "query.py",
             "site_cli.pyi",
         ] {
@@ -425,6 +428,7 @@ fn template_name_to_dest(template_name: &str, site_name: &str) -> String {
         "main.rs" => "src/main.rs".to_string(),
         "GETTING_STARTED.md" => "GETTING_STARTED.md".to_string(),
         "autoupdate.yml" => ".github/workflows/autoupdate.yml".to_string(),
+        "ci.yml" => ".github/workflows/ci.yml".to_string(),
         "generated_mod.rs" => "src/generated/mod.rs".to_string(),
         "field_meta.rs" => "src/generated/field_meta.rs".to_string(),
         "sdk.rs" => "src/generated/sdk.rs".to_string(),
