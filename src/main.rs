@@ -22,7 +22,7 @@ struct Cli {
 enum Commands {
     /// Scaffold a new site CLI repository from a live API schema.
     New {
-        /// Site name (must match a .yaml file in the sites directory).
+        /// Site name (must match a .yaml file in the config directory).
         #[arg(value_name = "SITE")]
         site: String,
 
@@ -30,9 +30,9 @@ enum Commands {
         #[arg(short, long, default_value = ".")]
         output_dir: PathBuf,
 
-        /// Override the directory containing site .yaml files.
+        /// Directory containing site config .yaml files (overrides built-in sites/).
         #[arg(long)]
-        sites_dir: Option<PathBuf>,
+        config: Option<PathBuf>,
 
         /// Skip the field cache and fetch directly from the API.
         #[arg(long)]
@@ -49,6 +49,10 @@ enum Commands {
         #[arg(default_value = ".")]
         repo: PathBuf,
 
+        /// Directory containing site config .yaml files (overrides the repo's config/).
+        #[arg(long)]
+        config: Option<PathBuf>,
+
         /// Skip the field cache and fetch directly from the API.
         #[arg(long)]
         force_fresh: bool,
@@ -64,9 +68,9 @@ enum Commands {
         #[arg(long, group = "preview_mode")]
         repo: Option<PathBuf>,
 
-        /// Override the directory containing site .yaml files.
+        /// Directory containing site config .yaml files (overrides built-in sites/).
         #[arg(long)]
-        sites_dir: Option<PathBuf>,
+        config: Option<PathBuf>,
 
         /// Skip the field cache and fetch directly from the API.
         #[arg(long)]
@@ -99,23 +103,27 @@ fn run(command: Commands) -> anyhow::Result<()> {
         Commands::New {
             site,
             output_dir,
-            sites_dir,
+            config,
             force_fresh,
             template,
         } => {
-            let sites = sites_dir.unwrap_or(default_sites_dir);
+            let sites = config.unwrap_or(default_sites_dir);
             commands::new::run(&site, &sites, &output_dir, force_fresh, template.as_deref())
         }
 
-        Commands::Update { repo, force_fresh } => commands::update::run(&repo, force_fresh),
+        Commands::Update {
+            repo,
+            config,
+            force_fresh,
+        } => commands::update::run(&repo, config.as_deref(), force_fresh),
 
         Commands::Preview {
             site,
             repo,
-            sites_dir,
+            config,
             force_fresh,
         } => {
-            let sites = sites_dir.unwrap_or(default_sites_dir);
+            let sites = config.unwrap_or(default_sites_dir);
             match (site, repo) {
                 (Some(name), None) => commands::preview::run_new(&name, &sites, force_fresh),
                 (None, Some(path)) => commands::preview::run_update(&path, force_fresh),

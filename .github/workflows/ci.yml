@@ -45,10 +45,10 @@ jobs:
       - name: cargo clippy (deny warnings)
         run: cargo clippy --all-targets -- -D warnings
 
-      # cargo test runs without --features extension-module so it links without
-      # libpython. proptest cases are controlled by PROPTEST_CASES.
+      # --lib restricts to unit tests in src/. Integration tests in tests/
+      # require cargo-generate and are covered by the generated-cli-tests job.
       - name: cargo test
-        run: cargo test
+        run: cargo test --lib
         env:
           PROPTEST_CASES: 512
 
@@ -141,6 +141,9 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-gen-
 
+      - name: Install cargo-generate
+        run: cargo install cargo-generate
+
       # Content-checking tests: generate goat-cli and assert file contents.
       # Fast — no second compile needed.
       - name: cargo test (generated-cli content tests)
@@ -148,7 +151,7 @@ jobs:
 
       # Full build of the generated binary for URL-assertion and artifact.
       - name: Generate goat-cli
-        run: cargo run -- new goat --output-dir /tmp/generated
+        run: cargo run -- new goat --output-dir /tmp/generated --config sites/
 
       - name: Build goat-cli (release)
         run: cargo build --release

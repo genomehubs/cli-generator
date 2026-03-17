@@ -37,8 +37,16 @@ fn goat_cli_options() -> CliOptionsConfig {
 /// Run `cli-generator new goat` into `output_dir` and return the path to the
 /// generated `goat-cli/` subdirectory.
 fn generate_goat_cli(output_dir: &Path) -> PathBuf {
+    let config_dir = workspace_root().join("sites");
     let status = Command::new(cli_generator_bin())
-        .args(["new", "goat", "--output-dir", output_dir.to_str().unwrap()])
+        .args([
+            "new",
+            "goat",
+            "--output-dir",
+            output_dir.to_str().unwrap(),
+            "--config",
+            config_dir.to_str().unwrap(),
+        ])
         .status()
         .expect("failed to spawn cli-generator");
     assert!(status.success(), "cli-generator new goat failed");

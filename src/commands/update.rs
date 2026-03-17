@@ -15,13 +15,17 @@ use crate::core::{codegen::CodeGenerator, config::CliOptionsConfig, fetch::Field
 /// Run the `update` subcommand.
 ///
 /// `repo_path` must point to the root of a previously-generated site CLI repo.
-pub fn run(repo_path: &Path, force_fresh: bool) -> Result<()> {
-    let config_dir = repo_path.join("config");
+/// When `config_dir` is supplied it takes precedence over the repo's own
+/// `config/` directory, allowing a different set of site configs to be used.
+pub fn run(repo_path: &Path, config_dir: Option<&Path>, force_fresh: bool) -> Result<()> {
+    let resolved_config = config_dir
+        .map(|p| p.to_path_buf())
+        .unwrap_or_else(|| repo_path.join("config"));
 
-    let site = crate::core::config::SiteConfig::from_file(&config_dir.join("site.yaml"))
-        .context("loading config/site.yaml from the target repo")?;
+    let site = crate::core::config::SiteConfig::from_file(&resolved_config.join("site.yaml"))
+        .context("loading site.yaml from config directory")?;
 
-    let options = load_cli_options_from_repo(&config_dir)?;
+    let options = load_cli_options_from_repo(&resolved_config)?;
 
     let cache_dir = FieldFetcher::default_cache_dir(&site.name)
         .context("could not determine OS cache directory")?;
