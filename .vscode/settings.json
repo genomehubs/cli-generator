@@ -1,4 +1,12 @@
 {
+  // ── Tera templates — disable ALL formatting to prevent indentation corruption
+  // ────────────────────────────────────────────────────────────────────────────
+  // Without this, rust-analyzer and black treat .tera files as Rust/Python and
+  // corrupt the indentation.  Map to plaintext so no formatter runs on them.
+  "files.associations": {
+    "*.tera": "plaintext"
+  },
+
   // ── Rust ──────────────────────────────────────────────────────────────────
   "[rust]": {
     "editor.defaultFormatter": "rust-lang.rust-analyzer",

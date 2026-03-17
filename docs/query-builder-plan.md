@@ -2,6 +2,119 @@
 
 Written: 2026-03-17
 
+---
+
+## MVP status and focus (updated 2026-03-17)
+
+### Context
+
+Work has forked across three tracks: the CLI (`main.rs.tera`/`client.rs.tera`),
+a generic Python SDK (`python/cli_generator/query.py`), and the query-builder
+core (`src/core/query/`). The plan below re-focuses on two concrete MVPs needed
+for user testing, with strict scope control to avoid half-implemented code.
+
+---
+
+### What is solid today
+
+| Component                                                                                       | State                                  |
+| ----------------------------------------------------------------------------------------------- | -------------------------------------- |
+| `src/core/query/` — `SearchQuery`, `QueryParams`, URL builder, static validation                | ✅ 56 tests pass                       |
+| `python/cli_generator/QueryBuilder` + `build_url` + `merge`/`combine`                           | ✅ 15 tests pass                       |
+| Generator infrastructure — fetches `resultFields`, generates `field_meta.rs`, `fields.rs`, etc. | ✅ works end-to-end                    |
+| `templates/sdk.rs.tera`, `templates/query.py.tera`                                              | ✅ restored after formatter corruption |
+| `.vscode/settings.json` — `.tera` files mapped to plaintext                                     | ✅ formatter locked out                |
+
+### What is broken / disconnected
+
+- **CLI and query module do not talk to each other.** `main.rs.tera` takes a
+  raw `--query` string and passes it directly to `client::search()`. The entire
+  `SearchQuery`/`QueryParams`/validation stack is bypassed. This is fine for
+  the CLI MVP — the raw query string path works — but needs documenting so
+  nobody adds a half-wired bridge mid-sprint.
+- **No generated repo exists yet.** `cli-generator new goat` has not been run.
+  Until it has, the generated templates are untested at compile time.
+- **`sdk.rs.tera` / `query.py.tera`** had been reformatted by VS Code's Rust/Python
+  formatters. Now fixed; `files.associations` in `.vscode/settings.json`
+  prevents recurrence.
+
+---
+
+### CLI MVP — scope
+
+Goal: `goat-cli taxon search --taxon "Mammalia" --taxon-type tree --genome-size`
+produces TSV output. User can run it without understanding query YAML.
+
+| Work item                                                               | File(s)                                              | Priority                |
+| ----------------------------------------------------------------------- | ---------------------------------------------------- | ----------------------- |
+| Fix YAML config gaps: `biosample`, assembly `--assembly`/`--date` flags | `sites/goat-cli-options.yaml`                        | P0 — YAML only, no code |
+| `--taxon`/`-t` + `--taxon-type name\|tree\|lineage`                     | `templates/main.rs.tera`                             | P0                      |
+| `--url` print mode (print URL, do not fetch)                            | `templates/main.rs.tera`                             | P0 — 5 lines            |
+| `--include-estimates` flag                                              | `templates/main.rs.tera`, `templates/client.rs.tera` | P1                      |
+| Run `cli-generator new goat` and verify generated repo compiles         | —                                                    | P0 — gate on above      |
+| User docs (`GETTING_STARTED.md` with real examples)                     | generated `GETTING_STARTED.md.tera`                  | P0 for user testing     |
+
+**Deferred from CLI MVP:**
+
+- `--file`/msearch batch input
+- Count-before-search warning + `searchPaginated`
+- `--rank` vs `--ranks` disambiguation
+- `--tidy` / `--goat-ui-url`
+- `--exclude` (excludeAncestral/excludeMissing)
+- Async client + progress bar
+
+---
+
+### Python SDK / MCP MVP — scope
+
+Goal: MCP server (or any Python script) does:
+
+```python
+from goat_cli.query import QueryBuilder
+results = QueryBuilder("taxon").set_taxa(["Mammalia"], filter_type="tree").search()
+```
+
+| Work item                                                                | File(s)                                   | Priority                         |
+| ------------------------------------------------------------------------ | ----------------------------------------- | -------------------------------- |
+| Run `cli-generator new goat`                                             | —                                         | P0 — generates the goat-cli repo |
+| Verify generated goat-cli Python extension builds with `maturin develop` | generated repo                            | P0                               |
+| Smoke-test `QueryBuilder.search()` round-trip against live API           | —                                         | P0                               |
+| User docs for Python SDK (install, QueryBuilder usage, search/count)     | `docs/` or generated `GETTING_STARTED.md` | P0 for user testing              |
+
+**Deferred from SDK MVP:**
+
+- Rank validation (`ranks.rs.tera`, `/taxonomicRanks` fetch) — plan iteration 2
+- Taxon name lookup (`check_taxon_name()`) — plan iteration 3
+- Report endpoint (`build_report_url`, `ReportOptions`, `AxisDef`) — plan iteration 4
+- `searchPaginated` pagination helper
+
+---
+
+### What should NOT be built yet
+
+- Report endpoint (plan iteration 4) — no user requirement driving it yet
+- `--file`/msearch — useful but not blocking user testing
+- Rank validation — adds safety but MVP without it is acceptable
+- Taxon name lookup — same
+
+---
+
+### Template corruption prevention
+
+VS Code was treating `.tera` files as Rust or Python and reformatting them.
+Fix committed to `.vscode/settings.json`:
+
+```json
+"files.associations": { "*.tera": "plaintext" }
+```
+
+**Never open a `.tera` file and save it without checking this setting is active.**
+If the setting is not applied (e.g. on a fresh clone without `.vscode/`), run
+`cargo test` immediately after any template edit — the `codegen_renders_all_templates_without_error`
+test will catch rendering failures introduced by corruption.
+
+---
+
 Covers `src/core/query/` — a new Rust module that models the intent-driven
 query pipeline currently implemented in `goat-nlp/mcp-server` as Python, and
 exposes it to:

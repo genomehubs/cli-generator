@@ -556,6 +556,27 @@ mod tests {
     }
 
     #[test]
+    fn template_name_to_dest_maps_lib_rs() {
+        assert_eq!(template_name_to_dest("lib.rs", "goat"), "src/lib.rs");
+    }
+
+    #[test]
+    fn template_name_to_dest_maps_sdk_rs() {
+        assert_eq!(
+            template_name_to_dest("sdk.rs", "goat"),
+            "src/generated/sdk.rs"
+        );
+    }
+
+    #[test]
+    fn template_name_to_dest_maps_site_cli_pyi() {
+        assert_eq!(
+            template_name_to_dest("site_cli.pyi", "goat"),
+            "python/goat/goat_cli.pyi"
+        );
+    }
+
+    #[test]
     fn codegen_renders_all_templates_without_error() {
         let gen = CodeGenerator::new().unwrap();
         let site = sample_site();
@@ -564,10 +585,52 @@ mod tests {
         fields_by_index.insert("taxon".to_string(), sample_fields());
 
         let rendered = gen.render_all(&site, &options, &fields_by_index).unwrap();
+
+        // Legacy keys still present.
         assert!(rendered.contains_key("src/cli_meta.rs"));
         assert!(rendered.contains_key("src/generated/fields.rs"));
         assert!(rendered.contains_key("src/generated/mod.rs"));
         assert!(rendered.contains_key(".github/workflows/autoupdate.yml"));
+
+        // Keys added in iterations 2–3.
+        assert!(rendered.contains_key("src/lib.rs"));
+        assert!(rendered.contains_key("src/generated/sdk.rs"));
+        assert!(rendered.contains_key("src/generated/field_meta.rs"));
+        assert!(rendered.contains_key("python/testsite/query.py"));
+        assert!(rendered.contains_key("python/testsite/testsite_cli.pyi"));
+
+        // Spot-check rendered content of the new templates.
+        let lib_rs = rendered.get("src/lib.rs").unwrap();
+        assert!(
+            lib_rs.contains("testsite_cli"),
+            "lib.rs missing PyO3 module name"
+        );
+        assert!(
+            lib_rs.contains("sdk::build_url"),
+            "lib.rs missing build_url registration"
+        );
+
+        let sdk_rs = rendered.get("src/generated/sdk.rs").unwrap();
+        assert!(
+            sdk_rs.contains("API_BASE_URL"),
+            "sdk.rs missing API_BASE_URL"
+        );
+        assert!(
+            sdk_rs.contains("\"taxon\""),
+            "sdk.rs missing taxon index arm"
+        );
+
+        let query_py = rendered.get("python/testsite/query.py").unwrap();
+        assert!(
+            query_py.contains("import testsite_cli as _ext"),
+            "query.py missing extension import"
+        );
+
+        let pyi = rendered.get("python/testsite/testsite_cli.pyi").unwrap();
+        assert!(
+            pyi.contains("class Validator"),
+            "pyi stub missing Validator class"
+        );
     }
 
     #[test]
