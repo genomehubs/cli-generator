@@ -155,8 +155,10 @@ jobs:
         run: cargo test --test generated_goat_cli
 
       # Full build of the generated binary for URL-assertion and artifact.
+      # Use the pre-built binary from the test step rather than cargo run to
+      # avoid a recompile where ~/.cargo/bin may not yet be visible to which().
       - name: Generate goat-cli
-        run: cargo run -- new goat --output-dir /tmp/generated --config sites/
+        run: ./target/debug/cli-generator new goat --output-dir /tmp/generated --config sites/
 
       - name: Build goat-cli (release)
         run: cargo build --release
