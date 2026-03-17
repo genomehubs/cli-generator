@@ -87,9 +87,13 @@ fn resolve_template(override_path: Option<&Path>) -> String {
     "--git https://github.com/genomehubs/rust-py-template".to_string()
 }
 
-/// Shell out to `cargo generate` to scaffold the base repo.
+/// Shell out to `cargo-generate` to scaffold the base repo.
 fn scaffold_repo(template_flag: &str, repo_name: &str, output_dir: &Path) -> Result<()> {
-    let status = std::process::Command::new("cargo")
+    // Invoke the binary directly so it works regardless of whether ~/.cargo/bin
+    // was added to PATH via a shell profile vs. GITHUB_PATH vs. which::which.
+    let cargo_generate = which::which("cargo-generate")
+        .context("cargo-generate not found on PATH; install with: cargo install cargo-generate")?;
+    let status = std::process::Command::new(cargo_generate)
         .arg("generate")
         .args(template_flag.split_whitespace())
         .arg("--name")

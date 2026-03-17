@@ -142,7 +142,12 @@ jobs:
             ${{ runner.os }}-cargo-gen-
 
       - name: Install cargo-generate
-        run: cargo install cargo-generate && echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+        run: cargo install cargo-generate
+
+      # $GITHUB_PATH additions take effect for subsequent steps only, so this
+      # must be a separate step from the install above.
+      - name: Add ~/.cargo/bin to PATH
+        run: echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
       # Content-checking tests: generate goat-cli and assert file contents.
       # Fast — no second compile needed.
