@@ -40,6 +40,10 @@ pub struct SiteConfig {
     /// indefinitely — the schema of an archived API never changes.
     #[serde(default)]
     pub archive: bool,
+    /// Validation rules for query parameters.  Centralised here so custom
+    /// GoaT instances (and BoaT) can override without touching generated code.
+    #[serde(default)]
+    pub validation: ValidationConfig,
 }
 
 fn default_api_version() -> String {
@@ -91,6 +95,73 @@ pub struct CompatConfig {
     /// names are still accepted by the generated CLI.
     #[serde(default)]
     pub goat_cli: bool,
+}
+
+/// Validation rules for query parameters.
+///
+/// Centralised in `site.yaml` so custom GoaT instances (e.g. BoaT) can
+/// override any list without touching generated Rust code.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ValidationConfig {
+    /// Valid accession ID prefixes for assembly queries (case-insensitive).
+    #[serde(default = "default_assembly_prefixes")]
+    pub assembly_accession_prefixes: Vec<String>,
+    /// Valid accession ID prefixes for sample queries (case-insensitive).
+    #[serde(default = "default_sample_prefixes")]
+    pub sample_accession_prefixes: Vec<String>,
+    /// Valid taxon name classes accepted by the `names` parameter.
+    #[serde(default = "default_name_classes")]
+    pub taxon_name_classes: Vec<String>,
+    /// Valid values for the `taxon_filter_type` field.
+    #[serde(default = "default_taxon_filter_types")]
+    pub taxon_filter_types: Vec<String>,
+}
+
+fn default_assembly_prefixes() -> Vec<String> {
+    ["GCA_", "GCF_", "GCS_", "GCN_", "GCP_", "GCR_", "WGS", "ASM"]
+        .iter()
+        .map(|s| s.to_lowercase())
+        .collect()
+}
+
+fn default_sample_prefixes() -> Vec<String> {
+    [
+        "SRS", "SRR", "SRX", "SAM", "ERS", "ERP", "ERX", "DRR", "DRX", "SAMEA", "SAMEG",
+    ]
+    .iter()
+    .map(|s| s.to_lowercase())
+    .collect()
+}
+
+fn default_name_classes() -> Vec<String> {
+    [
+        "scientific_name",
+        "common_name",
+        "synonym",
+        "tolid_prefix",
+        "authority",
+    ]
+    .iter()
+    .map(|s| s.to_string())
+    .collect()
+}
+
+fn default_taxon_filter_types() -> Vec<String> {
+    ["name", "tree", "lineage"]
+        .iter()
+        .map(|s| s.to_string())
+        .collect()
+}
+
+impl Default for ValidationConfig {
+    fn default() -> Self {
+        Self {
+            assembly_accession_prefixes: default_assembly_prefixes(),
+            sample_accession_prefixes: default_sample_prefixes(),
+            taxon_name_classes: default_name_classes(),
+            taxon_filter_types: default_taxon_filter_types(),
+        }
+    }
 }
 
 // ── CliOptionsConfig ──────────────────────────────────────────────────────────

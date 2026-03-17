@@ -64,6 +64,11 @@ fn make_tera() -> Result<Tera> {
         include_str!("../../templates/autoupdate.yml.tera"),
     )
     .context("loading autoupdate.yml template")?;
+    tera.add_raw_template(
+        "field_meta.rs",
+        include_str!("../../templates/field_meta.rs.tera"),
+    )
+    .context("loading field_meta.rs template")?;
     Ok(tera)
 }
 
@@ -79,6 +84,8 @@ struct TemplateField {
     field_type: String,
     enum_values: Vec<String>,
     display_level: u8,
+    /// Deprecated aliases for this field used in synonym lookup maps.
+    synonyms: Vec<String>,
 }
 
 impl From<&FieldDef> for TemplateField {
@@ -98,8 +105,24 @@ impl From<&FieldDef> for TemplateField {
                 .map(|c| c.enum_values.clone())
                 .unwrap_or_default(),
             display_level: f.display_level.unwrap_or(2),
+            synonyms: f.synonyms.clone(),
         }
     }
+}
+
+/// Compile-time metadata for a field emitted into the `field_meta.rs` template.
+#[derive(Debug, Serialize)]
+struct TemplateFieldMeta {
+    /// Canonical field name.
+    name: String,
+    /// Processed type for operator validation, e.g. `"long"`, `"keyword"`.
+    processed_type: String,
+    /// Direction of taxonomy tree traversal (`"up"`, `"down"`, `"both"`), if any.
+    traverse_direction: Option<String>,
+    /// Valid summary modifiers accepted by the API for this field.
+    summary: Vec<String>,
+    /// Allowed enum values for constrained keyword fields.
+    constraint_enum: Option<Vec<String>>,
 }
 
 /// Serialisable view of a display group and the fields belonging to it.
@@ -140,6 +163,8 @@ struct TemplateIndex {
     fields: Vec<TemplateField>,
     groups: Vec<TemplateGroup>,
     flags: Vec<TemplateFlag>,
+    /// Field metadata for the `field_meta.rs` template.
+    meta_fields: Vec<TemplateFieldMeta>,
 }
 
 // ── CodeGenerator ─────────────────────────────────────────────────────────────
@@ -178,6 +203,7 @@ impl CodeGenerator {
             "cli_flags.rs",
             "client.rs",
             "output.rs",
+            "field_meta.rs",
             "generated_mod.rs",
             "main.rs",
             "GETTING_STARTED.md",
@@ -246,11 +272,35 @@ fn build_template_index(
         })
         .unwrap_or_default();
 
+    let meta_fields = raw_fields
+        .iter()
+        .map(|f| {
+            let processed_type = f
+                .processed_type
+                .clone()
+                .or_else(|| f.field_type.clone())
+                .unwrap_or_else(|| "keyword".to_string());
+            let constraint_enum = f
+                .constraint
+                .as_ref()
+                .map(|c| c.enum_values.clone())
+                .filter(|v| !v.is_empty());
+            TemplateFieldMeta {
+                name: f.name.clone(),
+                processed_type,
+                traverse_direction: f.traverse_direction.clone(),
+                summary: f.summary.clone(),
+                constraint_enum,
+            }
+        })
+        .collect();
+
     TemplateIndex {
         name: index.name.clone(),
         fields,
         groups,
         flags,
+        meta_fields,
     }
 }
 
@@ -361,6 +411,7 @@ fn template_name_to_dest(template_name: &str) -> String {
         "GETTING_STARTED.md" => "GETTING_STARTED.md".to_string(),
         "autoupdate.yml" => ".github/workflows/autoupdate.yml".to_string(),
         "generated_mod.rs" => "src/generated/mod.rs".to_string(),
+        "field_meta.rs" => "src/generated/field_meta.rs".to_string(),
         other => format!("src/generated/{other}"),
     }
 }
@@ -370,7 +421,9 @@ fn template_name_to_dest(template_name: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::config::{CompatConfig, FieldGroup, IndexDef, IndexOptions, SiteConfig};
+    use crate::core::config::{
+        CompatConfig, FieldGroup, IndexDef, IndexOptions, SiteConfig, ValidationConfig,
+    };
     use crate::core::fetch::FieldDef;
 
     fn sample_site() -> SiteConfig {
@@ -385,6 +438,7 @@ mod tests {
             }],
             compat: CompatConfig::default(),
             archive: false,
+            validation: ValidationConfig::default(),
         }
     }
 
@@ -399,6 +453,9 @@ mod tests {
                 constraint: None,
                 display_level: Some(1),
                 synonyms: vec![],
+                processed_type: Some("long".to_string()),
+                traverse_direction: Some("down".to_string()),
+                summary: vec!["min".to_string(), "max".to_string()],
             },
             FieldDef {
                 name: "assembly_level".to_string(),
@@ -409,6 +466,9 @@ mod tests {
                 constraint: None,
                 display_level: Some(1),
                 synonyms: vec![],
+                processed_type: None,
+                traverse_direction: None,
+                summary: vec![],
             },
         ]
     }
@@ -532,6 +592,9 @@ mod tests {
             constraint: None,
             display_level: None,
             synonyms: vec!["ebp_metric_date".to_string()],
+            processed_type: None,
+            traverse_direction: None,
+            summary: vec![],
         }];
         let fg = FieldGroup {
             flag: "ebp".to_string(),
@@ -557,6 +620,9 @@ mod tests {
             constraint: None,
             display_level: None,
             synonyms: vec!["ebp_metric_date".to_string()],
+            processed_type: None,
+            traverse_direction: None,
+            summary: vec![],
         }];
         let fg = FieldGroup {
             flag: "ebp".to_string(),

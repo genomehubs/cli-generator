@@ -5,9 +5,11 @@
 //! - [`config`]  — YAML configuration types for site and CLI options.
 //! - [`fetch`]   — API field fetching and local disk caching.
 //! - [`codegen`] — Code generation via Tera templates.
+//! - [`query`]   — `SearchQuery` / `QueryParams` structs and URL builder.
 //!
 //! No PyO3 or clap dependencies live here.
 
 pub mod codegen;
 pub mod config;
 pub mod fetch;
+pub mod query;

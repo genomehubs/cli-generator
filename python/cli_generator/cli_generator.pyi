@@ -21,3 +21,28 @@ def version() -> str:
         Package version string.
     """
     ...
+
+def build_url(
+    query_yaml: str,
+    params_yaml: str,
+    api_base: str,
+    api_version: str,
+    endpoint: str,
+) -> str:
+    """Build a fully-encoded genomehubs API query URL from YAML inputs.
+
+    Args:
+        query_yaml: YAML-serialised ``SearchQuery`` (index, taxa, attributes, …).
+        params_yaml: YAML-serialised ``QueryParams`` (size, page, sort, …).
+        api_base: Base URL without trailing slash, e.g.
+            ``"https://goat.genomehubs.org/api"``.
+        api_version: API version path component, e.g. ``"v2"``.
+        endpoint: Endpoint name, e.g. ``"search"`` or ``"count"``.
+
+    Returns:
+        Fully-encoded URL ready for an HTTP GET request.
+
+    Raises:
+        ValueError: If either YAML string cannot be parsed.
+    """
+    ...

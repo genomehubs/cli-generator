@@ -5,6 +5,6 @@ Rust extension is imported here; see ``cli_generator.pyi`` for type signatures
 of all exported symbols.
 """
 
-from .cli_generator import version
+from .cli_generator import build_url, version
 
-__all__ = ["version"]
+__all__ = ["build_url", "version"]

@@ -1,4 +1,4 @@
-# Site configuration for BoaT (Biodiversity on a Tree)
+# Site configuration for BoaT (BUSCOs on a Tree)
 name: boat
 display_name: "BoaT"
 api_base: "https://boat.genomehubs.org/api"
@@ -12,3 +12,17 @@ indexes:
 
 compat:
   goat_cli: false
+
+# Validation rules for query parameters.  Override any list to customise for
+# a specific BoaT deployment.
+validation:
+  assembly_accession_prefixes: [gca_, gcf_, gcs_, gcn_, gcp_, gcr_, wgs, asm]
+  sample_accession_prefixes:
+    [srs, srr, srx, sam, ers, erp, erx, drr, drx, samea, sameg]
+  taxon_name_classes:
+    - scientific_name
+    - common_name
+    - synonym
+    - tolid_prefix
+    - authority
+  taxon_filter_types: [name, tree, lineage]

@@ -4,6 +4,7 @@
 
 pub mod cli_flags;
 pub mod client;
+pub mod field_meta;
 pub mod fields;
 pub mod groups;
 pub mod indexes;

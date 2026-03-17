@@ -59,6 +59,24 @@ pub struct FieldDef {
     /// canonical field name is included in the resolved field set.
     #[serde(default)]
     pub synonyms: Vec<String>,
+    /// Processed type used for validation, e.g. `"long"`, `"keyword"`, `"date"`.
+    ///
+    /// Distinct from `field_type` (the raw storage type); used to decide which
+    /// operators are legal (no `<`/`>` for keyword fields).
+    #[serde(default)]
+    pub processed_type: Option<String>,
+    /// Direction of value inheritance across the taxonomy tree.
+    ///
+    /// `"up"` means values propagate toward the root (ancestors), `"down"`
+    /// toward leaves (descendants), `"both"` for bidirectional propagation.
+    /// `None` means the field is not inherited.
+    #[serde(default)]
+    pub traverse_direction: Option<String>,
+    /// Valid summary modifiers for this field, e.g. `["min", "max", "median"]`.
+    ///
+    /// Only aggregate/traversal fields have a non-empty list.
+    #[serde(default)]
+    pub summary: Vec<String>,
 }
 
 /// Constraint metadata for a field, used to enumerate keyword values.
@@ -333,6 +351,9 @@ mod tests {
             constraint: None,
             display_level: Some(1),
             synonyms: vec![],
+            processed_type: None,
+            traverse_direction: None,
+            summary: vec![],
         }];
         let cache_path = dir.path().join("site").join("fields-taxon.json");
         fetcher.write_cache(&cache_path, &fields).unwrap();
@@ -361,6 +382,9 @@ mod tests {
                 constraint: None,
                 display_level: None,
                 synonyms: vec![],
+                processed_type: None,
+                traverse_direction: None,
+                summary: vec![],
             }],
         };
         if let Some(parent) = cache_path.parent() {
