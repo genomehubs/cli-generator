@@ -185,7 +185,8 @@ impl Validator {
             {% endfor %}
         };
         let config = cli_generator::core::config::ValidationConfig::default();
-        let errors = validate_query(&query, meta_map, synonym_map, &config);
+        let valid_indexes: &[&str] = &[{% for index in indexes %}"{{ index.name }}", {% endfor %}];
+        let errors = validate_query(&query, meta_map, synonym_map, valid_indexes, &config);
         Ok(errors.iter().map(|e| e.to_string()).collect())
     }
 

@@ -241,7 +241,8 @@ impl CodeGenerator {
                 .render(template_name, &ctx)
                 .with_context(|| format!("rendering template '{template_name}'"))?;
 
-            let dest_path = template_name_to_dest(template_name, &site.name);
+            let dest_path =
+                template_name_to_dest(template_name, &site.name, &site.resolved_sdk_name());
             out.insert(dest_path, rendered);
         }
 
@@ -268,6 +269,7 @@ impl CodeGenerator {
         ctx.insert("api_version", &site.api_version);
         ctx.insert("archive", &site.archive);
         ctx.insert("goat_cli_compat", &site.compat.goat_cli);
+        ctx.insert("sdk_name", &site.resolved_sdk_name());
         ctx.insert("indexes", &indexes);
         ctx
     }
@@ -431,7 +433,7 @@ fn build_groups(fields: &[FieldDef]) -> Vec<TemplateGroup> {
 }
 
 /// Map a template name to its destination path in the generated repo.
-fn template_name_to_dest(template_name: &str, site_name: &str) -> String {
+fn template_name_to_dest(template_name: &str, _site_name: &str, sdk_name: &str) -> String {
     match template_name {
         "cli_meta.rs" => "src/cli_meta.rs".to_string(),
         "main.rs" => "src/main.rs".to_string(),
@@ -443,8 +445,8 @@ fn template_name_to_dest(template_name: &str, site_name: &str) -> String {
         "field_meta.rs" => "src/generated/field_meta.rs".to_string(),
         "sdk.rs" => "src/generated/sdk.rs".to_string(),
         "lib.rs" => "src/lib.rs".to_string(),
-        "query.py" => format!("python/{site_name}/query.py"),
-        "site_cli.pyi" => format!("python/{site_name}/{site_name}_cli.pyi"),
+        "query.py" => format!("python/{sdk_name}/query.py"),
+        "site_cli.pyi" => format!("python/{sdk_name}/{sdk_name}.pyi"),
         other => format!("src/generated/{other}"),
     }
 }
@@ -472,6 +474,7 @@ mod tests {
             compat: CompatConfig::default(),
             archive: false,
             validation: ValidationConfig::default(),
+            sdk_name: None,
         }
     }
 
@@ -541,7 +544,7 @@ mod tests {
     #[test]
     fn template_name_to_dest_maps_cli_meta() {
         assert_eq!(
-            template_name_to_dest("cli_meta.rs", "goat"),
+            template_name_to_dest("cli_meta.rs", "goat", "goat_sdk"),
             "src/cli_meta.rs"
         );
     }
@@ -549,7 +552,7 @@ mod tests {
     #[test]
     fn template_name_to_dest_maps_generated_files() {
         assert_eq!(
-            template_name_to_dest("fields.rs", "goat"),
+            template_name_to_dest("fields.rs", "goat", "goat_sdk"),
             "src/generated/fields.rs"
         );
     }
@@ -557,33 +560,39 @@ mod tests {
     #[test]
     fn template_name_to_dest_maps_autoupdate_workflow() {
         assert_eq!(
-            template_name_to_dest("autoupdate.yml", "goat"),
+            template_name_to_dest("autoupdate.yml", "goat", "goat_sdk"),
             ".github/workflows/autoupdate.yml"
         );
     }
 
     #[test]
     fn template_name_to_dest_maps_preview_md() {
-        assert_eq!(template_name_to_dest("PREVIEW.md", "goat"), "PREVIEW.md");
+        assert_eq!(
+            template_name_to_dest("PREVIEW.md", "goat", "goat_sdk"),
+            "PREVIEW.md"
+        );
     }
 
     #[test]
     fn template_name_to_dest_maps_query_py() {
         assert_eq!(
-            template_name_to_dest("query.py", "goat"),
-            "python/goat/query.py"
+            template_name_to_dest("query.py", "goat", "goat_sdk"),
+            "python/goat_sdk/query.py"
         );
     }
 
     #[test]
     fn template_name_to_dest_maps_lib_rs() {
-        assert_eq!(template_name_to_dest("lib.rs", "goat"), "src/lib.rs");
+        assert_eq!(
+            template_name_to_dest("lib.rs", "goat", "goat_sdk"),
+            "src/lib.rs"
+        );
     }
 
     #[test]
     fn template_name_to_dest_maps_sdk_rs() {
         assert_eq!(
-            template_name_to_dest("sdk.rs", "goat"),
+            template_name_to_dest("sdk.rs", "goat", "goat_sdk"),
             "src/generated/sdk.rs"
         );
     }
@@ -591,8 +600,8 @@ mod tests {
     #[test]
     fn template_name_to_dest_maps_site_cli_pyi() {
         assert_eq!(
-            template_name_to_dest("site_cli.pyi", "goat"),
-            "python/goat/goat_cli.pyi"
+            template_name_to_dest("site_cli.pyi", "goat", "goat_sdk"),
+            "python/goat_sdk/goat_sdk.pyi"
         );
     }
 
@@ -616,13 +625,13 @@ mod tests {
         assert!(rendered.contains_key("src/lib.rs"));
         assert!(rendered.contains_key("src/generated/sdk.rs"));
         assert!(rendered.contains_key("src/generated/field_meta.rs"));
-        assert!(rendered.contains_key("python/testsite/query.py"));
-        assert!(rendered.contains_key("python/testsite/testsite_cli.pyi"));
+        assert!(rendered.contains_key("python/testsite_sdk/query.py"));
+        assert!(rendered.contains_key("python/testsite_sdk/testsite_sdk.pyi"));
 
         // Spot-check rendered content of the new templates.
         let lib_rs = rendered.get("src/lib.rs").unwrap();
         assert!(
-            lib_rs.contains("testsite_cli"),
+            lib_rs.contains("testsite_sdk"),
             "lib.rs missing PyO3 module name"
         );
         assert!(
@@ -640,13 +649,15 @@ mod tests {
             "sdk.rs missing taxon index arm"
         );
 
-        let query_py = rendered.get("python/testsite/query.py").unwrap();
+        let query_py = rendered.get("python/testsite_sdk/query.py").unwrap();
         assert!(
-            query_py.contains("import testsite_cli as _ext"),
+            query_py.contains("import testsite_sdk as _ext"),
             "query.py missing extension import"
         );
 
-        let pyi = rendered.get("python/testsite/testsite_cli.pyi").unwrap();
+        let pyi = rendered
+            .get("python/testsite_sdk/testsite_sdk.pyi")
+            .unwrap();
         assert!(
             pyi.contains("class Validator"),
             "pyi stub missing Validator class"

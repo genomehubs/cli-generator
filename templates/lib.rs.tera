@@ -20,12 +20,12 @@ use pyo3::prelude::*;
 /// Python module for {{ site_display_name }}.
 #[cfg(feature = "extension-module")]
 #[pymodule]
-fn {{ site_name | replace(from="-", to="_") }}_cli(m: &Bound<'_, PyModule>) -> PyResult<()> {
-        use generated::sdk;
-        m.add_function(wrap_pyfunction!(sdk::build_url, m)?)?;
-        m.add_function(wrap_pyfunction!(sdk::search, m)?)?;
-        m.add_function(wrap_pyfunction!(sdk::count, m)?)?;
-        m.add_class::<sdk::FieldInfo>()?;
-            m.add_class::<sdk::Validator>()?;
-                Ok(())
-                }
+fn {{ sdk_name }}(m: &Bound<'_, PyModule>) -> PyResult<()> {
+    use generated::sdk;
+    m.add_function(wrap_pyfunction!(sdk::build_url, m)?)?;
+    m.add_function(wrap_pyfunction!(sdk::search, m)?)?;
+    m.add_function(wrap_pyfunction!(sdk::count, m)?)?;
+    m.add_class::<sdk::FieldInfo>()?;
+    m.add_class::<sdk::Validator>()?;
+    Ok(())
+}

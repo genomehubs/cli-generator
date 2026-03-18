@@ -9,6 +9,9 @@ indexes:
   - name: assembly
   - name: sample
 
+# Python package name for the generated SDK (imported as `import goat_sdk`).
+sdk_name: goat_sdk
+
 compat:
   goat_cli: true
 

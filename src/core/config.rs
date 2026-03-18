@@ -44,6 +44,10 @@ pub struct SiteConfig {
     /// GoaT instances (and BoaT) can override without touching generated code.
     #[serde(default)]
     pub validation: ValidationConfig,
+    /// Python package name for the generated SDK, e.g. `"goat_sdk"`.
+    /// Defaults to `"{name}_sdk"` when absent from the YAML.
+    #[serde(default)]
+    pub sdk_name: Option<String>,
 }
 
 fn default_api_version() -> String {
@@ -61,6 +65,16 @@ impl SiteConfig {
     /// Parse a [`SiteConfig`] from a YAML string.
     pub fn parse_yaml(yaml: &str) -> Result<Self> {
         serde_yaml::from_str(yaml).context("parsing site config YAML")
+    }
+
+    /// Return the Python package name for the generated SDK.
+    ///
+    /// Uses `sdk_name` from the YAML when present; otherwise derives
+    /// `"{name}_sdk"` (with hyphens replaced by underscores).
+    pub fn resolved_sdk_name(&self) -> String {
+        self.sdk_name
+            .clone()
+            .unwrap_or_else(|| format!("{}_sdk", self.name.replace('-', "_")))
     }
 
     /// Return the `resultFields` endpoint URL for a given index.
