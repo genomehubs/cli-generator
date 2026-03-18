@@ -164,8 +164,11 @@ most recent **"Generated CLI tests"** run → **Artifacts** and download
 Install and try:
 
 ```bash
-# Install the wheel and optional dependencies
-pip install goat_sdk-*.whl pyyaml pandas polars
+# Install the wheel
+pip install goat_sdk-*.whl pyyaml
+
+# pandas and polars are optional dependencies
+pip install pandas polars
 
 # Try the QueryBuilder
 python
@@ -193,20 +196,20 @@ print(df.head())
 df = (
     QueryBuilder("assembly")
     .set_taxa(["Homo sapiens"])
-    .add_attribute("assembly_span", operator=">", value="3000000000")
+    .add_attribute("assembly_span", operator="gt", value="3000000000")
     .add_field("assembly_span")
     .set_size(50)
     .search_polars()
 )
 print(f"Human assemblies > 3Gb: {len(df)} records")
-print(df.select(["assembly_accession", "assembly_span"]))
+print(df.select(["assembly_id", "assembly_span"]))
 
 # Validate a query before fetching
 qb = (
     QueryBuilder("taxon")
     .set_taxa(["Primates"], filter_type="tree")
     .add_field("genome_size")
-    .add_attribute("genome_size", operator=">=", value="2500000000")
+    .add_attribute("genome_size", operator="ge", value="2500000000")
 )
 errors = qb.validate()
 if errors:
@@ -222,8 +225,9 @@ else:
   They'll display a helpful error message if the package is not installed.
 - `add_attribute(name, operator, value)` lets you filter by field values
   (e.g. `assembly_span > 3G`, `genome_size >= 2.5G`).
+- comparison operators `>`, `>=`, etc must currently be referred to as `gt`, `ge`, ...
 - `validate()` checks the query against the baked-in field metadata without
-  making a network call.
+  making a network call (may need wrapping an a try-catch block for now)
 - Both `search_df()` and `search_polars()` fetch TSV by default for better type
   preservation; use `.search(format="json")` if you need raw JSON.
 
