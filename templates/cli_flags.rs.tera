@@ -21,11 +21,10 @@ fn {{ index.name }}_group_fields(name: &str) -> &'static [&'static str] {
 /// the entry as a literal field name.
 fn resolve_{{ index.name }}_entry(entry: &str) -> &'static [&'static str] {
     if entry.len() == 1 {
-        let name: &str = match entry.chars().next().unwrap() {
-{% for flag in index.flags %}{% if flag.short %}            '{{ flag.short }}' => "{{ flag.flag }}",
-{% endif %}{% endfor %}            _ => return &[],
+        return match entry.chars().next().unwrap() {
+{% for flag in index.flags %}{% if flag.short %}            '{{ flag.short }}' => {{ index.name }}_group_fields("{{ flag.flag }}"),
+{% endif %}{% endfor %}            _ => &[],
         };
-        return {{ index.name }}_group_fields(name);
     }
     {{ index.name }}_group_fields(entry)
 }

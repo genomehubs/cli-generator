@@ -29,7 +29,7 @@ Each API index has a subcommand with `search`, `count`, and `lookup`:
 
 ```bash
 # Search the taxon index
-cargo run -- taxon search --query "tax_name(Homo sapiens)" --genome-size --busco
+cargo run -- taxon search --query "tax_name(Homo sapiens)" --field-groups genome-size,busco
 
 # Count results
 cargo run -- taxon count --query "tax_name(Homo sapiens)"

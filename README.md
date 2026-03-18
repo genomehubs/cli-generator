@@ -2,7 +2,7 @@
 
 Generic CLI generator for genomehubs instances
 
-[![CI](https://github.com/Richard Challis/cli-generator/actions/workflows/ci.yml/badge.svg)](https://github.com/Richard Challis/cli-generator/actions/workflows/ci.yml)
+[![CI](https://github.com/genomehubs/cli-generator/actions/workflows/ci.yml/badge.svg)](https://github.com/genomehubs/cli-generator/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ## Overview
