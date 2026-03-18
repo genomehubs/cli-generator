@@ -103,6 +103,9 @@ fn resolve_template(override_path: Option<&Path>) -> String {
 /// subcommand relative to its own binary directory.  This works regardless
 /// of whether `~/.cargo/bin` is on PATH in the calling environment.
 fn scaffold_repo(template_flag: &str, repo_name: &str, output_dir: &Path) -> Result<()> {
+    std::fs::create_dir_all(output_dir)
+        .with_context(|| format!("creating output directory '{}'", output_dir.display()))?;
+
     let status = std::process::Command::new("cargo")
         .arg("generate")
         .args(template_flag.split_whitespace())
