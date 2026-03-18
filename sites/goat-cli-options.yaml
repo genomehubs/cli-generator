@@ -13,6 +13,7 @@ indexes:
   taxon:
     field_groups:
       - flag: assembly
+        short: a
         description: "Include assembly-level fields for taxa"
         fields:
           - assembly_level
@@ -24,12 +25,14 @@ indexes:
           - assembly_span
 
       - flag: bioproject
+        short: B
         description: "Include BioProject and BioSample accession fields"
         fields:
           - bioproject
           - biosample
 
       - flag: busco
+        short: b
         description: "Include BUSCO completeness fields"
         fields:
           - busco_completeness
@@ -38,6 +41,7 @@ indexes:
           - busco_string
 
       - flag: country-list
+        short: C
         description: "Include country-of-origin fields"
         fields:
           - country_list
@@ -45,6 +49,7 @@ indexes:
           - country_list
 
       - flag: cvalues
+        short: c
         description: "Include C-value (genome size estimate) fields"
         fields:
           - c_value
@@ -54,6 +59,7 @@ indexes:
           - c_values
 
       - flag: date
+        short: D
         description: "Include date-related metadata fields"
         fields:
           - assembly_date
@@ -68,6 +74,7 @@ indexes:
           - gene_count
 
       - flag: genome-size
+        short: G
         description: "Include genome size fields"
         fields:
           - genome_size
@@ -77,6 +84,7 @@ indexes:
           - genome_size
 
       - flag: karyotype
+        short: k
         description: "Include karyotype fields"
         fields:
           - chromosome_number
@@ -97,18 +105,21 @@ indexes:
           - conservation_list
 
       - flag: mitochondrion
+        short: m
         description: "Include mitochondrial assembly fields"
         fields:
           - mitochondrion_assembly_span
           - mitochondrion_gc_percent
 
       - flag: n50
+        short: N
         description: "Include N50 contig/scaffold statistics"
         fields:
           - scaffold_n50
           - contig_n50
 
       - flag: names
+        short: n
         description: "Include common name and synonym fields (passed as &names= param)"
         fields:
           - common_name
@@ -116,12 +127,14 @@ indexes:
           - tolid_prefix
 
       - flag: plastid
+        short: p
         description: "Include plastid / chloroplast assembly fields"
         fields:
           - plastid_assembly_span
           - plastid_gc_percent
 
       - flag: ploidy
+        short: P
         description: "Include ploidy fields"
         fields:
           - ploidy
@@ -130,6 +143,7 @@ indexes:
           - programmed_dna_elimination
 
       - flag: sex-determination
+        short: S
         description: "Include sex-determination system fields"
         fields:
           - sex_determination

@@ -115,6 +115,12 @@ fn run(cli: Cli) -> anyhow::Result<()> {
 {% for index in indexes %}
         Commands::{{ index.name | capitalize }} { subcommand } => match subcommand {
             {{ index.name | capitalize }}Commands::Search { taxon, taxon_filter, query, size, include_estimates, url, format, flags } => {
+                if flags.list_field_groups {
+                    for (name, desc) in generated::cli_flags::{{ index.name | capitalize }}Flags::list_groups() {
+                        println!("{name:<20} {desc}");
+                    }
+                    return Ok(());
+                }
                 let taxon_clause = taxon.as_deref().map(|t| match taxon_filter {
                     TaxonFilter::Name     => format!("tax_name({t})"),
                     TaxonFilter::Tree     => format!("tax_tree({t})"),
@@ -125,7 +131,8 @@ fn run(cli: Cli) -> anyhow::Result<()> {
                     (Some(tc), false) => format!("{tc} AND {query}"),
                     (None, _)         => query.clone(),
                 };
-                let fields = flags.expand();
+                let owned_fields = flags.all_fields();
+                let fields: Vec<&str> = owned_fields.iter().map(|s| s.as_str()).collect();
                 let accept = format.accept_header();
                 if url {
                     let query_url = generated::client::search_url(

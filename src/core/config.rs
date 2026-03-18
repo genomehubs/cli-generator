@@ -196,7 +196,7 @@ pub struct IndexOptions {
     pub field_groups: Vec<FieldGroup>,
 }
 
-/// A single CLI flag that selects one or more fields.
+/// A single field group entry that selects one or more fields.
 ///
 /// Fields are resolved at code-generation time from three sources (all
 /// optional, all additive, duplicates are dropped):
@@ -209,11 +209,15 @@ pub struct IndexOptions {
 ///   `"*busco*"` matches any name containing `busco`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FieldGroup {
-    /// Flag name without leading dashes, e.g. `"genome-size"`.
+    /// Group name used in `--field-groups`, e.g. `"genome-size"`.
     pub flag: String,
-    /// Short help text shown in `--help` output.
+    /// Short help text shown by `--list-field-groups`.
     pub description: String,
-    /// API `display_group` values enabled by this flag.
+    /// Optional single-character short code accepted within `--field-groups`,
+    /// e.g. `G` for `genome-size`.  Must be unique within an index.
+    #[serde(default)]
+    pub short: Option<String>,
+    /// API `display_group` values whose fields are included by this group.
     #[serde(default)]
     pub display_groups: Vec<String>,
     /// Explicit field names to include regardless of display group.

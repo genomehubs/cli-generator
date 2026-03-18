@@ -1,0 +1,175 @@
+# {{ site_display_name }} CLI — MVP preview
+
+> **This is not a drop-in replacement for the old `goat-cli`.**
+> The interface has changed in deliberate ways. If a change affects your
+> workflow and you think we've got it wrong, **now is the time to say so** —
+> see [We want your feedback](#we-want-your-feedback) below.
+> Things that are easy to change now become hard to change once scripts and
+> pipelines have been written against a stable release.
+
+---
+
+## What works in this preview
+
+- `taxon search`, `taxon count`, `taxon lookup`
+- `assembly search`, `assembly count`, `assembly lookup`
+- `--taxon` / `-t` for taxon lookups
+- `--taxon-filter name|tree|lineage` (replaces `--descendants` / `--lineage`)
+- `--field-groups <group>` for selecting field groups (replaces all `--genome-size`, `--busco`, etc. flags)
+- `--list-field-groups` — list available group names and descriptions for the current index
+- `--format tsv|csv|json`
+- `--size`, `--expression`, `--tax-rank`
+- `--include-estimates`
+- `--url` — print the API URL without fetching (useful for debugging)
+
+---
+
+## What has changed from the old CLI
+
+### Column-group flags are gone — use `--field-groups`
+
+The old CLI had a separate flag for every column group, plus single-letter
+shortcuts for the most common ones:
+
+```bash
+# Old
+goat-cli taxon search --taxon Mammalia -G -b -a -k -N
+goat-cli taxon search --taxon Mammalia --genome-size --busco --assembly --karyotype --n50
+```
+
+Both forms are gone. Column groups are now selected with `--field-groups`:
+
+```bash
+# New
+goat-cli taxon search --taxon Mammalia \
+  --field-groups genome-size,busco,assembly,karyotype,n50
+```
+
+`--field-groups` can be given multiple times or as a comma-separated list.
+Use `--list-field-groups` to see what is available for the current index.
+
+### `--taxon-filter` replaces `--descendants` and `--lineage`
+
+| Old flag        | New flag                            |
+| --------------- | ----------------------------------- |
+| _(default)_     | `--taxon-filter name` _(default)_   |
+| `--descendants` | `--taxon-filter tree`               |
+| `--lineage`     | `--taxon-filter lineage`            |
+
+### Flags not yet implemented (planned before stable release)
+
+| Old flag           | Status                                                   |
+| ------------------ | -------------------------------------------------------- |
+| `--file` / `-f`    | Planned — will use the `/msearch` batch API endpoint     |
+| `--ranks`          | Planned — ancestor rank columns in output table          |
+| `--tidy` / `-T`    | Planned — via native API tidy format                     |
+| `--goat-ui-url`    | Planned                                                  |
+| `--exclude` / `-x` | Planned                                                  |
+| `--progress-bar`   | Planned (requires async HTTP client work)                |
+| `--toggle-direct`  | Under review — see feedback section                      |
+
+### Flags removed (not coming back)
+
+| Old flag               | Why                                                                                                 |
+| ---------------------- | --------------------------------------------------------------------------------------------------- |
+| `--variables` / `-v`   | Backed by a hardcoded list that went stale; `--field-groups` supersedes it                            |
+| `--raw`                | Changes the response schema in hard-to-predict ways; use `--url` + direct API access for this need |
+| `--print-expression`   | Replaced by `goat-cli fields list` (planned subcommand) which queries the live API                 |
+
+---
+
+## Known limitations of this preview
+
+- **No batch file input** (`--file`). Use a shell loop or wait for the upcoming `msearch`-based implementation.
+- **No count-before-search warning.** The old CLI warned when a query would return more results than `--size`. This guard is not yet wired up.
+- **No automatic pagination.** For result sets larger than `--size`, the response is truncated. Use `--size 50000` as a temporary workaround.
+- **No progress bar.** Large queries run silently until completion.
+- **Sync HTTP only.** The client blocks for the full response before printing.
+
+---
+
+## We want your feedback
+
+The changes in this preview are deliberate, but they are not final. If
+something here breaks your workflow, or if you think a different design
+would serve users better, **please open a [GitHub issue][issues]** or reply
+to the preview announcement thread. Specific, concrete use cases carry the
+most weight.
+
+---
+
+### Column groups: `--field-groups` is the new interface — make the case for individual flags if you need them
+
+The switch from one-flag-per-group to `--field-groups` is the biggest
+user-visible change. The motivation:
+
+- **20+ flags** just for the taxon index, growing with every new data type
+- Single-letter shortcuts (`-G`, `-b`, `-a`, …) are fast to type but opaque
+  in scripts and impossible to discover without reading the docs
+- `--field-groups` scales to any number of groups without adding new flags
+
+If you write scripts or pipelines that rely on the old individual flags or
+single-letter shortcuts, and `--field-groups` doesn't work for your use case,
+**say so now**. The strongest arguments are concrete examples — a script,
+a workflow step, a reason why tab-completion of flag names matters to you.
+
+The config records a `short:` code for each group (matching the old
+single-letter flags). If there is demand, these could be supported as a
+compact string syntax within `--field-groups`:
+
+```bash
+# Hypothetical compact form: G=genome-size, b=busco, a=assembly, k=karyotype, N=n50
+goat-cli taxon search --taxon Mammalia --field-groups GbakN
+```
+
+But this is not implemented yet, and will only be if users ask for it.
+
+---
+
+### `--toggle-direct`: did you use this?
+
+The old CLI had `--toggle-direct`, which added `:direct`, `:ancestor`, and
+`:descendant` column variants for every requested variable. It is not
+implemented in this preview.
+
+If it is part of your regular workflow and neither of the simpler
+alternatives below works for you, say so:
+
+- A `--source` flag adding a single provenance column per field
+- The `field:direct` syntax already accepted in `--expression`
+
+---
+
+## Trying the preview
+
+```bash
+# Basic taxon search
+goat-cli taxon search --taxon "Homo sapiens" --field-groups genome-size,busco
+
+# See what field groups are available
+goat-cli taxon search --list-field-groups
+
+# All descendants of an order
+goat-cli taxon search --taxon Lepidoptera --taxon-filter tree \
+  --field-groups genome-size,assembly --size 2000
+
+# Print the API URL without fetching (useful for debugging)
+goat-cli taxon search --taxon "Arabidopsis thaliana" --field-groups genome-size --url
+
+# Count matching records
+goat-cli taxon count --taxon Mammalia --taxon-filter tree \
+  --expression "genome_size > 1000000000"
+
+# Assembly search
+goat-cli assembly search --taxon "Homo sapiens" --field-groups assembly,busco,n50
+```
+
+---
+
+## Reporting bugs
+
+Please include the `--url` output with any bug report — it makes it
+straightforward to reproduce the exact API call that triggered the problem.
+
+[issues]: https://github.com/genomehubs/goat-cli/issues
+

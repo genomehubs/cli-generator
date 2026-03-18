@@ -122,8 +122,18 @@ jobs:
 
   # ── Generated CLI: build, test URLs, upload artifact ─────────────────────
   generated-cli-tests:
-    name: Generated CLI tests
-    runs-on: ubuntu-latest
+    name: Generated CLI tests (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            artifact-name: goat-cli-linux-x86_64
+            bin-path: /tmp/generated/goat-cli/target/release/goat-cli
+          - os: macos-latest
+            artifact-name: goat-cli-macos-aarch64
+            bin-path: /tmp/generated/goat-cli/target/release/goat-cli
     steps:
       - uses: actions/checkout@v4
 
@@ -151,14 +161,12 @@ jobs:
 
       # Content-checking tests: generate goat-cli and assert file contents.
       # Fast — no second compile needed.
+      # Only run on Linux to avoid duplicating the slow scaffold step.
       - name: cargo test (generated-cli content tests)
+        if: matrix.os == 'ubuntu-latest'
         run: cargo test --test generated_goat_cli
 
       # Full build of the generated binary for URL-assertion and artifact.
-      # cargo run is used (not the pre-built binary directly) because cargo
-      # augments PATH with ~/.cargo/bin when spawning processes, which is how
-      # cargo-generate is found — $GITHUB_PATH alone is not enough for direct
-      # binary invocations.
       - name: Generate goat-cli
         run: cargo run -- new goat --output-dir /tmp/generated --config sites/
 
@@ -167,8 +175,9 @@ jobs:
         working-directory: /tmp/generated/goat-cli
 
       - name: Assert URL outputs
+        shell: bash
         run: |
-          bin=/tmp/generated/goat-cli/target/release/goat-cli
+          bin=${{ matrix.bin-path }}
 
           check() {
             local desc="$1"; shift
@@ -188,6 +197,6 @@ jobs:
       - name: Upload goat-cli binary
         uses: actions/upload-artifact@v4
         with:
-          name: goat-cli-linux-x86_64
-          path: /tmp/generated/goat-cli/target/release/goat-cli
+          name: ${{ matrix.artifact-name }}
+          path: ${{ matrix.bin-path }}
           retention-days: 14

@@ -60,6 +60,11 @@ fn make_tera() -> Result<Tera> {
     )
     .context("loading GETTING_STARTED.md template")?;
     tera.add_raw_template(
+        "PREVIEW.md",
+        include_str!("../../templates/PREVIEW.md.tera"),
+    )
+    .context("loading PREVIEW.md template")?;
+    tera.add_raw_template(
         "autoupdate.yml",
         include_str!("../../templates/autoupdate.yml.tera"),
     )
@@ -150,6 +155,8 @@ struct TemplateGroup {
 struct TemplateFlag {
     flag: String,
     flag_snake: String,
+    /// Optional single-character short code accepted within `--field-groups`.
+    short: Option<String>,
     description: String,
     compat_aliases: Vec<String>,
     /// Field names resolved at code-generation time from `display_groups`,
@@ -162,6 +169,7 @@ impl TemplateFlag {
         Self {
             flag_snake: fg.flag.replace('-', "_"),
             flag: fg.flag.clone(),
+            short: fg.short.clone(),
             description: fg.description.clone(),
             compat_aliases: fg.compat_aliases.clone(),
             resolved_fields: resolve_fields(fg, all_fields),
@@ -222,6 +230,7 @@ impl CodeGenerator {
             "generated_mod.rs",
             "main.rs",
             "GETTING_STARTED.md",
+            "PREVIEW.md",
             "autoupdate.yml",
             "ci.yml",
             "query.py",
@@ -427,6 +436,7 @@ fn template_name_to_dest(template_name: &str, site_name: &str) -> String {
         "cli_meta.rs" => "src/cli_meta.rs".to_string(),
         "main.rs" => "src/main.rs".to_string(),
         "GETTING_STARTED.md" => "GETTING_STARTED.md".to_string(),
+        "PREVIEW.md" => "PREVIEW.md".to_string(),
         "autoupdate.yml" => ".github/workflows/autoupdate.yml".to_string(),
         "ci.yml" => ".github/workflows/ci.yml".to_string(),
         "generated_mod.rs" => "src/generated/mod.rs".to_string(),
@@ -506,6 +516,7 @@ mod tests {
                         field_groups: vec![FieldGroup {
                             flag: "genome-size".to_string(),
                             description: "Genome size fields".to_string(),
+                            short: None,
                             display_groups: vec!["genome_size".to_string()],
                             fields: vec![],
                             patterns: vec![],
@@ -549,6 +560,11 @@ mod tests {
             template_name_to_dest("autoupdate.yml", "goat"),
             ".github/workflows/autoupdate.yml"
         );
+    }
+
+    #[test]
+    fn template_name_to_dest_maps_preview_md() {
+        assert_eq!(template_name_to_dest("PREVIEW.md", "goat"), "PREVIEW.md");
     }
 
     #[test]
@@ -668,6 +684,7 @@ mod tests {
         let fg = FieldGroup {
             flag: "test".to_string(),
             description: "test".to_string(),
+            short: None,
             display_groups: vec!["genome_size".to_string()],
             fields: vec!["genome_size".to_string()], // duplicate of display_group result
             patterns: vec!["genome_*".to_string()],  // also matches genome_size
@@ -696,6 +713,7 @@ mod tests {
         let fg = FieldGroup {
             flag: "ebp".to_string(),
             description: "EBP fields".to_string(),
+            short: None,
             display_groups: vec![],
             fields: vec!["ebp_metric_date".to_string()], // deprecated alias
             patterns: vec![],
@@ -724,6 +742,7 @@ mod tests {
         let fg = FieldGroup {
             flag: "ebp".to_string(),
             description: "EBP fields".to_string(),
+            short: None,
             display_groups: vec![],
             fields: vec![],
             patterns: vec!["ebp_metric_*".to_string()], // matches the synonym
