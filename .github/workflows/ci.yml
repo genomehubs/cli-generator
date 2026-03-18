@@ -130,10 +130,10 @@ jobs:
         include:
           - os: ubuntu-latest
             artifact-name: goat-cli-linux-x86_64
-            bin-path: /tmp/generated/goat-cli/target/release/goat-cli
+            bin_path: /tmp/generated/goat-cli/target/release/goat-cli
           - os: macos-latest
             artifact-name: goat-cli-macos-aarch64
-            bin-path: /tmp/generated/goat-cli/target/release/goat-cli
+            bin_path: /tmp/generated/goat-cli/target/release/goat-cli
     steps:
       - uses: actions/checkout@v4
 
@@ -177,7 +177,7 @@ jobs:
       - name: Assert URL outputs
         shell: bash
         run: |
-          bin=${{ matrix.bin-path }}
+          bin=${{ matrix.bin_path }}
 
           check() {
             local desc="$1"; shift
@@ -198,5 +198,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact-name }}
-          path: ${{ matrix.bin-path }}
+          path: |
+            ${{ matrix.bin_path }}
+            /tmp/generated/goat-cli/PREVIEW.md
           retention-days: 14

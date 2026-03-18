@@ -1,168 +1,194 @@
 # Getting started
 
-This guide covers two audiences:
+Two scenarios are covered here:
 
-1. **Spinning up a new project** from this template (human and agent).
-2. **Contributing to an existing project** derived from this template.
+1. **Try the goat-CLI preview** — download a pre-built binary, no tools required.
+2. **Generate a custom CLI** from a modified YAML config — requires Rust.
 
 ---
 
-## Prerequisites
+## 1. Try the goat-CLI preview
+
+Pre-built binaries are uploaded as CI artifacts on every push to `main`.
+Each artifact zip contains the binary **and** a `PREVIEW.md` describing
+what has changed from the old `goat-cli` and how to give feedback.
+
+### Download
+
+Go to the [Actions tab](https://github.com/genomehubs/cli-generator/actions) →
+most recent **"Generated CLI tests"** run → **Artifacts**:
+
+| Artifact name            | Platform              |
+| ------------------------ | --------------------- |
+| `goat-cli-linux-x86_64`  | Linux (x86-64)        |
+| `goat-cli-macos-aarch64` | macOS (Apple Silicon) |
+
+Download and unzip, then:
+
+```bash
+# Make executable (Linux / macOS)
+chmod +x goat-cli
+
+# Basic usage
+./goat-cli --help
+./goat-cli taxon search --help
+
+# List available field groups and their short codes
+./goat-cli taxon search --list-field-groups
+
+# Search examples
+./goat-cli taxon search --taxon Mammalia --field-groups busco
+./goat-cli taxon search --taxon Insecta --field-groups genome-size --format tsv
+./goat-cli taxon search --taxon Mammalia --field-groups genome-size,busco,karyotype
+./goat-cli taxon search --taxon Mammalia --field-groups G,b,k   # short codes
+./goat-cli taxon search --taxon "Homo sapiens" --field-groups legislation
+./goat-cli taxon search --taxon Insecta --taxon-filter tree --field-groups n50
+
+# Print the API URL without fetching (useful for debugging)
+./goat-cli taxon search --taxon Mammalia --field-groups busco --url
+./goat-cli taxon search --taxon Mammalia --field-groups busco --include-estimates=false --url
+```
+
+Read `PREVIEW.md` (included in the zip) for a full list of what works,
+what has changed, and how to give feedback on the design.
+
+---
+
+## 2. Generate a custom CLI
+
+### Prerequisites
 
 | Tool           | Install                                                           |
 | -------------- | ----------------------------------------------------------------- |
 | Rust (stable)  | `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \| sh` |
-| Python ≥ 3.9   | [python.org](https://www.python.org/downloads/) or `pyenv`        |
-| maturin        | `pip install maturin`                                             |
-| cargo-generate | `cargo install cargo-generate` (for template instantiation)       |
-| pre-commit     | `pip install pre-commit` (optional, recommended)                  |
+| cargo-generate | `cargo install cargo-generate`                                    |
 
----
-
-## Spinning up a new project from this template
-
-### Option A — cargo-generate (recommended)
-
-cargo-generate substitutes `cli-generator`, `cli_generator`, author details,
-and other placeholders throughout all files and directory names.
+### 2a. Clone cli-generator
 
 ```bash
-cargo generate --git https://github.com/genomehubs/rust-py-template --name my-project
-cd my-project
+git clone https://github.com/genomehubs/cli-generator
+cd cli-generator
 ```
 
-You will be prompted for:
+### 2b. Prepare config files
 
-- Project description
-- Author name and email
-- Minimum Python version (default: `3.9`)
+The `sites/` directory holds YAML config for each site.
+Use the goat config as a starting point:
 
-After generation, initialise git and install hooks:
+```
+sites/
+  goat.yaml                 # site metadata: API base URL, available indexes
+  goat-cli-options.yaml     # field definitions: flags, field groups, synonyms
+```
+
+Copy them for your site:
 
 ```bash
-git init && git add -A && git commit -m "chore: initial commit from template"
-pre-commit install        # optional but strongly recommended
+cp sites/goat.yaml              sites/my-site.yaml
+cp sites/goat-cli-options.yaml  sites/my-site-options.yaml
 ```
 
-### Option B — GitHub "Use this template"
+Edit `sites/my-site.yaml` to point at your API:
 
-Click **Use this template** on the GitHub repo page. This copies the files as-is
-(template variables are **not** substituted). After cloning your new repo, run the
-rename script to substitute placeholder names manually:
+```yaml
+name: my-site
+display_name: My Site
+api_url: https://my-api.example.org/api/v2
+indexes:
+  - taxon
+  - assembly
+```
+
+Edit `sites/my-site-options.yaml` to add, remove, or rename field groups
+and flags. Each entry maps a CLI flag to one or more API field names.
+
+### 2c. Generate the CLI
 
 ```bash
-# Replace every occurrence of the template placeholder with your project name.
-# Run from the repo root.
-find . -not -path './.git/*' -type f | xargs sed -i '' \
-  -e 's/cli-generator/my-project/g' \
-  -e 's/cli_generator/my_project/g' \
-  -e 's/Generic CLI generator for genomehubs instances/My project description/g' \
-  -e 's/genomehubs/Your Name/g' \
-  -e 's/genomehubs@genomehubs.org/you@example.com/g'
-
-# Rename the Python package directory.
-mv python/'cli_generator' python/my_project
+cargo run -- new my-site --config sites/ --output-dir /tmp/my-cli
 ```
 
-cargo-generate (Option A) is less error-prone — prefer it.
+This will:
 
----
+1. Fetch live field definitions from the API.
+2. Scaffold a new Rust+Python project from [rust-py-template](https://github.com/genomehubs/rust-py-template).
+3. Render generated source files into `src/generated/`.
+4. Copy your config into the new repo's `config/` directory.
 
-## Development workflow
-
-### 1. Build the Python extension in-place
-
-This compiles the Rust code and installs the extension module into your active
-Python environment so `import cli_generator` works immediately.
+### 2d. Build and run
 
 ```bash
-maturin develop --features extension-module
+cd /tmp/my-cli/my-site-cli
+cargo build --release
+./target/release/my-site-cli --help
+./target/release/my-site-cli taxon search --list-field-groups
+./target/release/my-site-cli taxon search --taxon Mammalia --field-groups busco
 ```
 
-Re-run this after any change to Rust source files.
+### 2e. Verify URL generation (no network required)
 
-### 2. Run the Rust tests (unit + proptest)
+`--url` prints the API URL that would be called without making a network
+request — fast way to verify flags are wired up correctly:
+
+```bash
+./target/release/my-site-cli taxon search --taxon Mammalia --field-groups busco --url
+./target/release/my-site-cli taxon search --taxon Mammalia --field-groups busco --include-estimates=false --url
+```
+
+### 2f. Run the test suite
 
 ```bash
 cargo test
 ```
 
-Note: run _without_ `--features extension-module`. The `rlib` crate type links
-without libpython; adding the extension-module feature during testing is not
-needed and causes linker errors on some platforms.
-
-### 3. Run the Python tests (pytest + Hypothesis)
-
-```bash
-pytest tests/python/ -v
-```
-
-### 4. Lint and format
-
-```bash
-# Rust
-cargo fmt --all
-cargo clippy --all-targets -- -D warnings
-
-# Python
-black --line-length 120 python/ tests/python/
-isort --profile black --line-length 120 python/ tests/python/
-pyright python/ tests/python/
-```
-
-With VS Code and the recommended extensions installed, formatting runs
-automatically on every save.
-
-### 5. Install pre-commit hooks (optional)
-
-```bash
-pre-commit install
-```
-
-The hooks run `cargo fmt`, `cargo clippy`, `black`, and `isort` before every
-commit, catching issues before they reach CI.
+The generated project includes field-coverage tests that confirm every
+flag in your config appears in the generated source and in the API URL.
 
 ---
 
-## VS Code setup
+## 3. Update an existing generated CLI
 
-1. Open the project folder in VS Code.
-2. Install the recommended extensions when prompted (or open
-   `.vscode/extensions.json` and install manually).
-3. Rust and Python files now auto-format on save.
+After editing the config in your generated repo (`config/site.yaml` or
+`config/cli-options.yaml`), re-run the generator to rebuild generated files:
 
-Key extensions:
+```bash
+# From inside the generated repo:
+cargo run --manifest-path /path/to/cli-generator/Cargo.toml -- update
+```
 
-| Extension                   | Purpose                                      |
-| --------------------------- | -------------------------------------------- |
-| `rust-lang.rust-analyzer`   | Rust LSP, inline diagnostics, format on save |
-| `ms-python.pylance`         | Python LSP (powered by pyright)              |
-| `ms-python.black-formatter` | Python format on save                        |
-| `ms-python.isort`           | Python import sorting on save                |
-| `tamasfe.even-better-toml`  | TOML syntax and formatting                   |
+Or, to pull from a separate config directory (must contain `site.yaml` and
+`cli-options.yaml` at the top level):
 
----
+```bash
+cargo run -- update /path/to/my-site-cli --config /path/to/my-config/
+```
 
-## CI
-
-Three GitHub Actions jobs run on every push and pull request:
-
-| Job                 | Checks                                                 |
-| ------------------- | ------------------------------------------------------ |
-| `rust-checks`       | `cargo fmt`, `cargo clippy`, `cargo test` (+ proptest) |
-| `python-checks`     | `black`, `isort`, `pyright`                            |
-| `integration-tests` | `maturin develop` + `pytest` (+ Hypothesis)            |
-
-> **Template repo note:** CI will fail on the uninstantiated template repo
-> itself because `Cargo.toml` contains `cli-generator` which is not a valid
-> Rust identifier. This is expected — CI is designed to run on generated projects.
+`update` only overwrites `src/generated/` and `src/cli_meta.rs`.
+Hand-written code (`src/core/`, `src/main.rs`, etc.) is never touched.
 
 ---
 
-## Agent-specific setup
+## 4. Preview changes before generating
 
-See [AGENTS.md](AGENTS.md) for:
+`preview` renders all templates to a temporary directory and prints a diff
+against the currently-generated version — nothing is written to disk:
 
-- How to create an agent-log entry for each work session.
-- File naming convention and log schema.
-- When to ask the user vs. proceed autonomously.
+```bash
+cargo run -- preview --site my-site --config sites/
+# or, for an existing repo:
+cargo run -- preview --repo /path/to/my-site-cli
+```
+
+---
+
+## 5. Contributing to cli-generator
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the full coding standards.
+
+| Command                                                        | What it does                             |
+| -------------------------------------------------------------- | ---------------------------------------- |
+| `cargo test`                                                   | Unit tests + proptests                   |
+| `cargo test --test generated_goat_cli`                         | Integration tests (needs cargo-generate) |
+| `cargo fmt --all && cargo clippy --all-targets -- -D warnings` | Lint                                     |
+| `maturin develop --features extension-module`                  | Build Python extension in-place          |
+| `pytest tests/python/ -v`                                      | Python tests                             |

@@ -116,8 +116,11 @@ fn run(cli: Cli) -> anyhow::Result<()> {
         Commands::{{ index.name | capitalize }} { subcommand } => match subcommand {
             {{ index.name | capitalize }}Commands::Search { taxon, taxon_filter, query, size, include_estimates, url, format, flags } => {
                 if flags.list_field_groups {
-                    for (name, desc) in generated::cli_flags::{{ index.name | capitalize }}Flags::list_groups() {
-                        println!("{name:<20} {desc}");
+                    for (name, short, desc) in generated::cli_flags::{{ index.name | capitalize }}Flags::list_groups() {
+                        match short {
+                            Some(c) => println!("{name:<20} [{c}]  {desc}"),
+                            None    => println!("{name:<20}       {desc}"),
+                        }
                     }
                     return Ok(());
                 }

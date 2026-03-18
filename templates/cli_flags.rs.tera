@@ -55,10 +55,13 @@ pub struct {{ index.name | capitalize }}Flags {
 }
 
 impl {{ index.name | capitalize }}Flags {
-    /// Returns (name, description) pairs for all available field groups.
-    pub fn list_groups() -> &'static [(&'static str, &'static str)] {
+    /// Returns `(name, short_code, description)` tuples for all available field groups.
+    ///
+    /// `short_code` is `Some(c)` when the group has a single-character short code,
+    /// `None` otherwise.
+    pub fn list_groups() -> &'static [(&'static str, Option<char>, &'static str)] {
         &[
-{% for flag in index.flags %}            ("{{ flag.flag }}", "{{ flag.description }}"),
+{% for flag in index.flags %}            ("{{ flag.flag }}", {% if flag.short %}Some('{{ flag.short }}'){% else %}None{% endif %}, "{{ flag.description }}"),
 {% endfor %}        ]
     }
 
