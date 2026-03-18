@@ -43,11 +43,12 @@ pub fn build_url(query_yaml: &str, params_yaml: &str, endpoint: &str) -> PyResul
 /// Execute a search query and return the response body in the specified format.
 ///
 /// `query_yaml` and `params_yaml` are YAML-serialised `SearchQuery` and
-/// `QueryParams`. `format` is one of `"json"`, `"tsv"`, or `"csv"` (default: `"json"`).
+/// `QueryParams`. `format` is one of `"json"`, `"tsv"`, or `"csv"` (default: `"tsv"`).
 /// Raises `RuntimeError` on network or API errors.
 #[cfg(feature = "extension-module")]
 #[pyfunction]
-pub fn search(query_yaml: &str, params_yaml: &str, #[pyo3(default = "json")] format: &str) -> PyResult<String> {
+#[pyo3(signature = (query_yaml, params_yaml, format="tsv"))]
+pub fn search(query_yaml: &str, params_yaml: &str, format: &str) -> PyResult<String> {
     use cli_generator::core::query::{build_query_url, QueryParams, SearchQuery};
     let query = SearchQuery::from_yaml(query_yaml)
         .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;

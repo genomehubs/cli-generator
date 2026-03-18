@@ -152,39 +152,80 @@ Each generated CLI includes a Python extension module (`{{ site_name }}_sdk`)
 built with [maturin](https://github.com/PyO3/maturin). The SDK provides a
 `QueryBuilder` class for programmatic queries without CLI overhead.
 
-### Using the SDK
+### Try the goat_sdk preview
 
-After generation, build and install the wheel:
+Pre-built wheel files are uploaded alongside the CLI binary as CI artifacts
+on every push to `main`.
+
+Go to the [Actions tab](https://github.com/genomehubs/cli-generator/actions) →
+most recent **"Generated CLI tests"** run → **Artifacts** and download
+`goat-sdk-wheel-<platform>`.
+
+Install and try:
 
 ```bash
-cd /tmp/my-cli/my-site-cli
-maturin develop --features extension-module
-pip install pyyaml
+# Install the wheel and optional dependencies
+pip install goat_sdk-*.whl pyyaml pandas polars
+
+# Try the QueryBuilder
+python
 ```
 
-Then in Python:
-
 ```python
-from my_site_sdk.query import QueryBuilder
-
-# Build a URL (no network)
-url = QueryBuilder("taxon").set_taxa(["Mammalia"], filter_type="tree").to_url()
+from goat_sdk.query import QueryBuilder
 
 # Count records
 count = QueryBuilder("taxon").set_taxa(["Mammalia"], filter_type="tree").count()
+print(f"Mammals: {count} records")
 
-# Search
-results = (
+# Get results as a pandas DataFrame
+df = (
     QueryBuilder("taxon")
     .set_taxa(["Insecta"], filter_type="tree")
     .add_field("genome_size")
-    .set_size(20)
-    .search()
+    .set_size(100)
+    .search_df()
 )
+print(f"Insects with genome_size: {len(df)} records")
+print(df.head())
+
+# Or use polars for faster parsing
+df = (
+    QueryBuilder("assembly")
+    .set_taxa(["Homo sapiens"])
+    .add_attribute("assembly_span", operator=">", value="3000000000")
+    .add_field("assembly_span")
+    .set_size(50)
+    .search_polars()
+)
+print(f"Human assemblies > 3Gb: {len(df)} records")
+print(df.select(["assembly_accession", "assembly_span"]))
+
+# Validate a query before fetching
+qb = (
+    QueryBuilder("taxon")
+    .set_taxa(["Primates"], filter_type="tree")
+    .add_field("genome_size")
+    .add_attribute("genome_size", operator=">=", value="2500000000")
+)
+errors = qb.validate()
+if errors:
+    print(f"Validation errors: {errors}")
+else:
+    print("Query is valid ✓")
+    results = qb.search_df()
 ```
 
-The SDK will be available as a CI artifact (wheel) once the generated CLI
-is built. See `PREVIEW.md` in future releases for SDK limitations and status updates.
+**Notes:**
+
+- `search_df()` and `search_polars()` require `pandas` or `polars` respectively.
+  They'll display a helpful error message if the package is not installed.
+- `add_attribute(name, operator, value)` lets you filter by field values
+  (e.g. `assembly_span > 3G`, `genome_size >= 2.5G`).
+- `validate()` checks the query against the baked-in field metadata without
+  making a network call.
+- Both `search_df()` and `search_polars()` fetch TSV by default for better type
+  preservation; use `.search(format="json")` if you need raw JSON.
 
 ---
 
