@@ -60,9 +60,21 @@ pub fn run(
     Ok(())
 }
 
+/// Return the `~/.cargo/bin` directory derived from `$CARGO_HOME` or `$HOME`.
+fn cargo_home_bin() -> PathBuf {
+    let base = std::env::var("CARGO_HOME").unwrap_or_else(|_| {
+        let home = std::env::var("HOME").unwrap_or_default();
+        format!("{home}/.cargo")
+    });
+    PathBuf::from(base).join("bin")
+}
+
 /// Abort with a clear message if `cargo-generate` is not on PATH.
 fn ensure_cargo_generate_installed() -> Result<()> {
     if which::which("cargo-generate").is_ok() {
+        return Ok(());
+    }
+    if cargo_home_bin().join("cargo-generate").exists() {
         return Ok(());
     }
     bail!(
@@ -89,11 +101,23 @@ fn resolve_template(override_path: Option<&Path>) -> String {
 
 /// Shell out to `cargo-generate` to scaffold the base repo.
 fn scaffold_repo(template_flag: &str, repo_name: &str, output_dir: &Path) -> Result<()> {
-    // Invoke the binary directly so it works regardless of whether ~/.cargo/bin
-    // was added to PATH via a shell profile vs. GITHUB_PATH vs. which::which.
-    let cargo_generate = which::which("cargo-generate")
-        .context("cargo-generate not found on PATH; install with: cargo install cargo-generate")?;
-    let status = std::process::Command::new(cargo_generate)
+    // Find cargo-generate: try PATH first, then $CARGO_HOME/bin directly.
+    // The direct fallback handles CI environments where ~/.cargo/bin is
+    // installed but not yet reflected in the process's PATH.
+    let cargo_generate =
+        which::which("cargo-generate").unwrap_or_else(|_| cargo_home_bin().join("cargo-generate"));
+
+    // Build a PATH that includes $CARGO_HOME/bin so cargo-generate can in turn
+    // find any cargo tooling it needs, regardless of the inherited PATH.
+    let cargo_bin = cargo_home_bin();
+    let current_path = std::env::var("PATH").unwrap_or_default();
+    let augmented_path = if current_path.contains(cargo_bin.to_str().unwrap_or("")) {
+        current_path
+    } else {
+        format!("{}:{current_path}", cargo_bin.display())
+    };
+
+    let status = std::process::Command::new(&cargo_generate)
         .arg("generate")
         .args(template_flag.split_whitespace())
         .arg("--name")
@@ -106,9 +130,10 @@ fn scaffold_repo(template_flag: &str, repo_name: &str, output_dir: &Path) -> Res
         .arg("author-email=genomehubs@genomehubs.org")
         .arg("--define")
         .arg("python-min-version=3.9")
+        .env("PATH", augmented_path)
         .current_dir(output_dir)
         .status()
-        .context("running cargo-generate")?;
+        .with_context(|| format!("running cargo-generate ({})", cargo_generate.display()))?;
 
     if !status.success() {
         bail!("cargo-generate exited with status: {status}");
