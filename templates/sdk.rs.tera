@@ -40,22 +40,28 @@ pub fn build_url(query_yaml: &str, params_yaml: &str, endpoint: &str) -> PyResul
 
 // ── search / count ────────────────────────────────────────────────────────────
 
-/// Execute a search query and return the raw JSON response body.
+/// Execute a search query and return the response body in the specified format.
 ///
 /// `query_yaml` and `params_yaml` are YAML-serialised `SearchQuery` and
-/// `QueryParams`. Raises `RuntimeError` on network or API errors.
+/// `QueryParams`. `format` is one of `"json"`, `"tsv"`, or `"csv"` (default: `"json"`).
+/// Raises `RuntimeError` on network or API errors.
 #[cfg(feature = "extension-module")]
 #[pyfunction]
-pub fn search(query_yaml: &str, params_yaml: &str) -> PyResult<String> {
+pub fn search(query_yaml: &str, params_yaml: &str, #[pyo3(default = "json")] format: &str) -> PyResult<String> {
     use cli_generator::core::query::{build_query_url, QueryParams, SearchQuery};
     let query = SearchQuery::from_yaml(query_yaml)
         .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
     let params = QueryParams::from_yaml(params_yaml)
         .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
     let url = build_query_url(&query, &params, API_BASE_URL, API_VERSION, "search");
+    let accept_header = match format {
+        "tsv" => "text/tab-separated-values",
+        "csv" => "text/csv",
+        _ => "application/json",
+    };
     reqwest::blocking::Client::new()
         .get(&url)
-        .header("Accept", "application/json")
+        .header("Accept", accept_header)
         .send()
         .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?
         .error_for_status()

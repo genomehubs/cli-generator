@@ -106,15 +106,34 @@ print(url)
 count = QueryBuilder("taxon").set_taxa(["Mammalia"], filter_type="tree").count()
 print(f"Found {count} records")
 
-# Search with field selection
-results = (
+# Search returns TSV by default
+tsv_results = (
     QueryBuilder("taxon")
     .set_taxa(["Insecta"], filter_type="tree")
     .add_field("genome_size")
     .set_size(20)
     .search()
 )
-print(results)
+print(tsv_results)
+
+# Search as a pandas DataFrame (requires pandas)
+df = (
+    QueryBuilder("taxon")
+    .set_taxa(["Insecta"], filter_type="tree")
+    .add_field("genome_size")
+    .set_size(20)
+    .search_df()
+)
+print(df[["taxon_id", "taxon_name", "genome_size"]])
+
+# Or use polars for faster parsing (requires polars)
+df = (
+    QueryBuilder("taxon")
+    .set_taxa(["Insecta"], filter_type="tree")
+    .add_field("genome_size")
+    .search_polars()
+)
+print(df.select(["taxon_id", "taxon_name", "genome_size"]))
 
 # Validate a query without fetching
 qb = QueryBuilder("assembly").set_taxa(["Homo sapiens"]).add_field("genome_size")
@@ -127,8 +146,9 @@ The `QueryBuilder` API includes:
 - **Filters**: `set_size`, `set_page`, `set_sort`
 - **Fields**: `add_field` (before any fetch), `add_attribute` (post-processing)
 - **Output**: `to_url()` (debug), `to_query_yaml()`, `to_params_yaml()`
-- **Execution**: `search()` (fetch JSON), `count()` (row count), `validate()`,
-  `field_info(name)`, `field_names()`
+- **Execution**: `search(format="tsv"|"json"|"csv")` (default: TSV), `search_df()` (pandas),
+  `search_polars()` (polars), `count()` (row count), `validate()`, `field_info(name)`,
+  `field_names()`
 
 ---
 
