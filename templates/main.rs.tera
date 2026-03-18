@@ -9,7 +9,7 @@
 
 use clap::{Parser, Subcommand, ValueEnum};
 
-use {{ site_name | replace(from="-", to="_") }}_cli::{cli_meta, generated};
+use {{ sdk_name }}::{cli_meta, generated};
 
 /// How to apply the taxon filter to the query.
 #[derive(Debug, Clone, ValueEnum)]
@@ -135,7 +135,7 @@ fn run(cli: Cli) -> anyhow::Result<()> {
                     (None, _)         => query.clone(),
                 };
                 let owned_fields = flags.all_fields();
-                let fields: Vec<&str> = owned_fields.iter().map(|s| s.as_str()).collect();
+                let fields: Vec<&str> = owned_fields.iter().map(|s: &String| s.as_str()).collect();
                 let accept = format.accept_header();
                 if url {
                     let query_url = generated::client::search_url(
