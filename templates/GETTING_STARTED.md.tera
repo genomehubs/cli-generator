@@ -71,6 +71,67 @@ python -c "import {{ site_name }}_cli; print({{ site_name }}_cli.version())"
 
 ---
 
+## Python SDK
+
+The generated package includes a Python extension (`{{ sdk_name }}`) built with
+[maturin](https://github.com/PyO3/maturin). The SDK provides a `QueryBuilder`
+class for constructing and executing API queries programmatically without
+depending on the CLI.
+
+### Install
+
+Download the wheel from the [CI artifacts](../../actions/workflows/ci.yml) for
+your platform and install:
+
+```bash
+pip install {{ sdk_name }}-*.whl pyyaml
+```
+
+Alternatively, build locally:
+
+```bash
+maturin develop --features extension-module
+```
+
+### Usage
+
+```python
+from {{ sdk_name }}.query import QueryBuilder
+
+# Build a URL for debugging (no network call)
+url = QueryBuilder("taxon").set_taxa(["Mammalia"], filter_type="tree").to_url()
+print(url)
+
+# Count matching records
+count = QueryBuilder("taxon").set_taxa(["Mammalia"], filter_type="tree").count()
+print(f"Found {count} records")
+
+# Search with field selection
+results = (
+    QueryBuilder("taxon")
+    .set_taxa(["Insecta"], filter_type="tree")
+    .add_field("genome_size")
+    .set_size(20)
+    .search()
+)
+print(results)
+
+# Validate a query without fetching
+qb = QueryBuilder("assembly").set_taxa(["Homo sapiens"]).add_field("genome_size")
+info = qb.field_info("genome_size")
+print(info)
+```
+
+The `QueryBuilder` API includes:
+- **Setters**: `set_taxa`, `set_assemblies`, `set_samples`, `set_names`, `set_ranks`
+- **Filters**: `set_size`, `set_page`, `set_sort`
+- **Fields**: `add_field` (before any fetch), `add_attribute` (post-processing)
+- **Output**: `to_url()` (debug), `to_query_yaml()`, `to_params_yaml()`
+- **Execution**: `search()` (fetch JSON), `count()` (row count), `validate()`,
+  `field_info(name)`, `field_names()`
+
+---
+
 ## Project layout
 
 ```

@@ -146,7 +146,49 @@ flag in your config appears in the generated source and in the API URL.
 
 ---
 
-## 3. Update an existing generated CLI
+## 3. Python SDK
+
+Each generated CLI includes a Python extension module (`{{ site_name }}_sdk`)
+built with [maturin](https://github.com/PyO3/maturin). The SDK provides a
+`QueryBuilder` class for programmatic queries without CLI overhead.
+
+### Using the SDK
+
+After generation, build and install the wheel:
+
+```bash
+cd /tmp/my-cli/my-site-cli
+maturin develop --features extension-module
+pip install pyyaml
+```
+
+Then in Python:
+
+```python
+from my_site_sdk.query import QueryBuilder
+
+# Build a URL (no network)
+url = QueryBuilder("taxon").set_taxa(["Mammalia"], filter_type="tree").to_url()
+
+# Count records
+count = QueryBuilder("taxon").set_taxa(["Mammalia"], filter_type="tree").count()
+
+# Search
+results = (
+    QueryBuilder("taxon")
+    .set_taxa(["Insecta"], filter_type="tree")
+    .add_field("genome_size")
+    .set_size(20)
+    .search()
+)
+```
+
+The SDK will be available as a CI artifact (wheel) once the generated CLI
+is built. See `PREVIEW.md` in future releases for SDK limitations and status updates.
+
+---
+
+## 4. Update an existing generated CLI
 
 After editing the config in your generated repo (`config/site.yaml` or
 `config/cli-options.yaml`), re-run the generator to rebuild generated files:

@@ -194,6 +194,64 @@ goat-cli assembly search --taxon "Homo sapiens" --field-groups assembly,busco,n5
 
 ---
 
+## Python SDK
+
+This generated repo includes a Python extension module (`{{ sdk_name }}`) with
+a `QueryBuilder` class for programmatic query construction and execution.
+
+### Using the SDK
+
+Build and install:
+
+```bash
+maturin develop --features extension-module
+pip install pyyaml
+```
+
+Query example:
+
+```python
+from {{ sdk_name }}.query import QueryBuilder
+
+# Build a URL (no network)
+url = QueryBuilder("taxon").set_taxa(["Mammalia"], filter_type="tree").to_url()
+
+# Count records
+count = QueryBuilder("taxon").set_taxa(["Mammalia"], filter_type="tree").count()
+
+# Search
+results = (
+    QueryBuilder("taxon")
+    .set_taxa(["Insecta"], filter_type="tree")
+    .add_field("genome_size")
+    .search()
+)
+```
+
+### SDK status
+
+The SDK is in **MVP preview**:
+- ✅ URL building, count, search, validation work stably
+- ✅ `QueryBuilder` API is stable and matches the CLI flags
+- ✅ Wheel artifacts are uploaded for each CI build
+- ⚠️  No batch API support yet (planned)
+- ⚠️  Async HTTP support is not available (sync only)
+
+**Caveats:**
+- The `pyyaml` package is a required runtime dependency for `QueryBuilder`
+- Errors from invalid field names or query syntax appear at runtime, not at
+  definition time — use `validate()` to check before executing `search()` or
+  `count()`
+- The extension module must be built on the target OS / Python version; wheels
+  for Linux, macOS (both x86-64 and aarch64), and Windows are provided as CI
+  artifacts
+
+If you find bugs or have feature requests for the SDK, add them to the issue
+marked **"SDK preview feedback"** in the GitHub repo, or open a new issue
+with the `sdk` label.
+
+---
+
 ## Reporting bugs
 
 Please include the `--url` output with any bug report — it makes it
