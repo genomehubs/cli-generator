@@ -52,6 +52,22 @@ jobs:
         env:
           PROPTEST_CASES: 512
 
+      # Measure Rust code coverage (tarpaulin)
+      - name: Install cargo-tarpaulin
+        run: cargo install cargo-tarpaulin
+
+      - name: Measure Rust code coverage
+        run: cargo tarpaulin --out Xml --output-dir ./coverage --timeout 300
+
+      # Upload coverage to Codecov (optional; skip if token not available)
+      - name: Upload Rust coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./coverage/cobertura.xml
+          flags: rust
+          fail_ci_if_error: false
+        continue-on-error: true
+
   # ── Python: format and type-check ────────────────────────────────────────
   python-checks:
     name: Python checks
@@ -108,7 +124,7 @@ jobs:
         run: python -m venv .venv && echo "$GITHUB_WORKSPACE/.venv/bin" >> $GITHUB_PATH
 
       - name: Install Python test dependencies
-        run: pip install maturin pytest "hypothesis[cli]" pyyaml
+        run: pip install maturin pytest "hypothesis[cli]" coverage[toml] pyyaml
 
       # Builds the extension module in the current venv; no wheel file needed.
       - name: maturin develop
@@ -119,6 +135,23 @@ jobs:
         run: pytest tests/python/ -v
         env:
           CI: "1"
+
+      # Measure Python code coverage
+      - name: Measure Python code coverage
+        run: coverage run -m pytest tests/python/ -v && coverage report --skip-empty
+
+      # Generate Python coverage XML for Codecov
+      - name: Generate Python coverage XML
+        run: coverage xml
+
+      # Upload coverage to Codecov (optional; skip if token not available)
+      - name: Upload Python coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./coverage.xml
+          flags: python
+          fail_ci_if_error: false
+        continue-on-error: true
 
   # ── Generated CLI: build, test URLs, upload artifact ─────────────────────
   generated-cli-tests:

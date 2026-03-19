@@ -1,0 +1,4 @@
+[flake8]
+max-line-length = 120
+extend-ignore = E203  # Whitespace before ':' (conflicts with Black)
+exclude = .git,__pycache__,.venv,venv,target,build,dist,.hypothesis

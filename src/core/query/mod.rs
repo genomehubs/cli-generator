@@ -213,4 +213,134 @@ ranks: [genus]
         assert_eq!(params.taxonomy, "ncbi");
         assert_eq!(params.sort_order, SortOrder::Asc);
     }
+
+    #[test]
+    fn search_index_taxon() {
+        assert_eq!(SearchIndex::Taxon, SearchIndex::Taxon);
+    }
+
+    #[test]
+    fn search_index_assembly() {
+        assert_eq!(SearchIndex::Assembly, SearchIndex::Assembly);
+    }
+
+    #[test]
+    fn search_index_sample() {
+        assert_eq!(SearchIndex::Sample, SearchIndex::Sample);
+    }
+
+    #[test]
+    fn search_query_from_yaml_single_index() {
+        let yaml = r#"
+index: assembly
+taxa: []
+"#;
+        let query = SearchQuery::from_yaml(yaml).expect("parse");
+        assert_eq!(query.index, SearchIndex::Assembly);
+    }
+
+    #[test]
+    fn search_query_from_yaml_with_error() {
+        let yaml = "invalid: {yaml: [";
+        let result = SearchQuery::from_yaml(yaml);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn search_query_to_yaml() {
+        let query = SearchQuery {
+            index: SearchIndex::Taxon,
+            identifiers: Identifiers::default(),
+            attributes: AttributeSet::default(),
+        };
+        let yaml = query.to_yaml().expect("serialize");
+        assert!(yaml.contains("taxon"));
+    }
+
+    #[test]
+    fn search_query_assembly_index() {
+        let query = SearchQuery {
+            index: SearchIndex::Assembly,
+            identifiers: Identifiers::default(),
+            attributes: AttributeSet::default(),
+        };
+        assert_eq!(query.index, SearchIndex::Assembly);
+    }
+
+    #[test]
+    fn sort_order_ascending_is_default() {
+        let order = SortOrder::default();
+        assert_eq!(order, SortOrder::Asc);
+    }
+
+    #[test]
+    fn sort_order_descending_exists() {
+        let order = SortOrder::Desc;
+        assert_eq!(order, SortOrder::Desc);
+    }
+
+    #[test]
+    fn query_params_with_custom_size() {
+        let params = QueryParams {
+            size: 100,
+            ..Default::default()
+        };
+        assert_eq!(params.size, 100);
+        assert_eq!(params.page, 1);
+    }
+
+    #[test]
+    fn query_params_with_custom_page() {
+        let params = QueryParams {
+            page: 5,
+            ..Default::default()
+        };
+        assert_eq!(params.page, 5);
+        assert_eq!(params.size, 10);
+    }
+
+    #[test]
+    fn query_params_with_tidy_true() {
+        let params = QueryParams {
+            tidy: true,
+            ..Default::default()
+        };
+        assert!(params.tidy);
+    }
+
+    #[test]
+    fn query_params_with_custom_taxonomy() {
+        let params = QueryParams {
+            taxonomy: "ott".to_string(),
+            ..Default::default()
+        };
+        assert_eq!(params.taxonomy, "ott");
+    }
+
+    #[test]
+    fn query_params_with_sort_by() {
+        let params = QueryParams {
+            sort_by: Some("genome_size".to_string()),
+            ..Default::default()
+        };
+        assert_eq!(params.sort_by, Some("genome_size".to_string()));
+    }
+
+    #[test]
+    fn query_params_with_sort_order_desc() {
+        let params = QueryParams {
+            sort_order: SortOrder::Desc,
+            ..Default::default()
+        };
+        assert_eq!(params.sort_order, SortOrder::Desc);
+    }
+
+    #[test]
+    fn query_params_include_estimates_false() {
+        let params = QueryParams {
+            include_estimates: false,
+            ..Default::default()
+        };
+        assert!(!params.include_estimates);
+    }
 }

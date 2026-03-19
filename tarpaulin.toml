@@ -1,0 +1,39 @@
+# Tarpaulin code coverage configuration
+# Run with: cargo tarpaulin --out Html --output-dir ./coverage
+
+[coverage]
+# Note: timeout is passed via command-line as --timeout <SECONDS>
+# (not configured here to avoid format conflicts)
+
+# Exclude integration tests (they're covered by CI pipeline separately)
+exclude-files = ["tests/generated_goat_cli.rs"]
+
+# Lines to exclude from coverage calculations
+exclude-lines = [
+    # Standard Rust patterns
+    "unreachable!()",
+    "panic!",
+    "unimplemented!()",
+    "todo!()",
+
+    # Debug/logging
+    "debug_assert",
+    "eprintln!",
+    "println!",
+
+    # Defensive programming (truly unreachable with correct logic)
+    "internal error",
+    "should never happen",
+]
+
+# Output directory for coverage reports
+output-dir = "coverage"
+
+# Only measure source code, not tests
+exclude-tests = true
+
+# Measure condition coverage (branches)
+branch = true
+
+# Minimum confidence level for coverage (higher = more accurate but slower)
+confidence = 0.85

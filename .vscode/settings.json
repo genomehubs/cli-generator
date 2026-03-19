@@ -27,6 +27,11 @@
   },
   "black-formatter.args": ["--line-length", "120"],
   "isort.args": ["--profile", "black", "--line-length", "120"],
+  // Enable flake8 with 120 char limit to align with Black/isort
+  "python.linting.enabled": true,
+  "python.linting.flake8Enabled": true,
+  "python.linting.pylintEnabled": false,
+  "python.linting.flake8Args": ["--max-line-length=120"],
 
   // ── TOML ──────────────────────────────────────────────────────────────────
   "[toml]": {
@@ -45,5 +50,7 @@
       "approve": true,
       "matchCommandLine": true
     }
-  }
+  },
+  "python-envs.defaultEnvManager": "ms-python.python:conda",
+  "python-envs.defaultPackageManager": "ms-python.python:conda"
 }

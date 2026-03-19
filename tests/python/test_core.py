@@ -164,3 +164,64 @@ def test_merge_scalar_default_not_overwritten() -> None:
 
     params = yaml.safe_load(base.to_params_yaml())
     assert params["size"] == 50
+
+
+# ── Additional method tests ───────────────────────────────────────────────────
+
+
+def test_query_builder_set_assemblies() -> None:
+    import yaml
+
+    q = QueryBuilder("assembly").set_assemblies(["GCA_000001405.40", "GCA_000001405.29"])
+    doc = yaml.safe_load(q.to_query_yaml())
+    assert "GCA_000001405.40" in doc["assemblies"]
+
+
+def test_query_builder_set_samples() -> None:
+    import yaml
+
+    q = QueryBuilder("sample").set_samples(["SAMN00000001", "SAMN00000002"])
+    doc = yaml.safe_load(q.to_query_yaml())
+    assert "SAMN00000001" in doc["samples"]
+
+
+def test_query_builder_set_ranks() -> None:
+    import yaml
+
+    q = QueryBuilder("taxon").set_ranks(["species", "genus"])
+    doc = yaml.safe_load(q.to_query_yaml())
+    assert doc["ranks"] == ["species", "genus"]
+
+
+def test_query_builder_set_sort() -> None:
+    import yaml
+
+    q = QueryBuilder("taxon").set_sort("genome_size", "desc")
+    params = yaml.safe_load(q.to_params_yaml())
+    assert params["sort_by"] == "genome_size"
+    assert params["sort_order"] == "desc"
+
+
+def test_query_builder_set_include_estimates() -> None:
+    import yaml
+
+    q = QueryBuilder("taxon").set_include_estimates(False)
+    params = yaml.safe_load(q.to_params_yaml())
+    assert params["include_estimates"] is False
+
+
+def test_query_builder_set_taxonomy() -> None:
+    import yaml
+
+    q = QueryBuilder("taxon").set_taxonomy("ott")
+    params = yaml.safe_load(q.to_params_yaml())
+    assert params["taxonomy"] == "ott"
+
+
+def test_query_builder_sample_index() -> None:
+    q = QueryBuilder("sample")
+    q.set_samples(["SAMN123"]).add_field("collection_date")
+    import yaml
+
+    doc = yaml.safe_load(q.to_query_yaml())
+    assert doc["index"] == "sample"

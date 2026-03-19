@@ -598,4 +598,140 @@ mod tests {
             .iter()
             .any(|e| matches!(e, ValidationError::InvalidAssemblyPrefix { .. })));
     }
+
+    #[test]
+    fn unknown_index_reported() {
+        let query = SearchQuery {
+            index: SearchIndex::Taxon,
+            identifiers: Identifiers::default(),
+            attributes: AttributeSet::default(),
+        };
+        let errors = validate_query(
+            &query,
+            &TEST_FIELD_META,
+            &TEST_SYNONYMS,
+            &["assembly"], // Only assembly is valid, not taxon
+            &test_config(),
+        );
+        assert!(errors
+            .iter()
+            .any(|e| matches!(e, ValidationError::UnknownIndex { .. })));
+    }
+
+    #[test]
+    fn invalid_name_class_reported() {
+        let query = SearchQuery {
+            index: SearchIndex::Taxon,
+            identifiers: Identifiers::default(),
+            attributes: AttributeSet {
+                names: vec!["not_a_name_class".to_string()],
+                ..Default::default()
+            },
+        };
+        let errors = validate_query(
+            &query,
+            &TEST_FIELD_META,
+            &TEST_SYNONYMS,
+            &valid_indexes(),
+            &test_config(),
+        );
+        assert!(errors
+            .iter()
+            .any(|e| matches!(e, ValidationError::InvalidNameClass { .. })));
+    }
+
+    #[test]
+    fn name_class_with_filter_suffix_validated() {
+        let query = SearchQuery {
+            index: SearchIndex::Taxon,
+            identifiers: Identifiers::default(),
+            attributes: AttributeSet {
+                names: vec!["scientific_name:*bat*".to_string()],
+                ..Default::default()
+            },
+        };
+        let errors = validate_query(
+            &query,
+            &TEST_FIELD_META,
+            &TEST_SYNONYMS,
+            &valid_indexes(),
+            &test_config(),
+        );
+        // Should not error since scientific_name is valid (suffix is ignored)
+        assert!(!errors
+            .iter()
+            .any(|e| matches!(e, ValidationError::InvalidNameClass { .. })));
+    }
+
+    #[test]
+    fn valid_query_produces_no_errors() {
+        let query = SearchQuery {
+            index: SearchIndex::Taxon,
+            identifiers: Identifiers::default(),
+            attributes: AttributeSet {
+                attributes: vec![Attribute {
+                    name: "assembly_level".to_string(),
+                    operator: Some(AttributeOperator::Eq),
+                    value: Some(AttributeValue::Single("chromosome".to_string())),
+                    modifier: vec![],
+                }],
+                names: vec!["scientific_name".to_string()],
+                ..Default::default()
+            },
+        };
+        let errors = validate_query(
+            &query,
+            &TEST_FIELD_META,
+            &TEST_SYNONYMS,
+            &valid_indexes(),
+            &test_config(),
+        );
+        assert!(errors.is_empty(), "valid query should produce no errors");
+    }
+
+    #[test]
+    fn invalid_sample_prefix_reported() {
+        let query = SearchQuery {
+            index: SearchIndex::Taxon,
+            identifiers: Identifiers {
+                samples: vec!["BADSAMPLE".to_string()],
+                ..Default::default()
+            },
+            attributes: AttributeSet::default(),
+        };
+        let errors = validate_query(
+            &query,
+            &TEST_FIELD_META,
+            &TEST_SYNONYMS,
+            &valid_indexes(),
+            &test_config(),
+        );
+        assert!(errors
+            .iter()
+            .any(|e| matches!(e, ValidationError::InvalidSamplePrefix { .. })));
+    }
+
+    #[test]
+    fn negated_assembly_accession_accepted() {
+        // Negated accessions start with '!' which should be stripped before validation
+        let query = SearchQuery {
+            index: SearchIndex::Assembly,
+            identifiers: Identifiers {
+                assemblies: vec!["!GCA_000001405.40".to_string()],
+                ..Default::default()
+            },
+            attributes: AttributeSet::default(),
+        };
+        let errors = validate_query(
+            &query,
+            &TEST_FIELD_META,
+            &TEST_SYNONYMS,
+            &valid_indexes(),
+            &test_config(),
+        );
+        // Should not error; the '!' prefix should be stripped before validation
+        assert!(!errors
+            .iter()
+            .any(|e| matches!(e, ValidationError::InvalidAssemblyPrefix { .. })));
+    }
 }

@@ -401,4 +401,125 @@ mod tests {
         assert!(loaded.is_some(), "archive mode should return stale cache");
         assert_eq!(loaded.unwrap()[0].name, "old_field");
     }
+
+    #[test]
+    fn field_def_defaults() {
+        let field = FieldDef {
+            name: "test_field".to_string(),
+            display_group: None,
+            display_name: None,
+            description: None,
+            field_type: None,
+            constraint: None,
+            display_level: None,
+            synonyms: vec![],
+            processed_type: None,
+            traverse_direction: None,
+            summary: vec![],
+        };
+        assert_eq!(field.name, "test_field");
+        assert!(field.synonyms.is_empty());
+        assert!(field.summary.is_empty());
+    }
+
+    #[test]
+    fn field_def_with_synonyms() {
+        let field = FieldDef {
+            name: "canonical_name".to_string(),
+            display_group: None,
+            display_name: None,
+            description: None,
+            field_type: None,
+            constraint: None,
+            display_level: None,
+            synonyms: vec!["old_name".to_string(), "alternate_name".to_string()],
+            processed_type: None,
+            traverse_direction: None,
+            summary: vec![],
+        };
+        assert_eq!(field.synonyms.len(), 2);
+        assert!(field.synonyms.contains(&"old_name".to_string()));
+    }
+
+    #[test]
+    fn field_constraint_enum_values() {
+        let constraint = FieldConstraint {
+            enum_values: vec![
+                "chromosome".to_string(),
+                "scaffold".to_string(),
+                "contig".to_string(),
+            ],
+        };
+        assert_eq!(constraint.enum_values.len(), 3);
+        assert!(constraint.enum_values.contains(&"scaffold".to_string()));
+    }
+
+    #[test]
+    fn parse_result_fields_preserves_synonyms() {
+        let body = serde_json::json!({
+            "fields": {
+                "my_field": {
+                    "display_group": "group",
+                    "display_name": "My Field",
+                    "synonyms": ["old_field", "legacy_name"],
+                }
+            }
+        });
+        let fields = parse_result_fields(&body, "taxon").unwrap();
+        assert_eq!(fields.len(), 1);
+        assert_eq!(fields[0].synonyms.len(), 2);
+    }
+
+    #[test]
+    fn field_def_with_traverse_direction() {
+        let field = FieldDef {
+            name: "test_field".to_string(),
+            display_group: None,
+            display_name: None,
+            description: None,
+            field_type: None,
+            constraint: None,
+            display_level: None,
+            synonyms: vec![],
+            processed_type: None,
+            traverse_direction: Some("up".to_string()),
+            summary: vec![],
+        };
+        assert_eq!(field.traverse_direction, Some("up".to_string()));
+    }
+
+    #[test]
+    fn field_def_with_summary_modifiers() {
+        let field = FieldDef {
+            name: "test_field".to_string(),
+            display_group: None,
+            display_name: None,
+            description: None,
+            field_type: None,
+            constraint: None,
+            display_level: None,
+            synonyms: vec![],
+            processed_type: None,
+            traverse_direction: None,
+            summary: vec!["min".to_string(), "max".to_string()],
+        };
+        assert_eq!(field.summary.len(), 2);
+        assert!(field.summary.contains(&"min".to_string()));
+    }
+
+    #[test]
+    fn field_fetcher_constructor() {
+        let dir = tempfile::tempdir().unwrap();
+        let fetcher = FieldFetcher::new(dir.path().to_path_buf(), false);
+        // Fetcher should be constructed successfully
+        assert!(!fetcher.force_fresh); // Default from constructor
+    }
+
+    #[test]
+    fn field_fetcher_with_archive_mode() {
+        let dir = tempfile::tempdir().unwrap();
+        let fetcher = FieldFetcher::new(dir.path().to_path_buf(), false).with_archive_mode(true);
+        // Should be chainable and constructable
+        assert!(fetcher.archive_mode);
+    }
 }

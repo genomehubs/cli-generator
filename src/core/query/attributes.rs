@@ -261,4 +261,169 @@ mod tests {
         assert_eq!(attr.operator, Some(AttributeOperator::Lt));
         assert_eq!(attr.modifier, vec![Modifier::Min, Modifier::Direct]);
     }
+
+    #[test]
+    fn attribute_set_default_has_empty_collections() {
+        let set = AttributeSet::default();
+        assert!(set.attributes.is_empty());
+        assert!(set.fields.is_empty());
+        assert!(set.names.is_empty());
+        assert!(set.ranks.is_empty());
+    }
+
+    #[test]
+    fn field_deserialises_from_yaml() {
+        let yaml = "name: gc_percentage\nmodifier: [max, direct]";
+        let field: Field = serde_yaml::from_str(yaml).unwrap();
+        assert_eq!(field.name, "gc_percentage");
+        assert_eq!(field.modifier, vec![Modifier::Max, Modifier::Direct]);
+    }
+
+    #[test]
+    fn attribute_value_single_serialises() {
+        let val = AttributeValue::Single("3G".to_string());
+        let json = serde_json::to_value(&val).unwrap();
+        assert_eq!(json, serde_json::json!("3G"));
+    }
+
+    #[test]
+    fn attribute_value_list_serialises() {
+        let val = AttributeValue::List(vec!["DTOL".to_string(), "CANBP".to_string()]);
+        let json = serde_json::to_value(&val).unwrap();
+        assert_eq!(json, serde_json::json!(["DTOL", "CANBP"]));
+    }
+
+    #[test]
+    fn attribute_operator_missing_operator_as_str() {
+        // Missing operator should have empty string
+        assert_eq!(AttributeOperator::Missing.as_str(), "");
+    }
+
+    #[test]
+    fn attribute_operator_exists_operator_as_str() {
+        // Exists operator should have empty string
+        assert_eq!(AttributeOperator::Exists.as_str(), "");
+    }
+
+    #[test]
+    fn attribute_with_no_operator_or_value() {
+        let yaml = "name: assembly_level";
+        let attr: Attribute = serde_yaml::from_str(yaml).unwrap();
+        assert_eq!(attr.name, "assembly_level");
+        assert_eq!(attr.operator, None);
+        assert_eq!(attr.value, None);
+        assert!(attr.modifier.is_empty());
+    }
+
+    #[test]
+    fn attribute_value_list_empty() {
+        let val = AttributeValue::List(vec![]);
+        assert!(val.as_strs().is_empty());
+    }
+
+    #[test]
+    fn attribute_set_can_hold_complex_attributes() {
+        let set = AttributeSet {
+            attributes: vec![Attribute {
+                name: "genome_size".to_string(),
+                operator: Some(AttributeOperator::Lt),
+                value: Some(AttributeValue::Single("3G".to_string())),
+                modifier: vec![Modifier::Min],
+            }],
+            fields: vec![Field {
+                name: "gc_percentage".to_string(),
+                modifier: vec![Modifier::Max],
+            }],
+            names: vec!["scientific_name".to_string()],
+            ranks: vec!["species".to_string()],
+        };
+
+        assert_eq!(set.attributes.len(), 1);
+        assert_eq!(set.fields.len(), 1);
+        assert_eq!(set.names.len(), 1);
+        assert_eq!(set.ranks.len(), 1);
+    }
+
+    #[test]
+    fn attribute_operator_all_variants_have_string_representation() {
+        // Ensure all operators have a valid string representation
+        let ops = vec![
+            (AttributeOperator::Eq, "="),
+            (AttributeOperator::Ne, "!="),
+            (AttributeOperator::Lt, "<"),
+            (AttributeOperator::Le, "<="),
+            (AttributeOperator::Gt, ">"),
+            (AttributeOperator::Ge, ">="),
+            (AttributeOperator::Exists, ""),
+            (AttributeOperator::Missing, ""),
+        ];
+        for (op, expected) in ops {
+            assert_eq!(op.as_str(), expected);
+        }
+    }
+
+    #[test]
+    fn modifier_serde_roundtrip() {
+        let yaml = "[min, max, ancestral, direct]";
+        let modifiers: Vec<Modifier> = serde_yaml::from_str(yaml).unwrap();
+        assert_eq!(
+            modifiers,
+            vec![
+                Modifier::Min,
+                Modifier::Max,
+                Modifier::Ancestral,
+                Modifier::Direct
+            ]
+        );
+    }
+
+    #[test]
+    fn attribute_value_none_list_serialises() {
+        let val = AttributeValue::List(vec![]);
+        let json = serde_json::to_value(&val).unwrap();
+        assert_eq!(json, serde_json::json!([]));
+    }
+
+    #[test]
+    fn attribute_with_exists_operator() {
+        let attr = Attribute {
+            name: "assembly_level".to_string(),
+            operator: Some(AttributeOperator::Exists),
+            value: None,
+            modifier: vec![],
+        };
+        assert!(attr.operator.is_some());
+        assert_eq!(attr.operator.unwrap().as_str(), "");
+    }
+
+    #[test]
+    fn attribute_set_serialises_to_json() {
+        let set = AttributeSet {
+            attributes: vec![Attribute {
+                name: "test".to_string(),
+                operator: Some(AttributeOperator::Eq),
+                value: Some(AttributeValue::Single("value".to_string())),
+                modifier: vec![],
+            }],
+            ..Default::default()
+        };
+        let json = serde_json::to_value(&set).unwrap();
+        assert!(json.get("attributes").is_some());
+    }
+
+    #[test]
+    fn field_with_multiple_modifiers() {
+        let field = Field {
+            name: "genome_size".to_string(),
+            modifier: vec![Modifier::Min, Modifier::Max, Modifier::Direct],
+        };
+        assert_eq!(field.modifier.len(), 3);
+    }
+
+    #[test]
+    fn attribute_operator_equality() {
+        assert_eq!(AttributeOperator::Eq, AttributeOperator::Eq);
+        assert_ne!(AttributeOperator::Eq, AttributeOperator::Ne);
+        assert_ne!(AttributeOperator::Lt, AttributeOperator::Gt);
+    }
 }

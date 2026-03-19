@@ -6,6 +6,8 @@ __pycache__/
 *.py[cod]
 *.so
 *.pyd
+*.dylib
+*.dSYM
 dist/
 *.egg-info/
 .venv/
@@ -18,6 +20,12 @@ venv/
 # Hypothesis — commit examples/ (failure database) but not the rest
 .hypothesis/*
 !.hypothesis/examples/
+
+# Test & coverage artefacts (generated, not committed)
+.pytest_cache/
+.coverage
+.coverage.*
+coverage/
 
 # Environment / secrets
 .env
