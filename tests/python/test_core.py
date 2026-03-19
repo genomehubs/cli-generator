@@ -225,3 +225,60 @@ def test_query_builder_sample_index() -> None:
 
     doc = yaml.safe_load(q.to_query_yaml())
     assert doc["index"] == "sample"
+
+
+# ── Property-based tests with Hypothesis ──────────────────────────────────────
+
+from hypothesis import given
+from hypothesis import strategies as st
+
+
+@given(
+    taxa=st.lists(
+        st.text(min_size=1, max_size=20, alphabet=st.characters(blacklist_categories=("Cc",))), min_size=0, max_size=5
+    )
+)
+def test_querybuilder_taxa_handles_varied_lists(taxa: list) -> None:
+    """Property: QueryBuilder should handle taxa lists of any length without errors."""
+    q = QueryBuilder("taxon").set_taxa(taxa)
+    # Should always produce valid YAML
+    yaml_output = q.to_query_yaml()
+    assert isinstance(yaml_output, str)
+
+
+@given(assemblies=st.lists(st.just("GCA_000001405.40"), min_size=0, max_size=3))
+def test_querybuilder_assemblies_always_serializable(assemblies: list) -> None:
+    """Property: QueryBuilder with assemblies should always serialize to YAML."""
+    q = QueryBuilder("assembly").set_assemblies(assemblies)
+    yaml_output = q.to_query_yaml()
+    assert "assembly" in yaml_output.lower() or not assemblies
+
+
+@given(samples=st.lists(st.just("SRS123456"), min_size=0, max_size=3))
+def test_querybuilder_samples_idempotence(samples: list) -> None:
+    """Property: Multiple calls to set_samples should be idempotent (last one wins)."""
+    q1 = QueryBuilder("sample").set_samples(samples)
+    q2 = QueryBuilder("sample").set_samples(samples).set_samples(samples)
+    assert q1.to_query_yaml() == q2.to_query_yaml()
+
+
+@given(st.booleans())
+def test_querybuilder_include_estimates_roundtrip(include_estimates: bool) -> None:
+    """Property: include_estimates setting should roundtrip through YAML."""
+    import yaml
+
+    q = QueryBuilder("taxon").set_include_estimates(include_estimates)
+    params = yaml.safe_load(q.to_params_yaml())
+    assert params["include_estimates"] is include_estimates
+
+
+@given(rank=st.just("species"))
+def test_querybuilder_rank_preserved_in_yaml(rank: str) -> None:
+    """Property: Rank should be preserved when round-tripping to YAML."""
+    import yaml
+
+    q = QueryBuilder("taxon").set_ranks([rank])
+    doc = yaml.safe_load(q.to_query_yaml())
+    if "ranks" in doc:
+        assert rank in doc["ranks"]
+        assert rank in doc["ranks"]

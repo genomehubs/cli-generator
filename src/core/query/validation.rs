@@ -734,4 +734,214 @@ mod tests {
             .iter()
             .any(|e| matches!(e, ValidationError::InvalidAssemblyPrefix { .. })));
     }
+
+    #[test]
+    fn invalid_summary_modifier_on_non_summary_field() {
+        // Test that an invalid modifier is rejected for a field that doesn't support it
+        let query = SearchQuery {
+            index: SearchIndex::Taxon,
+            identifiers: Identifiers {
+                taxa: vec!["Mammalia".to_string()],
+                ..Default::default()
+            },
+            attributes: AttributeSet {
+                attributes: vec![Attribute {
+                    name: "assembly_level".to_string(),
+                    operator: None,
+                    value: None,
+                    // "Min" modifier is not valid for assembly_level (a non-summary field)
+                    modifier: vec![Modifier::Min],
+                }],
+                ..Default::default()
+            },
+        };
+        let errors = validate_query(
+            &query,
+            &TEST_FIELD_META,
+            &TEST_SYNONYMS,
+            &valid_indexes(),
+            &test_config(),
+        );
+        assert!(errors
+            .iter()
+            .any(|e| matches!(e, ValidationError::InvalidModifier { .. })));
+    }
+
+    #[test]
+    fn descendant_modifier_rejected_without_traverse_direction() {
+        let query = SearchQuery {
+            index: SearchIndex::Taxon,
+            identifiers: Identifiers {
+                taxa: vec!["Mammalia".to_string()],
+                ..Default::default()
+            },
+            attributes: AttributeSet {
+                attributes: vec![Attribute {
+                    name: "genome_size".to_string(),
+                    operator: None,
+                    value: None,
+                    // Descendant modifier on genome_size (which doesn't support it)
+                    modifier: vec![Modifier::Descendant],
+                }],
+                ..Default::default()
+            },
+        };
+        let errors = validate_query(
+            &query,
+            &TEST_FIELD_META,
+            &TEST_SYNONYMS,
+            &valid_indexes(),
+            &test_config(),
+        );
+        assert!(errors
+            .iter()
+            .any(|e| matches!(e, ValidationError::DescendantModifierNotSupported { .. })));
+    }
+
+    #[test]
+    fn field_entry_with_invalid_modifier_reported() {
+        // Test Field (not Attribute) validation with invalid modifier
+        let query = SearchQuery {
+            index: SearchIndex::Taxon,
+            identifiers: Identifiers::default(),
+            attributes: AttributeSet {
+                fields: vec![Field {
+                    name: "assembly_level".to_string(),
+                    modifier: vec![Modifier::Min], // Invalid on non-summary field
+                }],
+                ..Default::default()
+            },
+        };
+        let errors = validate_query(
+            &query,
+            &TEST_FIELD_META,
+            &TEST_SYNONYMS,
+            &valid_indexes(),
+            &test_config(),
+        );
+        assert!(errors
+            .iter()
+            .any(|e| matches!(e, ValidationError::InvalidModifier { .. })));
+    }
+
+    #[test]
+    fn field_entry_with_unknown_field_reported() {
+        // Test Field with unknown name
+        let query = SearchQuery {
+            index: SearchIndex::Taxon,
+            identifiers: Identifiers::default(),
+            attributes: AttributeSet {
+                fields: vec![Field {
+                    name: "nonexistent_field".to_string(),
+                    modifier: vec![],
+                }],
+                ..Default::default()
+            },
+        };
+        let errors = validate_query(
+            &query,
+            &TEST_FIELD_META,
+            &TEST_SYNONYMS,
+            &valid_indexes(),
+            &test_config(),
+        );
+        assert!(errors
+            .iter()
+            .any(|e| matches!(e, ValidationError::UnknownAttribute { .. })));
+    }
+
+    #[test]
+    fn multiple_errors_accumulate() {
+        // Test that multiple independent errors are all reported
+        let query = SearchQuery {
+            index: SearchIndex::Taxon,
+            identifiers: Identifiers {
+                assemblies: vec!["BADBAD".to_string()],
+                ..Default::default()
+            },
+            attributes: AttributeSet {
+                attributes: vec![Attribute {
+                    name: "nonexistent".to_string(),
+                    operator: None,
+                    value: None,
+                    modifier: vec![],
+                }],
+                names: vec!["invalid_name_class".to_string()],
+                ..Default::default()
+            },
+        };
+        let errors = validate_query(
+            &query,
+            &TEST_FIELD_META,
+            &TEST_SYNONYMS,
+            &valid_indexes(),
+            &test_config(),
+        );
+        // Should have at least 3 errors: invalid assembly, unknown attribute, invalid name class
+        assert!(errors.len() >= 3, "expected at least 3 errors, got {}", errors.len());
+        assert!(errors
+            .iter()
+            .any(|e| matches!(e, ValidationError::InvalidAssemblyPrefix { .. })));
+        assert!(errors
+            .iter()
+            .any(|e| matches!(e, ValidationError::UnknownAttribute { .. })));
+        assert!(errors
+            .iter()
+            .any(|e| matches!(e, ValidationError::InvalidNameClass { .. })));
+    }
+
+    #[test]
+    fn invalid_taxon_filter_type_detected() {
+        // Test detection of invalid taxon filter type (serialization path)
+        let query = SearchQuery {
+            index: SearchIndex::Taxon,
+            identifiers: Identifiers::default(),
+            attributes: AttributeSet::default(),
+        };
+        // The TaxonFilterType is an enum that gets serialized; we test the validation
+        let errors = validate_query(
+            &query,
+            &TEST_FIELD_META,
+            &TEST_SYNONYMS,
+            &valid_indexes(),
+            &ValidationConfig {
+                taxon_filter_types: vec![], // Empty list means all types invalid
+                ..ValidationConfig::default()
+            },
+        );
+        // Should report invalid filter type
+        assert!(errors
+            .iter()
+            .any(|e| matches!(e, ValidationError::InvalidTaxonFilterType { .. })));
+    }
+
+    #[test]
+    fn estimated_status_modifier_always_valid() {
+        // Test that Estimated (and other status modifiers) are always valid
+        let query = SearchQuery {
+            index: SearchIndex::Taxon,
+            identifiers: Identifiers::default(),
+            attributes: AttributeSet {
+                attributes: vec![Attribute {
+                    name: "genome_size".to_string(),
+                    operator: None,
+                    value: None,
+                    // Estimated is a status modifier that's always valid
+                    modifier: vec![Modifier::Estimated],
+                }],
+                ..Default::default()
+            },
+        };
+        let errors = validate_query(
+            &query,
+            &TEST_FIELD_META,
+            &TEST_SYNONYMS,
+            &valid_indexes(),
+            &test_config(),
+        );
+        // Should not report any errors for Estimated modifier
+        assert!(!errors
+            .iter()
+            .any(|e| matches!(e, ValidationError::InvalidModifier { .. })));
+    }
 }

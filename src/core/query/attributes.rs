@@ -426,4 +426,44 @@ mod tests {
         assert_ne!(AttributeOperator::Eq, AttributeOperator::Ne);
         assert_ne!(AttributeOperator::Lt, AttributeOperator::Gt);
     }
+
+    #[test]
+    fn all_modifiers_convert_to_string() {
+        // Test all modifier variants and their string representations
+        assert_eq!(Modifier::Min.as_str(), "min");
+        assert_eq!(Modifier::Max.as_str(), "max");
+        assert_eq!(Modifier::Median.as_str(), "median");
+        assert_eq!(Modifier::Mean.as_str(), "mean");
+        assert_eq!(Modifier::Sum.as_str(), "sum");
+        assert_eq!(Modifier::List.as_str(), "list");
+        assert_eq!(Modifier::Length.as_str(), "length");
+        assert_eq!(Modifier::Direct.as_str(), "Direct");
+        assert_eq!(Modifier::Ancestral.as_str(), "Ancestral");
+        assert_eq!(Modifier::Descendant.as_str(), "Descendant");
+        assert_eq!(Modifier::Estimated.as_str(), "Estimated");
+        assert_eq!(Modifier::Missing.as_str(), "Missing");
+    }
+
+    #[test]
+    fn modifier_classification_covers_all_status_types() {
+        // Summary modifiers
+        assert!(Modifier::Min.is_summary());
+        assert!(Modifier::Max.is_summary());
+        assert!(Modifier::Median.is_summary());
+        assert!(Modifier::Mean.is_summary());
+        assert!(Modifier::Sum.is_summary());
+        assert!(Modifier::List.is_summary());
+        assert!(Modifier::Length.is_summary());
+
+        // Status modifiers
+        assert!(Modifier::Direct.is_status());
+        assert!(Modifier::Ancestral.is_status());
+        assert!(Modifier::Descendant.is_status());
+        assert!(Modifier::Estimated.is_status());
+        assert!(Modifier::Missing.is_status());
+
+        // Cross-checks
+        assert!(!Modifier::Min.is_status());
+        assert!(!Modifier::Direct.is_summary());
+    }
 }

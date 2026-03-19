@@ -522,4 +522,224 @@ mod tests {
         // Should be chainable and constructable
         assert!(fetcher.archive_mode);
     }
+
+    #[test]
+    fn fetch_from_api_handles_http_500_error() {
+        let mut server = mockito::Server::new();
+        let mock = server
+            .mock("GET", "/any")
+            .with_status(500)
+            .with_body("Internal Server Error")
+            .create();
+
+        let fetcher = FieldFetcher::new(tempfile::tempdir().unwrap().path().to_path_buf(), false);
+        let url = format!("{}/any", server.url());
+        let result = fetcher.fetch_from_api(&url, "taxon");
+
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("non-2xx response"));
+        mock.assert();
+    }
+
+    #[test]
+    fn fetch_from_api_handles_http_502_error() {
+        let mut server = mockito::Server::new();
+        let mock = server
+            .mock("GET", "/any")
+            .with_status(502)
+            .with_body("Bad Gateway")
+            .create();
+
+        let fetcher = FieldFetcher::new(tempfile::tempdir().unwrap().path().to_path_buf(), false);
+        let url = format!("{}/any", server.url());
+        let result = fetcher.fetch_from_api(&url, "taxon");
+
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("non-2xx response"));
+        mock.assert();
+    }
+
+    #[test]
+    fn fetch_from_api_handles_malformed_json() {
+        let mut server = mockito::Server::new();
+        let mock = server
+            .mock("GET", "/any")
+            .with_status(200)
+            .with_body("{invalid json")
+            .create();
+
+        let fetcher = FieldFetcher::new(tempfile::tempdir().unwrap().path().to_path_buf(), false);
+        let url = format!("{}/any", server.url());
+        let result = fetcher.fetch_from_api(&url, "taxon");
+
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("deserialising JSON"));
+        mock.assert();
+    }
+
+    #[test]
+    fn fetch_from_api_handles_missing_fields_key() {
+        let mut server = mockito::Server::new();
+        let mock = server
+            .mock("GET", "/any")
+            .with_status(200)
+            .with_body(r#"{"status": "ok"}"#)
+            .create();
+
+        let fetcher = FieldFetcher::new(tempfile::tempdir().unwrap().path().to_path_buf(), false);
+        let url = format!("{}/any", server.url());
+        let result = fetcher.fetch_from_api(&url, "taxon");
+
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("expected 'fields' object"));
+        mock.assert();
+    }
+
+    #[test]
+    fn fetch_from_api_handles_empty_fields_object() {
+        let mut server = mockito::Server::new();
+        let mock = server
+            .mock("GET", "/any")
+            .with_status(200)
+            .with_body(r#"{"fields": {}}"#)
+            .create();
+
+        let fetcher = FieldFetcher::new(tempfile::tempdir().unwrap().path().to_path_buf(), false);
+        let url = format!("{}/any", server.url());
+        let result = fetcher.fetch_from_api(&url, "taxon");
+
+        assert!(result.is_ok());
+        let fields = result.unwrap();
+        assert!(fields.is_empty());
+        mock.assert();
+    }
+
+    #[test]
+    fn fetch_from_api_parses_valid_response() {
+        let mut server = mockito::Server::new();
+        let mock = server
+            .mock("GET", "/any")
+            .with_status(200)
+            .with_body(
+                r#"{"fields": {"genome_size": {"type": "long", "display_group": "genome"}}}"#,
+            )
+            .create();
+
+        let fetcher = FieldFetcher::new(tempfile::tempdir().unwrap().path().to_path_buf(), false);
+        let url = format!("{}/any", server.url());
+        let result = fetcher.fetch_from_api(&url, "taxon");
+
+        assert!(result.is_ok());
+        let fields = result.unwrap();
+        assert_eq!(fields.len(), 1);
+        assert_eq!(fields[0].name, "genome_size");
+        mock.assert();
+    }
+
+    #[test]
+    fn load_cache_handles_corrupted_json() {
+        let dir = tempfile::tempdir().unwrap();
+        let fetcher = FieldFetcher::new(dir.path().to_path_buf(), false);
+        let cache_path = dir.path().join("site").join("fields-taxon.json");
+
+        // Create parent dirs and write corrupted JSON
+        if let Some(parent) = cache_path.parent() {
+            std::fs::create_dir_all(parent).unwrap();
+        }
+        std::fs::write(&cache_path, "{invalid json syntax}").unwrap();
+
+        // Should error on deserialization
+        let result = fetcher.load_cache(&cache_path);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("deserialising cache file"));
+    }
+
+    #[test]
+    fn load_cache_rejects_stale_entry() {
+        use chrono::Duration as ChronoDuration;
+
+        let dir = tempfile::tempdir().unwrap();
+        let fetcher = FieldFetcher::new(dir.path().to_path_buf(), false);
+
+        // Write a cache entry 48 hours in the past (older than 24h TTL)
+        let cache_path = dir.path().join("site").join("fields-taxon.json");
+        let stale_envelope = CacheEnvelope {
+            fetched_at: Utc::now() - ChronoDuration::hours(48),
+            fields: vec![FieldDef {
+                name: "stale_field".to_string(),
+                display_group: None,
+                display_name: None,
+                description: None,
+                field_type: None,
+                constraint: None,
+                display_level: None,
+                synonyms: vec![],
+                processed_type: None,
+                traverse_direction: None,
+                summary: vec![],
+            }],
+        };
+        if let Some(parent) = cache_path.parent() {
+            std::fs::create_dir_all(parent).unwrap();
+        }
+        std::fs::write(
+            &cache_path,
+            serde_json::to_string_pretty(&stale_envelope).unwrap(),
+        )
+        .unwrap();
+
+        // Should return None (cache expired)
+        let result = fetcher.load_cache(&cache_path).unwrap();
+        assert!(
+            result.is_none(),
+            "stale cache should be rejected outside archive mode"
+        );
+    }
+
+    #[test]
+    fn load_cache_accepts_fresh_entry() {
+        let dir = tempfile::tempdir().unwrap();
+        let fetcher = FieldFetcher::new(dir.path().to_path_buf(), false);
+
+        // Write a cache entry just now (definitely fresh)
+        let cache_path = dir.path().join("site").join("fields-taxon.json");
+        let fresh_envelope = CacheEnvelope {
+            fetched_at: Utc::now(),
+            fields: vec![FieldDef {
+                name: "fresh_field".to_string(),
+                display_group: None,
+                display_name: None,
+                description: None,
+                field_type: None,
+                constraint: None,
+                display_level: None,
+                synonyms: vec![],
+                processed_type: None,
+                traverse_direction: None,
+                summary: vec![],
+            }],
+        };
+        if let Some(parent) = cache_path.parent() {
+            std::fs::create_dir_all(parent).unwrap();
+        }
+        std::fs::write(
+            &cache_path,
+            serde_json::to_string_pretty(&fresh_envelope).unwrap(),
+        )
+        .unwrap();
+
+        // Should return Some (cache is valid)
+        let result = fetcher.load_cache(&cache_path).unwrap();
+        assert!(result.is_some(), "fresh cache should be accepted");
+        assert_eq!(result.unwrap()[0].name, "fresh_field");
+    }
 }

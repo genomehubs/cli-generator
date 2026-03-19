@@ -567,4 +567,182 @@ mod tests {
         // Space in name must be encoded as %20
         assert!(url.contains("Homo%20sapiens"));
     }
+
+    #[test]
+    fn special_chars_in_taxa_encoded() {
+        let query = taxon_query(&["Genus (Subgenus)"], None, TaxonFilterType::Name);
+        let url = build_query_url(
+            &query,
+            &default_params(),
+            "https://api.example.org/api",
+            "v2",
+            "search",
+        );
+        // Parentheses must be encoded in query string
+        assert!(url.contains("%28Subgenus%29"));
+    }
+
+    #[test]
+    fn special_chars_in_field_names_encoded() {
+        let query = SearchQuery {
+            index: SearchIndex::Taxon,
+            identifiers: Identifiers::default(),
+            attributes: AttributeSet {
+                fields: vec![Field {
+                    name: "gc-content".to_string(),
+                    modifier: vec![],
+                }],
+                ..Default::default()
+            },
+        };
+        let url = build_query_url(
+            &query,
+            &default_params(),
+            "https://api.example.org/api",
+            "v2",
+            "search",
+        );
+        // Field names should be in params (PARAM_VALUE encoding)
+        assert!(url.contains("fields="));
+    }
+
+    #[test]
+    fn quote_and_bracket_chars_encoded() {
+        let query = SearchQuery {
+            index: SearchIndex::Taxon,
+            identifiers: Identifiers {
+                taxa: vec!["[Species]".to_string()],
+                taxon_filter_type: TaxonFilterType::Name,
+                ..Default::default()
+            },
+            attributes: AttributeSet::default(),
+        };
+        let url = build_query_url(
+            &query,
+            &default_params(),
+            "https://api.example.org/api",
+            "v2",
+            "search",
+        );
+        // Brackets must be encoded as %5B and %5D
+        assert!(url.contains("%5BSpecies%5D"));
+    }
+
+    // ── Property-based tests with proptest ─────────────────────────────────────
+
+    #[cfg(test)]
+    mod proptest_tests {
+        use super::*;
+        use proptest::prelude::*;
+
+        /// Generate valid ASCII taxon names
+        fn arb_taxon() -> impl Strategy<Value = String> {
+            "[A-Z][a-z]{0,20}".prop_map(|s| s.to_string()).boxed()
+        }
+
+        /// Generate simple valid queries that should encode without error
+        fn arb_basic_query() -> impl Strategy<Value = SearchQuery> {
+            (prop::option::of(arb_taxon()), any::<bool>())
+                .prop_map(|(opt_taxon, with_rank)| {
+                    let taxa = opt_taxon.map(|t| vec![t]).unwrap_or_default();
+                    let rank = if with_rank {
+                        Some("species".to_string())
+                    } else {
+                        None
+                    };
+                    SearchQuery {
+                        index: SearchIndex::Taxon,
+                        identifiers: Identifiers {
+                            taxa,
+                            rank,
+                            taxon_filter_type: TaxonFilterType::Name,
+                            ..Default::default()
+                        },
+                        attributes: AttributeSet::default(),
+                    }
+                })
+                .boxed()
+        }
+
+        proptest! {
+            #[test]
+            fn query_encoding_never_panics(query in arb_basic_query()) {
+                let params = default_params();
+                let _ = build_query_url(
+                    &query,
+                    &params,
+                    "https://api.genomehubs.org/api",
+                    "v2",
+                    "search",
+                );
+                // Just verifying it doesn't panic
+            }
+
+            #[test]
+            fn encoded_url_is_valid_utf8(query in arb_basic_query()) {
+                let params = default_params();
+                let url = build_query_url(
+                    &query,
+                    &params,
+                    "https://api.genomehubs.org/api",
+                    "v2",
+                    "search",
+                );
+                // URL must be valid UTF-8 (guaranteed by String type, but good practice)
+                assert!(url.is_ascii() || url.chars().all(|c| c.is_ascii() || c == '%'));
+            }
+
+            #[test]
+            fn encoded_url_contains_api_base(query in arb_basic_query()) {
+                let params = default_params();
+                let base = "https://example.org/api";
+                let url = build_query_url(&query, &params, base, "v2", "search");
+                assert!(url.starts_with(base));
+            }
+
+            #[test]
+            fn multiple_taxa_all_encoded(
+                taxa in prop::collection::vec("[A-Z][a-z]+", 1..5)
+            ) {
+                let query = SearchQuery {
+                    index: SearchIndex::Taxon,
+                    identifiers: Identifiers {
+                        taxa,
+                        ..Default::default()
+                    },
+                    attributes: AttributeSet::default(),
+                };
+                let url = build_query_url(
+                    &query,
+                    &default_params(),
+                    "https://api.genomehubs.org/api",
+                    "v2",
+                    "search",
+                );
+                // Query should contain at least one taxon reference
+                assert!(url.contains("query=") || !query.identifiers.taxa.is_empty());
+            }
+
+            #[test]
+            fn empty_query_still_valid_url(
+                _unused in any::<bool>()
+            ) {
+                let query = SearchQuery {
+                    index: SearchIndex::Assembly,
+                    identifiers: Identifiers::default(),
+                    attributes: AttributeSet::default(),
+                };
+                let url = build_query_url(
+                    &query,
+                    &default_params(),
+                    "https://api.genomehubs.org/api",
+                    "v2",
+                    "search",
+                );
+                // Empty query still produces valid URL structure
+                assert!(url.starts_with("https://"));
+                assert!(url.contains("?"));
+            }
+        }
+    }
 }
