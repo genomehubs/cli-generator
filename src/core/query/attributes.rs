@@ -2,7 +2,32 @@
 //!
 //! Covers attribute filters, return fields, taxon name classes, and rank columns.
 
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
+
+// ── Operator aliases ──────────────────────────────────────────────────────────
+
+/// Normalize operator aliases to canonical snake_case form.
+///
+/// Supports both symbolic operators (`>`, `>=`, etc.) and word forms
+/// (`gt`, `gte`, `ge`, etc.) for backward compatibility.
+fn normalize_operator(input: &str) -> String {
+    match input.to_lowercase().as_str() {
+        // Greater than
+        ">" | "gt" => "gt".to_string(),
+        ">=" | "gte" | "ge" => "ge".to_string(),
+        // Less than
+        "<" | "lt" => "lt".to_string(),
+        "<=" | "lte" | "le" => "le".to_string(),
+        // Equality
+        "=" | "==" | "eq" => "eq".to_string(),
+        "!=" | "ne" => "ne".to_string(),
+        // Existence
+        "exists" => "exists".to_string(),
+        "missing" => "missing".to_string(),
+        // Pass through unknown values for serde to reject
+        other => other.to_string(),
+    }
+}
 
 // ── AttributeSet ──────────────────────────────────────────────────────────────
 
@@ -92,7 +117,7 @@ pub struct Field {
 // ── AttributeOperator ─────────────────────────────────────────────────────────
 
 /// Comparison operator for an attribute filter.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum AttributeOperator {
     /// `=`  (equality / set membership)
@@ -111,6 +136,34 @@ pub enum AttributeOperator {
     Exists,
     /// Test for absence of any value (no `value` field needed).
     Missing,
+}
+
+impl<'de> Deserialize<'de> for AttributeOperator {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let input = String::deserialize(deserializer)?;
+        let normalized = normalize_operator(&input);
+
+        match normalized.as_str() {
+            "eq" => Ok(AttributeOperator::Eq),
+            "ne" => Ok(AttributeOperator::Ne),
+            "lt" => Ok(AttributeOperator::Lt),
+            "le" => Ok(AttributeOperator::Le),
+            "gt" => Ok(AttributeOperator::Gt),
+            "ge" => Ok(AttributeOperator::Ge),
+            "exists" => Ok(AttributeOperator::Exists),
+            "missing" => Ok(AttributeOperator::Missing),
+            _ => Err(serde::de::Error::unknown_variant(
+                &input,
+                &[
+                    "eq", "ne", "lt", "le", "gt", "ge", "exists", "missing", ">", ">=", "<", "<=",
+                    "=", "==", "!=", "gte", "ge", "lte", "le",
+                ],
+            )),
+        }
+    }
 }
 
 impl AttributeOperator {
@@ -465,5 +518,133 @@ mod tests {
         // Cross-checks
         assert!(!Modifier::Min.is_status());
         assert!(!Modifier::Direct.is_summary());
+    }
+
+    #[test]
+    fn operator_alias_deserialises_symbol_greater_than() {
+        let op: AttributeOperator = serde_json::from_str("\">\"\n").unwrap();
+        assert_eq!(op, AttributeOperator::Gt);
+    }
+
+    #[test]
+    fn operator_alias_deserialises_symbol_greater_equal() {
+        let op: AttributeOperator = serde_json::from_str("\">=\"").unwrap();
+        assert_eq!(op, AttributeOperator::Ge);
+    }
+
+    #[test]
+    fn operator_alias_deserialises_word_gte() {
+        let json = r#""gte""#;
+        let op: AttributeOperator = serde_json::from_str(json).unwrap();
+        assert_eq!(op, AttributeOperator::Ge);
+    }
+
+    #[test]
+    fn operator_alias_deserialises_word_ge() {
+        let json = r#""ge""#;
+        let op: AttributeOperator = serde_json::from_str(json).unwrap();
+        assert_eq!(op, AttributeOperator::Ge);
+    }
+
+    #[test]
+    fn operator_alias_deserialises_symbol_less_than() {
+        let op: AttributeOperator = serde_json::from_str("\"<\"").unwrap();
+        assert_eq!(op, AttributeOperator::Lt);
+    }
+
+    #[test]
+    fn operator_alias_deserialises_symbol_less_equal() {
+        let op: AttributeOperator = serde_json::from_str("\"<=\"").unwrap();
+        assert_eq!(op, AttributeOperator::Le);
+    }
+
+    #[test]
+    fn operator_alias_deserialises_word_lte() {
+        let json = r#""lte""#;
+        let op: AttributeOperator = serde_json::from_str(json).unwrap();
+        assert_eq!(op, AttributeOperator::Le);
+    }
+
+    #[test]
+    fn operator_alias_deserialises_word_le() {
+        let json = r#""le""#;
+        let op: AttributeOperator = serde_json::from_str(json).unwrap();
+        assert_eq!(op, AttributeOperator::Le);
+    }
+
+    #[test]
+    fn operator_alias_deserialises_symbol_equals() {
+        let op: AttributeOperator = serde_json::from_str("\"=\"").unwrap();
+        assert_eq!(op, AttributeOperator::Eq);
+    }
+
+    #[test]
+    fn operator_alias_deserialises_symbol_double_equals() {
+        let op: AttributeOperator = serde_json::from_str("\"==\"").unwrap();
+        assert_eq!(op, AttributeOperator::Eq);
+    }
+
+    #[test]
+    fn operator_alias_deserialises_word_eq() {
+        let json = r#""eq""#;
+        let op: AttributeOperator = serde_json::from_str(json).unwrap();
+        assert_eq!(op, AttributeOperator::Eq);
+    }
+
+    #[test]
+    fn operator_alias_deserialises_symbol_not_equal() {
+        let op: AttributeOperator = serde_json::from_str("\"!=\"").unwrap();
+        assert_eq!(op, AttributeOperator::Ne);
+    }
+
+    #[test]
+    fn operator_alias_deserialises_word_ne() {
+        let json = r#""ne""#;
+        let op: AttributeOperator = serde_json::from_str(json).unwrap();
+        assert_eq!(op, AttributeOperator::Ne);
+    }
+
+    #[test]
+    fn operator_canonical_forms_still_work() {
+        // Ensure we didn't break the existing snake_case forms
+        assert_eq!(
+            serde_json::from_str::<AttributeOperator>(r#""lt""#).unwrap(),
+            AttributeOperator::Lt
+        );
+        assert_eq!(
+            serde_json::from_str::<AttributeOperator>(r#""gt""#).unwrap(),
+            AttributeOperator::Gt
+        );
+        assert_eq!(
+            serde_json::from_str::<AttributeOperator>(r#""exists""#).unwrap(),
+            AttributeOperator::Exists
+        );
+        assert_eq!(
+            serde_json::from_str::<AttributeOperator>(r#""missing""#).unwrap(),
+            AttributeOperator::Missing
+        );
+    }
+
+    #[test]
+    fn operator_alias_case_insensitive() {
+        // Ensure aliases are case-insensitive
+        assert_eq!(
+            serde_json::from_str::<AttributeOperator>(r#""GT""#).unwrap(),
+            AttributeOperator::Gt
+        );
+        assert_eq!(
+            serde_json::from_str::<AttributeOperator>(r#""GTE""#).unwrap(),
+            AttributeOperator::Ge
+        );
+        assert_eq!(
+            serde_json::from_str::<AttributeOperator>(r#""Lt""#).unwrap(),
+            AttributeOperator::Lt
+        );
+    }
+
+    #[test]
+    fn operator_invalid_alias_fails() {
+        let result = serde_json::from_str::<AttributeOperator>(r#""invalid_op""#);
+        assert!(result.is_err());
     }
 }

@@ -282,3 +282,110 @@ def test_querybuilder_rank_preserved_in_yaml(rank: str) -> None:
     if "ranks" in doc:
         assert rank in doc["ranks"]
         assert rank in doc["ranks"]
+
+
+# ── Operator alias tests ──────────────────────────────────────────────────────
+
+
+def test_operator_alias_symbol_greater_than() -> None:
+    """Operator alias: > should work as gt."""
+    q = QueryBuilder("taxon").add_attribute("genome_size", operator=">", value="1000000000").add_field("genome_size")
+    yaml_output = q.to_query_yaml()
+    assert "genome_size" in yaml_output
+    assert "operator:" in yaml_output
+
+
+def test_operator_alias_symbol_greater_equal() -> None:
+    """Operator alias: >= should work as ge."""
+    q = QueryBuilder("taxon").add_attribute("genome_size", operator=">=", value="1000000000").add_field("genome_size")
+    yaml_output = q.to_query_yaml()
+    assert "genome_size" in yaml_output
+
+
+def test_operator_alias_word_gte() -> None:
+    """Operator alias: gte should work as ge."""
+    q = QueryBuilder("taxon").add_attribute("genome_size", operator="gte", value="1000000000").add_field("genome_size")
+    yaml_output = q.to_query_yaml()
+    assert "genome_size" in yaml_output
+
+
+def test_operator_alias_symbol_less_than() -> None:
+    """Operator alias: < should work as lt."""
+    q = QueryBuilder("taxon").add_attribute("genome_size", operator="<", value="1000000000").add_field("genome_size")
+    yaml_output = q.to_query_yaml()
+    assert "genome_size" in yaml_output
+
+
+def test_operator_alias_symbol_less_equal() -> None:
+    """Operator alias: <= should work as le."""
+    q = QueryBuilder("taxon").add_attribute("genome_size", operator="<=", value="1000000000").add_field("genome_size")
+    yaml_output = q.to_query_yaml()
+    assert "genome_size" in yaml_output
+
+
+def test_operator_alias_word_lte() -> None:
+    """Operator alias: lte should work as le."""
+    q = QueryBuilder("taxon").add_attribute("genome_size", operator="lte", value="1000000000").add_field("genome_size")
+    yaml_output = q.to_query_yaml()
+    assert "genome_size" in yaml_output
+
+
+def test_operator_alias_symbol_equals() -> None:
+    """Operator alias: = should work as eq."""
+    q = (
+        QueryBuilder("taxon")
+        .add_attribute("assembly_level", operator="=", value="chromosome")
+        .add_field("assembly_level")
+    )
+    yaml_output = q.to_query_yaml()
+    assert "assembly_level" in yaml_output
+
+
+def test_operator_alias_symbol_double_equals() -> None:
+    """Operator alias: == should work as eq."""
+    q = (
+        QueryBuilder("taxon")
+        .add_attribute("assembly_level", operator="==", value="chromosome")
+        .add_field("assembly_level")
+    )
+    yaml_output = q.to_query_yaml()
+    assert "assembly_level" in yaml_output
+
+
+def test_operator_alias_symbol_not_equal() -> None:
+    """Operator alias: != should work as ne."""
+    q = (
+        QueryBuilder("taxon")
+        .add_attribute("assembly_level", operator="!=", value="scaffold")
+        .add_field("assembly_level")
+    )
+    yaml_output = q.to_query_yaml()
+    assert "assembly_level" in yaml_output
+
+
+def test_operator_alias_canonical_forms_still_work() -> None:
+    """Canonical snake_case forms should still work."""
+    q = (
+        QueryBuilder("taxon")
+        .add_attribute("genome_size", operator="lt", value="3000000000")
+        .add_attribute("assembly_level", operator="eq", value="chromosome")
+        .add_field("genome_size")
+        .add_field("assembly_level")
+    )
+    yaml_output = q.to_query_yaml()
+    assert "genome_size" in yaml_output
+    assert "assembly_level" in yaml_output
+
+
+def test_operator_aliases_build_valid_url() -> None:
+    """URL building should work with operator aliases."""
+    q = QueryBuilder("taxon").set_taxa(["Mammalia"]).add_attribute("genome_size", operator=">", value="1000000000")
+    url = build_url(
+        q.to_query_yaml(),
+        q.to_params_yaml(),
+        "https://goat.genomehubs.org/api",
+        "v2",
+        "search",
+    )
+    assert isinstance(url, str)
+    assert "Mammalia" in url

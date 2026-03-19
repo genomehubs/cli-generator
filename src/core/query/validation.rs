@@ -878,7 +878,11 @@ mod tests {
             &test_config(),
         );
         // Should have at least 3 errors: invalid assembly, unknown attribute, invalid name class
-        assert!(errors.len() >= 3, "expected at least 3 errors, got {}", errors.len());
+        assert!(
+            errors.len() >= 3,
+            "expected at least 3 errors, got {}",
+            errors.len()
+        );
         assert!(errors
             .iter()
             .any(|e| matches!(e, ValidationError::InvalidAssemblyPrefix { .. })));
