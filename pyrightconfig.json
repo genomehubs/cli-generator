@@ -1,4 +1,7 @@
 {
   "typeCheckingMode": "standard",
-  "reportGeneralTypeIssues": false
+  "reportGeneralTypeIssues": false,
+  "reportMissingImports": false,
+  "reportMissingModuleSource": false,
+  "stubPath": "python/"
 }

@@ -5,7 +5,12 @@ Rust extension is imported here; see ``cli_generator.pyi`` for type signatures
 of all exported symbols.
 """
 
-from .cli_generator import build_url, version
+try:
+    from .cli_generator import build_url, version  # type: ignore[import-not-found]
+except ImportError:
+    # Rust extension not yet compiled; type stubs will be used for mypy/pyright
+    pass  # type: ignore[unreachable]
+
 from .query import QueryBuilder
 
 __all__ = ["build_url", "QueryBuilder", "version"]

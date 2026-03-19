@@ -22,31 +22,35 @@ mkdir -p coverage
 
 echo ""
 echo "📊 Measuring Rust code coverage..."
-echo "   Command: cargo tarpaulin --out Html --output-dir ./coverage"
+echo "   Command: cargo tarpaulin --out Lcov --output-dir ./coverage"
 
 if ! command -v cargo-tarpaulin &> /dev/null; then
     echo -e "${YELLOW}⚠️  cargo-tarpaulin not found, installing...${NC}"
     cargo install cargo-tarpaulin
 fi
 
+# Use Lcov output which is more reliable than Html
 cargo tarpaulin \
-    --out Html \
+    --out Lcov \
     --output-dir ./coverage \
     --timeout 300 \
     --exclude-files tests/generated_goat_cli.rs \
     2>&1 | tee coverage/rust_measurement.log
 
-# Find the coverage percentage from tarpaulin output (handle macOS grep without -P)
-RUST_COVERAGE=$(grep "Coverage:" coverage/rust_measurement.log | sed 's/.*Coverage: //; s/%.*//' | tail -1)
+# Tarpaulin exit code can be misleading; check if lcov.info was created
+if [ -f coverage/lcov.info ]; then
+    echo "✅ Coverage data generated: coverage/lcov.info"
 
-if [ -z "$RUST_COVERAGE" ]; then
-    RUST_COVERAGE="See HTML report"
+    # Try to extract coverage from lcov if available
+    if command -v lcov &> /dev/null; then
+        RUST_COVERAGE=$(lcov --summary coverage/lcov.info 2>/dev/null | grep "lines" | awk '{print $2}' | sed 's/%//')
+    else
+        RUST_COVERAGE="See lcov.info"
+    fi
+else
+    echo -e "${YELLOW}⚠️  Coverage data (lcov.info) not generated${NC}"
+    RUST_COVERAGE="Failed to generate"
 fi
-
-echo ""
-echo "✅ Rust coverage: ${RUST_COVERAGE}%"
-echo "   HTML report: coverage/tarpaulin-report.html"
-echo ""
 
 # ────────────────────────────────────────────────────────────────────────────
 # Python Coverage (coverage.py)
@@ -55,14 +59,20 @@ echo ""
 echo "📊 Measuring Python code coverage..."
 echo "   Command: coverage run -m pytest && coverage report"
 
+# Use dev11 environment if available for Python in CI
+PYTHON_CMD=python
+if [ -f "/Users/rchallis/miniforge3/envs/dev11/bin/python" ]; then
+    PYTHON_CMD="/Users/rchallis/miniforge3/envs/dev11/bin/python"
+fi
+
 # Check if dev dependencies are installed
-if ! python -c "import coverage" 2>/dev/null; then
+if ! $PYTHON_CMD -c "import coverage" 2>/dev/null; then
     echo -e "${YELLOW}⚠️  coverage.py not found, installing...${NC}"
-    pip install 'coverage[toml]' pytest pyyaml
+    $PYTHON_CMD -m pip install 'coverage[toml]' pytest pyyaml -q
 fi
 
 # Run tests with coverage
-python -m coverage run -m pytest tests/python/ -v --tb=short
+$PYTHON_CMD -m coverage run -m pytest tests/python/ -v --tb=short
 
 # Check if tests had issues (but continue to show coverage report anyway)
 if [ $? -ne 0 ]; then
@@ -75,12 +85,12 @@ fi
 
 # Generate reports
 echo ""
-python -m coverage report --skip-empty
-python -m coverage html --directory ./coverage/python
+$PYTHON_CMD -m coverage report --skip-empty
+$PYTHON_CMD -m coverage html --directory ./coverage/python
 
 # Extract Python coverage percentage more reliably
 # Look for the TOTAL line and get the rightmost percentage value
-PYTHON_COVERAGE=$(python -m coverage report --skip-empty 2>/dev/null | grep "^TOTAL" | tail -1 | awk '{print $NF}' | sed 's/%//')
+PYTHON_COVERAGE=$($PYTHON_CMD -m coverage report --skip-empty 2>/dev/null | grep "^TOTAL" | tail -1 | awk '{print $NF}' | sed 's/%//')
 
 if [ -z "$PYTHON_COVERAGE" ]; then
     PYTHON_COVERAGE="See HTML report"
@@ -100,8 +110,8 @@ echo "================================================"
 echo "Coverage Summary"
 echo "================================================"
 echo ""
-if [[ "$RUST_COVERAGE" == "See HTML report" ]]; then
-    echo "Rust coverage:   $RUST_COVERAGE (check coverage/tarpaulin-report.html)"
+if [[ "$RUST_COVERAGE" == "See lcov.info" || "$RUST_COVERAGE" == "Failed to generate" ]]; then
+    echo "Rust coverage:   $RUST_COVERAGE (check coverage/lcov.info)"
 else
     echo "Rust coverage:   ${RUST_COVERAGE}%"
 fi
@@ -113,7 +123,7 @@ else
 fi
 echo ""
 echo "📂 Coverage reports:"
-echo "   Rust:   ./coverage/tarpaulin-report.html"
+echo "   Rust:   ./coverage/lcov.info"
 echo "   Python: ./coverage/python/index.html"
 echo ""
 echo "Next steps:"
