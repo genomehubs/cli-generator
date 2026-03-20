@@ -20,9 +20,16 @@ pub fn run_new(site_name: &str, sites_dir: &Path, force_fresh: bool) -> Result<(
 
     let fields_by_index = fetch_fields(&site.name, force_fresh, &site)?;
     let gen = CodeGenerator::new()?;
-    let rendered = gen.render_all(&site, &options, &fields_by_index)?;
+    let rendered_by_lang = gen.render_all(&site, &options, &fields_by_index)?;
 
-    print_rendered(&rendered);
+    // Flatten and print all language outputs
+    let mut all_rendered = std::collections::HashMap::new();
+    for (language, rendered) in rendered_by_lang {
+        for (path, content) in rendered {
+            all_rendered.insert(format!("[{language}] {path}"), content);
+        }
+    }
+    print_rendered(&all_rendered);
     Ok(())
 }
 
@@ -37,9 +44,16 @@ pub fn run_update(repo_path: &Path, force_fresh: bool) -> Result<()> {
 
     let fields_by_index = fetch_fields(&site.name, force_fresh, &site)?;
     let gen = CodeGenerator::new()?;
-    let rendered = gen.render_all(&site, &options, &fields_by_index)?;
+    let rendered_by_lang = gen.render_all(&site, &options, &fields_by_index)?;
 
-    diff_against_disk(repo_path, &rendered);
+    // Flatten all language outputs and diff against disk
+    let mut all_rendered = std::collections::HashMap::new();
+    for (_language, rendered) in rendered_by_lang {
+        for (path, content) in rendered {
+            all_rendered.insert(path, content);
+        }
+    }
+    diff_against_disk(repo_path, &all_rendered);
     Ok(())
 }
 

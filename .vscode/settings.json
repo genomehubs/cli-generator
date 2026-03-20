@@ -6,6 +6,13 @@
   "files.associations": {
     "*.tera": "plaintext"
   },
+  // After moving to language-based template dirs, test this config
+  // "files.associations": {
+  //   "templates/rust/*.tera": "rust",
+  //   "templates/python/*.tera": "python",
+  //   "templates/shared/*.tera": "markdown",
+  //   "templates/snippets/*.tera": "python"  // or appropriate language
+  // },
 
   // ── Rust ──────────────────────────────────────────────────────────────────
   "[rust]": {

@@ -194,9 +194,14 @@ ranks: [genus]
 "#;
         let query: SearchQuery = serde_yaml::from_str(yaml).expect("parse YAML");
         assert_eq!(query.index, SearchIndex::Taxon);
-        assert_eq!(query.identifiers.taxa, vec!["Mammalia", "!Felis"]);
+        let taxa = query
+            .identifiers
+            .taxa
+            .as_ref()
+            .expect("taxa should be Some");
+        assert_eq!(taxa.names, vec!["Mammalia", "!Felis"]);
         assert_eq!(query.identifiers.rank, Some("species".to_string()));
-        assert_eq!(query.identifiers.taxon_filter_type, TaxonFilterType::Tree);
+        assert_eq!(taxa.filter_type, TaxonFilterType::Tree);
         assert_eq!(query.attributes.attributes.len(), 1);
         assert_eq!(query.attributes.fields.len(), 1);
         assert_eq!(query.attributes.names, vec!["scientific_name"]);

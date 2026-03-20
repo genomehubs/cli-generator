@@ -2,7 +2,7 @@
 //!
 //! Covers taxa, assemblies, and samples with rank and filter-type selection.
 
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 // ── Identifiers ───────────────────────────────────────────────────────────────
 
@@ -13,26 +13,90 @@ use serde::{Deserialize, Serialize};
 /// Taxa support a `"!"` prefix for NOT filters, e.g. `"!Felis"` excludes that
 /// taxon from the query.  Wildcards (`*`) are supported at the start/end of
 /// identifiers.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default)]
 pub struct Identifiers {
     /// Scientific taxon names or IDs.  `"!"` prefix = NOT filter.
-    #[serde(default)]
-    pub taxa: Vec<String>,
+    pub taxa: Option<TaxaIdentifier>,
     /// Assembly accession IDs (e.g. `"GCF_000002305.6"`).
-    #[serde(default)]
     pub assemblies: Vec<String>,
     /// Sample accession IDs (e.g. `"SRR1234567"`).
-    #[serde(default)]
     pub samples: Vec<String>,
     /// Taxonomic rank for filtering results (maps to `tax_rank(X)` in the query).
     ///
     /// Use `--rank` on the CLI (gap-analysis item 4 — distinct from `--ranks`
     /// which selects rank columns to return).
-    #[serde(default)]
     pub rank: Option<String>,
-    /// Controls which API taxon wrapper function is used.
-    #[serde(default)]
-    pub taxon_filter_type: TaxonFilterType,
+}
+
+impl<'de> Deserialize<'de> for Identifiers {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        struct Raw {
+            #[serde(default)]
+            taxa: Vec<String>,
+            #[serde(default)]
+            taxon_filter_type: Option<TaxonFilterType>,
+            #[serde(default)]
+            assemblies: Vec<String>,
+            #[serde(default)]
+            samples: Vec<String>,
+            #[serde(default)]
+            rank: Option<String>,
+        }
+
+        let raw = Raw::deserialize(deserializer)?;
+        Ok(Identifiers {
+            taxa: if raw.taxa.is_empty() {
+                None
+            } else {
+                Some(TaxaIdentifier {
+                    names: raw.taxa,
+                    filter_type: raw.taxon_filter_type.unwrap_or_default(),
+                })
+            },
+            assemblies: raw.assemblies,
+            samples: raw.samples,
+            rank: raw.rank,
+        })
+    }
+}
+
+impl Serialize for Identifiers {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        use serde::ser::SerializeMap;
+        let mut map = serializer.serialize_map(None)?;
+
+        if let Some(taxa) = &self.taxa {
+            map.serialize_entry("taxa", &taxa.names)?;
+            map.serialize_entry("taxon_filter_type", &taxa.filter_type)?;
+        }
+
+        if !self.assemblies.is_empty() {
+            map.serialize_entry("assemblies", &self.assemblies)?;
+        }
+        if !self.samples.is_empty() {
+            map.serialize_entry("samples", &self.samples)?;
+        }
+        if let Some(rank) = &self.rank {
+            map.serialize_entry("rank", rank)?;
+        }
+
+        map.end()
+    }
+}
+
+/// Taxon names with their filter strategy.
+/// This struct is used within `Identifiers` to specify how taxon names should be filtered in the query (e.g., direct matches, including descendants, including ancestors).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TaxaIdentifier {
+    pub names: Vec<String>,
+    pub filter_type: TaxonFilterType,
 }
 
 // ── TaxonFilterType ───────────────────────────────────────────────────────────
@@ -87,16 +151,26 @@ mod tests {
     fn taxon_filter_type_deserialises_from_yaml() {
         let identifiers: Identifiers =
             serde_yaml::from_str("taxa: [Mammalia]\ntaxon_filter_type: tree").unwrap();
-        assert_eq!(identifiers.taxon_filter_type, TaxonFilterType::Tree);
+        let taxa = identifiers.taxa.expect("taxa should be Some");
+        assert_eq!(taxa.names, vec!["Mammalia"]);
+        assert_eq!(taxa.filter_type, TaxonFilterType::Tree);
     }
 
     #[test]
     fn identifiers_default_is_empty() {
         let id = Identifiers::default();
-        assert!(id.taxa.is_empty());
+        assert!(id.taxa.is_none());
         assert!(id.assemblies.is_empty());
         assert!(id.samples.is_empty());
         assert!(id.rank.is_none());
-        assert_eq!(id.taxon_filter_type, TaxonFilterType::Name);
+    }
+
+    #[test]
+    fn taxa_identifier_default_filter_type_is_name() {
+        let taxa = TaxaIdentifier {
+            names: vec!["Felis".to_string()],
+            filter_type: TaxonFilterType::default(),
+        };
+        assert_eq!(taxa.filter_type, TaxonFilterType::Name);
     }
 }

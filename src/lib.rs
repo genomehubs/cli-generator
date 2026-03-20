@@ -63,11 +63,39 @@ fn build_url(
     ))
 }
 
+/// Describe a query in human-readable form, returning a string suitable for CLI help messages.
+#[cfg(feature = "extension-module")]
+#[pyfunction]
+#[pyo3(signature = (query_yaml, params_yaml, field_metadata_json, mode = "concise"))]
+fn describe_query(
+    query_yaml: &str,
+    params_yaml: &str,
+    field_metadata_json: &str,
+    mode: &str,
+) -> PyResult<String> {
+    let query: SearchQuery = serde_yaml::from_str(query_yaml)
+        .map_err(|e| PyValueError::new_err(format!("Invalid query YAML: {}", e)))?;
+
+    // Parse field metadata from JSON (populated from API's resultFields endpoint)
+    let field_metadata: HashMap<String, FieldDef> = serde_json::from_str(field_metadata_json)
+        .map_err(|e| PyValueError::new_err(format!("Invalid field metadata JSON: {}", e)))?;
+
+    let describer = QueryDescriber::new(field_metadata);
+
+    let result = match mode {
+        "verbose" => describer.describe_verbose(&query),
+        _ => describer.describe_concise(&query),
+    };
+
+    Ok(result)
+}
+
 /// Python module definition for `cli_generator`.
 #[cfg(feature = "extension-module")]
 #[pymodule]
 fn cli_generator(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(version, m)?)?;
     m.add_function(wrap_pyfunction!(build_url, m)?)?;
+    m.add_function(wrap_pyfunction!(describe_query, m)?)?;
     Ok(())
 }

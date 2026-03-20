@@ -352,3 +352,29 @@ class QueryBuilder:
         """
         v = _ext.Validator(self._index)
         return v.field_info(name)
+
+    def describe(self, mode: Literal["concise", "verbose"] = "concise") -> str:
+        """Get a human-readable description of this query.
+
+        Args:
+            mode: "concise" for one-line summary, "verbose" for detailed breakdown.
+
+        Returns:
+            English prose description of the query.
+
+        Example:
+            qb = QueryBuilder("taxon").add_attribute("genome_size", ">=", "1G")
+            print(qb.describe())
+            # Output: "Search for taxa, filtered to genome size >= 1G, returning all fields."
+        """
+        import json
+        from .cli_generator import describe_query  # FFI call to Rust
+
+        query_yaml = self.to_query_yaml()
+        params_yaml = self.to_params_yaml()
+
+        # Get field metadata from the API (resultFields endpoint)
+        # This should be fetched once and cached at QueryBuilder initialization
+        field_metadata_json = json.dumps(self.field_metadata)  # self.field_metadata set during init
+
+        return describe_query(query_yaml, params_yaml, field_metadata_json, mode)

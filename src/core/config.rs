@@ -18,7 +18,7 @@ use serde::{Deserialize, Serialize};
 // ── SiteConfig ────────────────────────────────────────────────────────────────
 
 /// Top-level site configuration loaded from `site.yaml`.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct SiteConfig {
     /// Short identifier used in file names and cache paths, e.g. `"goat"`.
     pub name: String,
@@ -48,10 +48,17 @@ pub struct SiteConfig {
     /// Defaults to `"{name}_sdk"` when absent from the YAML.
     #[serde(default)]
     pub sdk_name: Option<String>,
+    /// Which SDK languages to generate (defaults to ["python"]).
+    #[serde(default = "default_enabled_sdks")]
+    pub enabled_sdks: Vec<String>,
 }
 
 fn default_api_version() -> String {
     "v2".to_string()
+}
+
+fn default_enabled_sdks() -> Vec<String> {
+    vec!["python".to_string()]
 }
 
 impl SiteConfig {

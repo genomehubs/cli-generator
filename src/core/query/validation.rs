@@ -168,16 +168,18 @@ fn validate_identifiers(
 ) -> Vec<ValidationError> {
     let mut errors: Vec<ValidationError> = Vec::new();
 
-    let filter_type_str = serde_json::to_value(&identifiers.taxon_filter_type)
-        .ok()
-        .and_then(|v| v.as_str().map(str::to_string))
-        .unwrap_or_default();
+    if let Some(taxa) = &identifiers.taxa {
+        let filter_type_str = serde_json::to_value(&taxa.filter_type)
+            .ok()
+            .and_then(|v| v.as_str().map(str::to_string))
+            .unwrap_or_default();
 
-    if !config.taxon_filter_types.contains(&filter_type_str) {
-        errors.push(ValidationError::InvalidTaxonFilterType {
-            value: filter_type_str,
-            allowed: config.taxon_filter_types.clone(),
-        });
+        if !config.taxon_filter_types.contains(&filter_type_str) {
+            errors.push(ValidationError::InvalidTaxonFilterType {
+                value: filter_type_str,
+                allowed: config.taxon_filter_types.clone(),
+            });
+        }
     }
 
     for assembly in &identifiers.assemblies {
@@ -403,7 +405,7 @@ mod tests {
     use super::*;
     use crate::core::query::{
         attributes::{Attribute, AttributeSet, AttributeValue},
-        identifiers::Identifiers,
+        identifiers::{Identifiers, TaxaIdentifier, TaxonFilterType},
         SearchIndex, SearchQuery,
     };
 
@@ -440,7 +442,10 @@ mod tests {
         let query = SearchQuery {
             index: SearchIndex::Taxon,
             identifiers: Identifiers {
-                taxa: vec!["Mammalia".to_string()],
+                taxa: Some(TaxaIdentifier {
+                    names: vec!["Mammalia".to_string()],
+                    filter_type: TaxonFilterType::Name,
+                }),
                 ..Default::default()
             },
             attributes: AttributeSet {
@@ -741,7 +746,10 @@ mod tests {
         let query = SearchQuery {
             index: SearchIndex::Taxon,
             identifiers: Identifiers {
-                taxa: vec!["Mammalia".to_string()],
+                taxa: Some(TaxaIdentifier {
+                    names: vec!["Mammalia".to_string()],
+                    filter_type: TaxonFilterType::Name,
+                }),
                 ..Default::default()
             },
             attributes: AttributeSet {
@@ -772,7 +780,10 @@ mod tests {
         let query = SearchQuery {
             index: SearchIndex::Taxon,
             identifiers: Identifiers {
-                taxa: vec!["Mammalia".to_string()],
+                taxa: Some(TaxaIdentifier {
+                    names: vec!["Mammalia".to_string()],
+                    filter_type: TaxonFilterType::Name,
+                }),
                 ..Default::default()
             },
             attributes: AttributeSet {

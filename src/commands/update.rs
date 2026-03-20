@@ -35,9 +35,17 @@ pub fn run(repo_path: &Path, config_dir: Option<&Path>, force_fresh: bool) -> Re
         .with_context(|| format!("fetching field definitions for site '{}'", site.name))?;
 
     let gen = CodeGenerator::new()?;
-    let rendered = gen.render_all(&site, &options, &fields_by_index)?;
+    let rendered_by_lang = gen.render_all(&site, &options, &fields_by_index)?;
 
-    write_generated_files(repo_path, &rendered).context("writing generated files")?;
+    // Flatten all language outputs and write to repo
+    for (language, rendered) in rendered_by_lang {
+        let output_dir = if language == "python" {
+            repo_path.to_path_buf() // Python goes to repo root
+        } else {
+            repo_path.join(&language) // Other languages in subdirs
+        };
+        write_generated_files(&output_dir, &rendered).context("writing generated files")?;
+    }
 
     println!("✓  Updated generated files in {}", repo_path.display());
     Ok(())

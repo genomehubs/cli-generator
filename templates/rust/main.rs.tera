@@ -70,6 +70,14 @@ enum {{ index.name | capitalize }}Commands {
         #[arg(long)]
         url: bool,
 
+        /// Print a human-readable description of the query instead of executing it.
+        #[arg(long)]
+        describe: bool,
+
+        /// Verbose description (detailed breakdown).
+        #[arg(long)]
+        verbose: bool,
+
         /// Output format.
         #[arg(long, value_enum, default_value = "tsv")]
         format: generated::output::OutputFormat,
@@ -114,7 +122,7 @@ fn run(cli: Cli) -> anyhow::Result<()> {
     match cli.command {
 {% for index in indexes %}
         Commands::{{ index.name | capitalize }} { subcommand } => match subcommand {
-            {{ index.name | capitalize }}Commands::Search { taxon, taxon_filter, query, size, include_estimates, url, format, flags } => {
+            {{ index.name | capitalize }}Commands::Search { taxon, taxon_filter, query, size, include_estimates, url, describe, verbose, format, flags } => {
                 if flags.list_field_groups {
                     for (name, short, desc) in generated::cli_flags::{{ index.name | capitalize }}Flags::list_groups() {
                         match short {
@@ -124,6 +132,8 @@ fn run(cli: Cli) -> anyhow::Result<()> {
                     }
                     return Ok(());
                 }
+
+                // Build query components from CLI args
                 let taxon_clause = taxon.as_deref().map(|t| match taxon_filter {
                     TaxonFilter::Name     => format!("tax_name({t})"),
                     TaxonFilter::Tree     => format!("tax_tree({t})"),
@@ -134,16 +144,41 @@ fn run(cli: Cli) -> anyhow::Result<()> {
                     (Some(tc), false) => format!("{tc} AND {query}"),
                     (None, _)         => query.clone(),
                 };
+
+                // If describe flag is set, output human-readable description instead
+                if *describe {
+                    // TODO: Build QueryDescriber from API field metadata
+                    // Once integrated, use:
+                    // let describer = QueryDescriber::new(field_metadata);
+                    // let description = if *verbose {
+                    //     describer.describe_verbose(&query_obj)
+                    // } else {
+                    //     describer.describe_concise(&query_obj)
+                    // };
+                    // println!("{description}");
+                    println!("Query: {}", full_query);
+                    if *verbose {
+                        println!("  Index: {{ index.name }}");
+                        if let Some(ref t) = taxon {
+                            println!("  Taxon: {}", t);
+                        }
+                        println!("  Size: {}", size);
+                        println!("  Include estimates: {}", include_estimates);
+                    }
+                    return Ok(());
+                }
+
+                // Normal search execution
                 let owned_fields = flags.all_fields();
                 let fields: Vec<&str> = owned_fields.iter().map(|s: &String| s.as_str()).collect();
                 let accept = format.accept_header();
-                if url {
+                if *url {
                     let query_url = generated::client::search_url(
                         generated::indexes::Index::{{ index.name | capitalize }},
                         &full_query,
                         &fields,
-                        size,
-                        include_estimates,
+                        *size,
+                        *include_estimates,
                     );
                     println!("{query_url}");
                     return Ok(());
@@ -152,11 +187,11 @@ fn run(cli: Cli) -> anyhow::Result<()> {
                     generated::indexes::Index::{{ index.name | capitalize }},
                     &full_query,
                     &fields,
-                    size,
-                    include_estimates,
+                    *size,
+                    *include_estimates,
                     accept,
                 )?;
-                generated::output::print_output(&body, format)?;
+                generated::output::print_output(&body, *format)?;
             }
             {{ index.name | capitalize }}Commands::Count { query } => {
                 let n = generated::client::count(

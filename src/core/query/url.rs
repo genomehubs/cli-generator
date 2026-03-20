@@ -150,17 +150,11 @@ fn build_raw_query_fragment(identifiers: &Identifiers, attributes: &AttributeSet
 
 /// Build `tax_name(A,!B)` / `tax_tree(A,B)` / `tax_lineage(A)` fragment.
 ///
-/// Returns `None` if `taxa` is empty.
+/// Returns `None` if `taxa` is not set.
 fn build_taxa_fragment(identifiers: &Identifiers) -> Option<String> {
-    if identifiers.taxa.is_empty() {
-        return None;
-    }
-    let joined = identifiers.taxa.join(",");
-    Some(format!(
-        "{}({})",
-        identifiers.taxon_filter_type.api_function(),
-        joined
-    ))
+    let taxa = identifiers.taxa.as_ref()?;
+    let joined = taxa.names.join(",");
+    Some(format!("{}({})", taxa.filter_type.api_function(), joined))
 }
 
 /// Build `tax_rank(species)` fragment.  Returns `None` if no rank is set.
@@ -378,7 +372,7 @@ mod tests {
     use super::*;
     use crate::core::query::{
         attributes::{Attribute, AttributeSet, AttributeValue, Field, Modifier},
-        identifiers::{Identifiers, TaxonFilterType},
+        identifiers::{Identifiers, TaxaIdentifier, TaxonFilterType},
         QueryParams, SearchIndex, SearchQuery,
     };
 
@@ -390,9 +384,11 @@ mod tests {
         SearchQuery {
             index: SearchIndex::Taxon,
             identifiers: Identifiers {
-                taxa: taxa.iter().map(|s| s.to_string()).collect(),
+                taxa: Some(TaxaIdentifier {
+                    names: taxa.iter().map(|s| s.to_string()).collect(),
+                    filter_type,
+                }),
                 rank: rank.map(str::to_string),
-                taxon_filter_type: filter_type,
                 ..Default::default()
             },
             attributes: AttributeSet::default(),
@@ -439,8 +435,10 @@ mod tests {
         let query = SearchQuery {
             index: SearchIndex::Taxon,
             identifiers: Identifiers {
-                taxa: vec!["Mammalia".to_string()],
-                taxon_filter_type: TaxonFilterType::Tree,
+                taxa: Some(TaxaIdentifier {
+                    names: vec!["Mammalia".to_string()],
+                    filter_type: TaxonFilterType::Tree,
+                }),
                 ..Default::default()
             },
             attributes: AttributeSet {
@@ -473,8 +471,10 @@ mod tests {
         let query = SearchQuery {
             index: SearchIndex::Taxon,
             identifiers: Identifiers {
-                taxa: vec!["Insecta".to_string()],
-                taxon_filter_type: TaxonFilterType::Tree,
+                taxa: Some(TaxaIdentifier {
+                    names: vec!["Insecta".to_string()],
+                    filter_type: TaxonFilterType::Tree,
+                }),
                 ..Default::default()
             },
             attributes: AttributeSet {
@@ -611,8 +611,10 @@ mod tests {
         let query = SearchQuery {
             index: SearchIndex::Taxon,
             identifiers: Identifiers {
-                taxa: vec!["[Species]".to_string()],
-                taxon_filter_type: TaxonFilterType::Name,
+                taxa: Some(TaxaIdentifier {
+                    names: vec!["[Species]".to_string()],
+                    filter_type: TaxonFilterType::Name,
+                }),
                 ..Default::default()
             },
             attributes: AttributeSet::default(),
@@ -644,7 +646,10 @@ mod tests {
         fn arb_basic_query() -> impl Strategy<Value = SearchQuery> {
             (prop::option::of(arb_taxon()), any::<bool>())
                 .prop_map(|(opt_taxon, with_rank)| {
-                    let taxa = opt_taxon.map(|t| vec![t]).unwrap_or_default();
+                    let taxa = opt_taxon.map(|t| TaxaIdentifier {
+                        names: vec![t],
+                        filter_type: TaxonFilterType::Name,
+                    });
                     let rank = if with_rank {
                         Some("species".to_string())
                     } else {
@@ -655,7 +660,6 @@ mod tests {
                         identifiers: Identifiers {
                             taxa,
                             rank,
-                            taxon_filter_type: TaxonFilterType::Name,
                             ..Default::default()
                         },
                         attributes: AttributeSet::default(),
@@ -707,7 +711,10 @@ mod tests {
                 let query = SearchQuery {
                     index: SearchIndex::Taxon,
                     identifiers: Identifiers {
-                        taxa,
+                        taxa: Some(TaxaIdentifier {
+                            names: taxa,
+                            filter_type: TaxonFilterType::Name,
+                        }),
                         ..Default::default()
                     },
                     attributes: AttributeSet::default(),
@@ -720,7 +727,7 @@ mod tests {
                     "search",
                 );
                 // Query should contain at least one taxon reference
-                assert!(url.contains("query=") || !query.identifiers.taxa.is_empty());
+                assert!(url.contains("query=") || query.identifiers.taxa.is_some());
             }
 
             #[test]

@@ -55,15 +55,66 @@ pub fn run(
     rename_python_package(&repo_dir, &site.name, &sdk_name)?;
 
     let gen = CodeGenerator::new()?;
-    let rendered = gen.render_all(&site, &options, &fields_by_index)?;
+    let rendered_by_lang = gen.render_all(&site, &options, &fields_by_index)?;
 
-    write_generated_files(&repo_dir, &rendered)?;
+    for (language, rendered) in rendered_by_lang {
+        let lang_output_dir = if language == "python" {
+            repo_dir.clone() // Python goes to repo root (python/, src/, etc.)
+        } else {
+            repo_dir.join(&language) // Other languages in their own subdirs
+        };
+        write_generated_files(&lang_output_dir, &rendered)?;
+        postprocess_language(&lang_output_dir, &language)?;
+    }
+
     patch_python_init(&repo_dir, &sdk_name, &site.display_name)?;
     copy_config_files(site_name, sites_dir, &repo_dir)?;
     stamp_cargo_toml(&repo_dir, &site)?;
     patch_pyproject_toml(&repo_dir)?;
 
     println!("✓  Generated '{repo_name}' in {}", repo_dir.display());
+    Ok(())
+}
+
+/// Run language-specific post-processing on generated files.
+///
+/// When files are generated, apply language-appropriate formatting:
+/// - Python: `black` and `isort` for consistent style
+/// - R: styler (Phase 2)
+/// - Rust: `rustfmt` and `clippy --fix` (Phase 2)
+///
+/// These tools are idempotent and non-fatal if not installed.
+fn postprocess_language(dir: &Path, language: &str) -> Result<()> {
+    match language {
+        "python" => {
+            // Format with black (idempotent, non-fatal if missing)
+            let _ = std::process::Command::new("black")
+                .arg("--line-length")
+                .arg("120")
+                .arg(dir)
+                .status()
+                .map_err(|e| eprintln!("warn: black not installed: {e}"));
+
+            // Sort imports with isort (idempotent, non-fatal if missing)
+            let _ = std::process::Command::new("isort")
+                .arg("--profile")
+                .arg("black")
+                .arg("--line-length")
+                .arg("120")
+                .arg(dir)
+                .status()
+                .map_err(|e| eprintln!("warn: isort not installed: {e}"));
+        }
+        "rust" => {
+            // Phase 2: Add rustfmt + clippy --fix
+        }
+        "r" => {
+            // Phase 2: Add styler
+        }
+        _ => {
+            // Unknown language, skip postprocessing
+        }
+    }
     Ok(())
 }
 
