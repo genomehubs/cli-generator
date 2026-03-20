@@ -217,7 +217,76 @@ generator.
 
 ---
 
-## Commit messages
+## Helper scripts
+
+This repository includes scripts to automate code verification and template validation.
+
+### `scripts/verify_code.sh` — Code quality checks
+
+Runs formatting, linting, type checking, and tests on Rust and Python code.
+
+**Usage:**
+
+```bash
+# Check all code (concise pass/fail output)
+bash scripts/verify_code.sh
+
+# Show detailed output (diffs and error messages)
+bash scripts/verify_code.sh --verbose
+
+# Verify a different project (e.g., generated CLI)
+PROJECT_ROOT=/path/to/project bash scripts/verify_code.sh
+```
+
+**Checks performed:**
+
+| Language | Check   | Tool                      |
+| -------- | ------- | ------------------------- |
+| Rust     | Format  | `cargo fmt --all`         |
+| Rust     | Lint    | `cargo clippy`            |
+| Rust     | Tests   | `cargo test --lib`        |
+| Python   | Format  | `black --line-length 120` |
+| Python   | Imports | `isort --profile black`   |
+| Python   | Types   | `pyright`                 |
+| Python   | Tests   | `pytest`                  |
+
+Exit code 0 = all checks pass; 1 = one or more checks failed.
+
+### `scripts/validate_templates.sh` — Template formatting
+
+Validates Tera template files without rendered context. Extracts embedded Rust and
+Python code, then validates formatting with the appropriate tools (rustfmt, black, isort).
+
+**Usage:**
+
+```bash
+# Validate all templates
+bash scripts/validate_templates.sh
+```
+
+**How it works:**
+
+1. Locates all `.tera` files (supports both flat `templates/*.tera` and
+   organized `templates/rust/*.tera`, `templates/python/*.tera` structures)
+2. Extracts code by replacing Tera expressions with valid placeholders:
+   - Rust: `{{ ... }}` → `0`, `{% ... %}` → comments
+   - Python: `{{ ... }}` → `None`, `{% ... %}` → comments
+3. Validates extracted code with rustfmt/black/isort
+
+Exit code 0 = all templates pass; 1 = one or more templates have formatting issues.
+
+**Troubleshooting template errors:**
+
+If a template fails validation:
+
+1. Generate the CLI: `cli-generator new <site> --output /tmp/test-site`
+2. Edit the generated file (e.g., `/tmp/test-site/src/generated/cli_meta.rs`)
+   - You'll get full syntax highlighting and linting in your editor
+3. Verify formatting: `cargo fmt` / `black` / `isort`
+4. Once the generated file is correct, apply the changes back to the template
+5. Regenerate and verify output is identical to your edits
+
+---
 
 Use [Conventional Commits](https://www.conventionalcommits.org/):
 
@@ -242,12 +311,23 @@ docs: clarify maturin develop step in GETTING_STARTED
 
 ## Pull request checklist
 
-Before requesting review:
+Use `bash scripts/verify_code.sh` to run all checks automatically:
+
+```bash
+# Run all code verification checks
+bash scripts/verify_code.sh
+
+# Or with verbose output showing diffs/errors
+bash scripts/verify_code.sh --verbose
+```
+
+Manual verification:
 
 - [ ] `cargo fmt --all` and `cargo clippy -- -D warnings` pass clean.
 - [ ] `black`, `isort`, and `pyright` pass clean.
 - [ ] All new functions have doc comments / docstrings.
 - [ ] All new functions have tests; CI passes.
+- [ ] If you modified Tera templates: `bash scripts/validate_templates.sh` passes.
 - [ ] No dead code, no commented-out blocks, no speculative features.
 - [ ] Agent-log entry created in `agent-logs/` if an AI agent contributed
       significantly (see [AGENTS.md](AGENTS.md)).

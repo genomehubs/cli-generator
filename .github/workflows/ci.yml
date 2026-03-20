@@ -53,8 +53,8 @@ jobs:
           PROPTEST_CASES: 512
 
       # Measure Rust code coverage (tarpaulin)
-      - name: Install cargo-tarpaulin
-        run: cargo install cargo-tarpaulin
+      - name: Install cargo-generate and cargo-tarpaulin
+        run: cargo install cargo-generate cargo-tarpaulin
 
       - name: Measure Rust code coverage
         run: cargo tarpaulin --out Xml --output-dir ./coverage --timeout 300
