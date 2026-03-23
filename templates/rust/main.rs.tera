@@ -10,6 +10,7 @@
 use clap::{Parser, Subcommand, ValueEnum};
 
 use {{ sdk_name }}::{cli_meta, generated};
+use {{ sdk_name }}::embedded::core::query::validation::FieldMeta;
 
 /// How to apply the taxon filter to the query.
 #[derive(Debug, Clone, ValueEnum)]
@@ -146,33 +147,13 @@ fn run(cli: Cli) -> anyhow::Result<()> {
                 };
 
                 // If describe flag is set, output human-readable description instead
-                if *describe {
-                    // Build SearchQuery from CLI args
-                    let search_query = {{ sdk_name }}::query::SearchQuery {
-                        index: {{ sdk_name }}::query::SearchIndex::{{ index.name | capitalize }},
-                        identifiers: {{ sdk_name }}::query::Identifiers {
-                            taxa: taxon.as_ref().map(|t| {{ sdk_name }}::query::TaxaIdentifier {
-                                names: vec![t.clone()],
-                                filter_type: match taxon_filter {
-                                    TaxonFilter::Name => {{ sdk_name }}::query::TaxonFilterType::Name,
-                                    TaxonFilter::Tree => {{ sdk_name }}::query::TaxonFilterType::Tree,
-                                    TaxonFilter::Lineage => {{ sdk_name }}::query::TaxonFilterType::Lineage,
-                                },
-                            }),
-                            ..Default::default()
-                        },
-                        attributes: {{ sdk_name }}::query::AttributeSet::default(),
-                    };
-
-                    // Use empty field metadata for Phase 1 (fields fallback to canonical names)
-                    let describer = cli_generator::describe::QueryDescriber::new(std::collections::HashMap::new());
-
-                    let description = if *verbose {
-                        describer.describe_verbose(&search_query)
-                    } else {
-                        describer.describe_concise(&search_query)
-                    };
-                    println!("{}", description);
+                if describe {
+                    let description = describe_query(
+                        &full_query,
+                        &generated::field_meta::{{ index.name | upper }}_FIELD_META,
+                        verbose,
+                    )?;
+                    println!("{description}");
                     return Ok(());
                 }
 
@@ -180,13 +161,13 @@ fn run(cli: Cli) -> anyhow::Result<()> {
                 let owned_fields = flags.all_fields();
                 let fields: Vec<&str> = owned_fields.iter().map(|s: &String| s.as_str()).collect();
                 let accept = format.accept_header();
-                if *url {
+                if url {
                     let query_url = generated::client::search_url(
                         generated::indexes::Index::{{ index.name | capitalize }},
                         &full_query,
                         &fields,
-                        *size,
-                        *include_estimates,
+                        size,
+                        include_estimates,
                     );
                     println!("{query_url}");
                     return Ok(());
@@ -195,11 +176,11 @@ fn run(cli: Cli) -> anyhow::Result<()> {
                     generated::indexes::Index::{{ index.name | capitalize }},
                     &full_query,
                     &fields,
-                    *size,
-                    *include_estimates,
+                    size,
+                    include_estimates,
                     accept,
                 )?;
-                generated::output::print_output(&body, *format)?;
+                generated::output::print_output(&body, format)?;
             }
             {{ index.name | capitalize }}Commands::Count { query } => {
                 let n = generated::client::count(
@@ -220,4 +201,58 @@ fn run(cli: Cli) -> anyhow::Result<()> {
 {% endfor %}
     }
     Ok(())
+}
+
+/// Parse a query string and generate a human-readable description.
+fn describe_query(
+    query_str: &str,
+    field_meta_map: &phf::Map<&'static str, FieldMeta>,
+    verbose: bool,
+) -> anyhow::Result<String> {
+    use std::collections::HashMap;
+    use {{ sdk_name }}::embedded::core;
+
+    // Try to parse as a YAML SearchQuery; if that fails, treat as a raw query string
+    let query: core::query::SearchQuery = {
+        // Try full YAML parsing first
+        core::query::SearchQuery::from_yaml(query_str).or_else(|_| {
+            // Fall back: wrap the query string in a minimal valid YAML structure
+            // Treat it as a taxon name in the attributes
+            let yaml = format!(
+                "index: taxon\nattributes:\n  - name: scientific_name\n    operator: eq\n    value: \"{}\"",
+                query_str
+            );
+            core::query::SearchQuery::from_yaml(&yaml)
+        })?
+    };
+
+    // Convert phf::Map to HashMap for QueryDescriber
+    // (QueryDescriber only needs display_name, so we create minimal FieldDef objects)
+    let mut field_metadata: HashMap<String, core::fetch::FieldDef> = HashMap::new();
+    for (name, _meta) in field_meta_map.entries() {
+        field_metadata.insert(
+            name.to_string(),
+            core::fetch::FieldDef {
+                name: name.to_string(),
+                display_group: None,
+                display_name: None, // Could be populated from API in the future
+                description: None,
+                field_type: None,
+                constraint: None,
+                display_level: None,
+                synonyms: vec![],
+                processed_type: None,
+                traverse_direction: None,
+                summary: vec![],
+            },
+        );
+    }
+
+    // Create describer and generate description
+    let describer = core::describe::QueryDescriber::new(field_metadata);
+    Ok(if verbose {
+        describer.describe_verbose(&query)
+    } else {
+        describer.describe_concise(&query)
+    })
 }

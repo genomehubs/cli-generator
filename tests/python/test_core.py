@@ -389,3 +389,71 @@ def test_operator_aliases_build_valid_url() -> None:
     )
     assert isinstance(url, str)
     assert "Mammalia" in url
+
+
+# ── QueryBuilder.describe tests ───────────────────────────────────────────────
+
+
+def test_query_builder_describe_returns_string() -> None:
+    """QueryBuilder.describe() should return a string."""
+    q = QueryBuilder("taxon").set_taxa(["Mammalia"])
+    desc = q.describe()
+    assert isinstance(desc, str)
+    assert len(desc) > 0
+
+
+def test_query_builder_describe_concise_includes_taxa() -> None:
+    """Concise description should mention the taxa."""
+    q = QueryBuilder("taxon").set_taxa(["Mammalia"], filter_type="tree")
+    desc = q.describe(mode="concise")
+    assert "Mammalia" in desc or "taxa" in desc.lower()
+
+
+def test_query_builder_describe_concise_includes_filter() -> None:
+    """Concise description should mention filters."""
+    q = QueryBuilder("taxon").add_attribute("genome_size", operator=">=", value="1000000000")
+    desc = q.describe(mode="concise")
+    assert "genome_size" in desc or ">=" in desc
+
+
+def test_query_builder_describe_verbose_formats_better() -> None:
+    """Verbose description should include more details than concise."""
+    q = (
+        QueryBuilder("taxon")
+        .set_taxa(["Mammalia"], filter_type="tree")
+        .add_attribute("genome_size", operator=">=", value="1000000000")
+    )
+    concise = q.describe(mode="concise")
+    verbose = q.describe(mode="verbose")
+    # Verbose version should contain more content or structured formatting
+    assert len(verbose) >= len(concise)
+
+
+def test_query_builder_describe_with_field_metadata() -> None:
+    """Describe should accept optional field metadata."""
+    q = QueryBuilder("taxon").add_attribute("genome_size", operator=">=", value="1000000000")
+    field_meta = {"genome_size": {"display_name": "Genome Size (BP)"}}
+    desc = q.describe(field_metadata=field_meta, mode="concise")
+    assert isinstance(desc, str)
+    assert len(desc) > 0
+
+
+def test_query_builder_describe_handles_multiple_filters() -> None:
+    """Describe should handle multiple filters."""
+    q = (
+        QueryBuilder("taxon")
+        .add_attribute("genome_size", operator=">=", value="1000000000")
+        .add_attribute("assembly_level", operator="eq", value="chromosome")
+    )
+    desc = q.describe()
+    assert isinstance(desc, str)
+    # Should mention at least one of the filters
+    assert "genome_size" in desc or "assembly" in desc or "filter" in desc.lower()
+
+
+def test_query_builder_describe_handles_empty_query() -> None:
+    """Describe should handle minimal queries gracefully."""
+    q = QueryBuilder("taxon")
+    desc = q.describe()
+    assert isinstance(desc, str)
+    assert "taxa" in desc.lower() or "search" in desc.lower()

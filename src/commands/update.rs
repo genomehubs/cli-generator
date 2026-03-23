@@ -38,14 +38,11 @@ pub fn run(repo_path: &Path, config_dir: Option<&Path>, force_fresh: bool) -> Re
     let rendered_by_lang = gen.render_all(&site, &options, &fields_by_index)?;
 
     // Flatten all language outputs and write to repo
-    for (language, rendered) in rendered_by_lang {
-        let output_dir = if language == "python" {
-            repo_path.to_path_buf() // Python goes to repo root
-        } else {
-            repo_path.join(&language) // Other languages in subdirs
-        };
-        write_generated_files(&output_dir, &rendered).context("writing generated files")?;
+    let mut all_files = std::collections::HashMap::new();
+    for (_language, rendered) in rendered_by_lang {
+        all_files.extend(rendered);
     }
+    write_generated_files(repo_path, &all_files).context("writing generated files")?;
 
     println!("✓  Updated generated files in {}", repo_path.display());
     Ok(())

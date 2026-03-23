@@ -322,3 +322,42 @@ class QueryBuilder:
         for b in builders:
             result.merge(b)
         return result
+
+    def describe(self, field_metadata: dict[str, Any] | None = None, mode: str = "concise") -> str:
+        """Get a human-readable description of this query.
+
+        Args:
+            field_metadata: Optional field metadata dictionary mapping field names to metadata
+                objects with a `display_name` attribute. If not provided, canonical field
+                names are used with underscores replaced by spaces.
+            mode: Output format — ``"concise"`` for a one-line summary, ``"verbose"`` for
+                a detailed breakdown.
+
+        Returns:
+            English prose description of the query.
+
+        Example::
+
+            qb = QueryBuilder("taxon").add_attribute("genome_size", ">=", "1G")
+            print(qb.describe())
+            # Output: "Search for taxa, filtered to genome size >= 1000000000, returning all fields."
+
+            print(qb.describe(mode="verbose"))
+            # Output: "Search for taxa in the database.
+            #          Filters applied:
+            #            • genome size >= 1 gigabyte
+            #          ..."
+        """
+        import json
+
+        from . import describe_query  # FFI call to Rust
+
+        # Convert field metadata to JSON for FFI
+        field_metadata_json = json.dumps(field_metadata or {})
+
+        return describe_query(
+            self.to_query_yaml(),
+            self.to_params_yaml(),
+            field_metadata_json,
+            mode,
+        )

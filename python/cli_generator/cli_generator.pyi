@@ -46,3 +46,27 @@ def build_url(
         ValueError: If either YAML string cannot be parsed.
     """
     ...
+
+def describe_query(
+    query_yaml: str,
+    params_yaml: str,
+    field_metadata_json: str,
+    mode: str = "concise",
+) -> str:
+    """Describe a query in human-readable form.
+
+    Args:
+        query_yaml: YAML-serialised ``SearchQuery``.
+        params_yaml: YAML-serialised ``QueryParams``.
+        field_metadata_json: JSON-serialised field metadata dictionary mapping field names
+            to metadata objects. Pass ``"{}"`` for no metadata (uses canonical names).
+        mode: Output format — ``"concise"`` for a one-line summary, ``"verbose"`` for
+            a detailed breakdown with bullet points (default: ``"concise"``).
+
+    Returns:
+        English prose description of the query.
+
+    Raises:
+        ValueError: If any YAML or JSON string cannot be parsed.
+    """
+    ...

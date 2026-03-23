@@ -6,11 +6,11 @@ of all exported symbols.
 """
 
 try:
-    from .cli_generator import build_url, version  # type: ignore[import-not-found]
+    from .cli_generator import build_url, describe_query, version  # type: ignore[import-not-found]
 except ImportError:
     # Rust extension not yet compiled; type stubs will be used for mypy/pyright
     pass  # type: ignore[unreachable]
 
 from .query import QueryBuilder
 
-__all__ = ["build_url", "QueryBuilder", "version"]
+__all__ = ["build_url", "describe_query", "QueryBuilder", "version"]

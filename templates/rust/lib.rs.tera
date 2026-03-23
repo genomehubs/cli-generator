@@ -12,6 +12,7 @@
 //! and re-export them here.
 
 pub mod cli_meta;
+pub mod embedded;
 pub mod generated;
 
 #[cfg(feature = "extension-module")]

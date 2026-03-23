@@ -25,6 +25,12 @@ pub mod generated {}
 #[cfg(feature = "extension-module")]
 use pyo3::prelude::*;
 
+#[cfg(feature = "extension-module")]
+use pyo3::exceptions::PyValueError;
+
+#[cfg(feature = "extension-module")]
+use std::collections::HashMap;
+
 /// Return the cli-generator version string.
 /// Exposed to Python as `cli_generator.version()`.
 #[cfg(feature = "extension-module")]
@@ -73,6 +79,10 @@ fn describe_query(
     field_metadata_json: &str,
     mode: &str,
 ) -> PyResult<String> {
+    use crate::core::describe::QueryDescriber;
+    use crate::core::fetch::FieldDef;
+    use crate::core::query::SearchQuery;
+
     let query: SearchQuery = serde_yaml::from_str(query_yaml)
         .map_err(|e| PyValueError::new_err(format!("Invalid query YAML: {}", e)))?;
 

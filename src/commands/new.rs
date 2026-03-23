@@ -58,14 +58,13 @@ pub fn run(
     let rendered_by_lang = gen.render_all(&site, &options, &fields_by_index)?;
 
     for (language, rendered) in rendered_by_lang {
-        let lang_output_dir = if language == "python" {
-            repo_dir.clone() // Python goes to repo root (python/, src/, etc.)
-        } else {
-            repo_dir.join(&language) // Other languages in their own subdirs
-        };
-        write_generated_files(&lang_output_dir, &rendered)?;
-        postprocess_language(&lang_output_dir, &language)?;
+        // All generated files go to repo root (templates contain proper subdirectory paths)
+        write_generated_files(&repo_dir, &rendered)?;
+        postprocess_language(&repo_dir, &language)?;
     }
+
+    // Copy embedded cli_generator modules into the generated repo to avoid external dependency
+    copy_embedded_modules(&repo_dir)?;
 
     patch_python_init(&repo_dir, &sdk_name, &site.display_name)?;
     copy_config_files(site_name, sites_dir, &repo_dir)?;
@@ -280,6 +279,81 @@ fn copy_config_files(site_name: &str, sites_dir: &Path, repo_dir: &Path) -> Resu
     Ok(())
 }
 
+/// Copy embedded cli_generator modules into `{repo_dir}/src/embedded/` so the
+/// generated code doesn't depend on an external cli-generator crate.
+///
+/// This avoids branch/version dependency issues and keeps generated repos self-contained.
+fn copy_embedded_modules(repo_dir: &Path) -> Result<()> {
+    let embedded_dir = repo_dir.join("src/embedded");
+    std::fs::create_dir_all(&embedded_dir)?;
+
+    // Find the cli-generator source directory
+    let cli_gen_src = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src");
+
+    // Copy core modules needed by generated code (but not codegen or snippet which are tool-specific)
+    let modules_to_copy = [
+        "core/config.rs",
+        "core/describe.rs",
+        "core/fetch.rs",
+        "core/query/mod.rs",
+        "core/query/identifiers.rs",
+        "core/query/attributes.rs",
+        "core/query/url.rs",
+        "core/query/validation.rs",
+    ];
+
+    for module_path in &modules_to_copy {
+        let src_file = cli_gen_src.join(module_path);
+        let dest_path = embedded_dir.join(module_path);
+
+        if let Some(parent) = dest_path.parent() {
+            std::fs::create_dir_all(parent)
+                .with_context(|| format!("creating directory {}", parent.display()))?;
+        }
+
+        if src_file.exists() {
+            // Read the source file
+            let mut content = std::fs::read_to_string(&src_file)
+                .with_context(|| format!("reading {} ", module_path))?;
+
+            // Replace all crate::core references to crate::embedded::core
+            content = content.replace("crate::core::", "crate::embedded::core::");
+
+            // Write the modified content
+            std::fs::write(&dest_path, content)
+                .with_context(|| format!("writing {}", module_path))?;
+        }
+    }
+
+    // Create a root mod.rs that re-exports the core submodule
+    let mod_rs_content = r#"//! Embedded cli_generator modules for code generation.
+//!
+//! These modules are embedded from the cli-generator tool to avoid external
+//! dependency issues. They are used by the CLI for query description and URL building.
+
+pub mod core;
+"#;
+
+    std::fs::write(embedded_dir.join("mod.rs"), mod_rs_content)
+        .context("writing embedded/mod.rs")?;
+
+    // Create a core/mod.rs that declares all the submodules
+    let core_mod_rs_content = r#"//! Core cli_generator modules.
+//!
+//! Re-exports query validation and URL building logic needed by generated code.
+
+pub mod config;
+pub mod describe;
+pub mod fetch;
+pub mod query;
+"#;
+
+    std::fs::write(embedded_dir.join("core/mod.rs"), core_mod_rs_content)
+        .context("writing embedded/core/mod.rs")?;
+
+    Ok(())
+}
+
 /// Write `[package.metadata.cli-gen]` fields into the generated repo's `Cargo.toml`
 /// and inject the additional dependencies that the generated code requires.
 /// Patch the generated repo's `pyproject.toml` to add runtime and dev deps
@@ -372,18 +446,22 @@ fn inject_generated_deps(mut text: String) -> String {
     // Append missing deps after the serde line.
     let required_deps = [
         ("serde_json", "serde_json = \"1\""),
+        ("serde_yaml", "serde_yaml = \"0.9\""),
         (
             "reqwest",
             "reqwest    = { version = \"0.12\", features = [\"json\", \"blocking\"] }",
         ),
         ("anyhow", "anyhow     = \"1\""),
+        ("percent-encoding", "percent-encoding = \"2\""),
+        (
+            "chrono",
+            "chrono = { version = \"0.4\", features = [\"serde\"] }",
+        ),
+        ("thiserror", "thiserror = \"1\""),
+        ("dirs", "dirs = \"5\""),
         (
             "phf",
             "phf        = { version = \"0.11\", features = [\"macros\"] }",
-        ),
-        (
-            "cli-generator",
-            "cli-generator = { git = \"https://github.com/genomehubs/cli-generator\" }",
         ),
     ];
     for (key, dep_line) in required_deps {
