@@ -147,24 +147,32 @@ fn run(cli: Cli) -> anyhow::Result<()> {
 
                 // If describe flag is set, output human-readable description instead
                 if *describe {
-                    // TODO: Build QueryDescriber from API field metadata
-                    // Once integrated, use:
-                    // let describer = QueryDescriber::new(field_metadata);
-                    // let description = if *verbose {
-                    //     describer.describe_verbose(&query_obj)
-                    // } else {
-                    //     describer.describe_concise(&query_obj)
-                    // };
-                    // println!("{description}");
-                    println!("Query: {}", full_query);
-                    if *verbose {
-                        println!("  Index: {{ index.name }}");
-                        if let Some(ref t) = taxon {
-                            println!("  Taxon: {}", t);
-                        }
-                        println!("  Size: {}", size);
-                        println!("  Include estimates: {}", include_estimates);
-                    }
+                    // Build SearchQuery from CLI args
+                    let search_query = {{ sdk_name }}::query::SearchQuery {
+                        index: {{ sdk_name }}::query::SearchIndex::{{ index.name | capitalize }},
+                        identifiers: {{ sdk_name }}::query::Identifiers {
+                            taxa: taxon.as_ref().map(|t| {{ sdk_name }}::query::TaxaIdentifier {
+                                names: vec![t.clone()],
+                                filter_type: match taxon_filter {
+                                    TaxonFilter::Name => {{ sdk_name }}::query::TaxonFilterType::Name,
+                                    TaxonFilter::Tree => {{ sdk_name }}::query::TaxonFilterType::Tree,
+                                    TaxonFilter::Lineage => {{ sdk_name }}::query::TaxonFilterType::Lineage,
+                                },
+                            }),
+                            ..Default::default()
+                        },
+                        attributes: {{ sdk_name }}::query::AttributeSet::default(),
+                    };
+
+                    // Use empty field metadata for Phase 1 (fields fallback to canonical names)
+                    let describer = cli_generator::describe::QueryDescriber::new(std::collections::HashMap::new());
+
+                    let description = if *verbose {
+                        describer.describe_verbose(&search_query)
+                    } else {
+                        describer.describe_concise(&search_query)
+                    };
+                    println!("{}", description);
                     return Ok(());
                 }
 

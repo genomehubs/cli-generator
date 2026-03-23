@@ -229,6 +229,11 @@ impl CodeGenerator {
     ) -> Result<HashMap<String, HashMap<String, String>>> {
         let mut all_langs: HashMap<String, HashMap<String, String>> = HashMap::new();
 
+        let default_langs = vec!["rust".to_string(), "shared".to_string()];
+        for language in default_langs {
+            let rendered = self.render_for_language(&language, site, options, fields_by_index)?;
+            all_langs.insert(language.clone(), rendered);
+        }
         for language in &site.enabled_sdks {
             let rendered = self.render_for_language(language, site, options, fields_by_index)?;
             all_langs.insert(language.clone(), rendered);
@@ -259,6 +264,12 @@ impl CodeGenerator {
                 "lib.rs",
                 "generated_mod.rs",
                 "main.rs",
+            ],
+            "shared" => vec![
+                "GETTING_STARTED.md",
+                "PREVIEW.md",
+                "autoupdate.yml",
+                "ci.yml",
             ],
             "python" => vec!["query.py", "site_cli.pyi"],
             "r" => vec![], // Empty for Phase 2
@@ -484,6 +495,10 @@ fn template_name_to_dest(template_name: &str, language: &str, sdk_name: &str) ->
             "site_cli.pyi" => format!("python/{sdk_name}/{sdk_name}.pyi"),
             other => format!("python/{sdk_name}/{}", other),
         },
+        "shared" => match template_name {
+            "autoupdate.yml" => ".github/workflows/autoupdate.yml".to_string(),
+            other => other.to_string(),
+        },
         // "r" => {
         //     // Phase 2
         //     format!("r/{sdk_name}/{template_name}")
@@ -586,7 +601,7 @@ mod tests {
     #[test]
     fn template_name_to_dest_maps_cli_meta() {
         assert_eq!(
-            template_name_to_dest("cli_meta.rs", "goat", "goat_sdk"),
+            template_name_to_dest("cli_meta.rs", "rust", "goat_sdk"),
             "src/cli_meta.rs"
         );
     }
@@ -594,7 +609,7 @@ mod tests {
     #[test]
     fn template_name_to_dest_maps_generated_files() {
         assert_eq!(
-            template_name_to_dest("fields.rs", "goat", "goat_sdk"),
+            template_name_to_dest("fields.rs", "rust", "goat_sdk"),
             "src/generated/fields.rs"
         );
     }
@@ -602,7 +617,7 @@ mod tests {
     #[test]
     fn template_name_to_dest_maps_autoupdate_workflow() {
         assert_eq!(
-            template_name_to_dest("autoupdate.yml", "goat", "goat_sdk"),
+            template_name_to_dest("autoupdate.yml", "shared", "goat_sdk"),
             ".github/workflows/autoupdate.yml"
         );
     }
@@ -610,7 +625,7 @@ mod tests {
     #[test]
     fn template_name_to_dest_maps_preview_md() {
         assert_eq!(
-            template_name_to_dest("PREVIEW.md", "goat", "goat_sdk"),
+            template_name_to_dest("PREVIEW.md", "shared", "goat_sdk"),
             "PREVIEW.md"
         );
     }
@@ -618,7 +633,7 @@ mod tests {
     #[test]
     fn template_name_to_dest_maps_query_py() {
         assert_eq!(
-            template_name_to_dest("query.py", "goat", "goat_sdk"),
+            template_name_to_dest("query.py", "python", "goat_sdk"),
             "python/goat_sdk/query.py"
         );
     }
@@ -626,7 +641,7 @@ mod tests {
     #[test]
     fn template_name_to_dest_maps_lib_rs() {
         assert_eq!(
-            template_name_to_dest("lib.rs", "goat", "goat_sdk"),
+            template_name_to_dest("lib.rs", "rust", "goat_sdk"),
             "src/lib.rs"
         );
     }
@@ -634,7 +649,7 @@ mod tests {
     #[test]
     fn template_name_to_dest_maps_sdk_rs() {
         assert_eq!(
-            template_name_to_dest("sdk.rs", "goat", "goat_sdk"),
+            template_name_to_dest("sdk.rs", "rust", "goat_sdk"),
             "src/generated/sdk.rs"
         );
     }
@@ -642,7 +657,7 @@ mod tests {
     #[test]
     fn template_name_to_dest_maps_site_cli_pyi() {
         assert_eq!(
-            template_name_to_dest("site_cli.pyi", "goat", "goat_sdk"),
+            template_name_to_dest("site_cli.pyi", "python", "goat_sdk"),
             "python/goat_sdk/goat_sdk.pyi"
         );
     }
@@ -657,51 +672,85 @@ mod tests {
 
         let rendered = gen.render_all(&site, &options, &fields_by_index).unwrap();
 
-        // Legacy keys still present.
-        assert!(rendered.contains_key("src/cli_meta.rs"));
-        assert!(rendered.contains_key("src/generated/fields.rs"));
-        assert!(rendered.contains_key("src/generated/mod.rs"));
-        assert!(rendered.contains_key(".github/workflows/autoupdate.yml"));
+        // Verify all languages are present.
+        assert!(rendered.contains_key("rust"), "rust language missing");
+        assert!(rendered.contains_key("shared"), "shared language missing");
+        assert!(rendered.contains_key("python"), "python language missing");
 
-        // Keys added in iterations 2–3.
-        assert!(rendered.contains_key("src/lib.rs"));
-        assert!(rendered.contains_key("src/generated/sdk.rs"));
-        assert!(rendered.contains_key("src/generated/field_meta.rs"));
-        assert!(rendered.contains_key("python/testsite_sdk/query.py"));
-        assert!(rendered.contains_key("python/testsite_sdk/testsite_sdk.pyi"));
+        // Check rust templates.
+        let rust_files = &rendered["rust"];
+        assert!(
+            rust_files.contains_key("src/cli_meta.rs"),
+            "src/cli_meta.rs missing"
+        );
+        assert!(
+            rust_files.contains_key("src/generated/fields.rs"),
+            "src/generated/fields.rs missing"
+        );
+        assert!(
+            rust_files.contains_key("src/generated/mod.rs"),
+            "src/generated/mod.rs missing"
+        );
+        assert!(rust_files.contains_key("src/lib.rs"), "src/lib.rs missing");
+        assert!(
+            rust_files.contains_key("src/generated/sdk.rs"),
+            "src/generated/sdk.rs missing"
+        );
+        assert!(
+            rust_files.contains_key("src/generated/field_meta.rs"),
+            "src/generated/field_meta.rs missing"
+        );
+
+        // Check shared templates.
+        let shared_files = &rendered["shared"];
+        assert!(
+            shared_files.contains_key(".github/workflows/autoupdate.yml"),
+            ".github/workflows/autoupdate.yml missing"
+        );
+
+        // Check python templates.
+        let python_files = &rendered["python"];
+        assert!(
+            python_files.contains_key("python/testsite_sdk/query.py"),
+            "python/testsite_sdk/query.py missing"
+        );
+        assert!(
+            python_files.contains_key("python/testsite_sdk/testsite_sdk.pyi"),
+            "python/testsite_sdk/testsite_sdk.pyi missing"
+        );
 
         // Spot-check rendered content of the new templates.
-        let lib_rs = rendered.get("src/lib.rs").unwrap();
+        let lib_rs = rust_files.get("src/lib.rs").unwrap();
         assert!(
-            lib_rs.contains_key("testsite_sdk"),
+            lib_rs.contains("testsite_sdk"),
             "lib.rs missing PyO3 module name"
         );
         assert!(
-            lib_rs.contains_key("sdk::build_url"),
+            lib_rs.contains("sdk::build_url"),
             "lib.rs missing build_url registration"
         );
 
-        let sdk_rs = rendered.get("src/generated/sdk.rs").unwrap();
+        let sdk_rs = rust_files.get("src/generated/sdk.rs").unwrap();
         assert!(
-            sdk_rs.contains_key("API_BASE_URL"),
+            sdk_rs.contains("API_BASE_URL"),
             "sdk.rs missing API_BASE_URL"
         );
         assert!(
-            sdk_rs.contains_key("\"taxon\""),
+            sdk_rs.contains("\"taxon\""),
             "sdk.rs missing taxon index arm"
         );
 
-        let query_py = rendered.get("python/testsite_sdk/query.py").unwrap();
+        let query_py = python_files.get("python/testsite_sdk/query.py").unwrap();
         assert!(
-            query_py.contains_key("import testsite_sdk as _ext"),
+            query_py.contains("import testsite_sdk as _ext"),
             "query.py missing extension import"
         );
 
-        let pyi = rendered
+        let pyi = python_files
             .get("python/testsite_sdk/testsite_sdk.pyi")
             .unwrap();
         assert!(
-            pyi.contains_key("class Validator"),
+            pyi.contains("class Validator"),
             "pyi stub missing Validator class"
         );
     }

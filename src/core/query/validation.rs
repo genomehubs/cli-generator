@@ -910,7 +910,13 @@ mod tests {
         // Test detection of invalid taxon filter type (serialization path)
         let query = SearchQuery {
             index: SearchIndex::Taxon,
-            identifiers: Identifiers::default(),
+            identifiers: Identifiers {
+                taxa: Some(TaxaIdentifier {
+                    names: vec!["Mammalia".to_string()],
+                    filter_type: TaxonFilterType::Tree,
+                }),
+                ..Identifiers::default()
+            },
             attributes: AttributeSet::default(),
         };
         // The TaxonFilterType is an enum that gets serialized; we test the validation

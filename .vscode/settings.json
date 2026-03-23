@@ -10,8 +10,9 @@
   // "files.associations": {
   //   "templates/rust/*.tera": "rust",
   //   "templates/python/*.tera": "python",
-  //   "templates/shared/*.tera": "markdown",
-  //   "templates/snippets/*.tera": "python"  // or appropriate language
+  //   "templates/shared/*.md.tera": "markdown",
+  //   "templates/shared/*.yml.tera": "markdown",
+  //   "templates/snippets/python_*.tera": "python" // or appropriate language
   // },
 
   // ── Rust ──────────────────────────────────────────────────────────────────
