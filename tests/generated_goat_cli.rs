@@ -168,13 +168,13 @@ fn phf_dependency_injected_in_cargo_toml() {
 }
 
 #[test]
-fn cli_generator_git_dep_injected_in_cargo_toml() {
+fn tera_dep_injected_in_cargo_toml() {
     let tmp = TempDir::new().unwrap();
     let project = generate_goat_cli(tmp.path());
     let cargo_toml = fs::read_to_string(project.join("Cargo.toml")).unwrap();
     assert!(
-        cargo_toml.contains("cli-generator"),
-        "cli-generator git dep must be present in generated Cargo.toml"
+        cargo_toml.contains("tera"),
+        "tera dependency must be present in generated Cargo.toml"
     );
 }
 

@@ -7,6 +7,9 @@ description = "Generic CLI generator for genomehubs instances"
 license = "MIT"
 readme = "README.md"
 
+[workspace]
+members = [".", "crates/genomehubs-query"]
+
 # `cdylib`  — shared library loaded by Python (maturin builds this into a wheel).
 # `rlib`    — Rust lib used by the binary and by `cargo test` (no libpython needed).
 # The `extension-module` feature is NOT in `default` so that `cargo test` can
@@ -21,6 +24,7 @@ name = "cli-generator"
 path = "src/main.rs"
 
 [dependencies]
+genomehubs-query = { path = "crates/genomehubs-query" }
 clap = { version = "4", features = ["derive"] }
 pyo3 = { version = "0.22", features = ["abi3-py39"], optional = true }
 serde = { version = "1", features = ["derive"] }

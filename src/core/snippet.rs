@@ -42,8 +42,17 @@ impl SnippetGenerator {
         )
         .context("loading python_snippet template")?;
 
-        // R snippet added in Phase 2
-        // JavaScript snippet added in Phase 3
+        tera.add_raw_template(
+            "r_snippet",
+            include_str!("../../templates/snippets/r_snippet.tera"),
+        )
+        .context("loading r_snippet template")?;
+
+        tera.add_raw_template(
+            "javascript_snippet",
+            include_str!("../../templates/snippets/js_snippet.tera"),
+        )
+        .context("loading javascript_snippet template")?;
 
         Ok(Self { tera })
     }

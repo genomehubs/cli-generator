@@ -26,7 +26,7 @@ pub mod generated {}
 use pyo3::prelude::*;
 
 #[cfg(feature = "extension-module")]
-use pyo3::exceptions::PyValueError;
+use pyo3::exceptions::{PyRuntimeError, PyValueError};
 
 #[cfg(feature = "extension-module")]
 use std::collections::HashMap;
@@ -72,6 +72,7 @@ fn build_url(
 /// Describe a query in human-readable form, returning a string suitable for CLI help messages.
 #[cfg(feature = "extension-module")]
 #[pyfunction]
+#[allow(unused_variables)] // params_yaml reserved for future use; kept for API stability
 #[pyo3(signature = (query_yaml, params_yaml, field_metadata_json, mode = "concise"))]
 fn describe_query(
     query_yaml: &str,
@@ -100,6 +101,54 @@ fn describe_query(
     Ok(result)
 }
 
+/// Render code snippets for a query in one or more languages.
+///
+/// Accepts a JSON-serialised [`core::snippet::QuerySnapshot`] and minimal site
+/// parameters, and returns a JSON object mapping each requested language name
+/// to its rendered code snippet string.
+///
+/// `languages` is a comma-separated list of language keys, e.g. `"python"` or
+/// `"python,r"`.  Each key must match a loaded snippet template.
+///
+/// Raises `ValueError` when the snapshot JSON cannot be parsed.
+/// Raises `RuntimeError` when template rendering fails.
+#[cfg(feature = "extension-module")]
+#[pyfunction]
+#[pyo3(signature = (snapshot_json, site_name, api_base, sdk_name, languages = "python"))]
+fn render_snippet(
+    snapshot_json: &str,
+    site_name: &str,
+    api_base: &str,
+    sdk_name: &str,
+    languages: &str,
+) -> PyResult<String> {
+    use crate::core::config::SiteConfig;
+    use crate::core::snippet::{QuerySnapshot, SnippetGenerator};
+
+    let snapshot: QuerySnapshot = serde_json::from_str(snapshot_json)
+        .map_err(|e| PyValueError::new_err(format!("Invalid snapshot JSON: {}", e)))?;
+
+    let site = SiteConfig {
+        name: site_name.to_string(),
+        api_base: api_base.to_string(),
+        sdk_name: Some(sdk_name.to_string()),
+        ..Default::default()
+    };
+
+    let lang_list: Vec<&str> = languages.split(',').map(str::trim).collect();
+
+    let generator = SnippetGenerator::new().map_err(|e| {
+        PyRuntimeError::new_err(format!("Failed to initialise snippet generator: {}", e))
+    })?;
+
+    let snippets = generator
+        .render_all_snippets(&snapshot, &site, &lang_list)
+        .map_err(|e| PyRuntimeError::new_err(format!("Failed to render snippet: {}", e)))?;
+
+    serde_json::to_string(&snippets)
+        .map_err(|e| PyRuntimeError::new_err(format!("Failed to serialise snippets: {}", e)))
+}
+
 /// Python module definition for `cli_generator`.
 #[cfg(feature = "extension-module")]
 #[pymodule]
@@ -107,5 +156,6 @@ fn cli_generator(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(version, m)?)?;
     m.add_function(wrap_pyfunction!(build_url, m)?)?;
     m.add_function(wrap_pyfunction!(describe_query, m)?)?;
+    m.add_function(wrap_pyfunction!(render_snippet, m)?)?;
     Ok(())
 }

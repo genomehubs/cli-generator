@@ -1,0 +1,36 @@
+const { QueryBuilder } = require("./query");
+
+// Create a query builder for {{ site_name }}
+const qb = new QueryBuilder("taxon");
+
+{% if traversal -%}
+// Set traversal: {{ traversal[0] }} {{ traversal[1] }}
+qb.setTaxa(["{{ traversal[0] }}"], "{{ traversal[1] }}");
+{% endif %}
+
+{% for filter in filters -%}
+// Add filter: {{ filter[0] }} {{ filter[1] }} {{ filter[2] }}
+qb.addAttribute("{{ filter[0] }}", "{{ filter[1] }}", "{{ filter[2] }}");
+{% endfor %}
+
+{% for sort in sorts -%}
+// Sort by {{ sort[0] }} {{ sort[1] }}
+qb.setSort("{{ sort[0] }}", "{{ sort[1] }}");
+{% endfor %}
+
+{% if selections -%}
+// Select specific fields
+{% for field in selections -%}
+qb.addField("{{ field }}");
+{% endfor -%}
+{% endif %}
+
+// Build the URL without making a network request
+const url = qb.toUrl();
+console.log("Query URL:", url);
+
+// Fetch the count
+qb.count().then((n) => console.log("Count:", n));
+
+// Fetch results as JSON
+qb.search().then((data) => console.log(JSON.stringify(data, null, 2)));

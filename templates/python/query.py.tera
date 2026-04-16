@@ -353,10 +353,12 @@ class QueryBuilder:
         v = _ext.Validator(self._index)
         return v.field_info(name)
 
-    def describe(self, mode: Literal["concise", "verbose"] = "concise") -> str:
+    def describe(self, field_metadata: dict[str, Any] | None = None, mode: Literal["concise", "verbose"] = "concise") -> str:
         """Get a human-readable description of this query.
 
         Args:
+            field_metadata: Optional field metadata dictionary mapping field names to metadata
+                objects. When provided, field descriptions are enriched with type and unit info.
             mode: "concise" for one-line summary, "verbose" for detailed breakdown.
 
         Returns:
@@ -368,13 +370,89 @@ class QueryBuilder:
             # Output: "Search for taxa, filtered to genome size >= 1G, returning all fields."
         """
         import json
-        from .cli_generator import describe_query  # FFI call to Rust
 
-        query_yaml = self.to_query_yaml()
-        params_yaml = self.to_params_yaml()
+        from . import describe_query  # FFI call to Rust
 
-        # Get field metadata from the API (resultFields endpoint)
-        # This should be fetched once and cached at QueryBuilder initialization
-        field_metadata_json = json.dumps(self.field_metadata)  # self.field_metadata set during init
+        field_metadata_json = json.dumps(field_metadata or {})
 
-        return describe_query(query_yaml, params_yaml, field_metadata_json, mode)
+        return describe_query(
+            self.to_query_yaml(),
+            self.to_params_yaml(),
+            field_metadata_json,
+            mode,
+        )
+
+    def snippet(
+        self,
+        languages: list[str] | None = None,
+        *,
+        site_name: str = "site",
+        sdk_name: str = "sdk",
+        api_base: str = "",
+    ) -> dict[str, str]:
+        """Generate runnable code snippets for this query in one or more languages.
+
+        Builds a :class:`QuerySnapshot` from the current builder state, passes it
+        to the Rust snippet engine, and returns a mapping of language name to
+        generated source code.
+
+        Args:
+            languages: Language codes to render.  Defaults to ``["python"]``.
+                Additional languages (``"r"``, ``"javascript"``) become available
+                as their templates are added in later phases.
+            site_name: Short identifier for the target site, e.g. ``"goat"``.
+                Used as a comment label in the generated snippet.
+            sdk_name: Import name of the generated SDK package, e.g.
+                ``"goat_sdk"``.  Appears in the ``import`` statement.
+            api_base: Base URL of the API, e.g.
+                ``"https://goat.genomehubs.org/api"``.
+
+        Returns:
+            Dict mapping language name to generated source code string, e.g.
+            ``{"python": "import goat_sdk as sdk\\n..."}``.
+        """
+        import json
+        from typing import cast
+
+        from . import render_snippet  # FFI call to Rust
+
+        if languages is None:
+            languages = ["python"]
+
+        filters: list[tuple[str, str, str]] = []
+        for attr in self._attributes:
+            name: str = attr["name"]
+            operator_str: str = str(attr.get("operator") or "")
+            raw_value = attr.get("value")
+            if raw_value is None:
+                value_str = ""
+            elif isinstance(raw_value, list):
+                value_str = ", ".join(str(v) for v in raw_value)
+            else:
+                value_str = str(raw_value)
+            filters.append((name, operator_str, value_str))
+
+        sorts: list[tuple[str, str]] = []
+        if self._sort_by is not None:
+            sorts.append((self._sort_by, self._sort_order))
+
+        selections = [f["name"] for f in self._fields]
+
+        snapshot = {
+            "filters": filters,
+            "sorts": sorts,
+            "flags": [],
+            "selections": selections,
+            "traversal": None,
+            "summaries": [],
+        }
+
+        result_json = render_snippet(
+            json.dumps(snapshot),
+            site_name,
+            api_base,
+            sdk_name,
+            ",".join(languages),
+        )
+
+        return cast(dict[str, str], json.loads(result_json))

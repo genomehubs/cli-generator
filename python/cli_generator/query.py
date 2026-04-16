@@ -361,3 +361,93 @@ class QueryBuilder:
             field_metadata_json,
             mode,
         )
+
+    def snippet(
+        self,
+        languages: list[str] | None = None,
+        *,
+        site_name: str = "site",
+        sdk_name: str = "sdk",
+        api_base: str = "",
+    ) -> dict[str, str]:
+        """Generate runnable code snippets for this query in one or more languages.
+
+        Builds a :class:`QuerySnapshot` from the current builder state, passes it
+        to the Rust snippet engine, and returns a mapping of language name to
+        generated source code.
+
+        Args:
+            languages: Language codes to render.  Defaults to ``["python"]``.
+                Additional languages (``"r"``, ``"javascript"``) become available
+                as their templates are added in later phases.
+            site_name: Short identifier for the target site, e.g. ``"goat"``.
+                Used as a comment label in the generated snippet.
+            sdk_name: Import name of the generated SDK package, e.g.
+                ``"goat_sdk"``.  Appears in the ``import`` statement.
+            api_base: Base URL of the API, e.g.
+                ``"https://goat.genomehubs.org/api"``.
+
+        Returns:
+            Dict mapping language name to generated source code string, e.g.
+            ``{"python": "import goat_sdk as sdk\\n..."}``.
+
+        Example::
+
+            qb = (
+                QueryBuilder("taxon")
+                .add_attribute("genome_size", operator=">=", value="1000000000")
+                .add_field("organism_name")
+            )
+            code = qb.snippet(site_name="goat", sdk_name="goat_sdk")["python"]
+            print(code)
+            # import goat_sdk as sdk
+            # qb = sdk.QueryBuilder("taxon")
+            # qb.add_attribute("genome_size", operator=">=", value="1000000000")
+            # ...
+        """
+        import json
+        from typing import cast
+
+        from . import render_snippet  # FFI call to Rust
+
+        if languages is None:
+            languages = ["python"]
+
+        # Build a QuerySnapshot-compatible dict from internal builder state.
+        filters: list[tuple[str, str, str]] = []
+        for attr in self._attributes:
+            name: str = attr["name"]
+            operator_str: str = str(attr.get("operator") or "")
+            raw_value = attr.get("value")
+            if raw_value is None:
+                value_str = ""
+            elif isinstance(raw_value, list):
+                value_str = ", ".join(str(v) for v in raw_value)
+            else:
+                value_str = str(raw_value)
+            filters.append((name, operator_str, value_str))
+
+        sorts: list[tuple[str, str]] = []
+        if self._sort_by is not None:
+            sorts.append((self._sort_by, self._sort_order))
+
+        selections = [f["name"] for f in self._fields]
+
+        snapshot = {
+            "filters": filters,
+            "sorts": sorts,
+            "flags": [],
+            "selections": selections,
+            "traversal": None,
+            "summaries": [],
+        }
+
+        result_json = render_snippet(
+            json.dumps(snapshot),
+            site_name,
+            api_base,
+            sdk_name,
+            ",".join(languages),
+        )
+
+        return cast(dict[str, str], json.loads(result_json))

@@ -1,0 +1,48 @@
+#!/bin/bash
+# Rebuild the WASM module for this JavaScript SDK.
+#
+# The pkg/ directory is pre-built and included when this package is generated.
+# Only run this script if you need to rebuild from a modified cli-generator source.
+#
+# Prerequisites:
+#   - Rust toolchain with wasm32-unknown-unknown target
+#   - wasm-pack: cargo install wasm-pack
+
+set -e
+
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+# Try to find cli-generator repo
+REPO_ROOT=""
+for path in \
+  "$SCRIPT_DIR/../../../../cli-generator" \
+  "$SCRIPT_DIR/../../../cli-generator" \
+  "$HOME/genomehubs/cli-generator" \
+  "$HOME/projects/genomehubs/cli-generator"; do
+  if [ -f "$path/crates/genomehubs-query/Cargo.toml" ]; then
+    REPO_ROOT="$path"
+    break
+  fi
+done
+
+if [ -z "$REPO_ROOT" ]; then
+  echo "cli-generator source not found. Clone it and set REPO_ROOT manually."
+  exit 1
+fi
+
+echo "Building WASM from $REPO_ROOT/crates/genomehubs-query ..."
+
+if ! command -v wasm-pack &> /dev/null; then
+  echo "wasm-pack not found. Install with: cargo install wasm-pack"
+  exit 1
+fi
+
+cd "$REPO_ROOT/crates/genomehubs-query"
+wasm-pack build --target nodejs --features wasm
+
+# Copy the built package here
+cp -r pkg/. "$SCRIPT_DIR/pkg/"
+echo "Done. pkg/ updated."
+
+
+

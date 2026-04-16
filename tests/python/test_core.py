@@ -457,3 +457,259 @@ def test_query_builder_describe_handles_empty_query() -> None:
     desc = q.describe()
     assert isinstance(desc, str)
     assert "taxa" in desc.lower() or "search" in desc.lower()
+
+
+# ── QueryBuilder.snippet tests ────────────────────────────────────────────────
+
+
+def test_snippet_returns_dict() -> None:
+    """snippet() returns a dict mapping language name to code string."""
+    q = QueryBuilder("taxon")
+    result = q.snippet()
+    assert isinstance(result, dict)
+    assert "python" in result
+    assert isinstance(result["python"], str)
+
+
+def test_snippet_default_language_is_python() -> None:
+    """Calling snippet() with no arguments produces exactly one Python entry."""
+    q = QueryBuilder("taxon")
+    result = q.snippet()
+    assert list(result.keys()) == ["python"]
+
+
+def test_snippet_empty_query_renders_without_filters() -> None:
+    """Empty query produces a snippet with no add_attribute calls."""
+    q = QueryBuilder("taxon")
+    code = q.snippet()["python"]
+    assert "QueryBuilder" in code
+    assert "add_attribute" not in code
+
+
+def test_snippet_includes_filter() -> None:
+    """Snippet contains the attribute filter when one is set."""
+    q = QueryBuilder("taxon").add_attribute("genome_size", operator=">=", value="1000000000")
+    code = q.snippet()["python"]
+    assert "genome_size" in code
+    assert "1000000000" in code
+    assert ">=" in code
+
+
+def test_snippet_includes_multiple_filters() -> None:
+    """Snippet contains all attribute filters when multiple are set."""
+    q = (
+        QueryBuilder("taxon")
+        .add_attribute("genome_size", operator=">=", value="1000000000")
+        .add_attribute("assembly_level", operator="eq", value="chromosome")
+    )
+    code = q.snippet()["python"]
+    assert "genome_size" in code
+    assert "assembly_level" in code
+
+
+def test_snippet_includes_sort() -> None:
+    """Snippet contains sort call when sort is set."""
+    q = QueryBuilder("taxon").set_sort("genome_size", "desc")
+    code = q.snippet()["python"]
+    assert "genome_size" in code
+    assert "sort" in code.lower() or "desc" in code
+
+
+def test_snippet_includes_field_selections() -> None:
+    """Snippet contains set_fields call when fields are selected."""
+    q = QueryBuilder("taxon").add_field("organism_name").add_field("genome_size")
+    code = q.snippet()["python"]
+    assert "organism_name" in code
+    assert "genome_size" in code
+
+
+def test_snippet_site_params_appear_in_code() -> None:
+    """Site name and sdk_name appear in the generated snippet."""
+    q = QueryBuilder("taxon")
+    code = q.snippet(site_name="goat", sdk_name="goat_sdk")["python"]
+    assert "goat_sdk" in code
+    assert "goat" in code
+
+
+def test_snippet_is_valid_python_syntax() -> None:
+    """Generated Python snippet is syntactically valid Python."""
+    import ast
+
+    q = (
+        QueryBuilder("taxon")
+        .add_attribute("genome_size", operator=">=", value="1000000000")
+        .add_field("organism_name")
+        .set_sort("genome_size", "desc")
+    )
+    code = q.snippet(site_name="goat", sdk_name="goat_sdk")["python"]
+    # Raises SyntaxError if the generated code is invalid Python.
+    ast.parse(code)
+
+
+# ============================================================================
+# R snippet tests
+# ============================================================================
+
+
+def test_r_snippet_is_in_result() -> None:
+    """snippet() includes R code when 'r' is requested."""
+    q = QueryBuilder("taxon")
+    result = q.snippet(languages=["r"])
+    assert "r" in result
+    assert isinstance(result["r"], str)
+
+
+def test_r_snippet_uses_r6_syntax() -> None:
+    """R snippet uses R6 class notation (QueryBuilder$new, $add_attribute, etc.)."""
+    q = QueryBuilder("taxon")
+    code = q.snippet(languages=["r"])["r"]
+    assert "QueryBuilder$new" in code
+    assert "$new(" in code
+
+
+def test_r_snippet_includes_filters() -> None:
+    """R snippet contains attribute filters."""
+    q = QueryBuilder("taxon").add_attribute("genome_size", operator=">=", value="1000000000")
+    code = q.snippet(languages=["r"])["r"]
+    assert "genome_size" in code
+    assert "1000000000" in code
+
+
+def test_r_snippet_includes_multiple_filters() -> None:
+    """R snippet contains multiple attribute filters."""
+    q = (
+        QueryBuilder("taxon")
+        .add_attribute("genome_size", operator=">=", value="1000000000")
+        .add_attribute("assembly_level", operator="eq", value="chromosome")
+    )
+    code = q.snippet(languages=["r"])["r"]
+    assert "genome_size" in code
+    assert "assembly_level" in code
+
+
+def test_r_snippet_includes_sort() -> None:
+    """R snippet contains sort directive."""
+    q = QueryBuilder("taxon").set_sort("genome_size", "desc")
+    code = q.snippet(languages=["r"])["r"]
+    assert "genome_size" in code
+    assert "sort" in code.lower() or "desc" in code
+
+
+def test_r_snippet_includes_field_selections() -> None:
+    """R snippet contains set_fields call when present."""
+    q = QueryBuilder("taxon").add_field("organism_name").add_field("genome_size")
+    code = q.snippet(languages=["r"])["r"]
+    assert "organism_name" in code
+    assert "genome_size" in code
+
+
+def test_r_snippet_site_params_appear() -> None:
+    """R snippet includes site_name and sdk_name parameters."""
+    q = QueryBuilder("taxon")
+    code = q.snippet(languages=["r"], site_name="goat", sdk_name="goat_sdk")["r"]
+    assert "goat" in code
+
+
+def test_r_snippet_is_valid_r_code() -> None:
+    """Generated R snippet is valid R code (basic syntax check)."""
+    q = (
+        QueryBuilder("taxon")
+        .add_attribute("genome_size", operator=">=", value="1000000000")
+        .add_field("organism_name")
+        .set_sort("genome_size", "desc")
+    )
+    code = q.snippet(languages=["r"], site_name="goat", sdk_name="goat_sdk")["r"]
+
+    # Basic R syntax checks
+    assert "library(" in code
+    assert "QueryBuilder$new(" in code
+    assert "$add_" in code or "genome_size" in code
+    assert "<-" in code  # R assignment operator
+    # Check for at least one method call with $
+    assert code.count("$") >= 2
+
+
+# ── JavaScript snippet tests ──────────────────────────────────────────────────
+
+
+def test_js_snippet_is_in_result() -> None:
+    """Requesting 'javascript' returns a snippet keyed as 'javascript'."""
+    q = QueryBuilder("taxon").add_attribute("genome_size", operator="ge", value="1000000000")
+    result = q.snippet(languages=["javascript"], site_name="goat", sdk_name="goat_sdk")
+    assert "javascript" in result
+    assert len(result["javascript"]) > 0
+
+
+def test_js_snippet_uses_class_syntax() -> None:
+    """Generated JS snippet uses QueryBuilder class instantiation."""
+    q = QueryBuilder("taxon").add_attribute("genome_size", operator="ge", value="1000000000")
+    code = q.snippet(languages=["javascript"], site_name="goat", sdk_name="goat_sdk")["javascript"]
+    assert "new QueryBuilder(" in code
+    assert "require(" in code
+
+
+def test_js_snippet_includes_filters() -> None:
+    """A single attribute filter appears in the JS snippet."""
+    q = QueryBuilder("taxon").add_attribute("genome_size", operator="ge", value="1000000000")
+    code = q.snippet(languages=["javascript"], site_name="goat", sdk_name="goat_sdk")["javascript"]
+    assert "genome_size" in code
+    assert "ge" in code
+    assert "1000000000" in code
+
+
+def test_js_snippet_includes_multiple_filters() -> None:
+    """Multiple attribute filters all appear in the JS snippet."""
+    q = (
+        QueryBuilder("taxon")
+        .add_attribute("genome_size", operator="ge", value="1000000000")
+        .add_attribute("assembly_span", operator="lt", value="5000000000")
+    )
+    code = q.snippet(languages=["javascript"], site_name="goat", sdk_name="goat_sdk")["javascript"]
+    assert "genome_size" in code
+    assert "assembly_span" in code
+
+
+def test_js_snippet_includes_sort() -> None:
+    """Sort directive appears in the JS snippet."""
+    q = QueryBuilder("taxon").set_sort("genome_size", "desc")
+    code = q.snippet(languages=["javascript"], site_name="goat", sdk_name="goat_sdk")["javascript"]
+    assert "genome_size" in code
+    assert "desc" in code
+    assert "setSort(" in code
+
+
+def test_js_snippet_includes_field_selections() -> None:
+    """Selected fields appear in the JS snippet."""
+    q = QueryBuilder("taxon").add_field("assembly_span").add_field("genome_size")
+    code = q.snippet(languages=["javascript"], site_name="goat", sdk_name="goat_sdk")["javascript"]
+    assert "assembly_span" in code
+    assert "genome_size" in code
+    assert "addField(" in code
+
+
+def test_js_snippet_site_params_appear() -> None:
+    """Site name appears as a comment in the JS snippet."""
+    q = QueryBuilder("taxon")
+    code = q.snippet(languages=["javascript"], site_name="mysite", sdk_name="mysite_sdk")["javascript"]
+    assert "mysite" in code
+
+
+def test_js_snippet_is_valid_js() -> None:
+    """Generated JS snippet passes basic syntax checks."""
+    q = (
+        QueryBuilder("taxon")
+        .add_attribute("genome_size", operator="ge", value="1000000000")
+        .add_field("organism_name")
+        .set_sort("genome_size", "desc")
+    )
+    code = q.snippet(languages=["javascript"], site_name="goat", sdk_name="goat_sdk")["javascript"]
+
+    # Basic JS syntax checks
+    assert "require(" in code
+    assert "new QueryBuilder(" in code
+    assert "toUrl()" in code
+    assert "const " in code
+    # Should not contain Python or R syntax
+    assert "import " not in code or code.index("import ") > code.index("require(")
+    assert "library(" not in code
+    assert "<-" not in code

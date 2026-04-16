@@ -1,0 +1,37 @@
+library({{ sdk_name }})
+
+# Create a query builder for {{ site_name }}
+qb <- QueryBuilder$new("taxon")
+
+{% if traversal -%}
+# Set traversal: {{ traversal[0] }} {{ traversal[1] }}
+qb$set_traversal("{{ traversal[0] }}", "{{ traversal[1] }}")
+{% endif %}
+
+{% for filter in filters -%}
+# Add filter: {{ filter[0] }} {{ filter[1] }} {{ filter[2] }}
+qb$add_attribute("{{ filter[0] }}", "{{ filter[1] }}", "{{ filter[2] }}")
+{% endfor %}
+
+{% for sort in sorts -%}
+# Sort by {{ sort[0] }} {{ sort[1] }}
+qb$add_sort("{{ sort[0] }}", "{{ sort[1] }}")
+{% endfor %}
+
+{% if selections -%}
+# Select specific fields
+qb$set_fields(c(
+{%- for field in selections %}
+  "{{ field }}",
+{%- endfor %}
+))
+{% endif %}
+
+# Build the query and fetch results
+url <- qb$build()
+cat("Query URL:", url, "\n")
+
+# Optionally fetch data:
+# library(httr)
+# response <- GET(url)
+# data <- content(response, as = "parsed")

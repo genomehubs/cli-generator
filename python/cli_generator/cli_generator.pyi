@@ -47,6 +47,35 @@ def build_url(
     """
     ...
 
+def render_snippet(
+    snapshot_json: str,
+    site_name: str,
+    api_base: str,
+    sdk_name: str,
+    languages: str = "python",
+) -> str:
+    """Render code snippets for a query in one or more languages.
+
+    Args:
+        snapshot_json: JSON-serialised ``QuerySnapshot`` containing filters, sorts,
+            selections, and other query components.
+        site_name: Short identifier for the target site, e.g. ``"goat"``.
+        api_base: Base URL of the API, e.g. ``"https://goat.genomehubs.org/api"``.
+        sdk_name: Import name of the generated SDK package, e.g. ``"goat_sdk"``.
+        languages: Comma-separated list of language codes to render, e.g.
+            ``"python"`` or ``"python,r"`` (default: ``"python"``).  Each code
+            must match a loaded snippet template.
+
+    Returns:
+        JSON object string mapping language name to rendered code snippet, e.g.
+        ``'{"python": "import goat_sdk as sdk\\n..."}'``.
+
+    Raises:
+        ValueError: If the snapshot JSON cannot be parsed.
+        RuntimeError: If template rendering fails.
+    """
+    ...
+
 def describe_query(
     query_yaml: str,
     params_yaml: str,
