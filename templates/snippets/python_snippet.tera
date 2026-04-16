@@ -15,23 +15,20 @@ qb.add_attribute("{{ filter[0] }}", operator="{{ filter[1] }}", value="{{ filter
 
 {% for sort in sorts -%}
 # Sort by {{ sort[0] }} {{ sort[1] }}
-qb.add_sort("{{ sort[0] }}", "{{ sort[1] }}")
+qb.set_sort("{{ sort[0] }}", "{{ sort[1] }}")
 {% endfor %}
 
 {% if selections -%}
 # Select specific fields
-qb.set_fields([
-{%- for field in selections %}
-    "{{ field }}",
-{%- endfor %}
-])
+{% for field in selections -%}
+qb.add_field("{{ field }}")
+{% endfor -%}
 {% endif %}
 
-# Build the query and fetch results
-url = qb.build()
+# Build the query URL
+url = qb.to_url()
 print(f"Query URL: {url}")
 
 # Optionally fetch data:
-# import requests
-# response = requests.get(url)
-# data = response.json()
+# results = qb.search()
+# print(results)

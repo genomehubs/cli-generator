@@ -148,6 +148,40 @@ class QueryBuilder:
         self._fields.append(entry)
         return self
 
+    def set_attributes(
+        self,
+        attributes: list[dict[str, Any]],
+    ) -> "QueryBuilder":
+        """Replace all attribute filters at once.
+
+        Convenience method for setting multiple filters in a single call.
+        Each entry must be a dict with at least a ``"name"`` key; ``"operator"``,
+        ``"value"``, and ``"modifier"`` are optional.
+
+        Args:
+            attributes: List of attribute dicts, e.g.
+                ``[{"name": "genome_size", "operator": "ge", "value": "1G"}]``.
+        """
+        self._attributes = [dict(a) for a in attributes]
+        return self
+
+    def set_fields(
+        self,
+        fields: list[str | dict[str, Any]],
+    ) -> "QueryBuilder":
+        """Replace the field selection at once.
+
+        Convenience method for setting multiple fields in a single call.
+        Each entry may be a plain field name string or a dict with ``"name"``
+        and optional ``"modifier"`` keys.
+
+        Args:
+            fields: List of field names or field dicts, e.g.
+                ``["genome_size", {"name": "assembly_span", "modifier": ["min"]}]``.
+        """
+        self._fields = [{"name": f} if isinstance(f, str) else dict(f) for f in fields]
+        return self
+
     def set_names(self, name_classes: list[str]) -> "QueryBuilder":
         """Set the name classes to include, e.g. ``["scientific_name"]``."""
         self._names = list(name_classes)
@@ -231,6 +265,92 @@ class QueryBuilder:
             doc["sort_order"] = self._sort_order
 
         return yaml.safe_dump(doc, sort_keys=False)
+
+    # ── URL + API calls ───────────────────────────────────────────────────────
+
+    def to_url(
+        self,
+        api_base: str = "https://goat.genomehubs.org/api",
+        api_version: str = "v2",
+        endpoint: str = "search",
+    ) -> str:
+        """Build the full API URL for this query without making a network call.
+
+        Args:
+            api_base: Base URL of the API.
+            api_version: API version string.
+            endpoint: API endpoint, e.g. ``"search"`` or ``"count"``.
+
+        Returns:
+            Fully encoded URL string.
+        """
+        from . import build_url as _build_url
+
+        return _build_url(
+            self.to_query_yaml(),
+            self.to_params_yaml(),
+            api_base,
+            api_version,
+            endpoint,
+        )
+
+    def count(
+        self,
+        api_base: str = "https://goat.genomehubs.org/api",
+        api_version: str = "v2",
+    ) -> int:
+        """Fetch the count of records matching this query.
+
+        Args:
+            api_base: Base URL of the API.
+            api_version: API version string.
+
+        Returns:
+            Number of matching records.
+        """
+        import json
+        import urllib.request
+
+        counter = QueryBuilder(self._index)
+        counter.merge(self)
+        counter.set_size(0)
+        url = counter.to_url(api_base, api_version, "search")
+        with urllib.request.urlopen(url) as resp:
+            body = json.loads(resp.read())
+        return int((body.get("status") or {}).get("hits") or 0)
+
+    def search(
+        self,
+        format: str = "json",
+        api_base: str = "https://goat.genomehubs.org/api",
+        api_version: str = "v2",
+    ) -> Any:
+        """Fetch results for this query.
+
+        Args:
+            format: Response format — ``"json"`` (default) or ``"tsv"``.
+            api_base: Base URL of the API.
+            api_version: API version string.
+
+        Returns:
+            Parsed JSON (dict) for ``format="json"``; raw text for ``"tsv"``.
+        """
+        import json
+        import urllib.request
+
+        url = self.to_url(api_base, api_version, "search")
+        headers = {
+            "json": "application/json",
+            "tsv": "text/tab-separated-values",
+        }.get(format, "application/json")
+        req = urllib.request.Request(url, headers={"Accept": headers})
+        with urllib.request.urlopen(req) as resp:
+            raw = resp.read().decode()
+        if format == "json":
+            return json.loads(raw)
+        return raw
+
+    # ── Utilities ─────────────────────────────────────────────────────────────
 
     def reset(self) -> "QueryBuilder":
         """Clear all query state while preserving the index and params."""

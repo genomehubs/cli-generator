@@ -8,9 +8,9 @@
 //! rather than in the subcrate since it has additional compile-time dependencies.
 
 pub use genomehubs_query::query::{
-    attributes, identifiers, url, Attribute, AttributeOperator, AttributeSet, AttributeValue,
-    Field, Identifiers, Modifier, QueryParams, SearchIndex, SearchQuery, SortOrder,
-    TaxaIdentifier, TaxonFilterType, build_query_url,
+    attributes, build_query_url, identifiers, url, Attribute, AttributeOperator, AttributeSet,
+    AttributeValue, Field, Identifiers, Modifier, QueryParams, SearchIndex, SearchQuery, SortOrder,
+    TaxaIdentifier, TaxonFilterType,
 };
 
 pub mod validation;

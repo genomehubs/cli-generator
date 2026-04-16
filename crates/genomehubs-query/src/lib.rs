@@ -36,12 +36,7 @@ use wasm_bindgen::prelude::*;
 /// # Returns
 /// The fully percent-encoded API URL, or an empty string on parse error.
 #[cfg_attr(feature = "wasm", wasm_bindgen)]
-pub fn build_url(
-    query_yaml: &str,
-    params_yaml: &str,
-    api_base: &str,
-    api_version: &str,
-) -> String {
+pub fn build_url(query_yaml: &str, params_yaml: &str, api_base: &str, api_version: &str) -> String {
     let query = match query::SearchQuery::from_yaml(query_yaml) {
         Ok(q) => q,
         Err(_) => return String::new(),

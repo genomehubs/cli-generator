@@ -306,10 +306,10 @@ fn copy_embedded_modules(repo_dir: &Path) -> Result<()> {
 
     // Modules from crates/genomehubs-query — use internal paths only, no rewriting needed.
     let subcrate_modules = [
-        ("mod.rs",         "core/query/mod.rs"),
-        ("attributes.rs",  "core/query/attributes.rs"),
+        ("mod.rs", "core/query/mod.rs"),
+        ("attributes.rs", "core/query/attributes.rs"),
         ("identifiers.rs", "core/query/identifiers.rs"),
-        ("url.rs",         "core/query/url.rs"),
+        ("url.rs", "core/query/url.rs"),
     ];
 
     for module_path in &main_modules {
@@ -347,11 +347,12 @@ fn copy_embedded_modules(repo_dir: &Path) -> Result<()> {
 
     // validation.rs is cli-generator-specific and not in the subcrate's mod.rs.
     let query_mod_path = embedded_dir.join("core/query/mod.rs");
-    let mut query_mod = std::fs::read_to_string(&query_mod_path)
-        .context("reading embedded query/mod.rs")?;
+    let mut query_mod =
+        std::fs::read_to_string(&query_mod_path).context("reading embedded query/mod.rs")?;
     if !query_mod.contains("pub mod validation") {
         query_mod.push_str("\npub mod validation;\n");
-        std::fs::write(&query_mod_path, query_mod).context("appending validation to query/mod.rs")?;
+        std::fs::write(&query_mod_path, query_mod)
+            .context("appending validation to query/mod.rs")?;
     }
 
     // Create a root mod.rs that re-exports the core submodule
@@ -481,8 +482,7 @@ fn create_r_package(repo_dir: &Path, site: &SiteConfig) -> Result<()> {
             .with_context(|| format!("reading template {template_rel}"))?;
         let rendered = tera::Tera::one_off(&tpl, &context, true)
             .with_context(|| format!("rendering template {template_rel}"))?;
-        std::fs::write(dest, rendered)
-            .with_context(|| format!("writing {}", dest.display()))?;
+        std::fs::write(dest, rendered).with_context(|| format!("writing {}", dest.display()))?;
         Ok(())
     };
 
@@ -491,7 +491,10 @@ fn create_r_package(repo_dir: &Path, site: &SiteConfig) -> Result<()> {
     render_template("NAMESPACE.tera", &r_pkg_dir.join("NAMESPACE"))?;
     render_template("_package.R.tera", &r_pkg_dir.join("R/_package.R"))?;
     render_template("query.R", &r_pkg_dir.join("R/query.R"))?;
-    render_template("extendr-wrappers.R.tera", &r_pkg_dir.join("R/extendr-wrappers.R"))?;
+    render_template(
+        "extendr-wrappers.R.tera",
+        &r_pkg_dir.join("R/extendr-wrappers.R"),
+    )?;
     render_template("lib.rs.tera", &rust_src_dir.join("lib.rs"))?;
     render_template("Cargo.toml.tera", &r_pkg_dir.join("src/rust/Cargo.toml"))?;
     render_template("entrypoint.c.tera", &r_pkg_dir.join("src/entrypoint.c"))?;
@@ -518,8 +521,7 @@ fn create_r_package(repo_dir: &Path, site: &SiteConfig) -> Result<()> {
         let src = templates_dir.join(script);
         if src.exists() {
             let dest = r_pkg_dir.join(script);
-            std::fs::copy(&src, &dest)
-                .with_context(|| format!("copying {script}"))?;
+            std::fs::copy(&src, &dest).with_context(|| format!("copying {script}"))?;
             #[cfg(unix)]
             {
                 use std::os::unix::fs::PermissionsExt;
@@ -610,10 +612,10 @@ fn copy_r_embedded_modules(rust_src_dir: &Path) -> Result<()> {
     ];
 
     let subcrate_modules = [
-        ("mod.rs",         "core/query/mod.rs"),
-        ("attributes.rs",  "core/query/attributes.rs"),
+        ("mod.rs", "core/query/mod.rs"),
+        ("attributes.rs", "core/query/attributes.rs"),
         ("identifiers.rs", "core/query/identifiers.rs"),
-        ("url.rs",         "core/query/url.rs"),
+        ("url.rs", "core/query/url.rs"),
     ];
 
     for module_path in &main_modules {
@@ -650,11 +652,12 @@ fn copy_r_embedded_modules(rust_src_dir: &Path) -> Result<()> {
     }
 
     let query_mod_path = embedded_dir.join("core/query/mod.rs");
-    let mut query_mod = std::fs::read_to_string(&query_mod_path)
-        .context("reading embedded query/mod.rs")?;
+    let mut query_mod =
+        std::fs::read_to_string(&query_mod_path).context("reading embedded query/mod.rs")?;
     if !query_mod.contains("pub mod validation") {
         query_mod.push_str("\npub mod validation;\n");
-        std::fs::write(&query_mod_path, query_mod).context("appending validation to query/mod.rs")?;
+        std::fs::write(&query_mod_path, query_mod)
+            .context("appending validation to query/mod.rs")?;
     }
 
     std::fs::write(

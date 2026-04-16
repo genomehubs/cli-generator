@@ -119,6 +119,16 @@ class QueryBuilder {
   }
 
   /**
+   * Replace all attribute filters at once.
+   * @param {Array<{name: string, operator?: string, value?: string|string[], modifier?: string[]}>} attributes
+   * @returns {QueryBuilder}
+   */
+  setAttributes(attributes) {
+    this._attributes = attributes.map((a) => ({ ...a }));
+    return this;
+  }
+
+  /**
    * Request a field in the response.
    * @param {string} name - Field name, e.g. "assembly_span".
    * @param {string[]|null} [modifiers] - Summary modifiers e.g. ["min", "max"].
@@ -128,6 +138,18 @@ class QueryBuilder {
     const entry = { name };
     if (modifiers !== null) entry.modifier = [...modifiers];
     this._fields.push(entry);
+    return this;
+  }
+
+  /**
+   * Replace the field selection at once.
+   * @param {Array<string|{name: string, modifier?: string[]}>} fields
+   * @returns {QueryBuilder}
+   */
+  setFields(fields) {
+    this._fields = fields.map((f) =>
+      typeof f === "string" ? { name: f } : { ...f },
+    );
     return this;
   }
 
@@ -210,10 +232,9 @@ class QueryBuilder {
   /**
    * Serialize the search query to YAML format for the WASM module.
    * Mirrors the Rust `SearchQuery` struct field names.
-   * @private
    * @returns {string}
    */
-  _toQueryYaml() {
+  toQueryYaml() {
     const lines = [];
     lines.push(`index: ${this._index}`);
 
@@ -276,10 +297,9 @@ class QueryBuilder {
   /**
    * Serialize query parameters to YAML format for the WASM module.
    * Mirrors the Rust `QueryParams` struct field names.
-   * @private
    * @returns {string}
    */
-  _toParamsYaml() {
+  toParamsYaml() {
     const lines = [];
     lines.push(`size: ${this._size}`);
     lines.push(`page: ${this._page}`);
@@ -304,8 +324,8 @@ class QueryBuilder {
    * @returns {string}
    */
   toUrl(apiBase = API_BASE, apiVersion = API_VERSION) {
-    const queryYaml = this._toQueryYaml();
-    const paramsYaml = this._toParamsYaml();
+    const queryYaml = this.toQueryYaml();
+    const paramsYaml = this.toParamsYaml();
     return wasmModule.build_url(queryYaml, paramsYaml, apiBase, apiVersion);
   }
 
@@ -326,7 +346,7 @@ class QueryBuilder {
     if (!resp.ok)
       throw new Error(`API request failed: ${resp.status} ${resp.statusText}`);
     const json = await resp.json();
-    return json?.results?.count ?? 0;
+    return json?.status?.hits ?? 0;
   }
 
   /**
@@ -410,6 +430,41 @@ class QueryBuilder {
     const result = new QueryBuilder(builders[0]._index);
     for (const b of builders) result.merge(b);
     return result;
+  }
+
+  /**
+   * Get a human-readable description of this query.
+   *
+   * Note: Not yet available in the JavaScript SDK (requires Phase 3 WASM bindings).
+   * @param {object|null} [fieldMetadata=null]
+   * @param {"concise"|"verbose"} [mode="concise"]
+   * @returns {string}
+   */
+  describe(fieldMetadata = null, mode = "concise") {
+    throw new Error(
+      "describe() requires WASM bindings not yet available in the JavaScript SDK.",
+    );
+  }
+
+  /**
+   * Generate runnable code snippets in one or more languages.
+   *
+   * Note: Not yet available in the JavaScript SDK (requires Phase 3 WASM bindings).
+   * @param {string[]} [languages=["js"]]
+   * @param {string} [siteName="{{ site_name }}"]
+   * @param {string} [sdkName="{{ js_package_name }}"]
+   * @param {string} [apiBase="{{ api_base_url }}"]
+   * @returns {object}
+   */
+  snippet(
+    languages = ["js"],
+    siteName = "{{ site_name }}",
+    sdkName = "{{ js_package_name }}",
+    apiBase = "{{ api_base_url }}",
+  ) {
+    throw new Error(
+      "snippet() requires WASM bindings not yet available in the JavaScript SDK.",
+    );
   }
 }
 
