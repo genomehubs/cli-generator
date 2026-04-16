@@ -110,6 +110,11 @@ enum {{ index.name | capitalize }}Commands {
         #[arg(long)]
         verbose: bool,
 
+        /// Print runnable code snippets and exit. Accepts a comma-separated list
+        /// of languages: python, r, javascript, cli (e.g. --snippet python,cli).
+        #[arg(long = "snippet", value_delimiter = ',')]
+        snippet_languages: Vec<String>,
+
         /// Output format.
         #[arg(long, value_enum, default_value = "tsv")]
         format: generated::output::OutputFormat,
@@ -154,7 +159,7 @@ fn run(cli: Cli) -> anyhow::Result<()> {
     match cli.command {
 {% for index in indexes %}
         Commands::{{ index.name | capitalize }} { subcommand } => match subcommand {
-            {{ index.name | capitalize }}Commands::Search { taxon, taxon_filter, query, filter, rank, sort, size, page, include_estimates, taxonomy, lineage_ranks, name_classes, url, describe, verbose, format, flags } => {
+            {{ index.name | capitalize }}Commands::Search { taxon, taxon_filter, query, filter, rank, sort, size, page, include_estimates, taxonomy, lineage_ranks, name_classes, url, describe, verbose, snippet_languages, format, flags } => {
                 if flags.list_field_groups {
                     for (name, short, desc) in generated::cli_flags::{{ index.name | capitalize }}Flags::list_groups() {
                         match short {
@@ -234,6 +239,38 @@ fn run(cli: Cli) -> anyhow::Result<()> {
                         verbose,
                     )?;
                     println!("{description}");
+                    return Ok(());
+                }
+
+                // If --snippet is set, print snippets for the requested languages and exit
+                if !snippet_languages.is_empty() {
+                    let (sort_field, sort_dir) = match sort.as_deref() {
+                        None => (None, "asc".to_string()),
+                        Some(s) => match s.split_once(':') {
+                            Some((f, d)) => (Some(f.to_string()), d.to_string()),
+                            None         => (Some(s.to_string()), "asc".to_string()),
+                        },
+                    };
+                    let snippets = render_snippet_for_cli(
+                        "{{ index.name }}",
+                        taxon.as_deref(),
+                        taxon_filter,
+                        rank.as_deref(),
+                        &filter,
+                        sort_field.as_deref(),
+                        &sort_dir,
+                        &flags.field_groups,
+                        &flags.fields,
+                        &snippet_languages,
+                    )?;
+                    for lang in &snippet_languages {
+                        if let Some(code) = snippets.get(lang.as_str()) {
+                            if snippet_languages.len() > 1 {
+                                println!("# --- {lang} ---");
+                            }
+                            println!("{code}");
+                        }
+                    }
                     return Ok(());
                 }
 
@@ -337,4 +374,77 @@ fn describe_query(
     } else {
         describer.describe_concise(&query)
     })
+}
+
+/// Build a [`QuerySnapshot`] from individual CLI argument values and render
+/// code snippets in the requested languages.
+///
+/// Returns a map of language name → rendered source code.
+#[allow(clippy::too_many_arguments)]
+fn render_snippet_for_cli(
+    index: &str,
+    taxon: Option<&str>,
+    taxon_filter: TaxonFilter,
+    rank: Option<&str>,
+    filter_triples: &[String],
+    sort_by: Option<&str>,
+    sort_order: &str,
+    flag_groups: &[String],
+    field_names: &[String],
+    languages: &[String],
+) -> anyhow::Result<std::collections::HashMap<String, String>> {
+    use {{ sdk_name }}::embedded::core::config::SiteConfig;
+    use {{ sdk_name }}::embedded::core::snippet::{QuerySnapshot, SnippetGenerator};
+
+    let taxa: Vec<String> = taxon.map(|t| vec![t.to_string()]).unwrap_or_default();
+    let taxon_filter_str = match taxon_filter {
+        TaxonFilter::Name    => "name",
+        TaxonFilter::Tree    => "tree",
+        TaxonFilter::Lineage => "lineage",
+    }
+    .to_string();
+
+    let filters: Vec<(String, String, String)> = filter_triples
+        .chunks(3)
+        .filter_map(|c| {
+            if c.len() < 3 {
+                return None;
+            }
+            Some((c[0].clone(), c[1].clone(), c[2].clone()))
+        })
+        .collect();
+
+    let sorts: Vec<(String, String)> = sort_by
+        .map(|f| vec![(f.to_string(), sort_order.to_string())])
+        .unwrap_or_default();
+
+    // Prefer --field-groups for the snippet flags; fall back to --fields as selections.
+    let flags: Vec<String> = flag_groups.to_vec();
+    let selections: Vec<String> = field_names.to_vec();
+
+    let snapshot = QuerySnapshot {
+        index: index.to_string(),
+        taxa,
+        taxon_filter: taxon_filter_str,
+        rank: rank.map(str::to_string),
+        filters,
+        sorts,
+        flags,
+        selections,
+        traversal: None,
+        summaries: vec![],
+    };
+
+    let site = SiteConfig {
+        name: cli_meta::NAME.to_string(),
+        api_base: cli_meta::API_BASE_URL.to_string(),
+        sdk_name: Some("{{ sdk_name }}".to_string()),
+        ..Default::default()
+    };
+
+    let lang_refs: Vec<&str> = languages.iter().map(String::as_str).collect();
+    SnippetGenerator::new()
+        .map_err(|e| anyhow::anyhow!("snippet generator init failed: {e}"))?
+        .render_all_snippets(&snapshot, &site, &lang_refs)
+        .map_err(|e| anyhow::anyhow!("snippet rendering failed: {e}"))
 }

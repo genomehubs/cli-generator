@@ -12,6 +12,18 @@ use tera::{Context as TeraContext, Tera};
 /// Represents a single query as built by an SDK or UI.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct QuerySnapshot {
+    /// Index name, e.g. `"taxon"` or `"assembly"`.
+    #[serde(default = "default_index")]
+    pub index: String,
+    /// Taxon names to filter by.
+    #[serde(default)]
+    pub taxa: Vec<String>,
+    /// How the taxon filter is applied: `"name"`, `"tree"`, or `"lineage"`.
+    #[serde(default = "default_taxon_filter")]
+    pub taxon_filter: String,
+    /// Restrict results to this taxonomic rank, e.g. `"species"`.
+    #[serde(default)]
+    pub rank: Option<String>,
     /// Filters: (field_name, operator, value)
     pub filters: Vec<(String, String, String)>,
     /// Sorts: (field_name, direction)
@@ -24,6 +36,14 @@ pub struct QuerySnapshot {
     pub traversal: Option<(String, String)>,
     /// Summaries: (field_name, modifier)
     pub summaries: Vec<(String, String)>,
+}
+
+fn default_index() -> String {
+    "taxon".to_string()
+}
+
+fn default_taxon_filter() -> String {
+    "name".to_string()
 }
 
 /// Generates runnable code snippets in multiple languages.
@@ -53,6 +73,12 @@ impl SnippetGenerator {
             include_str!("../../templates/snippets/js_snippet.tera"),
         )
         .context("loading javascript_snippet template")?;
+
+        tera.add_raw_template(
+            "cli_snippet",
+            include_str!("../../templates/snippets/cli_snippet.tera"),
+        )
+        .context("loading cli_snippet template")?;
 
         Ok(Self { tera })
     }
@@ -89,6 +115,10 @@ impl SnippetGenerator {
 
     fn build_context(&self, query: &QuerySnapshot, site: &SiteConfig) -> TeraContext {
         let mut ctx = TeraContext::new();
+        ctx.insert("index", &query.index);
+        ctx.insert("taxa", &query.taxa);
+        ctx.insert("taxon_filter", &query.taxon_filter);
+        ctx.insert("rank", &query.rank);
         ctx.insert("filters", &query.filters);
         ctx.insert("sorts", &query.sorts);
         ctx.insert("flags", &query.flags);
@@ -115,6 +145,10 @@ mod tests {
             ..Default::default()
         };
         let query = QuerySnapshot {
+            index: "taxon".to_string(),
+            taxa: vec![],
+            taxon_filter: "name".to_string(),
+            rank: None,
             filters: vec![(
                 "genome_size".to_string(),
                 ">=".to_string(),

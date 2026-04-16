@@ -713,3 +713,103 @@ def test_js_snippet_is_valid_js() -> None:
     assert "import " not in code or code.index("import ") > code.index("require(")
     assert "library(" not in code
     assert "<-" not in code
+
+
+# ── CLI snippet tests ─────────────────────────────────────────────────────────
+
+
+def test_cli_snippet_is_in_result() -> None:
+    """snippet() returns a 'cli' key when requested."""
+    q = QueryBuilder("taxon")
+    result = q.snippet(languages=["cli"], site_name="goat", sdk_name="goat-cli")
+    assert "cli" in result
+    assert isinstance(result["cli"], str)
+
+
+def test_cli_snippet_contains_binary_and_index() -> None:
+    """CLI snippet has the binary name, index, and 'search' subcommand."""
+    q = QueryBuilder("taxon")
+    code = q.snippet(languages=["cli"], site_name="goat", sdk_name="goat-cli")["cli"]
+    assert "goat-cli" in code
+    assert "taxon" in code
+    assert "search" in code
+
+
+def test_cli_snippet_respects_index() -> None:
+    """CLI snippet uses the builder's index, not a hardcoded fallback."""
+    q = QueryBuilder("assembly")
+    code = q.snippet(languages=["cli"], site_name="goat", sdk_name="goat-cli")["cli"]
+    assert "assembly" in code
+    assert "taxon" not in code
+
+
+def test_cli_snippet_includes_filter() -> None:
+    """Attribute filter appears as --filter FIELD OP VALUE."""
+    q = QueryBuilder("taxon").add_attribute("genome_size", operator="ge", value="1000000000")
+    code = q.snippet(languages=["cli"], site_name="goat", sdk_name="goat-cli")["cli"]
+    assert "--filter" in code
+    assert "genome_size" in code
+    assert "ge" in code
+    assert "1000000000" in code
+
+
+def test_cli_snippet_includes_sort() -> None:
+    """Sort appears as --sort FIELD:DIRECTION."""
+    q = QueryBuilder("taxon").set_sort("genome_size", "desc")
+    code = q.snippet(languages=["cli"], site_name="goat", sdk_name="goat-cli")["cli"]
+    assert "--sort" in code
+    assert "genome_size" in code
+    assert "desc" in code
+
+
+def test_cli_snippet_includes_fields() -> None:
+    """Selected fields appear as --fields."""
+    q = QueryBuilder("taxon").add_field("organism_name").add_field("genome_size")
+    code = q.snippet(languages=["cli"], site_name="goat", sdk_name="goat-cli")["cli"]
+    assert "--fields" in code
+    assert "organism_name" in code
+    assert "genome_size" in code
+
+
+def test_cli_snippet_includes_taxa() -> None:
+    """Taxa appear as --taxon and --taxon-filter."""
+    q = QueryBuilder("taxon").set_taxa(["Mammalia"], "tree")
+    code = q.snippet(languages=["cli"], site_name="goat", sdk_name="goat-cli")["cli"]
+    assert "--taxon" in code
+    assert "Mammalia" in code
+    assert "--taxon-filter" in code
+    assert "tree" in code
+
+
+def test_cli_snippet_includes_rank() -> None:
+    """Rank restriction appears as --rank."""
+    q = QueryBuilder("taxon").set_rank("species")
+    code = q.snippet(languages=["cli"], site_name="goat", sdk_name="goat-cli")["cli"]
+    assert "--rank" in code
+    assert "species" in code
+
+
+def test_cli_snippet_no_trailing_backslash() -> None:
+    """Last non-empty line of the CLI snippet does not end with a continuation backslash."""
+    q = (
+        QueryBuilder("taxon")
+        .set_taxa(["Mammalia"], "tree")
+        .add_attribute("genome_size", operator="ge", value="1000000000")
+        .add_field("organism_name")
+        .set_sort("genome_size", "desc")
+    )
+    code = q.snippet(languages=["cli"], site_name="goat", sdk_name="goat-cli")["cli"]
+    non_empty_lines = [ln for ln in code.splitlines() if ln.strip()]
+    assert non_empty_lines, "snippet produced no output"
+    assert not non_empty_lines[-1].rstrip().endswith("\\")
+
+
+def test_cli_snippet_all_languages_together() -> None:
+    """Requesting python, r, javascript, and cli returns all four keys."""
+    q = QueryBuilder("taxon").add_attribute("genome_size", operator="ge", value="1000000000")
+    result = q.snippet(
+        languages=["python", "r", "javascript", "cli"],
+        site_name="goat",
+        sdk_name="goat_sdk",
+    )
+    assert set(result.keys()) == {"python", "r", "javascript", "cli"}

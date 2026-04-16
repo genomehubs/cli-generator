@@ -554,6 +554,10 @@ class QueryBuilder:
         selections = [f["name"] for f in self._fields]
 
         snapshot = {
+            "index": self._index,
+            "taxa": self._taxa,
+            "taxon_filter": self._taxon_filter_type,
+            "rank": self._rank,
             "filters": filters,
             "sorts": sorts,
             "flags": [],

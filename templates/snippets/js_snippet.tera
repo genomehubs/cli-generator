@@ -1,7 +1,7 @@
 const { QueryBuilder } = require("./query");
 
 // Create a query builder for {{ site_name }}
-const qb = new QueryBuilder("taxon");
+const qb = new QueryBuilder("{{ index }}");
 
 {% if traversal -%}
 // Set traversal: {{ traversal[0] }} {{ traversal[1] }}

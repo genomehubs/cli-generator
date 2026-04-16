@@ -377,12 +377,16 @@ QueryBuilder <- R6::R6Class(
       selections <- vapply(private$fields, function(f) f[["name"]], character(1))
 
       snapshot <- list(
-        filters    = filters,
-        sorts      = sorts,
-        flags      = character(0),
-        selections = selections,
-        traversal  = NULL,
-        summaries  = list()
+        index        = jsonlite::unbox(private$index_name),
+        taxa         = as.list(private$taxa_names),
+        taxon_filter = jsonlite::unbox(private$taxa_filter_type),
+        rank         = if (!is.null(private$rank_name)) jsonlite::unbox(private$rank_name) else NULL,
+        filters      = filters,
+        sorts        = sorts,
+        flags        = character(0),
+        selections   = selections,
+        traversal    = NULL,
+        summaries    = list()
       )
 
       snapshot_json <- jsonlite::toJSON(snapshot, null = "null", auto_unbox = FALSE)

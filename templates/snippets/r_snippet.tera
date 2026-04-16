@@ -1,7 +1,7 @@
 library({{ sdk_name }})
 
 # Create a query builder for {{ site_name }}
-qb <- QueryBuilder$new("taxon")
+qb <- QueryBuilder$new("{{ index }}")
 
 {% if traversal -%}
 # Set traversal: {{ traversal[0] }} {{ traversal[1] }}
