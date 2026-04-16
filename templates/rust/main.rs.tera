@@ -55,17 +55,48 @@ enum {{ index.name | capitalize }}Commands {
         #[arg(long, value_enum, default_value = "name")]
         taxon_filter: TaxonFilter,
 
-        /// Additional query string to AND with the taxon filter.
+        /// Field value filter: FIELD OP VALUE (repeatable).
+        ///
+        /// OP accepts symbolic (>=, !=) or word form (ge, ne).
+        /// Example: --filter genome_size ge 1000000000
+        #[arg(long = "filter", num_args = 3, value_names = ["FIELD", "OP", "VALUE"])]
+        filter: Vec<String>,
+
+        /// Restrict results to a specific taxonomic rank (e.g. `species`, `genus`).
+        #[arg(long)]
+        rank: Option<String>,
+
+        /// Sort results by field, optionally with direction (e.g. `genome_size` or `genome_size:desc`).
+        #[arg(long)]
+        sort: Option<String>,
+
+        /// Additional raw query string ANDed with all other filters.
         #[arg(long, default_value = "")]
         query: String,
 
-        /// Maximum number of results to return.
+        /// Maximum number of results to return per page.
         #[arg(long, default_value = "50")]
         size: usize,
+
+        /// Page number for paginated results (1-based).
+        #[arg(long, default_value_t = 1)]
+        page: usize,
 
         /// Include ancestrally estimated values (use --include-estimates=false to disable).
         #[arg(long, default_value_t = true, action = clap::ArgAction::Set)]
         include_estimates: bool,
+
+        /// Taxonomy source to use (default: ncbi).
+        #[arg(long, default_value = "ncbi")]
+        taxonomy: String,
+
+        /// Lineage rank columns to include, comma-separated (e.g. `genus,family,order`).
+        #[arg(long = "lineage-ranks", value_delimiter = ',')]
+        lineage_ranks: Vec<String>,
+
+        /// Taxon name classes to include, comma-separated (e.g. `common_name,synonym`).
+        #[arg(long = "name-classes", value_delimiter = ',')]
+        name_classes: Vec<String>,
 
         /// Print the API URL and exit without fetching.
         #[arg(long)]
@@ -123,7 +154,7 @@ fn run(cli: Cli) -> anyhow::Result<()> {
     match cli.command {
 {% for index in indexes %}
         Commands::{{ index.name | capitalize }} { subcommand } => match subcommand {
-            {{ index.name | capitalize }}Commands::Search { taxon, taxon_filter, query, size, include_estimates, url, describe, verbose, format, flags } => {
+            {{ index.name | capitalize }}Commands::Search { taxon, taxon_filter, query, filter, rank, sort, size, page, include_estimates, taxonomy, lineage_ranks, name_classes, url, describe, verbose, format, flags } => {
                 if flags.list_field_groups {
                     for (name, short, desc) in generated::cli_flags::{{ index.name | capitalize }}Flags::list_groups() {
                         match short {
@@ -134,16 +165,65 @@ fn run(cli: Cli) -> anyhow::Result<()> {
                     return Ok(());
                 }
 
-                // Build query components from CLI args
+                // Build the taxon clause from --taxon and --taxon-filter.
                 let taxon_clause = taxon.as_deref().map(|t| match taxon_filter {
                     TaxonFilter::Name     => format!("tax_name({t})"),
                     TaxonFilter::Tree     => format!("tax_tree({t})"),
                     TaxonFilter::Lineage  => format!("tax_lineage({t})"),
                 });
-                let full_query = match (taxon_clause, query.is_empty()) {
-                    (Some(tc), true)  => tc,
-                    (Some(tc), false) => format!("{tc} AND {query}"),
-                    (None, _)         => query.clone(),
+
+                // Convert --filter FIELD OP VALUE triples into expression fragments.
+                let filter_fragments: Vec<String> = filter
+                    .chunks(3)
+                    .filter_map(|chunk| {
+                        if chunk.len() < 3 {
+                            return None;
+                        }
+                        let op_symbol = match chunk[1].as_str() {
+                            "eq" | "==" | "=" => "=",
+                            "ne" | "!="       => "!=",
+                            "gt" | ">"        => ">",
+                            "ge" | ">="       => ">=",
+                            "lt" | "<"        => "<",
+                            "le" | "<="       => "<=",
+                            other             => other,
+                        };
+                        Some(format!("{}{}{}", chunk[0], op_symbol, chunk[2]))
+                    })
+                    .collect();
+
+                // Combine all query parts: taxon, rank, raw --query, --filter expressions.
+                let full_query = {
+                    let mut parts: Vec<String> = Vec::new();
+                    if let Some(tc) = taxon_clause {
+                        parts.push(tc);
+                    }
+                    if let Some(ref r) = rank {
+                        parts.push(format!("tax_rank({r})"));
+                    }
+                    if !query.is_empty() {
+                        parts.push(query.clone());
+                    }
+                    parts.extend(filter_fragments);
+                    parts.join(" AND ")
+                };
+
+                // Parse --sort into field name and direction.
+                let (sort_by_opt, sort_order_str) = match sort.as_deref() {
+                    None => (None::<String>, "asc".to_string()),
+                    Some(s) => match s.split_once(':') {
+                        Some((field, dir)) => (Some(field.to_string()), dir.to_string()),
+                        None               => (Some(s.to_string()), "asc".to_string()),
+                    },
+                };
+
+                let opts = generated::client::SearchOptions {
+                    lineage_ranks,
+                    name_classes,
+                    sort_by: sort_by_opt,
+                    sort_order: sort_order_str,
+                    page,
+                    taxonomy,
                 };
 
                 // If describe flag is set, output human-readable description instead
@@ -168,6 +248,7 @@ fn run(cli: Cli) -> anyhow::Result<()> {
                         &fields,
                         size,
                         include_estimates,
+                        &opts,
                     );
                     println!("{query_url}");
                     return Ok(());
@@ -179,6 +260,7 @@ fn run(cli: Cli) -> anyhow::Result<()> {
                     size,
                     include_estimates,
                     accept,
+                    &opts,
                 )?;
                 generated::output::print_output(&body, format)?;
             }

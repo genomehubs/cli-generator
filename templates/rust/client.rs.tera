@@ -22,6 +22,39 @@ fn pct_encode(s: &str) -> String {
         .collect()
 }
 
+/// Optional parameters that supplement the core search query.
+///
+/// All fields default to sensible values — create with `SearchOptions::default()`
+/// and set only the fields you need.
+#[derive(Debug)]
+pub struct SearchOptions {
+    /// Lineage rank columns to include in each result row (e.g. `["genus", "family"]`).
+    pub lineage_ranks: Vec<String>,
+    /// Taxon name classes to include in results (e.g. `["common_name", "synonym"]`).
+    pub name_classes: Vec<String>,
+    /// Field to sort results by, e.g. `"genome_size"`.
+    pub sort_by: Option<String>,
+    /// Sort direction: `"asc"` (default) or `"desc"`.
+    pub sort_order: String,
+    /// 1-based page number; converted to `offset = (page - 1) * size`.
+    pub page: usize,
+    /// Taxonomy source identifier, e.g. `"ncbi"` (default) or `"ott"`.
+    pub taxonomy: String,
+}
+
+impl Default for SearchOptions {
+    fn default() -> Self {
+        Self {
+            lineage_ranks: Vec::new(),
+            name_classes: Vec::new(),
+            sort_by: None,
+            sort_order: "asc".to_string(),
+            page: 1,
+            taxonomy: "ncbi".to_string(),
+        }
+    }
+}
+
 /// Perform a search query against the {{ site_display_name }} API.
 ///
 /// Returns the raw response body as a string (TSV, JSON, or CSV depending
@@ -33,8 +66,9 @@ pub fn search(
     size: usize,
     include_estimates: bool,
     accept: &str,
+    opts: &SearchOptions,
 ) -> Result<String> {
-    let url = search_url(index, query, fields, size, include_estimates);
+    let url = search_url(index, query, fields, size, include_estimates, opts);
     let client = reqwest::blocking::Client::new();
     client
         .get(&url)
@@ -54,13 +88,32 @@ pub fn search_url(
     fields: &[&str],
     size: usize,
     include_estimates: bool,
+    opts: &SearchOptions,
 ) -> String {
-    format!(
-        "{API_BASE}/search?query={}&result={}&fields={}&size={size}&includeEstimates={include_estimates}",
-        pct_encode(query),
-        index.as_str(),
-        pct_encode(&fields.join(",")),
-    )
+    let mut parts: Vec<String> = Vec::new();
+    parts.push(format!("result={}", index.as_str()));
+    parts.push(format!("includeEstimates={include_estimates}"));
+    parts.push(format!("taxonomy={}", pct_encode(&opts.taxonomy)));
+    if !query.is_empty() {
+        parts.push(format!("query={}", pct_encode(query)));
+    }
+    if !fields.is_empty() {
+        parts.push(format!("fields={}", pct_encode(&fields.join(","))));
+    }
+    if !opts.name_classes.is_empty() {
+        parts.push(format!("names={}", pct_encode(&opts.name_classes.join(","))));
+    }
+    if !opts.lineage_ranks.is_empty() {
+        parts.push(format!("ranks={}", pct_encode(&opts.lineage_ranks.join(","))));
+    }
+    parts.push(format!("size={size}"));
+    let offset = opts.page.saturating_sub(1) * size;
+    parts.push(format!("offset={offset}"));
+    if let Some(ref sort_by) = opts.sort_by {
+        parts.push(format!("sortBy={}", pct_encode(sort_by)));
+        parts.push(format!("sortOrder={}", pct_encode(&opts.sort_order)));
+    }
+    format!("{API_BASE}/search?{}", parts.join("&"))
 }
 
 /// Perform a count query against the {{ site_display_name }} API.
