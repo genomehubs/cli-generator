@@ -300,8 +300,9 @@ QueryBuilder <- R6::R6Class(
       url <- self$to_url("count")
       response <- httr::GET(url, httr::accept("application/json"))
       httr::stop_for_status(response)
-      body <- httr::content(response, as = "parsed", type = "application/json")
-      as.integer(body[["status"]][["hits"]] %||% 0L)
+      raw_text <- httr::content(response, as = "text", encoding = "UTF-8")
+      status <- jsonlite::fromJSON(parse_response_status(raw_text))
+      as.integer(status[["hits"]] %||% 0L)
     },
 
     #' @description Fetch results for this query.

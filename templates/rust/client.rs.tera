@@ -125,15 +125,15 @@ pub fn count(index: super::indexes::Index, query: &str) -> Result<u64> {
         pct_encode(query),
         index.as_str(),
     );
-    let body: serde_json::Value = reqwest::blocking::get(&url)
+    let body_text = reqwest::blocking::get(&url)
         .with_context(|| format!("HTTP GET {url}"))?
         .error_for_status()
         .with_context(|| format!("non-2xx response from {url}"))?
-        .json()
-        .context("deserialising count response")?;
-    body["count"]
-        .as_u64()
-        .context("'count' field missing or not a number in API response")
+        .text()
+        .context("reading count response body")?;
+    let status = crate::embedded::core::parse::parse_response_status(&body_text)
+        .map_err(|e| anyhow::anyhow!("{e}"))?;
+    Ok(status.hits)
 }
 
 /// Look up a single record by name or identifier.

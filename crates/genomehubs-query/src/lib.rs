@@ -16,6 +16,7 @@
 //! use genomehubs_query::query::{SearchQuery, QueryParams, build_query_url};
 //! ```
 
+pub mod parse;
 pub mod query;
 
 #[cfg(feature = "wasm")]
@@ -46,4 +47,18 @@ pub fn build_url(query_yaml: &str, params_yaml: &str, api_base: &str, api_versio
         Err(_) => return String::new(),
     };
     query::build_query_url(&query, &params, api_base, api_version, "search")
+}
+
+/// Parse the `status` block from a raw genomehubs API JSON response.
+///
+/// Returns a compact JSON string: `{"hits":N,"ok":true|false,"error":null|"msg"}`.
+/// This is the canonical way all SDK `count()` methods should read the hit count.
+///
+/// On completely invalid JSON, returns `{"hits":0,"ok":false,"error":"<message>"}`.
+#[cfg_attr(feature = "wasm", wasm_bindgen)]
+pub fn parse_response_status(raw: &str) -> String {
+    match parse::parse_response_status(raw) {
+        Ok(status) => parse::response_status_to_json(&status),
+        Err(e) => format!(r#"{{"hits":0,"ok":false,"error":{e:?}}}"#),
+    }
 }

@@ -79,15 +79,14 @@ points for agents:
 
 ## Verification before committing
 
-Always run the following before marking a task complete:
+Use `scripts/verify_code.sh` to run all checks in one step:
 
 ```bash
-cargo fmt --all && cargo clippy --all-targets -- -D warnings && cargo test
-black --check --line-length 120 python/ tests/python/
-isort --check-only --profile black --line-length 120 python/ tests/python/
-pyright python/ tests/python/
-pytest tests/python/ -v
+bash scripts/verify_code.sh
 ```
+
+This runs: `cargo fmt`, `cargo clippy`, `cargo test --workspace`, `black`,
+`isort`, `pyright`, and `pytest`. Use `--verbose` to see full output on failure.
 
 If `maturin develop` has not been run in this session, run it first so Python
 tests can import the compiled extension:
@@ -95,6 +94,22 @@ tests can import the compiled extension:
 ```bash
 maturin develop --features extension-module
 ```
+
+### End-to-end dev-site test
+
+Unit and integration tests do not compile the generated extension. After any
+change to templates, the embedded module system, or the WASM subcrate, run:
+
+```bash
+bash scripts/dev_site.sh [--rebuild-wasm] [--python] [SITE]
+```
+
+This script: cleans the previous output, regenerates the site CLI, runs a
+Rust `--url` smoke-test, runs a JS `toUrl()` smoke-test, and optionally builds
+the Python extension and runs a Python smoke-test.
+
+`--rebuild-wasm` must be passed whenever a new `#[wasm_bindgen]` export is
+added to `crates/genomehubs-query/src/lib.rs` (see pitfalls below).
 
 ---
 
@@ -151,11 +166,37 @@ at runtime.
 - **End-to-end test after every generated-project change** — `cargo test` only
   tests that _generation_ succeeds (file structure, Cargo.toml contents, etc.).
   It does not compile the generated extension. Always finish with:
+
   ```bash
-  rm -rf /tmp/test-cli && cargo run -- new <site> --config sites/ --output-dir /tmp/test-cli
-  cd /tmp/test-cli/<site>-cli && maturin develop --features extension-module
-  python3 -c "from <site>_sdk.query import QueryBuilder; qb = QueryBuilder('taxon'); print(qb.describe()); print(qb.snippet()['python'])"
+  bash scripts/dev_site.sh --python goat
   ```
+
+- **WASM `pkg/` must be rebuilt after adding a `#[wasm_bindgen]` export** —
+  The pre-built `crates/genomehubs-query/pkg/` is committed to the repo and
+  copied verbatim into every generated project's `js/<pkg>/pkg/`. If a new
+  function is exported (e.g. `parse_response_status`) but `pkg/` is not
+  rebuilt, generated JS projects will throw `TypeError: wasmModule.<fn> is not
+a function` at runtime — invisible to `cargo test`, `pyright`, or clippy.
+  Rebuild with:
+
+  ```bash
+  bash scripts/dev_site.sh --rebuild-wasm
+  ```
+
+  Then commit the updated `pkg/` alongside the source change.
+
+- **Embedded module path confusion** — Functions added to
+  `crates/genomehubs-query/src/lib.rs` are **not** available as
+  `crate::embedded::genomehubs_query::` in generated projects. The subcrate
+  source files are copied piecemeal into `src/embedded/core/` by
+  `copy_embedded_modules()` in `src/commands/new.rs`. Only files explicitly
+  listed there end up in generated projects. New modules from the subcrate
+  (e.g. `parse.rs`) must be:
+  1. Added to the copy list in `copy_embedded_modules()`.
+  2. Declared in the generated `core_mod_rs_content` string.
+  3. Referenced as `crate::embedded::core::<module>::` in `lib.rs.tera`.
+     The path `crate::embedded::genomehubs_query::` does **not** exist in
+     generated projects.
 
 ### Checklist for adding a new language to `snippet()`
 

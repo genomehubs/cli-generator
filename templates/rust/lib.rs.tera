@@ -96,6 +96,24 @@ fn render_snippet(
         .map_err(|e| PyRuntimeError::new_err(format!("Failed to serialise snippets: {}", e)))
 }
 
+/// Parse the `status` block from a raw genomehubs API JSON response.
+///
+/// Returns a compact JSON string: `{"hits":N,"ok":true|false,"error":null|"msg"}`.
+/// On completely invalid JSON, returns an error-flagged JSON object rather than raising.
+#[cfg(feature = "extension-module")]
+#[pyfunction]
+fn parse_response_status(raw: &str) -> String {
+    use crate::embedded::core::parse;
+    match parse::parse_response_status(raw) {
+        Ok(status) => parse::response_status_to_json(&status),
+        Err(e) => parse::response_status_to_json(&parse::ResponseStatus {
+            hits: 0,
+            ok: false,
+            error: Some(e),
+        }),
+    }
+}
+
 /// Python module for {{ site_display_name }}.
 #[cfg(feature = "extension-module")]
 #[pymodule]
@@ -108,5 +126,6 @@ fn {{ sdk_name }}(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<sdk::Validator>()?;
     m.add_function(wrap_pyfunction!(describe_query, m)?)?;
     m.add_function(wrap_pyfunction!(render_snippet, m)?)?;
+    m.add_function(wrap_pyfunction!(parse_response_status, m)?)?;
     Ok(())
 }

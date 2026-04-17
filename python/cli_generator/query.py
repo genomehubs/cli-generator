@@ -311,13 +311,16 @@ class QueryBuilder:
         import json
         import urllib.request
 
+        from . import parse_response_status
+
         counter = QueryBuilder(self._index)
         counter.merge(self)
         counter.set_size(0)
         url = counter.to_url(api_base, api_version, "search")
         with urllib.request.urlopen(url) as resp:
-            body = json.loads(resp.read())
-        return int((body.get("status") or {}).get("hits") or 0)
+            body_text = resp.read().decode("utf-8")
+        status = json.loads(parse_response_status(body_text))
+        return int(status.get("hits") or 0)
 
     def search(
         self,

@@ -370,7 +370,7 @@ impl super::SearchIndex {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::query::{
+    use crate::query::{
         attributes::{Attribute, AttributeSet, AttributeValue, Field, Modifier},
         identifiers::{Identifiers, TaxaIdentifier, TaxonFilterType},
         QueryParams, SearchIndex, SearchQuery,

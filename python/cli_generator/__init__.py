@@ -6,11 +6,23 @@ of all exported symbols.
 """
 
 try:
-    from .cli_generator import build_url, describe_query, render_snippet, version  # type: ignore[import-not-found]
+    from .cli_generator import (  # type: ignore[import-not-found]
+        build_url,
+        describe_query,
+        parse_response_status,
+        render_snippet,
+        version,
+    )
 except ImportError:
     # Rust extension not yet compiled; type stubs will be used for mypy/pyright
     pass  # type: ignore[unreachable]
 
 from .query import QueryBuilder
 
-__all__ = ["build_url", "describe_query", "QueryBuilder", "render_snippet", "version"]
+__all__ = ["build_url", "describe_query", "parse_response_status", "QueryBuilder", "render_snippet", "version"]
+    # Rust extension not yet compiled; type stubs will be used for mypy/pyright
+    pass  # type: ignore[unreachable]
+
+from .query import QueryBuilder
+
+__all__ = ["build_url", "describe_query", "parse_response_status", "QueryBuilder", "render_snippet", "version"]

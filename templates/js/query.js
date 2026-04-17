@@ -345,8 +345,9 @@ class QueryBuilder {
     const resp = await fetch(url, { headers: { Accept: "application/json" } });
     if (!resp.ok)
       throw new Error(`API request failed: ${resp.status} ${resp.statusText}`);
-    const json = await resp.json();
-    return json?.status?.hits ?? 0;
+    const text = await resp.text();
+    const statusJson = wasmModule.parse_response_status(text);
+    return JSON.parse(statusJson).hits ?? 0;
   }
 
   /**

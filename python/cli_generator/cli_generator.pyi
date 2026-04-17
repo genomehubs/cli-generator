@@ -99,3 +99,17 @@ def describe_query(
         ValueError: If any YAML or JSON string cannot be parsed.
     """
     ...
+
+def parse_response_status(raw: str) -> str:
+    """Parse the ``status`` block from a raw genomehubs API JSON response.
+
+    Args:
+        raw: Raw JSON response body from the genomehubs API.
+
+    Returns:
+        Compact JSON string of the form
+        ``'{"hits":N,"ok":true|false,"error":null|"msg"}'``.
+        On completely invalid input returns an error-flagged object rather
+        than raising.
+    """
+    ...

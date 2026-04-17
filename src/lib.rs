@@ -149,6 +149,16 @@ fn render_snippet(
         .map_err(|e| PyRuntimeError::new_err(format!("Failed to serialise snippets: {}", e)))
 }
 
+/// Parse the `status` block from a raw genomehubs API JSON response.
+///
+/// Returns a compact JSON string: `{"hits":N,"ok":true|false,"error":null|"msg"}`.
+/// On completely invalid JSON, returns an error-flagged JSON object rather than raising.
+#[cfg(feature = "extension-module")]
+#[pyfunction]
+fn parse_response_status(raw: &str) -> String {
+    genomehubs_query::parse_response_status(raw)
+}
+
 /// Python module definition for `cli_generator`.
 #[cfg(feature = "extension-module")]
 #[pymodule]
@@ -157,5 +167,6 @@ fn cli_generator(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(build_url, m)?)?;
     m.add_function(wrap_pyfunction!(describe_query, m)?)?;
     m.add_function(wrap_pyfunction!(render_snippet, m)?)?;
+    m.add_function(wrap_pyfunction!(parse_response_status, m)?)?;
     Ok(())
 }

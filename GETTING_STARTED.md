@@ -555,10 +555,40 @@ cargo run -- preview --repo /path/to/my-site-cli
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the full coding standards.
 
-| Command                                                        | What it does                             |
-| -------------------------------------------------------------- | ---------------------------------------- |
-| `cargo test`                                                   | Unit tests + proptests                   |
-| `cargo test --test generated_goat_cli`                         | Integration tests (needs cargo-generate) |
-| `cargo fmt --all && cargo clippy --all-targets -- -D warnings` | Lint                                     |
-| `maturin develop --features extension-module`                  | Build Python extension in-place          |
-| `pytest tests/python/ -v`                                      | Python tests                             |
+### Verify your changes
+
+`scripts/verify_code.sh` runs all static checks and unit tests in one step:
+
+```bash
+bash scripts/verify_code.sh          # fmt, clippy, cargo test, black, pyright, pytest
+bash scripts/verify_code.sh --verbose  # show full output on failure
+```
+
+If the Rust extension has changed, rebuild it first so the Python tests can
+import the compiled module:
+
+```bash
+maturin develop --features extension-module
+```
+
+### End-to-end dev site test
+
+Unit tests do not compile generated projects. After changing templates, the
+embedded module system, or the WASM subcrate, use `scripts/dev_site.sh` to
+regenerate and smoke-test a full site:
+
+```bash
+bash scripts/dev_site.sh                  # generate goat, Rust + JS smoke-tests
+bash scripts/dev_site.sh --python         # also build Python extension + smoke-test
+bash scripts/dev_site.sh --rebuild-wasm   # rebuild WASM pkg/ first (required when
+                                          # a new #[wasm_bindgen] export is added)
+bash scripts/dev_site.sh --rebuild-wasm --python goat  # full check
+bash scripts/dev_site.sh boat             # test a different site
+```
+
+| Script                               | What it does                                       |
+| ------------------------------------ | -------------------------------------------------- |
+| `scripts/verify_code.sh`             | fmt, clippy, tests, black, pyright, pytest         |
+| `scripts/dev_site.sh`                | Generate + Rust `--url` + JS `toUrl()` smoke-tests |
+| `scripts/dev_site.sh --python`       | As above + maturin develop + Python smoke-test     |
+| `scripts/dev_site.sh --rebuild-wasm` | Rebuild `crates/genomehubs-query/pkg/` first       |
