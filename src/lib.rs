@@ -159,6 +159,69 @@ fn parse_response_status(raw: &str) -> String {
     genomehubs_query::parse_response_status(raw)
 }
 
+/// Parse a raw genomehubs `/search` JSON response into a flat record array.
+///
+/// Returns a compact JSON array string where each element is one flat record.
+/// See [`genomehubs_query::parse_search_json`] for the full column specification.
+#[cfg(feature = "extension-module")]
+#[pyfunction]
+fn parse_search_json(raw: &str) -> String {
+    genomehubs_query::parse_search_json(raw)
+}
+
+/// Add `{field}_label` columns to already-flat parsed records.
+///
+/// `records_json` must be the output of [`parse_search_json`].
+/// `mode` is `"all"`, `"non_direct"` (default), or `"ancestral_only"`.
+#[cfg(feature = "extension-module")]
+#[pyfunction]
+#[pyo3(signature = (records_json, mode = "non_direct"))]
+fn annotate_source_labels(records_json: &str, mode: &str) -> String {
+    genomehubs_query::annotate_source_labels(records_json, mode)
+}
+
+/// Reshape flat parsed records into split-source columns.
+///
+/// `records_json` must be the output of [`parse_search_json`].  Each
+/// `{field}` / `{field}__source` pair becomes `{field}__direct`,
+/// `{field}__descendant`, and `{field}__ancestral`.
+#[cfg(feature = "extension-module")]
+#[pyfunction]
+fn split_source_columns(records_json: &str) -> String {
+    genomehubs_query::split_source_columns(records_json)
+}
+
+/// Strip all `__*` sub-key columns from flat records.
+///
+/// `records_json` must be the output of [`parse_search_json`].  Columns like
+/// `{field}__source`, `{field}__min`, `{field}__label`, and `{field}__direct`
+/// are removed; bare `{field}` values and identity columns are preserved.
+///
+/// `keep_columns_json` is a JSON array of column names to preserve despite
+/// containing `__`, e.g. `'["assembly_span__min"]'`.  Default: `""`
+/// (strip all).
+#[cfg(feature = "extension-module")]
+#[pyfunction]
+#[pyo3(signature = (records_json, keep_columns_json = ""))]
+fn values_only(records_json: &str, keep_columns_json: &str) -> String {
+    genomehubs_query::values_only(records_json, keep_columns_json)
+}
+
+/// Return records with non-direct values replaced by their annotated label.
+///
+/// Chains `annotate_source_labels` then promotes each `{field}__label` into
+/// `{field}`, then strips all remaining `__*` metadata columns.
+/// `mode` is `"all"`, `"non_direct"` (default), or `"ancestral_only"`.
+///
+/// `keep_columns_json` is a JSON array of column names to preserve after
+/// stripping, e.g. `'["assembly_span__min"]'`.  Default: `""` (strip all).
+#[cfg(feature = "extension-module")]
+#[pyfunction]
+#[pyo3(signature = (records_json, mode = "non_direct", keep_columns_json = ""))]
+fn annotated_values(records_json: &str, mode: &str, keep_columns_json: &str) -> String {
+    genomehubs_query::annotated_values(records_json, mode, keep_columns_json)
+}
+
 /// Python module definition for `cli_generator`.
 #[cfg(feature = "extension-module")]
 #[pymodule]
@@ -168,5 +231,10 @@ fn cli_generator(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(describe_query, m)?)?;
     m.add_function(wrap_pyfunction!(render_snippet, m)?)?;
     m.add_function(wrap_pyfunction!(parse_response_status, m)?)?;
+    m.add_function(wrap_pyfunction!(parse_search_json, m)?)?;
+    m.add_function(wrap_pyfunction!(annotate_source_labels, m)?)?;
+    m.add_function(wrap_pyfunction!(split_source_columns, m)?)?;
+    m.add_function(wrap_pyfunction!(values_only, m)?)?;
+    m.add_function(wrap_pyfunction!(annotated_values, m)?)?;
     Ok(())
 }

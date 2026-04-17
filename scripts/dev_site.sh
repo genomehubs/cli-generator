@@ -75,6 +75,36 @@ if [[ $REBUILD_WASM -eq 1 ]]; then
         cd crates/genomehubs-query
         wasm-pack build --target nodejs --features wasm
     )
+
+    # wasm-pack --target nodejs generates CJS. Convert to ESM so query.js
+    # (which uses ESM import syntax) can load it directly in Node ≥ 18.
+    PKG_JS="crates/genomehubs-query/pkg/genomehubs_query.js"
+    PKG_JSON="crates/genomehubs-query/pkg/package.json"
+
+    # Add ESM header imports (idempotent — skip if already present)
+    if ! grep -q "^import { readFileSync" "$PKG_JS"; then
+        sed -i '' 's|/\* @ts-self-types=.*\*/|/* @ts-self-types="./genomehubs_query.d.ts" */\n\nimport { readFileSync } from '"'"'fs'"'"';\nimport { fileURLToPath } from '"'"'url'"'"';|' "$PKG_JS"
+    fi
+    # Replace require('fs').readFileSync with ESM equivalent
+    sed -i '' \
+        's|const wasmPath = `\${__dirname}/\(.*\)`;|const wasmPath = fileURLToPath(new URL('"'"'./\1'"'"', import.meta.url));|' \
+        "$PKG_JS"
+    sed -i '' 's|const wasmBytes = require(.fs.)\.readFileSync(wasmPath);|const wasmBytes = readFileSync(wasmPath);|' "$PKG_JS"
+
+    # Replace exports.X = X with a single named export block at the end
+    ALL_EXPORTS=$(grep "^exports\." "$PKG_JS" | sed "s/exports\.\([^ =]*\) = .*/\1/" | tr '\n' ' ')
+    sed -i '' '/^exports\./d' "$PKG_JS"
+    if [[ -n "$ALL_EXPORTS" ]]; then
+        EXPORT_NAMES=$(echo "$ALL_EXPORTS" | tr ' ' ',' | sed 's/,$//')
+        echo "" >> "$PKG_JS"
+        echo "export { ${EXPORT_NAMES} };" >> "$PKG_JS"
+    fi
+
+    # Mark the pkg as ESM
+    if ! grep -q '"type": "module"' "$PKG_JSON"; then
+        sed -i '' 's|"main": "genomehubs_query.js",|"main": "genomehubs_query.js",\n  "type": "module",|' "$PKG_JSON"
+    fi
+
     ok "WASM package rebuilt → crates/genomehubs-query/pkg/"
     echo ""
     echo "  NOTE: the updated pkg/ should be committed so generated projects"
@@ -119,28 +149,33 @@ echo "Running Rust smoke-test (--url flag)..."
 # ── Step 4: JS smoke-test ─────────────────────────────────────────────────────
 
 JS_PACKAGE="${SITE//-/_}"
-JS_DIR="${SITE_CLI_DIR}/js/${JS_PACKAGE}"
+JS_DIR="$(cd "${SITE_CLI_DIR}/js/${JS_PACKAGE}" 2>/dev/null && pwd || true)"
 
 if [[ -d "$JS_DIR" ]]; then
     echo ""
     echo "Running JS smoke-test (toUrl, no network)..."
-    URL_OUT=$(node -e "
-const { QueryBuilder } = require('${JS_DIR}/query');
+    SMOKE_MJS=$(mktemp /tmp/js-smoke-XXXXXX.mjs)
+    cat > "$SMOKE_MJS" << JSEOF
+import { QueryBuilder } from '${JS_DIR}/query.js';
 const qb = new QueryBuilder('taxon').setTaxa(['Mammalia'], 'tree').setSize(10);
 console.log(qb.toUrl());
-" 2>&1)
+JSEOF
+    URL_OUT=$(node "$SMOKE_MJS" 2>&1)
+    rm -f "$SMOKE_MJS"
     if echo "$URL_OUT" | grep -q "api"; then
         ok "JS toUrl(): ${URL_OUT}"
     else
         fail "JS toUrl() produced unexpected output: ${URL_OUT}"
     fi
 
-    # Check that parse_response_status is exported from the bundled pkg
+    # Check that all expected parse functions are exported from the bundled pkg
     PKG_JS="${JS_DIR}/pkg/genomehubs_query.js"
-    if [[ -f "$PKG_JS" ]] && ! grep -q "parse_response_status" "$PKG_JS"; then
-        warn "parse_response_status not found in bundled pkg/genomehubs_query.js"
-        warn "Run with --rebuild-wasm to include newly-added WASM exports."
-    fi
+    for fn in parse_response_status parse_search_json annotate_source_labels split_source_columns; do
+        if [[ -f "$PKG_JS" ]] && ! grep -q "$fn" "$PKG_JS"; then
+            warn "${fn} not found in bundled pkg/genomehubs_query.js"
+            warn "Run with --rebuild-wasm to include newly-added WASM exports."
+        fi
+    done
 fi
 
 # ── Step 5: Optional Python smoke-test ───────────────────────────────────────

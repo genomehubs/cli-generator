@@ -7,10 +7,15 @@ of all exported symbols.
 
 try:
     from .cli_generator import (  # type: ignore[import-not-found]
+        annotate_source_labels,
+        annotated_values,
         build_url,
         describe_query,
         parse_response_status,
+        parse_search_json,
         render_snippet,
+        split_source_columns,
+        values_only,
         version,
     )
 except ImportError:
@@ -19,10 +24,16 @@ except ImportError:
 
 from .query import QueryBuilder
 
-__all__ = ["build_url", "describe_query", "parse_response_status", "QueryBuilder", "render_snippet", "version"]
-    # Rust extension not yet compiled; type stubs will be used for mypy/pyright
-    pass  # type: ignore[unreachable]
-
-from .query import QueryBuilder
-
-__all__ = ["build_url", "describe_query", "parse_response_status", "QueryBuilder", "render_snippet", "version"]
+__all__ = [
+    "annotate_source_labels",
+    "annotated_values",
+    "build_url",
+    "describe_query",
+    "parse_response_status",
+    "parse_search_json",
+    "QueryBuilder",
+    "render_snippet",
+    "split_source_columns",
+    "values_only",
+    "version",
+]

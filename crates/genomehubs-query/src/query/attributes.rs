@@ -271,6 +271,27 @@ impl Modifier {
             Modifier::Missing => "Missing",
         }
     }
+
+    /// Return the lowercase modifier string for use in `fields=field:modifier` URL params.
+    ///
+    /// Unlike [`as_str`], this always returns lowercase, which is what the API
+    /// expects in the `fields` query parameter (e.g. `assembly_span:direct`).
+    pub fn as_field_param_str(&self) -> &'static str {
+        match self {
+            Modifier::Min => "min",
+            Modifier::Max => "max",
+            Modifier::Median => "median",
+            Modifier::Mean => "mean",
+            Modifier::Sum => "sum",
+            Modifier::List => "list",
+            Modifier::Length => "length",
+            Modifier::Direct => "direct",
+            Modifier::Ancestral => "ancestral",
+            Modifier::Descendant => "descendant",
+            Modifier::Estimated => "estimated",
+            Modifier::Missing => "missing",
+        }
+    }
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────

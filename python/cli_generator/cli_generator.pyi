@@ -113,3 +113,130 @@ def parse_response_status(raw: str) -> str:
         than raising.
     """
     ...
+
+def parse_search_json(raw: str) -> str:
+    """Parse a raw genomehubs ``/search`` JSON response into a flat record array.
+
+    Each element of the returned array corresponds to one result record with:
+
+    - Identity columns: ``taxon_id``, ``assembly_id``, or ``sample_id``;
+      ``scientific_name``; ``taxon_rank``.
+    - ``{field}`` — representative value (``null`` for stub fields with no value).
+    - ``{field}__source`` — ``"direct"``, ``"ancestor"``, or ``"descendant"``
+      (taxon index only; ``null`` for assembly/sample).
+    - Stat sub-keys present on the raw object: ``{field}__min``, ``{field}__max``,
+      ``{field}__median``, ``{field}__mode``, ``{field}__mean``, ``{field}__count``,
+      ``{field}__sp_count``, ``{field}__from``, ``{field}__to``, ``{field}__length``.
+
+    Args:
+        raw: Raw JSON response body from the genomehubs ``/search`` endpoint.
+
+    Returns:
+        Compact JSON array string.  Parse with ``json.loads()`` or pass directly
+        to ``polars.read_json()`` / ``pandas.read_json()``.
+    """
+    ...
+
+def annotate_source_labels(records_json: str, mode: str = "non_direct") -> str:
+    """Add ``{field}__label`` columns to already-flat parsed records.
+
+    Operates on the output of :func:`parse_search_json` without re-parsing the
+    raw HTTP response.
+
+    Label format examples:
+
+    - Direct value ``3.4`` → ``"3.4"`` (all modes)
+    - Descendant value ``57`` → ``"57 (Descendant)"`` (non_direct, all modes)
+    - Ancestral value ``2`` → ``"2 (Ancestral)"`` (all three modes)
+    - List value ``["A", "B"]`` → ``"A, B"`` (joined with comma)
+
+    Args:
+        records_json: JSON array string from :func:`parse_search_json`.
+        mode: One of:
+
+            - ``"non_direct"`` (default) — annotate descendant and ancestral only.
+            - ``"ancestral_only"`` — annotate ancestral values only.
+            - ``"all"`` — annotate every value including direct.
+
+    Returns:
+        Compact JSON array string with ``{field}__label`` columns added.
+    """
+    ...
+
+def split_source_columns(records_json: str) -> str:
+    """Reshape flat parsed records into split-source columns.
+
+    Operates on the output of :func:`parse_search_json` without re-parsing the
+    raw HTTP response.  Each ``{field}`` / ``{field}__source`` pair is replaced
+    by three columns:
+
+    - ``{field}__direct`` — value when source is ``"direct"``, else ``null``.
+    - ``{field}__descendant`` — value when source is ``"descendant"``, else ``null``.
+    - ``{field}__ancestral`` — value when source is ``"ancestor"``, else ``null``.
+
+    All other columns (stat sub-keys, ``__length``, identity fields) are kept
+    unchanged.
+
+    Args:
+        records_json: JSON array string from :func:`parse_search_json`.
+
+    Returns:
+        Compact JSON array string with split-source columns.
+    """
+    ...
+
+def values_only(records_json: str, keep_columns_json: str = "") -> str:
+    """Strip all ``__*`` sub-key columns from flat records.
+
+    Operates on the output of :func:`parse_search_json`.  All metadata columns
+    whose names contain ``__`` (``{field}__source``, ``{field}__min``,
+    ``{field}__label``, ``{field}__direct``, etc.) are removed.  Identity columns
+    (``taxon_id``, ``scientific_name``, ``taxon_rank``, …) and bare ``{field}``
+    value columns are preserved.
+
+    ``keep_columns_json`` is a JSON array of ``__*`` column names to **preserve**
+    despite containing ``__``.  Use this when the caller requested a specific
+    summary statistic via ``field:modifier`` syntax, e.g.::
+
+        keep = json.dumps(qb.field_modifiers())
+        rows = json.loads(values_only(flat_json, keep))
+
+    Pass ``""`` or ``"[]"`` to strip all ``__*`` columns (default behaviour).
+
+    Args:
+        records_json: JSON array string from :func:`parse_search_json`.
+        keep_columns_json: JSON array of column names to preserve, e.g.
+            ``'["assembly_span__min"]'``.  Default ``""`` strips all.
+
+    Returns:
+        Compact JSON array string containing only identity and value columns.
+    """
+    ...
+
+def annotated_values(records_json: str, mode: str = "non_direct", keep_columns_json: str = "") -> str:
+    """Return records with non-direct values replaced by their annotated label.
+
+    Chains :func:`annotate_source_labels` then promotes each ``{field}__label``
+    into ``{field}``, then strips all remaining ``__*`` metadata columns.
+
+    ``keep_columns_json`` works identically to :func:`values_only` — pass a
+    JSON array of column names to preserve specific stat sub-keys after label
+    promotion, e.g. ``'["assembly_span__min"]'``.
+
+    Fields that have no label (e.g. ``"direct"`` source in ``"non_direct"`` mode)
+    keep their original numeric/string value.
+
+    Example output column for an ancestral genome_size::
+
+        genome_size = "8215200000 (Ancestral)"
+
+    Args:
+        records_json: JSON array string from :func:`parse_search_json`.
+        mode: One of ``"non_direct"`` (default), ``"ancestral_only"``, or ``"all"``.
+        keep_columns_json: JSON array of column names to preserve, e.g.
+            ``'["assembly_span__min"]'``.  Default ``""`` strips all.
+
+    Returns:
+        Compact JSON array string with labelled values and no ``__*`` columns.
+    """
+    ...

@@ -137,16 +137,46 @@ class QueryBuilder:
     ) -> "QueryBuilder":
         """Request a field in the response.
 
+        Accepts either the plain field name or the ``"field:modifier"``
+        shorthand.  For example, ``add_field("assembly_span:min")`` is
+        equivalent to ``add_field("assembly_span", modifiers=["min"])``.
+
         Args:
-            name: Field name, e.g. ``"genome_size"``.
-            modifiers: Summary modifiers to include as separate columns,
-                e.g. ``["min", "max"]``.
+            name: Field name, e.g. ``"genome_size"``, or shorthand with a
+                modifier suffix, e.g. ``"assembly_span:min"``.
+            modifiers: Additional summary modifiers, e.g. ``["min", "max"]``.
         """
-        entry: dict[str, Any] = {"name": name}
-        if modifiers:
-            entry["modifier"] = list(modifiers)
+        bare_name = name
+        colon_modifiers: list[str] = []
+        if ":" in name:
+            bare_name, colon_mod = name.split(":", 1)
+            colon_modifiers = [colon_mod]
+        entry: dict[str, Any] = {"name": bare_name}
+        all_modifiers = colon_modifiers + list(modifiers or [])
+        if all_modifiers:
+            entry["modifier"] = all_modifiers
         self._fields.append(entry)
         return self
+
+    def field_modifiers(self) -> list[str]:
+        """Return the ``__modifier`` column names implied by any field requests with modifiers.
+
+        Summary modifiers (``min``, ``max``, …) and status modifiers (``direct``,
+        ``ancestral``, ``descendant``) all produce a ``{field}__modifier`` column in
+        the parsed output when explicitly requested via ``:modifier`` syntax.
+        This is distinct from the automatically-added ``{field}__source`` metadata
+        column, which is never in this list.
+
+        Pass the return value as ``keep_columns_json`` to
+        :func:`values_only` or :func:`annotated_values` so that these explicitly
+        requested columns survive the ``__*`` stripping step.
+        """
+        result: list[str] = []
+        for field in self._fields:
+            field_name = field["name"] if isinstance(field, dict) else str(field)
+            mods: list[str] = field.get("modifier", []) if isinstance(field, dict) else []
+            result.extend(f"{field_name}__{mod}" for mod in mods)
+        return result
 
     def set_attributes(
         self,

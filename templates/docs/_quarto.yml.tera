@@ -1,0 +1,29 @@
+project:
+  type: website
+  output-dir: _site
+
+website:
+  title: "{{ site_display_name }} SDK"
+  navbar:
+    left:
+      - href: index.qmd
+        text: Home
+      - href: quickstart.qmd
+        text: Quick start
+      - text: Reference
+        menu:
+          - href: reference/query-builder.qmd
+            text: QueryBuilder
+          - href: reference/parse.qmd
+            text: Parsing results
+          - href: reference/cli.qmd
+            text: CLI reference
+  repo-url: "{{ repo_url | default(value='https://github.com/genomehubs/cli-generator') }}"
+  repo-actions: [edit, issue]
+
+format:
+  html:
+    theme: cosmo
+    toc: true
+    code-copy: true
+    code-overflow: wrap

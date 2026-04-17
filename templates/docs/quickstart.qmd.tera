@@ -1,0 +1,205 @@
+---
+title: "Quick start"
+---
+
+## Prerequisites
+
+::: {.panel-tabset group="language"}
+
+## Python
+
+```bash
+pip install {{ sdk_name }} pyyaml
+# or build from source:
+maturin develop --features extension-module
+```
+
+Requires Python ≥ 3.9.
+
+## R
+
+```r
+# Install the binary package (when available) or build from source:
+install.packages("{{ r_package_name }}")
+# From source:
+# pak::pak("genomehubs/{{ site_name }}-cli/r/{{ r_package_name }}")
+```
+
+## JavaScript
+
+```bash
+npm install {{ site_name }}-sdk
+```
+
+## CLI
+
+```bash
+cargo build --release
+# Add to PATH or use via `cargo run --`:
+./target/release/{{ site_name }}-cli --help
+```
+
+:::
+
+---
+
+## Your first query: count
+
+Count the number of species with genome size data.
+
+::: {.panel-tabset group="language"}
+
+## Python
+
+```python
+from {{ sdk_name }}.query import QueryBuilder
+
+count = (
+    QueryBuilder("taxon")
+    .set_taxa(["Mammalia"], filter_type="tree")
+    .set_rank("species")
+    .add_attribute("genome_size", "exists")
+    .count()
+)
+print(f"Mammals with genome size data: {count}")
+```
+
+## R
+
+```r
+library({{ r_package_name }})
+
+count <- query_builder("taxon") |>
+  set_taxa(c("Mammalia"), filter_type = "tree") |>
+  set_rank("species") |>
+  add_attribute("genome_size", "exists") |>
+  count()
+
+cat("Mammals with genome size data:", count, "\n")
+```
+
+## JavaScript
+
+```javascript
+import { QueryBuilder } from '{{ site_name }}-sdk';
+
+const count = await new QueryBuilder('taxon')
+  .setTaxa(['Mammalia'], 'tree')
+  .setRank('species')
+  .addAttribute('genome_size', 'exists')
+  .count();
+
+console.log(`Mammals with genome size data: ${count}`);
+```
+
+## CLI
+
+```bash
+{{ site_name }}-cli taxon count \
+  --taxon Mammalia --taxon-filter tree \
+  --rank species \
+  --filter "genome_size exists"
+```
+
+:::
+
+---
+
+## Search and load into a data frame
+
+Retrieve the top 20 largest mammal genomes.
+
+::: {.panel-tabset group="language"}
+
+## Python (polars)
+
+```python
+import polars as pl
+from {{ sdk_name }}.query import QueryBuilder
+
+df = (
+    QueryBuilder("taxon")
+    .set_taxa(["Mammalia"], filter_type="tree")
+    .set_rank("species")
+    .add_field("genome_size")
+    .add_field("assembly_level")
+    .set_sort("genome_size", "desc")
+    .set_size(20)
+    .search_polars()
+)
+print(df.select(["scientific_name", "genome_size", "genome_size_source"]))
+```
+
+## Python (pandas)
+
+```python
+import pandas as pd
+from {{ sdk_name }}.query import QueryBuilder
+
+df = (
+    QueryBuilder("taxon")
+    .set_taxa(["Mammalia"], filter_type="tree")
+    .set_rank("species")
+    .add_field("genome_size")
+    .set_sort("genome_size", "desc")
+    .set_size(20)
+    .search_df()
+)
+print(df[["scientific_name", "genome_size", "genome_size_source"]])
+```
+
+## R
+
+```r
+library({{ r_package_name }})
+
+df <- query_builder("taxon") |>
+  set_taxa(c("Mammalia"), filter_type = "tree") |>
+  set_rank("species") |>
+  add_field("genome_size") |>
+  add_field("assembly_level") |>
+  set_sort("genome_size", "desc") |>
+  set_size(20) |>
+  search_df()
+
+print(df[, c("scientific_name", "genome_size", "genome_size_source")])
+```
+
+## JavaScript
+
+```javascript
+import { QueryBuilder } from '{{ site_name }}-sdk';
+
+const records = await new QueryBuilder('taxon')
+  .setTaxa(['Mammalia'], 'tree')
+  .setRank('species')
+  .addField('genome_size')
+  .setSort('genome_size', 'desc')
+  .setSize(20)
+  .search();
+
+console.log(records);
+```
+
+## CLI
+
+```bash
+{{ site_name }}-cli taxon search \
+  --taxon Mammalia --taxon-filter tree \
+  --rank species \
+  --fields genome_size,assembly_level \
+  --sort genome_size:desc \
+  --size 20
+```
+
+:::
+
+---
+
+## Understanding value sources
+
+Taxon-index results include a `{field}_source` column indicating whether the
+value was measured directly on this taxon (`"direct"`), rolled up from
+descendants (`"descendant"`), or inherited from an ancestor (`"ancestor"`).
+See [Parsing results](reference/parse.qmd) for how to annotate or split on
+these.

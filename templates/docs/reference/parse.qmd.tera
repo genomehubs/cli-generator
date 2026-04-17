@@ -1,0 +1,240 @@
+---
+title: "Parsing results"
+---
+
+The {{ site_display_name }} API returns rich JSON responses in which each result
+row contains nested field objects with a `value`, aggregation statistics, and
+provenance metadata.  The three parse functions in this SDK convert that
+structure into flat, tabular data.
+
+---
+
+## Understanding the raw response
+
+Each result in `hits.hits` (or `results[]`) contains a map of field objects.
+A typical taxon-index field looks like:
+
+```json
+{
+  "genome_size": {
+    "value": 2700000000,
+    "count": 5,
+    "min": 1400000000,
+    "max": 3200000000,
+    "median": 2700000000,
+    "aggregation_source": "direct",
+    "sp_count": 1
+  }
+}
+```
+
+### Source provenance
+
+The `aggregation_source` key records *how* the value reached this taxon:
+
+| `aggregation_source` | Meaning |
+|---|---|
+| `"direct"` | Measured on a specimen of this taxon |
+| `["descendant"]` | Rolled up from descendant taxa |
+| `["ancestor"]` | Inherited from an ancestor taxon |
+
+### Count semantics
+
+| Key | Meaning |
+|---|---|
+| `count` | Number of inputs to the summary at this taxonomic level |
+| `sp_count` | Number of species with direct measurements; absent when source is ancestor |
+| `value` | The representative (e.g. median) value for this taxon |
+
+### Stub fields
+
+When descendants have data but no roll-up has been computed for the current
+node, the field object contains only `{"sp_count": N}`.  The SDK emits `null`
+for the value in this case.
+
+---
+
+## `parse_search_json(raw) -> str`
+
+Flatten a raw API response string into a JSON array of flat record dicts.
+
+**Input**: raw JSON string from the `{{ api_base }}/{{ api_version }}/search` endpoint.
+
+**Output**: JSON array, one object per hit, with:
+
+- Identity columns: `taxon_id` (or `assembly_id` / `sample_id`), `scientific_name`, `taxon_rank`
+- Per requested field: `{field}` (null for stubs), `{field}_source` (taxon index only)
+- Stat sub-keys when present: `{field}_min`, `{field}_max`, `{field}_median`, etc.
+- List fields: `{field}_length` (true total count, even when the array is truncated)
+
+::: {.panel-tabset group="language"}
+
+## Python
+
+```python
+import json
+import urllib.request
+from {{ sdk_name }} import parse_search_json
+from {{ sdk_name }}.query import QueryBuilder
+
+qb = (
+    QueryBuilder("taxon")
+    .set_taxa(["Mammalia"], filter_type="tree")
+    .set_rank("species")
+    .add_field("genome_size")
+    .set_size(10)
+)
+url = qb.to_url(api_base="{{ api_base }}", api_version="{{ api_version }}")
+
+with urllib.request.urlopen(url) as resp:
+    raw = resp.read().decode()
+
+records = json.loads(parse_search_json(raw))
+print(records[0].keys())
+# dict_keys(['taxon_id', 'scientific_name', 'taxon_rank',
+#            'genome_size', 'genome_size_source',
+#            'genome_size_min', 'genome_size_max', 'genome_size_median'])
+```
+
+## R
+
+```r
+library({{ r_package_name }})
+library(jsonlite)
+
+raw <- readLines(url(query_url), warn = FALSE) |> paste(collapse = "")
+records <- fromJSON(parse_search_json(raw))
+```
+
+## JavaScript
+
+```javascript
+import { parseSearchJson } from '{{ site_name }}-sdk';
+
+const resp = await fetch(url);
+const raw  = await resp.text();
+const records = JSON.parse(parseSearchJson(raw));
+```
+
+:::
+
+---
+
+## `annotate_source_labels(records_json, mode="non_direct") -> str`
+
+Add a `{field}_label` column to each record, combining the value with a
+human-readable source annotation.
+
+**Input**: flat JSON string from `parse_search_json`.
+
+**`mode`** options:
+
+| Mode | Label added for |
+|---|---|
+| `"all"` | Every field with a `_source` column |
+| `"non_direct"` (default) | Only fields with source `ancestor` or `descendant` |
+| `"ancestral_only"` | Only fields with source `ancestor` |
+
+**Label format**:
+
+| Source | Label |
+|---|---|
+| `"direct"` | `"2700000000"` (bare value) |
+| `"ancestor"` | `"2700000000 (Ancestral)"` |
+| `"descendant"` | `"2700000000 (Descendant)"` |
+
+::: {.panel-tabset group="language"}
+
+## Python
+
+```python
+import json
+from {{ sdk_name }} import parse_search_json, annotate_source_labels
+
+flat_json  = parse_search_json(raw)
+labelled = annotate_source_labels(flat_json, mode="non_direct")
+records  = json.loads(labelled)
+# Each record now has e.g. "genome_size_label": "2700000000 (Ancestral)"
+```
+
+## R
+
+```r
+labelled <- annotate_source_labels(flat_json, mode = "non_direct")
+records  <- fromJSON(labelled)
+```
+
+## JavaScript
+
+```javascript
+import { annotateSourceLabels } from '{{ site_name }}-sdk';
+
+const labelled = annotateSourceLabels(flatJson, 'non_direct');
+const records  = JSON.parse(labelled);
+```
+
+:::
+
+---
+
+## `split_source_columns(records_json) -> str`
+
+Replace each `{field}` / `{field}_source` pair with three columns:
+`{field}_direct`, `{field}_descendant`, `{field}_ancestral` — each `null`
+when the source does not match.
+
+Use this when downstream tools (e.g. ggplot2, matplotlib, DuckDB) need tidy
+column-per-source layout.
+
+::: {.panel-tabset group="language"}
+
+## Python
+
+```python
+import json
+from {{ sdk_name }} import parse_search_json, split_source_columns
+
+split   = split_source_columns(parse_search_json(raw))
+records = json.loads(split)
+# Each record has e.g.:
+#   genome_size_direct:     2700000000
+#   genome_size_descendant: null
+#   genome_size_ancestral:  null
+```
+
+## R
+
+```r
+split   <- split_source_columns(flat_json)
+records <- fromJSON(split)
+colnames(records)
+# [1] "taxon_id" "scientific_name" "taxon_rank"
+#     "genome_size_direct" "genome_size_descendant" "genome_size_ancestral"
+#     "genome_size_min" ...
+```
+
+## JavaScript
+
+```javascript
+import { splitSourceColumns } from '{{ site_name }}-sdk';
+
+const split   = splitSourceColumns(flatJson);
+const records = JSON.parse(split);
+```
+
+:::
+
+---
+
+## Typical pipeline
+
+```
+Raw API JSON
+    │
+    ▼
+parse_search_json()          — flatten, extract value + source + stats
+    │
+    ├─▶ annotate_source_labels()   — human-readable labels for display
+    │
+    └─▶ split_source_columns()     — tidy one-column-per-source layout
+```

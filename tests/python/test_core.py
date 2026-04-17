@@ -813,3 +813,151 @@ def test_cli_snippet_all_languages_together() -> None:
         sdk_name="goat_sdk",
     )
     assert set(result.keys()) == {"python", "r", "javascript", "cli"}
+
+
+# ── parse_search_json / values_only / annotated_values smoke tests ────────────
+
+import json
+
+_TAXON_RESPONSE = json.dumps(
+    {
+        "status": {"hits": 1, "success": True},
+        "results": [
+            {
+                "index": "taxon--ncbi--goat--2026.04.16",
+                "id": "9606",
+                "score": 1.0,
+                "result": {
+                    "taxon_id": "9606",
+                    "scientific_name": "Homo sapiens",
+                    "taxon_rank": "species",
+                    "fields": {
+                        "genome_size": {
+                            "value": 3_100_000_000,
+                            "count": 1,
+                            "min": 3_100_000_000,
+                            "max": 3_200_000_000,
+                            "aggregation_source": "direct",
+                            "sp_count": 0,
+                        }
+                    },
+                },
+            }
+        ],
+    }
+)
+
+
+def test_parse_search_json_returns_flat_record() -> None:
+    from cli_generator import parse_search_json
+
+    rows = json.loads(parse_search_json(_TAXON_RESPONSE))
+    assert len(rows) == 1
+    row = rows[0]
+    assert row["taxon_id"] == "9606"
+    assert row["scientific_name"] == "Homo sapiens"
+    assert row["genome_size"] == 3_100_000_000
+    assert row["genome_size__source"] == "direct"
+    assert row["genome_size__min"] == 3_100_000_000
+    assert row["genome_size__max"] == 3_200_000_000
+
+
+def test_values_only_strips_subkey_columns() -> None:
+    from cli_generator import parse_search_json, values_only
+
+    flat = parse_search_json(_TAXON_RESPONSE)
+    rows = json.loads(values_only(flat))
+    assert len(rows) == 1
+    row = rows[0]
+    assert row["taxon_id"] == "9606"
+    assert row["genome_size"] == 3_100_000_000
+    # Sub-key columns must be absent.
+    assert "genome_size__source" not in row
+    assert "genome_size__min" not in row
+    assert "genome_size__max" not in row
+
+
+def test_values_only_preserves_keep_column() -> None:
+    from cli_generator import parse_search_json, values_only
+
+    flat = parse_search_json(_TAXON_RESPONSE)
+    keep = json.dumps(["genome_size__min"])
+    rows = json.loads(values_only(flat, keep))
+    row = rows[0]
+    # Explicitly requested stat preserved.
+    assert row["genome_size__min"] == 3_100_000_000
+    # Other sub-key columns still stripped.
+    assert "genome_size__source" not in row
+    assert "genome_size__max" not in row
+
+
+def test_add_field_colon_syntax_builds_correct_url() -> None:
+    """add_field(\"assembly_span:min\") should produce bare field before :min in URL."""
+    from cli_generator import QueryBuilder, build_url
+
+    q = QueryBuilder("assembly").add_field("assembly_span:min")
+    url = build_url(q.to_query_yaml(), q.to_params_yaml(), "https://goat.genomehubs.org/api", "v2", "search")
+    assert "assembly_span" in url
+    assert "assembly_span%3Amin" in url
+    # Bare field must appear before the modifier.
+    idx_bare = url.index("assembly_span")
+    idx_mod = url.index("assembly_span%3Amin")
+    assert idx_bare < idx_mod
+
+
+def test_field_modifiers_returns_stat_columns() -> None:
+    q = QueryBuilder("assembly")
+    q.add_field("assembly_span:min")
+    q.add_field("genome_size", modifiers=["max"])
+    q.add_field("contig_n50")
+    q.add_field("assembly_span:direct")  # status modifier — also produces __direct column
+    assert set(q.field_modifiers()) == {"assembly_span__min", "genome_size__max", "assembly_span__direct"}
+
+
+def test_annotated_values_direct_stays_numeric_in_non_direct_mode() -> None:
+    from cli_generator import annotated_values, parse_search_json
+
+    flat = parse_search_json(_TAXON_RESPONSE)
+    rows = json.loads(annotated_values(flat, "non_direct"))
+    assert len(rows) == 1
+    row = rows[0]
+    # Direct source in non_direct mode: value stays numeric, no __* columns.
+    assert row["genome_size"] == 3_100_000_000
+    assert "genome_size__source" not in row
+    assert "genome_size__label" not in row
+
+
+_ANCESTOR_RESPONSE = json.dumps(
+    {
+        "status": {"hits": 1, "success": True},
+        "results": [
+            {
+                "index": "taxon--ncbi--goat--2026.04.16",
+                "id": "9347",
+                "score": 1.0,
+                "result": {
+                    "taxon_id": "9347",
+                    "scientific_name": "Eutheria",
+                    "taxon_rank": "clade",
+                    "fields": {
+                        "genome_size": {
+                            "value": 8_215_200_000,
+                            "aggregation_source": ["ancestor"],
+                        }
+                    },
+                },
+            }
+        ],
+    }
+)
+
+
+def test_annotated_values_ancestor_becomes_labelled_string() -> None:
+    from cli_generator import annotated_values, parse_search_json
+
+    flat = parse_search_json(_ANCESTOR_RESPONSE)
+    rows = json.loads(annotated_values(flat, "non_direct"))
+    row = rows[0]
+    assert row["genome_size"] == "8215200000 (Ancestral)"
+    assert "genome_size__source" not in row
+    assert "genome_size__label" not in row

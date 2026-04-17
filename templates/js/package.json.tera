@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "description": "Query builder and API client for {{ site_display_name }}",
   "main": "query.js",
-  "type": "commonjs",
+  "type": "module",
   "scripts": {
     "build": "bash build-wasm.sh",
     "test": "node --test tests/"

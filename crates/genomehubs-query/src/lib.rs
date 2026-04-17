@@ -62,3 +62,89 @@ pub fn parse_response_status(raw: &str) -> String {
         Err(e) => format!(r#"{{"hits":0,"ok":false,"error":{e:?}}}"#),
     }
 }
+
+/// Parse a raw genomehubs `/search` JSON response into a flat record array.
+///
+/// Returns a compact JSON array string.  Each element is one flat record with:
+/// - Identity columns (`taxon_id`, `scientific_name`, `taxon_rank`, …)
+/// - `{field}` — representative value (`null` for stub fields with no value)
+/// - `{field}_source` — `"direct"`, `"ancestor"`, or `"descendant"` (taxon only)
+/// - Stat sub-keys present on the raw object: `{field}_min`, `{field}_max`,
+///   `{field}_median`, `{field}_mode`, `{field}_mean`, `{field}_count`,
+///   `{field}_sp_count`, `{field}_from`, `{field}_to`, `{field}_length`
+///
+/// On error returns a JSON string `{"error":"..."}`.
+#[cfg_attr(feature = "wasm", wasm_bindgen)]
+pub fn parse_search_json(raw: &str) -> String {
+    match parse::parse_search_json(raw) {
+        Ok(records) => records,
+        Err(e) => format!(r#"{{"error":{e:?}}}"#),
+    }
+}
+
+/// Add `{field}_label` columns to already-flat parsed records.
+///
+/// `records_json` is the output of [`parse_search_json`].
+/// `mode` is one of `"all"`, `"non_direct"` (default), or `"ancestral_only"`.
+///
+/// Returns the annotated records JSON string, or `{"error":"..."}` on failure.
+#[cfg_attr(feature = "wasm", wasm_bindgen)]
+pub fn annotate_source_labels(records_json: &str, mode: &str) -> String {
+    match parse::annotate_source_labels(records_json, mode) {
+        Ok(records) => records,
+        Err(e) => format!(r#"{{"error":{e:?}}}"#),
+    }
+}
+
+/// Reshape flat parsed records into split-source columns.
+///
+/// `records_json` is the output of [`parse_search_json`].  Each `{field}` /
+/// `{field}__source` pair is replaced by `{field}__direct`, `{field}__descendant`,
+/// and `{field}__ancestral`.
+///
+/// Returns the reshaped records JSON string, or `{"error":"..."}` on failure.
+#[cfg_attr(feature = "wasm", wasm_bindgen)]
+pub fn split_source_columns(records_json: &str) -> String {
+    match parse::split_source_columns(records_json) {
+        Ok(records) => records,
+        Err(e) => format!(r#"{{"error":{e:?}}}"#),
+    }
+}
+
+/// Strip all `__*` sub-key columns from flat records, keeping only identity
+/// columns and bare field values.
+///
+/// `records_json` is the output of [`parse_search_json`].  Columns like
+/// `{field}__source`, `{field}__min`, `{field}__label`, `{field}__direct` are
+/// removed; bare `{field}` values and identity columns are preserved.
+///
+/// `keep_columns_json` is a JSON array of column names to preserve despite
+/// containing `__`, e.g. `'["assembly_span__min"]'`.  Pass `""` or `"[]"`
+/// to strip all `__*` columns (the usual case).
+///
+/// Returns the stripped records JSON string, or `{"error":"..."}` on failure.
+#[cfg_attr(feature = "wasm", wasm_bindgen)]
+pub fn values_only(records_json: &str, keep_columns_json: &str) -> String {
+    match parse::values_only(records_json, keep_columns_json) {
+        Ok(records) => records,
+        Err(e) => format!(r#"{{"error":{e:?}}}"#),
+    }
+}
+
+/// Return records with non-direct field values replaced by their annotated label.
+///
+/// Chains [`annotate_source_labels`] then for each `{field}__label` moves the
+/// label string into `{field}`, then strips all remaining `__*` columns.
+/// `mode` is one of `"all"`, `"non_direct"` (default), or `"ancestral_only"`.
+///
+/// `keep_columns_json` is a JSON array of column names to preserve after label
+/// promotion, e.g. `'["assembly_span__min"]'`.  Pass `""` to strip all.
+///
+/// Returns the annotated records JSON string, or `{"error":"..."}` on failure.
+#[cfg_attr(feature = "wasm", wasm_bindgen)]
+pub fn annotated_values(records_json: &str, mode: &str, keep_columns_json: &str) -> String {
+    match parse::annotated_values(records_json, mode, keep_columns_json) {
+        Ok(records) => records,
+        Err(e) => format!(r#"{{"error":{e:?}}}"#),
+    }
+}

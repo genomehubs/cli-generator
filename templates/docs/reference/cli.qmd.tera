@@ -1,0 +1,184 @@
+---
+title: "CLI reference"
+---
+
+The `{{ site_name }}-cli` binary provides direct shell access to the
+{{ site_display_name }} API.  Every search, count, and snippet operation
+is available without writing code.
+
+```bash
+{{ site_name }}-cli --help
+```
+
+---
+
+## Global flags
+
+| Flag | Description |
+|---|---|
+| `--url` | Print the API URL instead of making a request |
+| `--size N` | Number of results to return (default: `10`) |
+| `--page N` | Page number, 1-based (default: `1`) |
+| `--sort FIELD:ORDER` | Sort field and direction, e.g. `genome_size:desc` |
+| `--include-estimates` | Include estimated values (default: true) |
+| `--taxonomy NAME` | Taxonomy to use, e.g. `ncbi` (default: `ncbi`) |
+| `--format FORMAT` | Output format: `tsv`, `csv`, `json` (default: `tsv`) |
+
+---
+
+## Per-index subcommands
+
+{% for index in indexes %}
+### `{{ site_name }}-cli {{ index.name }}`
+
+```
+{{ site_name }}-cli {{ index.name }} <COMMAND> [OPTIONS]
+```
+
+**Commands**: `count`, `search`, `snippet`
+
+#### `count`
+
+```bash
+# How many {{ index.name }} records match?
+{{ site_name }}-cli {{ index.name }} count {% if loop.first %}--taxon Mammalia --taxon-filter tree --rank species{% endif %}
+
+```
+
+#### `search`
+
+```bash
+{{ site_name }}-cli {{ index.name }} search \{% if loop.first %}
+  --taxon Mammalia --taxon-filter tree \
+  --rank species \
+  --fields genome_size,assembly_level \
+  --sort genome_size:desc \
+  --size 20{% endif %}
+
+```
+
+#### `snippet`
+
+Generate a code snippet for this query in the language of your choice:
+
+```bash
+{{ site_name }}-cli {{ index.name }} snippet \{% if loop.first %}
+  --taxon Mammalia --taxon-filter tree \
+  --fields genome_size \
+  --lang python{% endif %}
+
+```
+
+{% endfor %}
+
+---
+
+## Filter syntax
+
+### Taxon filters
+
+```
+--taxon NAME [--taxon-filter {name|tree|lineage}]
+```
+
+- `name` (default) — match taxa by exact or fuzzy name
+- `tree` — include the entire subtree rooted at `NAME`
+- `lineage` — include only taxa that have `NAME` in their lineage
+
+Prefix with `!` to exclude:
+
+```bash
+--taxon Mammalia --taxon Rodentia!
+# or
+--taxon "Mammalia,!Rodentia"
+```
+
+### Attribute filters
+
+```
+--filter "FIELD OPERATOR VALUE"
+```
+
+| Example | Meaning |
+|---|---|
+| `"genome_size >= 1G"` | Genome size at least 1 gigabyte |
+| `"assembly_level eq chromosome"` | Chromosome-level assemblies only |
+| `"busco_completeness exists"` | Field must be present |
+| `"c_value missing"` | Field must be absent |
+
+Size suffixes `G`, `M`, `K` are accepted for numeric byte fields.
+
+Source modifiers restrict to specific provenance:
+
+```bash
+--filter "genome_size >= 1G direct"
+```
+
+### Assembly / sample filters
+
+```
+--assembly GCA_XXXXXXXXX.N
+--sample SAMXXXXXXXX
+```
+
+---
+
+## Output formats
+
+### TSV (default)
+
+```bash
+{{ site_name }}-cli taxon search --taxon Mammalia --fields genome_size
+# scientific_name  taxon_rank  genome_size  genome_size_source
+# Homo sapiens     species     3100000000   direct
+```
+
+### JSON
+
+```bash
+{{ site_name }}-cli taxon search --taxon Mammalia --fields genome_size --format json
+```
+
+### URL only
+
+Print the query URL without fetching data — useful for debugging or calling
+from other tools:
+
+```bash
+{{ site_name }}-cli taxon search --taxon Mammalia --fields genome_size --url
+# https://{{ api_base | trim_start_matches(pat="https://") }}/{{ api_version }}/search?...
+```
+
+---
+
+## Examples
+
+### Top 10 largest mammal genomes
+
+```bash
+{{ site_name }}-cli taxon search \
+  --taxon Mammalia --taxon-filter tree \
+  --rank species \
+  --fields genome_size \
+  --sort genome_size:desc \
+  --size 10
+```
+
+### Count insects with busco scores
+
+```bash
+{{ site_name }}-cli taxon count \
+  --taxon Insecta --taxon-filter tree \
+  --rank species \
+  --filter "busco_completeness exists"
+```
+
+### Export all results to CSV
+
+```bash
+{{ site_name }}-cli taxon search \
+  --taxon Vertebrata --taxon-filter tree \
+  --fields genome_size,assembly_level,busco_completeness \
+  --size 10000 \
+  --format csv > vertebrate_genomes.csv
+```

@@ -72,6 +72,7 @@ pub fn run(
     patch_pyproject_toml(&repo_dir)?;
     create_r_package(&repo_dir, &site)?;
     create_js_package(&repo_dir, &site)?;
+    create_quarto_docs(&repo_dir, &site)?;
     ensure_license_file(&repo_dir)?;
 
     println!("✓  Generated '{repo_name}' in {}", repo_dir.display());
@@ -831,6 +832,56 @@ fn create_js_package(repo_dir: &Path, site: &SiteConfig) -> Result<()> {
     Ok(())
 }
 
+/// Generate a Quarto documentation site skeleton in `{repo_dir}/docs/`.
+///
+/// Renders six `.qmd` pages covering installation, quick-start, and API
+/// reference for all SDK languages, using site config as template context.
+fn create_quarto_docs(repo_dir: &Path, site: &SiteConfig) -> Result<()> {
+    use tera::Context;
+
+    let docs_dir = repo_dir.join("docs");
+    let ref_dir = docs_dir.join("reference");
+    std::fs::create_dir_all(&ref_dir).with_context(|| "creating docs/reference")?;
+
+    let template_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("templates/docs");
+
+    let r_package_name = site.name.replace('-', "_").to_lowercase();
+
+    let mut context = Context::new();
+    context.insert("site_name", &site.name);
+    context.insert("site_display_name", &site.display_name);
+    context.insert("api_base", &site.api_base);
+    context.insert("api_version", &site.api_version);
+    context.insert("sdk_name", &site.resolved_sdk_name());
+    context.insert("r_package_name", &r_package_name);
+    context.insert("indexes", &site.indexes);
+
+    let render = |template_rel: &str, dest: &Path| -> Result<()> {
+        let tpl_path = template_dir.join(template_rel);
+        if !tpl_path.exists() {
+            return Ok(());
+        }
+        let tpl = std::fs::read_to_string(&tpl_path)
+            .with_context(|| format!("reading docs template {template_rel}"))?;
+        let rendered = tera::Tera::one_off(&tpl, &context, false)
+            .with_context(|| format!("rendering docs template {template_rel}"))?;
+        std::fs::write(dest, rendered).with_context(|| format!("writing {}", dest.display()))?;
+        Ok(())
+    };
+
+    render("_quarto.yml.tera", &docs_dir.join("_quarto.yml"))?;
+    render("index.qmd.tera", &docs_dir.join("index.qmd"))?;
+    render("quickstart.qmd.tera", &docs_dir.join("quickstart.qmd"))?;
+    render(
+        "reference/query-builder.qmd.tera",
+        &ref_dir.join("query-builder.qmd"),
+    )?;
+    render("reference/parse.qmd.tera", &ref_dir.join("parse.qmd"))?;
+    render("reference/cli.qmd.tera", &ref_dir.join("cli.qmd"))?;
+
+    Ok(())
+}
+
 fn stamp_cargo_toml(repo_dir: &Path, site: &SiteConfig) -> Result<()> {
     use sha2::{Digest, Sha256};
 
@@ -873,6 +924,12 @@ fn stamp_cargo_toml(repo_dir: &Path, site: &SiteConfig) -> Result<()> {
             &format!("[lib]\nname = \"{sdk_name}\""),
             1,
         );
+    }
+
+    // Add an empty [workspace] table so Cargo treats the generated project as its
+    // own workspace root and does not walk up into the cli-generator workspace.
+    if !text.contains("[workspace]") {
+        text.push_str("\n# Standalone workspace root — prevents Cargo from walking up into parent workspaces.\n[workspace]\n");
     }
 
     std::fs::write(&cargo_toml_path, text).context("writing stamped Cargo.toml")?;

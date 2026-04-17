@@ -261,12 +261,44 @@ fn build_exclusion_params(attributes: &AttributeSet) -> Vec<ExclusionParam> {
 /// Build the `fields` param value list from [`AttributeSet::fields`].
 ///
 /// Each field is optionally suffixed with `:modifier` for return modifiers.
+/// Handles two input forms:
+/// - Normalised: `{name: "assembly_span", modifier: ["min"]}` → `["assembly_span", "assembly_span:min"]`
+/// - Shorthand: `{name: "assembly_span:min", modifier: []}` → same output (backward-compat)
+///
+/// The API requires a bare field name to appear **before** any `field:modifier`
+/// entry.  This function always emits the bare name first and deduplicates.
 fn build_field_params(attributes: &AttributeSet) -> Vec<String> {
     let mut params: Vec<String> = Vec::new();
+    let mut emitted: std::collections::HashSet<String> = std::collections::HashSet::new();
+
     for field in &attributes.fields {
-        params.push(field.name.clone());
-        for modifier in field.modifier.iter().filter(|m| m.is_summary()) {
-            params.push(format!("{}:{}", field.name, modifier.as_str()));
+        // Support colon shorthand in name: "assembly_span:min" → bare="assembly_span", colon_mod=Some("min")
+        let (bare_name, colon_modifier): (&str, Option<&str>) = match field.name.split_once(':') {
+            Some((bare, modifier_str)) => (bare, Some(modifier_str)),
+            None => (field.name.as_str(), None),
+        };
+
+        // Always emit the bare field name first (deduplicated).
+        if emitted.insert(bare_name.to_string()) {
+            params.push(bare_name.to_string());
+        }
+
+        // Emit modifier from name shorthand.
+        if let Some(modifier_str) = colon_modifier {
+            let entry = format!("{bare_name}:{modifier_str}");
+            if emitted.insert(entry.clone()) {
+                params.push(entry);
+            }
+        }
+
+        // Emit all modifiers (summary and status) for field params, lowercase.
+        // Summary modifiers (min, max, …) request stat columns in the response.
+        // Status modifiers (direct, ancestral, …) filter by value provenance.
+        for modifier in &field.modifier {
+            let entry = format!("{bare_name}:{}", modifier.as_field_param_str());
+            if emitted.insert(entry.clone()) {
+                params.push(entry);
+            }
         }
     }
     params
@@ -497,6 +529,97 @@ mod tests {
         assert!(url.contains("fields=genome_size%2Cgenome_size%3Amin"));
         assert!(url.contains("names=scientific_name"));
         assert!(url.contains("ranks=genus"));
+    }
+
+    #[test]
+    fn field_colon_shorthand_produces_bare_then_modified() {
+        // addField("assembly_span:min") stores {name: "assembly_span:min"} when
+        // the SDK doesn't parse the colon.  build_field_params must still emit
+        // the bare field first.
+        let query = SearchQuery {
+            index: SearchIndex::Assembly,
+            identifiers: Default::default(),
+            attributes: AttributeSet {
+                fields: vec![Field {
+                    name: "assembly_span:min".to_string(),
+                    modifier: vec![],
+                }],
+                ..Default::default()
+            },
+        };
+        let url = build_query_url(
+            &query,
+            &default_params(),
+            "https://api.example.org/api",
+            "v2",
+            "search",
+        );
+        // Must be assembly_span,assembly_span:min — not just assembly_span:min
+        assert!(url.contains("fields=assembly_span%2Cassembly_span%3Amin"));
+    }
+
+    #[test]
+    fn duplicate_bare_field_is_deduplicated() {
+        // When both bare field and modifier variant are added, bare name appears once.
+        let query = SearchQuery {
+            index: SearchIndex::Taxon,
+            identifiers: Default::default(),
+            attributes: AttributeSet {
+                fields: vec![
+                    Field {
+                        name: "genome_size".to_string(),
+                        modifier: vec![],
+                    },
+                    Field {
+                        name: "genome_size".to_string(),
+                        modifier: vec![Modifier::Min],
+                    },
+                ],
+                ..Default::default()
+            },
+        };
+        let url = build_query_url(
+            &query,
+            &default_params(),
+            "https://api.example.org/api",
+            "v2",
+            "search",
+        );
+        // genome_size appears exactly once before genome_size:min
+        assert!(url.contains("fields=genome_size%2Cgenome_size%3Amin"));
+        // Ensure no double bare "genome_size,genome_size,"
+        assert!(
+            !url.contains("genome_size%2Cgenome_size%2C"),
+            "bare field was duplicated in: {url}"
+        );
+    }
+
+    #[test]
+    fn status_modifier_emitted_lowercase_in_field_params() {
+        // addField("assembly_span:direct") → fields=assembly_span,assembly_span:direct
+        let query = SearchQuery {
+            index: SearchIndex::Taxon,
+            identifiers: Default::default(),
+            attributes: AttributeSet {
+                fields: vec![Field {
+                    name: "assembly_span".to_string(),
+                    modifier: vec![Modifier::Direct],
+                }],
+                ..Default::default()
+            },
+        };
+        let url = build_query_url(
+            &query,
+            &default_params(),
+            "https://api.example.org/api",
+            "v2",
+            "search",
+        );
+        // bare field first, then :direct (lowercase, not :Direct)
+        assert!(
+            url.contains("fields=assembly_span%2Cassembly_span%3Adirect"),
+            "expected assembly_span,assembly_span:direct in: {url}"
+        );
     }
 
     #[test]

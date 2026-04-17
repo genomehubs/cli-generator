@@ -10,19 +10,70 @@
  *   bash build-wasm.sh
  */
 
-"use strict";
-
 const API_BASE = "{{ api_base_url }}";
 const API_VERSION = "v2";
 
-// Load the pre-compiled WASM module (synchronous require works for nodejs target)
-const wasmModule = require("./pkg/genomehubs_query.js");
+// Load the pre-compiled WASM module
+import {
+  annotate_source_labels as _annotateSourceLabels,
+  annotated_values as _annotatedValues,
+  parse_search_json as _parseSearchJson,
+  split_source_columns as _splitSourceColumns,
+  values_only as _valuesOnly,
+  build_url,
+  parse_response_status,
+} from "./pkg/genomehubs_query.js";
+
+/** Flatten a raw API response string or object into an array of flat record objects. */
+function parseSearchJson(raw) {
+  const str = typeof raw === "string" ? raw : JSON.stringify(raw);
+  return JSON.parse(_parseSearchJson(str));
+}
+
+/** Add `{field}__label` columns. mode: "all" | "non_direct" | "ancestral_only" */
+function annotateSourceLabels(records, mode = "non_direct") {
+  const str = typeof records === "string" ? records : JSON.stringify(records);
+  return JSON.parse(_annotateSourceLabels(str, mode));
+}
+
+/** Replace {field}/{field}__source pairs with {field}__direct/descendant/ancestral columns. */
+function splitSourceColumns(records) {
+  const str = typeof records === "string" ? records : JSON.stringify(records);
+  return JSON.parse(_splitSourceColumns(str));
+}
+
+/**
+ * Strip all __* sub-key columns, keeping identity and bare field values.
+ *
+ * @param {string|object[]} records - Flat records from parseSearchJson.
+ * @param {string[]} [keepColumns] - __* column names to keep despite stripping,
+ *   e.g. ["assembly_span__min"]. Use qb.fieldModifiers() to build this list.
+ * @returns {object[]}
+ */
+function valuesOnly(records, keepColumns = []) {
+  const str = typeof records === "string" ? records : JSON.stringify(records);
+  return JSON.parse(_valuesOnly(str, JSON.stringify(keepColumns)));
+}
+
+/**
+ * Replace non-direct field values with their annotated label string, then strip __* columns.
+ *
+ * @param {string|object[]} records - Flat records from parseSearchJson.
+ * @param {string} [mode] - "all" | "non_direct" | "ancestral_only" (default: "non_direct")
+ * @param {string[]} [keepColumns] - __* column names to keep after label promotion,
+ *   e.g. ["assembly_span__min"]. Use qb.fieldModifiers() to build this list.
+ * @returns {object[]}
+ */
+function annotatedValues(records, mode = "non_direct", keepColumns = []) {
+  const str = typeof records === "string" ? records : JSON.stringify(records);
+  return JSON.parse(_annotatedValues(str, mode, JSON.stringify(keepColumns)));
+}
 
 /**
  * Accumulates a genomehubs SearchQuery incrementally.
  *
  * @example
- * const { QueryBuilder } = require("./query");
+ * import { QueryBuilder } from "./query.js";
  * const qb = new QueryBuilder("taxon")
  *   .setTaxa(["Mammalia"], "tree")
  *   .addAttribute("genome_size", "ge", "1000000000")
@@ -130,15 +181,58 @@ class QueryBuilder {
 
   /**
    * Request a field in the response.
-   * @param {string} name - Field name, e.g. "assembly_span".
-   * @param {string[]|null} [modifiers] - Summary modifiers e.g. ["min", "max"].
+   *
+   * Accepts either the plain field name or the ``"field:modifier"`` shorthand.
+   * For example, ``.addField("assembly_span:min")`` is equivalent to
+   * ``.addField("assembly_span", ["min"])``.
+   *
+   * @param {string} name - Field name, e.g. "assembly_span", or shorthand
+   *   "assembly_span:min".
+   * @param {string[]|null} [modifiers] - Additional summary modifiers.
    * @returns {QueryBuilder}
    */
   addField(name, modifiers = null) {
-    const entry = { name };
-    if (modifiers !== null) entry.modifier = [...modifiers];
+    // Parse "field:modifier" shorthand.
+    const colonIdx = name.indexOf(":");
+    let bareName = name;
+    let colonModifiers = [];
+    if (colonIdx !== -1) {
+      bareName = name.slice(0, colonIdx);
+      colonModifiers = [name.slice(colonIdx + 1)];
+    }
+    const allModifiers = modifiers
+      ? [...colonModifiers, ...modifiers]
+      : colonModifiers;
+    const entry = { name: bareName };
+    if (allModifiers.length > 0) entry.modifier = allModifiers;
     this._fields.push(entry);
     return this;
+  }
+
+  /**
+   * Return the ``__modifier`` column names implied by any field requests with modifiers.
+   *
+   * Summary modifiers (``min``, ``max``, …) and status modifiers (``direct``,
+   * ``ancestral``, ``descendant``) all produce a ``{field}__modifier`` column in
+   * the parsed output when the user explicitly requests them via ``:modifier``
+   * syntax.  This is distinct from the automatically-added ``{field}__source``
+   * metadata column which is never in this list.
+   *
+   * Pass the result to ``valuesOnly`` or ``annotatedValues`` as ``keepColumns``
+   * so that these explicitly requested columns survive the ``__*`` stripping step.
+   *
+   * @example
+   * const qb = new QueryBuilder("taxon")
+   *   .addField("genome_size:direct")  // → genome_size__direct preserved
+   *   .addField("assembly_span:min");  // → assembly_span__min preserved
+   * const values = valuesOnly(records, qb.fieldModifiers());
+   *
+   * @returns {string[]}
+   */
+  fieldModifiers() {
+    return this._fields.flatMap((f) =>
+      (f.modifier || []).map((mod) => `${f.name}__${mod}`),
+    );
   }
 
   /**
@@ -326,7 +420,7 @@ class QueryBuilder {
   toUrl(apiBase = API_BASE, apiVersion = API_VERSION) {
     const queryYaml = this.toQueryYaml();
     const paramsYaml = this.toParamsYaml();
-    return wasmModule.build_url(queryYaml, paramsYaml, apiBase, apiVersion);
+    return build_url(queryYaml, paramsYaml, apiBase, apiVersion);
   }
 
   // ── API calls ──────────────────────────────────────────────────────────────
@@ -346,7 +440,7 @@ class QueryBuilder {
     if (!resp.ok)
       throw new Error(`API request failed: ${resp.status} ${resp.statusText}`);
     const text = await resp.text();
-    const statusJson = wasmModule.parse_response_status(text);
+    const statusJson = parse_response_status(text);
     return JSON.parse(statusJson).hits ?? 0;
   }
 
@@ -469,4 +563,11 @@ class QueryBuilder {
   }
 }
 
-module.exports = { QueryBuilder };
+export {
+  QueryBuilder,
+  parseSearchJson,
+  annotateSourceLabels,
+  splitSourceColumns,
+  valuesOnly,
+  annotatedValues,
+};
