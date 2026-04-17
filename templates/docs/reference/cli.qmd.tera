@@ -23,6 +23,8 @@ is available without writing code.
 | `--include-estimates` | Include estimated values (default: true) |
 | `--taxonomy NAME` | Taxonomy to use, e.g. `ncbi` (default: `ncbi`) |
 | `--format FORMAT` | Output format: `tsv`, `csv`, `json` (default: `tsv`) |
+| `--all` | Fetch every matching record via cursor-based pagination. Output is always JSON. |
+| `--max-results N` | Cap the total records fetched when `--all` is set. |
 
 ---
 
@@ -181,4 +183,24 @@ from other tools:
   --fields genome_size,assembly_level,busco_completeness \
   --size 10000 \
   --format csv > vertebrate_genomes.csv
+```
+
+### Fetch all matching records (pagination)
+
+Use `--all` to retrieve every page automatically.  Output is always JSON and
+progress is written to stderr so you can pipe stdout:
+
+```bash
+{{ site_name }}-cli taxon search \
+  --taxon Mammalia --taxon-filter tree \
+  --rank species \
+  --fields genome_size \
+  --all > mammalia_species.json
+
+# Cap at 5 000 records
+{{ site_name }}-cli taxon search \
+  --taxon Mammalia --taxon-filter tree \
+  --rank species \
+  --fields genome_size \
+  --all --max-results 5000 > mammalia_species.json
 ```

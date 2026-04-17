@@ -590,6 +590,270 @@ pub fn annotated_values(
     serde_json::to_string(&stripped).map_err(|e| format!("serialisation error: {e}"))
 }
 
+// ── to_tidy_records ───────────────────────────────────────────────────────────
+
+/// The fixed identity columns that are carried through unchanged into every tidy row.
+const IDENTITY_COLUMNS: &[&str] = &[
+    "taxon_id",
+    "assembly_id",
+    "sample_id",
+    "scientific_name",
+    "taxon_rank",
+];
+
+/// Reshape already-flat records into long/tidy format.
+///
+/// Accepts the JSON array produced by [`parse_search_json`] and emits one row
+/// per *field* per *original record*.  Each output row contains:
+///
+/// - All identity columns present in the source record (`taxon_id`, `scientific_name`, …).
+/// - `"field"` — the bare field name (e.g. `"genome_size"`).
+/// - `"value"` — the representative value for that field.
+/// - `"source"` — the aggregation source (`"direct"`, `"ancestor"`, `"descendant"`, or `null`).
+///
+/// Columns with `__` in their name (stat sub-keys, labels, split columns) are
+/// consumed when they belong to a field row but are **not** emitted as separate
+/// rows — only the bare field entries are pivoted.  Explicitly-requested
+/// modifier columns (e.g. `genome_size__direct`, `assembly_span__min` from
+/// `field:modifier` requests) are emitted as their own tidy rows with
+/// `"source": null`.
+///
+/// This matches the shape of the GoaT API's tidy TSV format and is the natural
+/// input for R's `tidyverse` / Python's `pandas.melt`.
+///
+/// # Example
+/// ```
+/// // Flat input:
+/// // {"taxon_id":"9606","genome_size":3100000000,"genome_size__source":"direct"}
+/// //
+/// // Tidy output:
+/// // {"taxon_id":"9606","field":"genome_size","value":3100000000,"source":"direct"}
+/// ```
+pub fn to_tidy_records(records_json: &str) -> Result<String, String> {
+    let records: Vec<serde_json::Value> =
+        serde_json::from_str(records_json).map_err(|e| format!("invalid records JSON: {e}"))?;
+
+    let mut tidy_rows: Vec<serde_json::Value> = Vec::new();
+
+    for record in &records {
+        let obj = match record.as_object() {
+            Some(o) => o,
+            None => continue,
+        };
+
+        // Build the identity portion shared by every tidy row from this record.
+        let mut identity: serde_json::Map<String, serde_json::Value> = serde_json::Map::new();
+        for col in IDENTITY_COLUMNS {
+            if let Some(v) = obj.get(*col) {
+                identity.insert(col.to_string(), v.clone());
+            }
+        }
+
+        // Collect bare field names: columns that have no `__` and are not identity columns.
+        let bare_fields: Vec<&str> = obj
+            .keys()
+            .filter(|k| !k.contains("__") && !IDENTITY_COLUMNS.contains(&k.as_str()))
+            .map(String::as_str)
+            .collect();
+
+        // Emit one tidy row per bare field.
+        for field_name in bare_fields {
+            let value = obj[field_name].clone();
+            let source_key = format!("{field_name}__source");
+            let source = obj
+                .get(&source_key)
+                .cloned()
+                .unwrap_or(serde_json::Value::Null);
+
+            let mut row = identity.clone();
+            row.insert(
+                "field".to_string(),
+                serde_json::Value::String(field_name.to_string()),
+            );
+            row.insert("value".to_string(), value);
+            row.insert("source".to_string(), source);
+            tidy_rows.push(serde_json::Value::Object(row));
+        }
+
+        // Emit one tidy row per explicitly-requested modifier column (e.g. genome_size__direct,
+        // assembly_span__min).  These are columns that contain `__` but were produced by a
+        // `field:modifier` request, not by the automatic sub-key flattening.  We distinguish
+        // them from auto sub-keys by checking whether the portion after `__` is a known stat
+        // sub-key or automatic metadata key — those are skipped.
+        const AUTO_SUBKEYS: &[&str] = &[
+            "source",
+            "min",
+            "max",
+            "median",
+            "mode",
+            "mean",
+            "count",
+            "sp_count",
+            "from",
+            "to",
+            "length",
+            "label",
+            "direct",
+            "descendant",
+            "ancestral",
+        ];
+        for key in obj.keys() {
+            let Some((bare, modifier)) = key.split_once("__") else {
+                continue;
+            };
+            if IDENTITY_COLUMNS.contains(&bare) {
+                continue;
+            }
+            // Skip auto-generated sub-keys; only emit user-requested modifier columns.
+            // A user-requested modifier column is one where the `bare` field IS present
+            // as a standalone column in the record (i.e. it came from a `field:modifier`
+            // API request rather than the standard flattening pipeline).
+            if AUTO_SUBKEYS.contains(&modifier) && obj.contains_key(bare) {
+                continue;
+            }
+            let value = obj[key].clone();
+            let mut row = identity.clone();
+            row.insert(
+                "field".to_string(),
+                serde_json::Value::String(format!("{bare}:{modifier}")),
+            );
+            row.insert("value".to_string(), value);
+            row.insert("source".to_string(), serde_json::Value::Null);
+            tidy_rows.push(serde_json::Value::Object(row));
+        }
+    }
+
+    serde_json::to_string(&tidy_rows).map_err(|e| format!("serialisation error: {e}"))
+}
+
+// ── parse_paginated_json ──────────────────────────────────────────────────────
+
+/// The result of parsing one page from `/searchPaginated`.
+///
+/// Callers use this to drive a fetch loop:
+/// - append [`records`] to the accumulator
+/// - if [`has_more`] is `true`, set the next request's `search_after` to [`next_cursor`]
+/// - stop when [`has_more`] is `false`
+pub struct PaginatedPage {
+    /// Flat records parsed by the same rules as [`parse_search_json`].
+    pub records: Vec<serde_json::Value>,
+    /// Whether the API has more pages after this one.
+    pub has_more: bool,
+    /// Cursor to pass as `searchAfter` on the next request.
+    /// `None` when [`has_more`] is `false`.
+    pub next_cursor: Option<Vec<serde_json::Value>>,
+    /// Total hits reported by the `status` block of this response.
+    pub total_hits: u64,
+}
+
+/// Minimal serde view of the `/searchPaginated` envelope.
+///
+/// ```json
+/// {
+///   "status": {"hits": 5000, "success": true},
+///   "hits": [...],
+///   "pagination": {"limit": 1000, "count": 1000, "hasMore": true, "searchAfter": [...]}
+/// }
+/// ```
+#[derive(Deserialize)]
+struct PaginatedApiResponse {
+    status: Option<ApiStatus>,
+    hits: Option<Vec<serde_json::Value>>,
+    pagination: Option<PaginationBlock>,
+}
+
+#[derive(Deserialize)]
+struct PaginationBlock {
+    #[serde(rename = "hasMore")]
+    has_more: bool,
+    #[serde(rename = "searchAfter")]
+    search_after: Option<Vec<serde_json::Value>>,
+}
+
+/// Parse one page of a `/searchPaginated` response.
+///
+/// Accepts the raw JSON string returned by the API and returns a
+/// [`PaginatedPage`] containing the flat records (parsed with the same rules as
+/// [`parse_search_json`]), the `hasMore` flag, the next cursor, and the total
+/// hit count.
+///
+/// Use this to drive a pagination loop:
+///
+/// ```rust,ignore
+/// let mut all_records = Vec::new();
+/// let mut cursor: Option<Vec<serde_json::Value>> = None;
+/// loop {
+///     params.search_after = cursor.clone();
+///     let raw = http_get(build_query_url(&query, &params, base, version, "searchPaginated"));
+///     let page = parse_paginated_json(&raw)?;
+///     all_records.extend(page.records);
+///     if !page.has_more { break; }
+///     cursor = page.next_cursor;
+/// }
+/// ```
+pub fn parse_paginated_json(raw: &str) -> Result<PaginatedPage, String> {
+    let envelope: PaginatedApiResponse =
+        serde_json::from_str(raw).map_err(|e| format!("invalid JSON: {e}"))?;
+
+    let total_hits = envelope
+        .status
+        .as_ref()
+        .map(|s| parse_hits(s.hits.as_ref()))
+        .unwrap_or(0);
+
+    // Re-use the same per-result flattening logic as parse_search_json.
+    // The /searchPaginated envelope uses "hits" (not "results") for the records,
+    // but each element has the same {index, id, score, result} shape.
+    let raw_hits = envelope.hits.unwrap_or_default();
+    let mut records: Vec<serde_json::Value> = Vec::with_capacity(raw_hits.len());
+    for hit in &raw_hits {
+        let result = hit.get("result").unwrap_or(&serde_json::Value::Null);
+        let index = hit.get("index").and_then(|v| v.as_str()).unwrap_or("taxon");
+        let row = flatten_result(result, index);
+        if !row.is_empty() {
+            records.push(serde_json::Value::Object(row));
+        }
+    }
+
+    let (has_more, next_cursor) = match envelope.pagination {
+        Some(p) => (p.has_more, p.search_after),
+        None => (false, None),
+    };
+
+    Ok(PaginatedPage {
+        records,
+        has_more,
+        next_cursor,
+        total_hits,
+    })
+}
+
+/// Serialise a [`PaginatedPage`] into a JSON object for FFI callers.
+///
+/// ```json
+/// {
+///   "records": [...],
+///   "hasMore": true,
+///   "searchAfter": [...],
+///   "totalHits": 5000
+/// }
+/// ```
+pub fn paginated_page_to_json(page: &PaginatedPage) -> String {
+    let search_after_val = page
+        .next_cursor
+        .as_ref()
+        .map(|c| serde_json::Value::Array(c.clone()))
+        .unwrap_or(serde_json::Value::Null);
+
+    let obj = serde_json::json!({
+        "records": page.records,
+        "hasMore": page.has_more,
+        "searchAfter": search_after_val,
+        "totalHits": page.total_hits,
+    });
+    obj.to_string()
+}
+
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 #[cfg(test)]
@@ -1028,5 +1292,142 @@ mod tests {
     fn annotated_values_on_empty_records_returns_empty_array() {
         let out = annotated_values("[]", "non_direct", "").unwrap();
         assert_eq!(out, "[]");
+    }
+
+    // ── to_tidy_records ───────────────────────────────────────────────────────
+
+    #[test]
+    fn tidy_records_bare_field_with_source() {
+        let records = r#"[{"taxon_id":"9606","scientific_name":"Homo sapiens","taxon_rank":"species","genome_size":3100000000,"genome_size__source":"direct"}]"#;
+        let out: Vec<serde_json::Value> =
+            serde_json::from_str(&to_tidy_records(records).unwrap()).unwrap();
+        assert_eq!(out.len(), 1);
+        let row = &out[0];
+        assert_eq!(row["field"], "genome_size");
+        assert_eq!(row["value"], 3100000000_i64);
+        assert_eq!(row["source"], "direct");
+        assert_eq!(row["taxon_id"], "9606");
+        assert_eq!(row["scientific_name"], "Homo sapiens");
+    }
+
+    #[test]
+    fn tidy_records_two_fields_become_two_rows() {
+        let records = r#"[{"taxon_id":"9606","genome_size":3100000000,"genome_size__source":"direct","assembly_span":2747877777,"assembly_span__source":"ancestor"}]"#;
+        let out: Vec<serde_json::Value> =
+            serde_json::from_str(&to_tidy_records(records).unwrap()).unwrap();
+        // two bare fields → two tidy rows
+        assert_eq!(out.len(), 2);
+        let field_names: Vec<&str> = out.iter().map(|r| r["field"].as_str().unwrap()).collect();
+        assert!(field_names.contains(&"genome_size"));
+        assert!(field_names.contains(&"assembly_span"));
+    }
+
+    #[test]
+    fn tidy_records_modifier_column_emitted_as_own_row() {
+        // assembly_span__min is a user-requested modifier column (assembly_span:min).
+        // There is NO bare "assembly_span" key in this record.
+        let records = r#"[{"taxon_id":"9606","assembly_span__min":2400000000}]"#;
+        let out: Vec<serde_json::Value> =
+            serde_json::from_str(&to_tidy_records(records).unwrap()).unwrap();
+        assert_eq!(out.len(), 1);
+        assert_eq!(out[0]["field"], "assembly_span:min");
+        assert_eq!(out[0]["value"], 2400000000_i64);
+        assert_eq!(out[0]["source"], serde_json::Value::Null);
+    }
+
+    #[test]
+    fn tidy_records_auto_subkey_not_emitted_when_bare_field_present() {
+        // genome_size__min is an auto stat sub-key (bare "genome_size" present).
+        // It should NOT produce its own tidy row.
+        let records = r#"[{"taxon_id":"9606","genome_size":3100000000,"genome_size__source":"direct","genome_size__min":2800000000,"genome_size__max":3400000000}]"#;
+        let out: Vec<serde_json::Value> =
+            serde_json::from_str(&to_tidy_records(records).unwrap()).unwrap();
+        // Only 1 tidy row: the bare genome_size field.
+        assert_eq!(out.len(), 1);
+        assert_eq!(out[0]["field"], "genome_size");
+    }
+
+    #[test]
+    fn tidy_records_empty_input_returns_empty_array() {
+        let out = to_tidy_records("[]").unwrap();
+        assert_eq!(out, "[]");
+    }
+
+    #[test]
+    fn tidy_records_invalid_json_returns_error() {
+        assert!(to_tidy_records("not json").is_err());
+    }
+
+    #[test]
+    fn tidy_records_source_null_when_absent() {
+        let records = r#"[{"taxon_id":"1","genome_size":1000}]"#;
+        let out: Vec<serde_json::Value> =
+            serde_json::from_str(&to_tidy_records(records).unwrap()).unwrap();
+        assert_eq!(out[0]["source"], serde_json::Value::Null);
+    }
+
+    // ── parse_paginated_json ──────────────────────────────────────────────────
+
+    fn paginated_response(has_more: bool, search_after: serde_json::Value) -> String {
+        format!(
+            r#"{{"status":{{"hits":2,"success":true}},
+              "hits":[
+                {{"index":"taxon","id":"9606","score":1.0,
+                  "result":{{"taxon_id":"9606","scientific_name":"Homo sapiens",
+                    "taxon_rank":"species","fields":{{}}}}}},
+                {{"index":"taxon","id":"10090","score":0.9,
+                  "result":{{"taxon_id":"10090","scientific_name":"Mus musculus",
+                    "taxon_rank":"species","fields":{{}}}}}}
+              ],
+              "pagination":{{"hasMore":{has_more},"searchAfter":{search_after}}}}}"#
+        )
+    }
+
+    #[test]
+    fn paginated_parses_records_and_cursor() {
+        let raw = paginated_response(true, serde_json::json!([0.9, "10090"]));
+        let page = parse_paginated_json(&raw).unwrap();
+        assert_eq!(page.total_hits, 2);
+        assert!(page.has_more);
+        assert_eq!(page.records.len(), 2);
+        assert_eq!(page.records[0]["taxon_id"], "9606");
+        assert_eq!(page.records[1]["taxon_id"], "10090");
+        let cursor = page.next_cursor.unwrap();
+        assert_eq!(cursor[0], serde_json::json!(0.9));
+        assert_eq!(cursor[1], serde_json::json!("10090"));
+    }
+
+    #[test]
+    fn paginated_last_page_has_more_false() {
+        let raw = paginated_response(false, serde_json::json!(null));
+        let page = parse_paginated_json(&raw).unwrap();
+        assert!(!page.has_more);
+        assert!(page.next_cursor.is_none());
+    }
+
+    #[test]
+    fn paginated_empty_hits() {
+        let raw = r#"{"status":{"hits":0,"success":true},"hits":[],"pagination":{"hasMore":false,"searchAfter":null}}"#;
+        let page = parse_paginated_json(raw).unwrap();
+        assert_eq!(page.total_hits, 0);
+        assert!(!page.has_more);
+        assert!(page.records.is_empty());
+    }
+
+    #[test]
+    fn paginated_to_json_round_trips() {
+        let raw = paginated_response(true, serde_json::json!(["abc"]));
+        let page = parse_paginated_json(&raw).unwrap();
+        let json_str = paginated_page_to_json(&page);
+        let v: serde_json::Value = serde_json::from_str(&json_str).unwrap();
+        assert_eq!(v["hasMore"], true);
+        assert_eq!(v["totalHits"], 2);
+        assert_eq!(v["records"].as_array().unwrap().len(), 2);
+        assert_eq!(v["searchAfter"][0], "abc");
+    }
+
+    #[test]
+    fn paginated_invalid_json_returns_err() {
+        assert!(parse_paginated_json("not json").is_err());
     }
 }

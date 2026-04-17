@@ -49,6 +49,31 @@ pub fn build_url(query_yaml: &str, params_yaml: &str, api_base: &str, api_versio
     query::build_query_url(&query, &params, api_base, api_version, "search")
 }
 
+/// Build an API URL for an arbitrary endpoint (e.g. `"search"`, `"searchPaginated"`, `"count"`).
+///
+/// Identical to [`build_url`] but accepts an explicit `endpoint` string.  Use
+/// this when you need an endpoint other than the default `"search"`.
+///
+/// Returns the fully percent-encoded URL, or an empty string on parse error.
+#[cfg_attr(feature = "wasm", wasm_bindgen)]
+pub fn build_url_for_endpoint(
+    query_yaml: &str,
+    params_yaml: &str,
+    api_base: &str,
+    api_version: &str,
+    endpoint: &str,
+) -> String {
+    let query = match query::SearchQuery::from_yaml(query_yaml) {
+        Ok(q) => q,
+        Err(_) => return String::new(),
+    };
+    let params = match query::QueryParams::from_yaml(params_yaml) {
+        Ok(p) => p,
+        Err(_) => return String::new(),
+    };
+    query::build_query_url(&query, &params, api_base, api_version, endpoint)
+}
+
 /// Parse the `status` block from a raw genomehubs API JSON response.
 ///
 /// Returns a compact JSON string: `{"hits":N,"ok":true|false,"error":null|"msg"}`.
@@ -145,6 +170,47 @@ pub fn values_only(records_json: &str, keep_columns_json: &str) -> String {
 pub fn annotated_values(records_json: &str, mode: &str, keep_columns_json: &str) -> String {
     match parse::annotated_values(records_json, mode, keep_columns_json) {
         Ok(records) => records,
+        Err(e) => format!(r#"{{"error":{e:?}}}"#),
+    }
+}
+
+/// Reshape flat records produced by [`parse_search_json`] into long/tidy format.
+///
+/// Returns a JSON array with one row per field per source record.  Each row
+/// contains the identity columns (`taxon_id`, `scientific_name`, …), plus
+/// `"field"`, `"value"`, and `"source"`.  Explicitly-requested modifier columns
+/// (from `field:modifier` requests) are emitted as separate rows whose `"field"`
+/// is  `"{bare}:{modifier}"`.
+///
+/// Returns `{"error":"..."}` if `records_json` is not valid JSON.
+#[cfg_attr(feature = "wasm", wasm_bindgen)]
+pub fn to_tidy_records(records_json: &str) -> String {
+    match parse::to_tidy_records(records_json) {
+        Ok(records) => records,
+        Err(e) => format!(r#"{{"error":{e:?}}}"#),
+    }
+}
+
+/// Parse one page from a `/searchPaginated` API response.
+///
+/// Returns a JSON object:
+/// ```json
+/// {
+///   "records": [...],
+///   "hasMore": true,
+///   "searchAfter": [...],
+///   "totalHits": 5000
+/// }
+/// ```
+///
+/// `records` contains flat records in the same format as [`parse_search_json`].
+/// Use `searchAfter` as the `search_after` cursor for the next request.
+///
+/// Returns `{"error":"..."}` if the input is not valid JSON.
+#[cfg_attr(feature = "wasm", wasm_bindgen)]
+pub fn parse_paginated_json(raw: &str) -> String {
+    match parse::parse_paginated_json(raw) {
+        Ok(page) => parse::paginated_page_to_json(&page),
         Err(e) => format!(r#"{{"error":{e:?}}}"#),
     }
 }

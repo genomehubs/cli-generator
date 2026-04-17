@@ -120,6 +120,80 @@ const records = JSON.parse(parseSearchJson(raw));
 
 ---
 
+## `parse_paginated_json(raw) -> str`
+
+Parse one page of a `/searchPaginated` response into a JSON object containing
+flat records and the cursor needed for the next request.
+
+**Input**: raw JSON string from the `{{ api_base }}/{{ api_version }}/searchPaginated` endpoint.
+
+**Output**: JSON object with:
+
+| Key | Type | Description |
+|---|---|---|
+| `records` | array | Flat record dicts, same format as `parse_search_json` output |
+| `hasMore` | boolean | `true` when further pages exist |
+| `searchAfter` | array \| null | Cursor to pass as `searchAfter=` on the next request |
+| `totalHits` | number | Total matching records reported by the API |
+
+In practice you do not need to call this directly — use `QueryBuilder.search_all()` /
+`QueryBuilder.searchAll()` instead.
+
+::: {.panel-tabset group="language"}
+
+## Python
+
+```python
+import json
+import urllib.parse
+import urllib.request
+from {{ sdk_name }} import parse_paginated_json
+from {{ sdk_name }}.query import QueryBuilder
+
+qb = (
+    QueryBuilder("taxon")
+    .set_taxa(["Mammalia"], filter_type="tree")
+    .set_rank("species")
+    .add_field("genome_size")
+)
+
+# Drive the loop manually (use search_all() for the simple case)
+all_records = []
+search_after = None
+while True:
+    url = qb.to_url(
+        api_base="{{ api_base }}", api_version="{{ api_version }}",
+        endpoint="searchPaginated",
+    ) + "&size=1000"
+    if search_after is not None:
+        url += "&searchAfter=" + urllib.parse.quote(json.dumps(search_after))
+    with urllib.request.urlopen(url) as resp:
+        page = json.loads(parse_paginated_json(resp.read().decode()))
+    all_records.extend(page["records"])
+    if not page["hasMore"]:
+        break
+    search_after = page["searchAfter"]
+```
+
+## JavaScript
+
+```javascript
+import { QueryBuilder } from '{{ site_name }}-sdk';
+
+// Use searchAll() for the simple case
+const qb = new QueryBuilder('taxon')
+  .setTaxa(['Mammalia'], 'tree')
+  .setRank('species')
+  .addField('genome_size');
+
+const allRecords = await qb.searchAll();
+console.log(allRecords.length);
+```
+
+:::
+
+---
+
 ## `annotate_source_labels(records_json, mode="non_direct") -> str`
 
 Add a `{field}_label` column to each record, combining the value with a
@@ -231,10 +305,12 @@ const records = JSON.parse(split);
 ```
 Raw API JSON
     │
-    ▼
-parse_search_json()          — flatten, extract value + source + stats
+    ├─▶ parse_paginated_json()      — one page from /searchPaginated
+    │       (loop until hasMore=false, then combine records)
     │
-    ├─▶ annotate_source_labels()   — human-readable labels for display
-    │
-    └─▶ split_source_columns()     — tidy one-column-per-source layout
+    └─▶ parse_search_json()         — single page from /search
+            │
+            ├─▶ annotate_source_labels()   — human-readable labels for display
+            │
+            └─▶ split_source_columns()     — tidy one-column-per-source layout
 ```

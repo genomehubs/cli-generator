@@ -327,21 +327,255 @@ while pagination.hasMore:
     rows += parse_search_json(raw)
 ```
 
-### 3.5 `msearch` envelope (confirmed from API spec)
+### 3.5 Batch queries: `MultiQueryBuilder` + CLI `--file` + dynamic pagination
 
-**POST `/msearch` response:**
+Batch queries enable users to run multiple independent searches in one operation. The strategy is:
+
+- **SDK**: new `MultiQueryBuilder` struct; frozen shared params; per-query-overridable filters/size/sort
+- **CLI**: `--file <path>` flag accepts taxa lists or YAML patch arrays
+- **Dynamic execution**: mcount assessment → adaptive strategy (single msearch / batch msearch / paginated mix)
+- **Result reassembly**: all results returned preserving query → result association
+
+#### 3.5.1 `MultiQueryBuilder` struct (Phase A)
+
+**Design principle:** Filters vary per-query; non-filter params are shared or overridable.
+
+**Public interface (Python/JS/R):**
+
+```python
+# Build batch query
+mq = MultiQueryBuilder("taxon")
+mq.set_size(100)  # shared across all queries
+mq.set_include_estimates(True)  # frozen; error on divergence
+mq.set_taxonomy("ncbi")  # frozen; error on divergence
+
+# Add individual queries (filters per-query, size/sort overridable)
+q1 = QueryBuilder("taxon").set_taxa("caenorhabditis").set_sort("genome_size", "asc")
+q2 = QueryBuilder("taxon").set_taxa("homo sapiens").set_sort("genome_size", "desc")  # size override
+mq.add_query(q1)  # warn if q1.size diverges from batch size=100
+mq.add_query(q2, warn_on_param_divergence=False)  # suppress warning
+
+# Execute with smart pagination
+results = mq.search(format="json")  # or search(format="tsv")
+```
+
+**Param categories:**
+
+| Category               | Parameters                                  | Per-query? | Behavior                                              |
+| ---------------------- | ------------------------------------------- | ---------- | ----------------------------------------------------- |
+| **Filters**            | taxa, rank, attributes, assemblies, samples | ✓          | Unrestricted; per-query variation expected            |
+| **Frozen params**      | include_estimates, taxonomy                 | ✗          | Stored on MultiQueryBuilder; hard error on divergence |
+| **Overridable params** | size, sort                                  | ⚠️         | Shared default; warn if query diverges (suppressible) |
+
+**Execution logic:**
+
+1. **Assess payload risk**
+   - Calculate: `total_payload_size = num_queries × median_size`
+   - If > 1000: proceed to Step 2 (run mcount)
+   - Else: jump to Step 3 (execute with full strategy)
+
+2. **Mcount phase** (hit count assessment)
+   - POST msearch to API with `size: 0` per query (no result rows, just hit counts)
+   - Parse response; sum total hits
+
+3. **Determine execution strategy** (post-mcount)
+   - If `total_hits < 10,000`: execute **single msearch** with full size per query
+     - Results overflow (per-query > 500 hits) paginated via `/searchPaginated` per-query
+   - If `total_hits >= 10,000`: **mixed strategy**
+     - Move queries with hits > 5,000 to `search_all()` (fetch all via /searchPaginated)
+     - Batch remaining queries into `MultiQueryBuilder` groups (max 500 queries per group)
+     - Send multiple msearch payloads sequentially
+   - Never submit > 500 queries in a single msearch call
+
+4. **Reassemble results**
+   - Collect results from all msearch batches + paginated queries
+   - Preserve input query order (map result[i] to query[i])
+   - Return per-query result boundaries (SDK: `Vec<Vec<Record>>`; CLI: flat with optional query column)
+
+**API request schema (POST `/api/v2/msearch`):**
 
 ```json
 {
-  "status": {"success": true, ...},
+  "queries": [
+    {"query": "taxon: caenorhabditis\nrank: species", "params": "size: 100"},
+    {"query": "taxon: homo sapiens\nrank: species", "params": "size: 50"}
+  ],
+  "fields": [...],
+  "columns": [...]
+}
+```
+
+Each query comes with its own YAML (via `to_query_yaml()` + `to_params_yaml()`),
+though shared fields/columns supplied once at batch level.
+
+**API response schema (POST `/msearch`):**
+
+```json
+{
+  "status": {"success": true, "hits": 12500, "took": 245, ...},
   "results": [
-    {"status": "ok", "count": 50, "total": 1985, "hits": [...], "error": null}
+    {"status": "ok", "count": 50, "total": 5200, "hits": [...], "error": null},
+    {"status": "ok", "count": 50, "total": 7300, "hits": [...], "error": null}
   ]
 }
 ```
 
-Each `results[i]` corresponds to one input search. `hits` is the record array
-(same shape as `/search` `results`).
+Each `results[i]` corresponds to one input query; `hits` is a record array
+(same shape as `/search` `results`). Top-level `status.hits` is sum of all `results[*].total`.
+
+#### 3.5.2 CLI `--file` flag (Phase B)
+
+**New flags to `main.rs.tera`:**
+
+- `--file <path>`: read queries from file (YAML array or bare list)
+- `--query-file <path>` (future P2): full YAML query per line (deferred from 3.5)
+
+**File format detection:**
+
+| Format     | Example                                            | Behavior                                                 |
+| ---------- | -------------------------------------------------- | -------------------------------------------------------- |
+| YAML array | `[{taxon: caenorhabditis}, {taxon: homo sapiens}]` | Parse each dict as query patch; apply to cloned base QB  |
+| Bare list  | `caenorhabditis`<br/>`homo sapiens`                | Treat each line as taxon name; wrap in `{taxon: <line>}` |
+
+**Integration with existing flags:**
+
+- `--file --attribute "genome_size >= 1e9"`: applies attribute to all queries
+- `--size 100`: batch size (overridable per-query in YAML with `warn_on_param_divergence=False`)
+- `--sort field:order`: batch sort (overridable per-query)
+- `--include-estimates`, `--taxonomy`: frozen; error if YAML tries to override
+- `--all`: enables paginated fetch (redundant with dynamic strategy but explicit)
+- `--format json|tsv|csv`: controls output format
+- `--include-query-column`: show query index/label in TSV output (default: true if >1 query)
+- `--suppress-divergence-warnings`: suppress warnings on size/sort divergence
+- `--verbose`: show execution plan (hit counts, batch strategy, pagination strategy)
+
+**Result output:**
+
+| Format          | Output                                       | Preserves association? |
+| --------------- | -------------------------------------------- | ---------------------- |
+| `--format json` | `[{query: {...}, results: [...]}, ...]`      | ✓ Structured           |
+| `--format tsv`  | Merged table with `query` column (0-indexed) | ✓ Via column           |
+| `--format csv`  | Same as TSV, comma-delimited                 | ✓ Via column           |
+
+**Example usage:**
+
+```bash
+# Via bare list
+cat > taxa.txt << EOF
+caenorhabditis
+homo sapiens
+mus musculus
+EOF
+
+goat-cli taxon search --file taxa.txt --format json
+
+# Via YAML array
+cat > queries.yaml << EOF
+- taxon: caenorhabditis
+  size: 50
+- taxon: homo sapiens
+  size: 100
+  sort: genome_size:desc
+EOF
+
+goat-cli taxon search --file queries.yaml --attribute "assembly_level = chromosome" --format tsv
+```
+
+**Parsing logic:**
+
+```python
+def load_queries_from_file(file_path, base_qb):
+    """Parse file; return list of QueryBuilder objects."""
+    content = read_file(file_path)
+
+    if content.startswith("["):
+        # Try YAML array parse
+        try:
+            patches = yaml.load(content)  # list of dicts
+        except:
+            # Fallback: bare list
+            patches = [{taxon: line} for line in content.strip().split("\n")]
+    else:
+        # Bare list: one taxon per line
+        patches = [{taxon: line.strip()} for line in content.strip().split("\n") if line.strip()]
+
+    queries = []
+    for patch in patches:
+        qb = base_qb.clone()
+        for key, val in patch.items():
+            getattr(qb, f"set_{key}")(val)  # e.g., qb.set_taxon(val)
+        queries.append(qb)
+    return queries
+```
+
+#### 3.5.3 Divergence handling & validation (Phase C)
+
+**Frozen param divergence** (hard error):
+
+- `include_estimates`, `taxonomy` set on `MultiQueryBuilder` before adding queries
+- If query diverges: raise error immediately
+- Message: `"Query added with conflicting include_estimates=False; MultiQueryBuilder already set to True"`
+
+**Overridable param divergence** (suppressible warning):
+
+- `size`, `sort` can diverge per-query
+- Default: warn on divergence
+- Suppress via: `add_query(..., warn_on_param_divergence=False)` (SDK) / `--suppress-divergence-warnings` (CLI)
+- Message: `"Query 3: size=50 overrides MultiQueryBuilder size=100"`
+- Applied at execution time
+
+**Filter validation:**
+
+- Filters (taxa, rank, attributes, etc.) are per-query; no batch-level constraint
+- Validation happens at API time (not pre-flight)
+
+#### 3.5.4 User feedback & capacity limits
+
+**CLI logging:**
+
+- If `num_queries × size > 1000`: `"Assessing batch size... (mcount in progress)"`
+- If total_hits > 5000: `"Large result set detected; using adaptive pagination"`
+- Per-query warning (if >500 hits): `"Query <N>: <hits> results; paginating..."`
+- Summary after execution: `"Executed <N> queries; total <M> results; <K> msearch batches + <L> paginated fetches. Total time: <Xs."`
+- Optional `--verbose`: show hit counts and strategy per query
+
+**Capacity limits:**
+
+- Warn if file > 500 queries
+- Hard error if file > 1000 queries
+- Warn if single query > 10k results (suggests user should filter more)
+
+**SDK feedback (logging):**
+
+- Python: `logging.info()` calls (no output unless configured)
+- JS: `console.warn()` / `console.info()` (suppressible)
+- R: `message()` / `warning()` (suppressible via R options)
+
+#### 3.5.5 File inventory (Phase 3.5)
+
+**New files:**
+
+| File                                          | Purpose                                                                      |
+| --------------------------------------------- | ---------------------------------------------------------------------------- |
+| `python/cli_generator/multi_query_builder.py` | `MultiQueryBuilder` class; implements mcount / strategy / reassembly         |
+| `tests/python/test_multiquery_builder.py`     | Unit tests: SDK parity, divergence warnings, mcount logic, result reassembly |
+| `tests/python/test_msearch_cli.py`            | CLI file parsing tests (YAML, bare-list, edge cases)                         |
+
+**Modified files:**
+
+| File                             | Changes                                                                                                              |
+| -------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `src/main.rs.tera`               | Add `--file`, `--query-file` (future), `--include-query-column`, `--suppress-divergence-warnings`, `--verbose` flags |
+| `src/commands/mod.rs`            | New `msearch.rs` module (if CLI handler separated)                                                                   |
+| `templates/js/query.js`          | Add `MultiQueryBuilder` class (mirrors Python); implements same mcount / strategy / reassembly logic                 |
+| `templates/r/query.R`            | Add `multi_query_builder()` reference class (mirrors Python/JS)                                                      |
+| `python/cli_generator/query.py`  | Add per-language SDK execution method (HTTP + result parsing)                                                        |
+| `scripts/test_sdk_generation.sh` | Add msearch integration test (3+ queries, mcount assessment, pagination if >10k)                                     |
+| `GETTING_STARTED.md`             | Add "Batch Queries" section with file format examples and SDK examples                                               |
+
+**Generated (not hand-written):**
+
+- None new (msearch uses existing parse functions)
 
 ### 3.6 Reports and record endpoints (deferred)
 

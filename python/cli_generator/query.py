@@ -178,6 +178,34 @@ class QueryBuilder:
             result.extend(f"{field_name}__{mod}" for mod in mods)
         return result
 
+    def to_tidy_records(self, records: list[dict[str, Any]] | str) -> list[dict[str, Any]]:
+        """Reshape flat records from ``parse_search_json`` into long/tidy format.
+
+        Each flat record is exploded so that every bare field becomes its own
+        row with columns ``"field"``, ``"value"``, ``"source"``, and any identity
+        columns (``taxon_id``, ``scientific_name``, ``taxon_rank``, …) present in
+        the source record.
+
+        Explicitly-requested modifier columns (from ``field:modifier`` requests,
+        e.g. ``assembly_span__min``) are emitted as separate rows with ``"field"``
+        set to ``"{bare}:{modifier}"`` and ``"source"`` as ``None``.
+
+        This is the natural input for ``pandas.melt`` or R's ``tidyr::pivot_longer``.
+
+        Args:
+            records: Either the JSON string from ``parse_search_json`` or an
+                already-parsed list of flat record dicts.
+
+        Returns:
+            List of dicts in tidy (long) format.
+        """
+        import json
+
+        from . import to_tidy_records as _to_tidy_records  # FFI call to Rust
+
+        records_json = records if isinstance(records, str) else json.dumps(records)
+        return list(json.loads(_to_tidy_records(records_json)))
+
     def set_attributes(
         self,
         attributes: list[dict[str, Any]],
@@ -382,6 +410,62 @@ class QueryBuilder:
         if format == "json":
             return json.loads(raw)
         return raw
+
+    def search_all(
+        self,
+        max_records: int | None = None,
+        api_base: str = "https://goat.genomehubs.org/api",
+        api_version: str = "v2",
+    ) -> list[dict[str, Any]]:
+        """Fetch all matching records using cursor-based pagination.
+
+        Uses the ``/searchPaginated`` endpoint in chunks of 1 000 records per
+        page.  Pagination continues until all pages are retrieved or
+        *max_records* is reached.
+
+        Args:
+            max_records: Maximum total records to return.  ``None`` means no
+                limit.
+            api_base: Base URL of the API.
+            api_version: API version string.
+
+        Returns:
+            List of flat record dicts in the same format as
+            :func:`~cli_generator.parse_search_json` output.
+        """
+        import json
+        import urllib.parse
+        import urllib.request
+
+        from . import parse_paginated_json
+
+        CHUNK_SIZE = 1_000
+        cap: float = float("inf") if max_records is None else float(max_records)
+        all_records: list[dict[str, Any]] = []
+        search_after: list[Any] | None = None
+
+        while True:
+            base_url = self.to_url(api_base, api_version, "searchPaginated")
+            sep = "&" if "?" in base_url else "?"
+            url = base_url + f"{sep}size={CHUNK_SIZE}"
+            if search_after is not None:
+                url += "&searchAfter=" + urllib.parse.quote(json.dumps(search_after))
+
+            req = urllib.request.Request(url, headers={"Accept": "application/json"})
+            with urllib.request.urlopen(req) as resp:
+                raw: str = resp.read().decode()
+
+            page: dict[str, Any] = json.loads(parse_paginated_json(raw))
+            records: list[dict[str, Any]] = page.get("records", [])
+
+            remaining = int(cap) - len(all_records)
+            all_records.extend(records[:remaining])
+
+            if not page.get("hasMore", False) or len(all_records) >= cap:
+                break
+            search_after = page.get("searchAfter")
+
+        return all_records
 
     # ── Utilities ─────────────────────────────────────────────────────────────
 

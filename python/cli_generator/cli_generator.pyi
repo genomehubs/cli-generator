@@ -240,3 +240,59 @@ def annotated_values(records_json: str, mode: str = "non_direct", keep_columns_j
         Compact JSON array string with labelled values and no ``__*`` columns.
     """
     ...
+
+def to_tidy_records(records_json: str) -> str:
+    """Reshape flat records into long/tidy format.
+
+    Accepts the JSON array produced by :func:`parse_search_json` and returns a
+    JSON array with one row *per field per source record*.  Each output row
+    contains:
+
+    - Identity columns present in the source record (``taxon_id``,
+      ``scientific_name``, ``taxon_rank``, ``assembly_id``, ``sample_id``).
+    - ``"field"`` — the bare field name (e.g. ``"genome_size"``).
+    - ``"value"`` — the representative value for that field.
+    - ``"source"`` — aggregation source (``"direct"``, ``"ancestor"``,
+      ``"descendant"``, or ``null``).
+
+    Explicitly-requested modifier columns (from ``field:modifier`` requests,
+    e.g. ``assembly_span__min``) are emitted as separate rows with ``"field"``
+    set to ``"{bare}:{modifier}"`` and ``"source"`` as ``null``.
+
+    This matches the shape of the GoaT API's ``tidydata`` TSV format and is
+    the natural input for ``pandas.melt`` or R's ``tidyr::pivot_longer``.
+
+    Args:
+        records_json: JSON array string from :func:`parse_search_json`.
+
+    Returns:
+        Compact JSON array string in tidy (long) format.
+    """
+    ...
+
+def parse_paginated_json(raw: str) -> str:
+    """Parse one page from a ``/searchPaginated`` API response.
+
+    Returns a JSON object:
+
+    .. code-block:: json
+
+        {
+          "records": [...],
+          "hasMore": true,
+          "searchAfter": [...],
+          "totalHits": 5000
+        }
+
+    ``records`` contains flat records in the same format as
+    :func:`parse_search_json`.  Pass ``searchAfter`` as the cursor for the
+    next request.  ``hasMore`` is ``false`` on the final page.
+
+    Args:
+        raw: Raw JSON string from the ``/searchPaginated`` endpoint.
+
+    Returns:
+        JSON object string with ``records``, ``hasMore``, ``searchAfter``,
+        and ``totalHits``.
+    """
+    ...

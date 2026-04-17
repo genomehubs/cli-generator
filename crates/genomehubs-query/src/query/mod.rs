@@ -114,6 +114,13 @@ pub struct QueryParams {
     /// user-facing flag when a site uses a different taxonomy backbone.
     #[serde(default = "default_taxonomy")]
     pub taxonomy: String,
+    /// Cursor for `/searchPaginated` continuation.
+    ///
+    /// Passed as `&searchAfter=<json-array>` on every page after the first.
+    /// Set from the `pagination.searchAfter` value returned by the previous
+    /// page response.  `None` means "start from the first page".
+    #[serde(default)]
+    pub search_after: Option<Vec<serde_json::Value>>,
 }
 
 impl Default for QueryParams {
@@ -126,6 +133,7 @@ impl Default for QueryParams {
             include_estimates: true,
             tidy: false,
             taxonomy: default_taxonomy(),
+            search_after: None,
         }
     }
 }

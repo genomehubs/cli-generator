@@ -7,6 +7,7 @@
 //! Add hand-written subcommands here; the generated index subcommands below
 //! provide search/count/lookup for each API index.
 
+use anyhow::Context as _;
 use clap::{Parser, Subcommand, ValueEnum};
 
 use {{ sdk_name }}::{cli_meta, generated};
@@ -102,6 +103,21 @@ enum {{ index.name | capitalize }}Commands {
         #[arg(long)]
         url: bool,
 
+        /// Fetch all matching records using cursor-based pagination.
+        ///
+        /// Uses the /searchPaginated endpoint in chunks of 1 000 records.
+        /// Overrides --size and --page.  Combine with --max-results to cap
+        /// the total number of records returned.  Output is always JSON
+        /// (flat records array), regardless of --format.
+        #[arg(long)]
+        all: bool,
+
+        /// Maximum number of records to return when --all is set.
+        ///
+        /// Default: no limit (fetch all matching records).
+        #[arg(long = "max-results")]
+        max_results: Option<usize>,
+
         /// Print a human-readable description of the query instead of executing it.
         #[arg(long)]
         describe: bool,
@@ -159,7 +175,7 @@ fn run(cli: Cli) -> anyhow::Result<()> {
     match cli.command {
 {% for index in indexes %}
         Commands::{{ index.name | capitalize }} { subcommand } => match subcommand {
-            {{ index.name | capitalize }}Commands::Search { taxon, taxon_filter, query, filter, rank, sort, size, page, include_estimates, taxonomy, lineage_ranks, name_classes, url, describe, verbose, snippet_languages, format, flags } => {
+            {{ index.name | capitalize }}Commands::Search { taxon, taxon_filter, query, filter, rank, sort, size, page, include_estimates, taxonomy, lineage_ranks, name_classes, url, all, max_results, describe, verbose, snippet_languages, format, flags } => {
                 if flags.list_field_groups {
                     for (name, short, desc) in generated::cli_flags::{{ index.name | capitalize }}Flags::list_groups() {
                         match short {
@@ -290,16 +306,38 @@ fn run(cli: Cli) -> anyhow::Result<()> {
                     println!("{query_url}");
                     return Ok(());
                 }
-                let body = generated::client::search(
-                    generated::indexes::Index::{{ index.name | capitalize }},
-                    &full_query,
-                    &fields,
-                    size,
-                    include_estimates,
-                    accept,
-                    &opts,
-                )?;
-                generated::output::print_output(&body, format)?;
+
+                if all {
+                    // Cursor-based full fetch via /searchPaginated.
+                    // Always outputs flat JSON records regardless of --format.
+                    let cap = max_results.unwrap_or(usize::MAX);
+                    let records = generated::client::search_all(
+                        generated::indexes::Index::{{ index.name | capitalize }},
+                        &full_query,
+                        &fields,
+                        include_estimates,
+                        &opts,
+                        cap,
+                        |fetched, total| {
+                            eprint!("\rFetching {fetched}/{total}…  ");
+                        },
+                    )?;
+                    eprintln!(); // newline after progress line
+                    let json = serde_json::to_string(&records)
+                        .context("serialising paginated records")?;
+                    println!("{json}");
+                } else {
+                    let body = generated::client::search(
+                        generated::indexes::Index::{{ index.name | capitalize }},
+                        &full_query,
+                        &fields,
+                        size,
+                        include_estimates,
+                        accept,
+                        &opts,
+                    )?;
+                    generated::output::print_output(&body, format)?;
+                }
             }
             {{ index.name | capitalize }}Commands::Count { query } => {
                 let n = generated::client::count(

@@ -114,6 +114,95 @@ fn parse_response_status(raw: &str) -> String {
     }
 }
 
+/// Flatten a raw API JSON response into an array of flat record objects.
+///
+/// Returns a compact JSON array string, or `{"error":"..."}` on failure.
+#[cfg(feature = "extension-module")]
+#[pyfunction]
+fn parse_search_json(raw: &str) -> String {
+    use crate::embedded::core::parse;
+    match parse::parse_search_json(raw) {
+        Ok(records) => records,
+        Err(e) => {% raw %}format!(r#"{{"error":{:?}}}"#, e){% endraw %},
+    }
+}
+
+/// Add `{field}__label` columns derived from aggregation source.
+///
+/// `mode` is one of `"all"`, `"non_direct"` (default), or `"ancestral_only"`.
+/// Returns the annotated records JSON string, or `{"error":"..."}` on failure.
+#[cfg(feature = "extension-module")]
+#[pyfunction]
+#[pyo3(signature = (records_json, mode = "non_direct"))]
+fn annotate_source_labels(records_json: &str, mode: &str) -> String {
+    use crate::embedded::core::parse;
+    match parse::annotate_source_labels(records_json, mode) {
+        Ok(records) => records,
+        Err(e) => {% raw %}format!(r#"{{"error":{:?}}}"#, e){% endraw %},
+    }
+}
+
+/// Replace `{field}`/`{field}__source` pairs with explicit source-keyed columns.
+///
+/// Returns the modified records JSON string, or `{"error":"..."}` on failure.
+#[cfg(feature = "extension-module")]
+#[pyfunction]
+fn split_source_columns(records_json: &str) -> String {
+    use crate::embedded::core::parse;
+    match parse::split_source_columns(records_json) {
+        Ok(records) => records,
+        Err(e) => {% raw %}format!(r#"{{"error":{:?}}}"#, e){% endraw %},
+    }
+}
+
+/// Strip all `__*` sub-key columns, keeping identity columns and bare field values.
+///
+/// `keep_columns_json` is a JSON array of `__*` column names to preserve,
+/// e.g. `'["assembly_span__min"]'`.  Pass `""` to strip all.
+/// Returns the stripped records JSON string, or `{"error":"..."}` on failure.
+#[cfg(feature = "extension-module")]
+#[pyfunction]
+#[pyo3(signature = (records_json, keep_columns_json = ""))]
+fn values_only(records_json: &str, keep_columns_json: &str) -> String {
+    use crate::embedded::core::parse;
+    match parse::values_only(records_json, keep_columns_json) {
+        Ok(records) => records,
+        Err(e) => {% raw %}format!(r#"{{"error":{:?}}}"#, e){% endraw %},
+    }
+}
+
+/// Replace non-direct field values with their annotated label string, then strip `__*` columns.
+///
+/// `mode` is one of `"non_direct"` (default), `"ancestral_only"`, or `"all"`.
+/// `keep_columns_json` is a JSON array of `__*` column names to preserve after
+/// label promotion, e.g. `'["assembly_span__min"]'`.
+/// Returns the annotated records JSON string, or `{"error":"..."}` on failure.
+#[cfg(feature = "extension-module")]
+#[pyfunction]
+#[pyo3(signature = (records_json, mode = "non_direct", keep_columns_json = ""))]
+fn annotated_values(records_json: &str, mode: &str, keep_columns_json: &str) -> String {
+    use crate::embedded::core::parse;
+    match parse::annotated_values(records_json, mode, keep_columns_json) {
+        Ok(records) => records,
+        Err(e) => {% raw %}format!(r#"{{"error":{:?}}}"#, e){% endraw %},
+    }
+}
+
+/// Reshape flat records from `parse_search_json` into long/tidy format.
+///
+/// Returns a JSON array with one row per field per source record.  Each row
+/// contains identity columns, `"field"`, `"value"`, and `"source"`.
+/// Returns `{"error":"..."}` on failure.
+#[cfg(feature = "extension-module")]
+#[pyfunction]
+fn to_tidy_records(records_json: &str) -> String {
+    use crate::embedded::core::parse;
+    match parse::to_tidy_records(records_json) {
+        Ok(records) => records,
+        Err(e) => {% raw %}format!(r#"{{"error":{:?}}}"#, e){% endraw %},
+    }
+}
+
 /// Python module for {{ site_display_name }}.
 #[cfg(feature = "extension-module")]
 #[pymodule]
@@ -127,5 +216,11 @@ fn {{ sdk_name }}(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(describe_query, m)?)?;
     m.add_function(wrap_pyfunction!(render_snippet, m)?)?;
     m.add_function(wrap_pyfunction!(parse_response_status, m)?)?;
+    m.add_function(wrap_pyfunction!(parse_search_json, m)?)?;
+    m.add_function(wrap_pyfunction!(annotate_source_labels, m)?)?;
+    m.add_function(wrap_pyfunction!(split_source_columns, m)?)?;
+    m.add_function(wrap_pyfunction!(values_only, m)?)?;
+    m.add_function(wrap_pyfunction!(annotated_values, m)?)?;
+    m.add_function(wrap_pyfunction!(to_tidy_records, m)?)?;
     Ok(())
 }

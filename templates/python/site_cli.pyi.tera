@@ -49,6 +49,57 @@ def count(query_yaml: str) -> int:
     """
     ...
 
+def parse_response_status(raw: str) -> str:
+    """Parse the ``status`` block from a raw API JSON response.
+
+    Returns a compact JSON string ``{"hits":N,"ok":true|false,"error":null|"msg"}``.
+    """
+    ...
+
+def parse_search_json(raw: str) -> str:
+    """Flatten a raw API JSON response into an array of flat record objects.
+
+    Returns a compact JSON array string.
+    """
+    ...
+
+def annotate_source_labels(records_json: str, mode: str = "non_direct") -> str:
+    """Add ``{field}__label`` columns derived from aggregation source.
+
+    Returns the annotated records JSON string.
+    """
+    ...
+
+def split_source_columns(records_json: str) -> str:
+    """Replace ``{field}``/``{field}__source`` pairs with explicit source-keyed columns.
+
+    Returns the modified records JSON string.
+    """
+    ...
+
+def values_only(records_json: str, keep_columns_json: str = "") -> str:
+    """Strip all ``__*`` sub-key columns, keeping identity columns and bare field values.
+
+    ``keep_columns_json`` is a JSON array of ``__*`` column names to preserve,
+    e.g. ``'["assembly_span__min"]'``.
+    """
+    ...
+
+def annotated_values(records_json: str, mode: str = "non_direct", keep_columns_json: str = "") -> str:
+    """Replace non-direct field values with their annotated label string, then strip ``__*`` columns.
+
+    ``mode`` is one of ``"non_direct"`` (default), ``"ancestral_only"``, or ``"all"``.
+    """
+    ...
+
+def to_tidy_records(records_json: str) -> str:
+    """Reshape flat records from ``parse_search_json`` into long/tidy format.
+
+    Returns a JSON array with one row per field per source record.  Each row
+    contains identity columns, ``"field"``, ``"value"``, and ``"source"``.
+    """
+    ...
+
 class FieldInfo:
     """Metadata for a single {{ site_display_name }} field."""
 

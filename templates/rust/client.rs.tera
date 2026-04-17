@@ -153,4 +153,104 @@ pub fn lookup(index: super::indexes::Index, search_term: &str, size: usize) -> R
         .context("reading response body")
 }
 
+/// Fetch all matching records using the `/searchPaginated` cursor endpoint.
+///
+/// Drives a blocking fetch loop with a fixed chunk size of 1 000 records per
+/// page.  Continues until the API signals `hasMore: false` or until
+/// `max_records` have been accumulated (pass `usize::MAX` for unbounded).
+///
+/// Returns a flat JSON array (as a `String`) containing every record in the
+/// same format as a single `search()` response, ready to pass to
+/// `parse_search_json` in the embedded parse module.
+///
+/// Each page is fetched synchronously; the caller can print progress using
+/// `on_page(fetched, total_hits)` which is called after each page with the
+/// running count of records accumulated so far and the total hit count from
+/// the API's `status` block.
+pub fn search_all(
+    index: super::indexes::Index,
+    query: &str,
+    fields: &[&str],
+    include_estimates: bool,
+    opts: &SearchOptions,
+    max_records: usize,
+    on_page: impl Fn(usize, u64),
+) -> Result<Vec<serde_json::Value>> {
+    use crate::embedded::core::parse::parse_paginated_json;
+
+    const CHUNK_SIZE: usize = 1_000;
+    let fetch_size = CHUNK_SIZE.min(max_records);
+
+    let mut all_records: Vec<serde_json::Value> = Vec::new();
+    let mut search_after: Option<serde_json::Value> = None;
+    let client = reqwest::blocking::Client::new();
+
+    loop {
+        let url = paginated_url(index, query, fields, fetch_size, include_estimates, opts, search_after.as_ref());
+        let raw = client
+            .get(&url)
+            .header("Accept", "application/json")
+            .send()
+            .with_context(|| format!("HTTP GET {url}"))?
+            .error_for_status()
+            .with_context(|| format!("non-2xx response from {url}"))?
+            .text()
+            .context("reading paginated response body")?;
+
+        let page = parse_paginated_json(&raw).map_err(|e| anyhow::anyhow!("{e}"))?;
+        let total_hits = page.total_hits;
+
+        let remaining = max_records.saturating_sub(all_records.len());
+        let take = remaining.min(page.records.len());
+        all_records.extend(page.records.into_iter().take(take));
+        on_page(all_records.len(), total_hits);
+
+        if !page.has_more || all_records.len() >= max_records {
+            break;
+        }
+        search_after = page.next_cursor.map(serde_json::Value::Array);
+    }
+
+    Ok(all_records)
+}
+
+/// Build a `/searchPaginated` URL.
+fn paginated_url(
+    index: super::indexes::Index,
+    query: &str,
+    fields: &[&str],
+    size: usize,
+    include_estimates: bool,
+    opts: &SearchOptions,
+    search_after: Option<&serde_json::Value>,
+) -> String {
+    let mut parts: Vec<String> = Vec::new();
+    parts.push(format!("result={}", index.as_str()));
+    parts.push(format!("includeEstimates={include_estimates}"));
+    parts.push(format!("taxonomy={}", pct_encode(&opts.taxonomy)));
+    if !query.is_empty() {
+        parts.push(format!("query={}", pct_encode(query)));
+    }
+    if !fields.is_empty() {
+        parts.push(format!("fields={}", pct_encode(&fields.join(","))));
+    }
+    if !opts.name_classes.is_empty() {
+        parts.push(format!("names={}", pct_encode(&opts.name_classes.join(","))));
+    }
+    if !opts.lineage_ranks.is_empty() {
+        parts.push(format!("ranks={}", pct_encode(&opts.lineage_ranks.join(","))));
+    }
+    if let Some(ref sort_by) = opts.sort_by {
+        parts.push(format!("sortBy={}", pct_encode(sort_by)));
+        parts.push(format!("sortOrder={}", pct_encode(&opts.sort_order)));
+    }
+    parts.push(format!("size={size}"));
+    if let Some(cursor) = search_after {
+        if let Ok(encoded) = serde_json::to_string(cursor) {
+            parts.push(format!("searchAfter={}", pct_encode(&encoded)));
+        }
+    }
+    format!("{API_BASE}/searchPaginated?{}", parts.join("&"))
+}
+
 

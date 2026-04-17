@@ -961,3 +961,210 @@ def test_annotated_values_ancestor_becomes_labelled_string() -> None:
     assert row["genome_size"] == "8215200000 (Ancestral)"
     assert "genome_size__source" not in row
     assert "genome_size__label" not in row
+
+
+# ── to_tidy_records ──────────────────────────────────────────────────────────
+
+_FLAT_RESPONSE = json.dumps(
+    [
+        {
+            "taxon_id": "9606",
+            "scientific_name": "Homo sapiens",
+            "taxon_rank": "species",
+            "genome_size": 3_100_000_000,
+            "genome_size__source": "direct",
+            "assembly_span": 2_747_877_777,
+            "assembly_span__source": "ancestor",
+        }
+    ]
+)
+
+
+def test_to_tidy_records_returns_one_row_per_field() -> None:
+    from cli_generator import to_tidy_records
+
+    rows = json.loads(to_tidy_records(_FLAT_RESPONSE))
+    assert len(rows) == 2
+    field_names = {r["field"] for r in rows}
+    assert field_names == {"genome_size", "assembly_span"}
+
+
+def test_to_tidy_records_identity_columns_present() -> None:
+    from cli_generator import to_tidy_records
+
+    rows = json.loads(to_tidy_records(_FLAT_RESPONSE))
+    for row in rows:
+        assert row["taxon_id"] == "9606"
+        assert row["scientific_name"] == "Homo sapiens"
+        assert row["taxon_rank"] == "species"
+
+
+def test_to_tidy_records_source_column_populated() -> None:
+    from cli_generator import to_tidy_records
+
+    rows = json.loads(to_tidy_records(_FLAT_RESPONSE))
+    by_field = {r["field"]: r for r in rows}
+    assert by_field["genome_size"]["source"] == "direct"
+    assert by_field["assembly_span"]["source"] == "ancestor"
+
+
+def test_to_tidy_records_empty_input_returns_empty_list() -> None:
+    from cli_generator import to_tidy_records
+
+    rows = json.loads(to_tidy_records("[]"))
+    assert rows == []
+
+
+def test_to_tidy_records_modifier_column_becomes_its_own_row() -> None:
+    from cli_generator import to_tidy_records
+
+    # assembly_span__min from field:min request (no bare assembly_span key)
+    flat = json.dumps([{"taxon_id": "9606", "assembly_span__min": 2_400_000_000}])
+    rows = json.loads(to_tidy_records(flat))
+    assert len(rows) == 1
+    assert rows[0]["field"] == "assembly_span:min"
+    assert rows[0]["value"] == 2_400_000_000
+    assert rows[0]["source"] is None
+
+
+def test_query_builder_to_tidy_records_method() -> None:
+    from cli_generator import QueryBuilder
+
+    flat = json.dumps(
+        [
+            {
+                "taxon_id": "9606",
+                "scientific_name": "Homo sapiens",
+                "genome_size": 3_100_000_000,
+                "genome_size__source": "direct",
+            }
+        ]
+    )
+    qb = QueryBuilder("taxon")
+    rows = qb.to_tidy_records(flat)
+    assert isinstance(rows, list)
+    assert len(rows) == 1
+    assert rows[0]["field"] == "genome_size"
+    assert rows[0]["source"] == "direct"
+
+
+# ── parse_paginated_json tests ────────────────────────────────────────────────
+
+_PAGINATED_RESPONSE_HAS_MORE = json.dumps(
+    {
+        "status": {"hits": 2, "success": True},
+        "hits": [
+            {
+                "index": "taxon",
+                "id": "9606",
+                "score": 1.0,
+                "result": {
+                    "taxon_id": "9606",
+                    "scientific_name": "Homo sapiens",
+                    "taxon_rank": "species",
+                    "fields": {},
+                },
+            },
+            {
+                "index": "taxon",
+                "id": "10090",
+                "score": 0.9,
+                "result": {
+                    "taxon_id": "10090",
+                    "scientific_name": "Mus musculus",
+                    "taxon_rank": "species",
+                    "fields": {},
+                },
+            },
+        ],
+        "pagination": {"hasMore": True, "searchAfter": [0.9, "10090"]},
+    }
+)
+
+_PAGINATED_RESPONSE_LAST_PAGE = json.dumps(
+    {
+        "status": {"hits": 1, "success": True},
+        "hits": [
+            {
+                "index": "taxon",
+                "id": "9606",
+                "score": 1.0,
+                "result": {
+                    "taxon_id": "9606",
+                    "scientific_name": "Homo sapiens",
+                    "taxon_rank": "species",
+                    "fields": {},
+                },
+            }
+        ],
+        "pagination": {"hasMore": False, "searchAfter": None},
+    }
+)
+
+
+def test_parse_paginated_json_returns_string() -> None:
+    from cli_generator import parse_paginated_json
+
+    result = parse_paginated_json(_PAGINATED_RESPONSE_HAS_MORE)
+    assert isinstance(result, str)
+
+
+def test_parse_paginated_json_has_more_true() -> None:
+    from cli_generator import parse_paginated_json
+
+    page = json.loads(parse_paginated_json(_PAGINATED_RESPONSE_HAS_MORE))
+    assert page["hasMore"] is True
+
+
+def test_parse_paginated_json_records_present() -> None:
+    from cli_generator import parse_paginated_json
+
+    page = json.loads(parse_paginated_json(_PAGINATED_RESPONSE_HAS_MORE))
+    assert isinstance(page["records"], list)
+    assert len(page["records"]) == 2
+    assert page["records"][0]["taxon_id"] == "9606"
+    assert page["records"][1]["taxon_id"] == "10090"
+
+
+def test_parse_paginated_json_cursor() -> None:
+    from cli_generator import parse_paginated_json
+
+    page = json.loads(parse_paginated_json(_PAGINATED_RESPONSE_HAS_MORE))
+    assert page["searchAfter"] == [0.9, "10090"]
+
+
+def test_parse_paginated_json_total_hits() -> None:
+    from cli_generator import parse_paginated_json
+
+    page = json.loads(parse_paginated_json(_PAGINATED_RESPONSE_HAS_MORE))
+    assert page["totalHits"] == 2
+
+
+def test_parse_paginated_json_last_page() -> None:
+    from cli_generator import parse_paginated_json
+
+    page = json.loads(parse_paginated_json(_PAGINATED_RESPONSE_LAST_PAGE))
+    assert page["hasMore"] is False
+    assert page["searchAfter"] is None
+
+
+def test_parse_paginated_json_empty_hits() -> None:
+    from cli_generator import parse_paginated_json
+
+    raw = json.dumps(
+        {
+            "status": {"hits": 0, "success": True},
+            "hits": [],
+            "pagination": {"hasMore": False, "searchAfter": None},
+        }
+    )
+    page = json.loads(parse_paginated_json(raw))
+    assert page["records"] == []
+    assert page["totalHits"] == 0
+
+
+def test_parse_paginated_json_invalid_input_returns_error_key() -> None:
+    from cli_generator import parse_paginated_json
+
+    result = json.loads(parse_paginated_json("not json"))
+    assert "error" in result

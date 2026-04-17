@@ -108,6 +108,43 @@ class QueryBuilder:
         self._fields.append(entry)
         return self
 
+    def field_modifiers(self) -> list[str]:
+        """Return the ``__modifier`` column names implied by any field requests with modifiers.
+
+        Pass the return value as ``keep_columns_json`` to ``values_only`` or
+        ``annotated_values`` to preserve explicitly-requested modifier columns
+        (e.g. ``assembly_span__min`` from an ``addField("assembly_span:min")``
+        request).
+        """
+        result: list[str] = []
+        for field in self._fields:
+            field_name = field["name"] if isinstance(field, dict) else str(field)
+            mods: list[str] = field.get("modifier", []) if isinstance(field, dict) else []
+            result.extend(f"{field_name}__{mod}" for mod in mods)
+        return result
+
+    def to_tidy_records(self, records: "list[dict[str, Any]] | str") -> "list[dict[str, Any]]":
+        """Reshape flat records from ``parse_search_json`` into long/tidy format.
+
+        Each flat record is exploded so that every bare field becomes its own
+        row with columns ``"field"``, ``"value"``, ``"source"``, and identity
+        columns.  Suitable as input for ``pandas.melt`` or
+        ``tidyr::pivot_longer``.
+
+        Args:
+            records: Either the JSON string from ``parse_search_json`` or an
+                already-parsed list of flat record dicts.
+
+        Returns:
+            List of dicts in tidy (long) format.
+        """
+        import json
+
+        from . import to_tidy_records as _to_tidy_records  # FFI call to Rust
+
+        records_json = records if isinstance(records, str) else json.dumps(records)
+        return list(json.loads(_to_tidy_records(records_json)))
+
     def set_names(self, name_classes: list[str]) -> "QueryBuilder":
         """Set the name classes to include, e.g. ``["scientific_name"]``."""
         self._names = list(name_classes)
@@ -326,6 +363,56 @@ class QueryBuilder:
 
         tsv = self.search(format="tsv")
         return pl.read_csv(io.StringIO(tsv), separator="\t")
+
+    def search_all(
+        self,
+        max_records: int | None = None,
+    ) -> list[dict[str, Any]]:
+        """Fetch all matching records using cursor-based pagination.
+
+        Uses the ``/searchPaginated`` endpoint in chunks of 1 000 records per
+        page.  Pagination continues until all pages are retrieved or
+        *max_records* is reached.
+
+        Args:
+            max_records: Maximum total records to return.  ``None`` means no
+                limit.
+
+        Returns:
+            List of flat record dicts in the same format as
+            ``parse_search_json`` output.
+        """
+        import json
+        import urllib.parse
+        import urllib.request
+
+        CHUNK_SIZE = 1_000
+        cap: float = float("inf") if max_records is None else float(max_records)
+        all_records: list[dict[str, Any]] = []
+        search_after: list[Any] | None = None
+
+        while True:
+            base_url = self.to_url("searchPaginated")
+            sep = "&" if "?" in base_url else "?"
+            url = base_url + f"{sep}size={CHUNK_SIZE}"
+            if search_after is not None:
+                url += "&searchAfter=" + urllib.parse.quote(json.dumps(search_after))
+
+            req = urllib.request.Request(url, headers={"Accept": "application/json"})
+            with urllib.request.urlopen(req) as resp:
+                raw: str = resp.read().decode()
+
+            page: dict[str, Any] = json.loads(_ext.parse_paginated_json(raw))
+            records: list[dict[str, Any]] = page.get("records", [])
+
+            remaining = int(cap) - len(all_records)
+            all_records.extend(records[:remaining])
+
+            if not page.get("hasMore", False) or len(all_records) >= cap:
+                break
+            search_after = page.get("searchAfter")
+
+        return all_records
 
     def count(self) -> int:
         """Execute a count query and return the hit count."""

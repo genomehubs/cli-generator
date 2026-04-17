@@ -237,6 +237,55 @@ Return results as a pandas DataFrame.
 
 Return results as a Polars DataFrame (lazy-evaluated).
 
+### `search_all(max_records=None, api_base, api_version) -> list[dict]`
+
+Fetch **every** matching record using cursor-based pagination.  Calls the
+`/searchPaginated` endpoint in chunks of 1 000 records and continues until all
+pages are retrieved (or `max_records` is reached).
+
+Returns a flat list of record dicts in the same format as `search()`.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `max_records` | int \| None | Cap the total records returned. `None` (default) means no limit. |
+| `api_base` | str | Base URL of the API. |
+| `api_version` | str | API version string (Python only). |
+
+::: {.panel-tabset group="language"}
+
+## Python
+
+```python
+qb = (
+    QueryBuilder("taxon")
+    .set_taxa(["Mammalia"], filter_type="tree")
+    .set_rank("species")
+    .add_field("genome_size")
+)
+
+# Fetch up to 5 000 records
+records = qb.search_all(
+    max_records=5000,
+    api_base="{{ api_base }}",
+    api_version="{{ api_version }}",
+)
+print(len(records))  # up to 5000
+```
+
+## JavaScript
+
+```javascript
+const qb = new QueryBuilder('taxon')
+  .setTaxa(['Mammalia'], 'tree')
+  .setRank('species')
+  .addField('genome_size');
+
+const records = await qb.searchAll(5000);
+console.log(records.length);
+```
+
+:::
+
 ---
 
 ## Combining builders

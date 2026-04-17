@@ -17,8 +17,11 @@ const API_VERSION = "v2";
 import {
   annotate_source_labels as _annotateSourceLabels,
   annotated_values as _annotatedValues,
+  build_url_for_endpoint as _buildUrlForEndpoint,
+  parse_paginated_json as _parsePaginatedJson,
   parse_search_json as _parseSearchJson,
   split_source_columns as _splitSourceColumns,
+  to_tidy_records as _toTidyRecords,
   values_only as _valuesOnly,
   build_url,
   parse_response_status,
@@ -417,10 +420,19 @@ class QueryBuilder {
    * @param {string} [apiVersion] - Override the default API version.
    * @returns {string}
    */
-  toUrl(apiBase = API_BASE, apiVersion = API_VERSION) {
+  toUrl(apiBase = API_BASE, apiVersion = API_VERSION, endpoint = "search") {
     const queryYaml = this.toQueryYaml();
     const paramsYaml = this.toParamsYaml();
-    return build_url(queryYaml, paramsYaml, apiBase, apiVersion);
+    if (endpoint === "search") {
+      return build_url(queryYaml, paramsYaml, apiBase, apiVersion);
+    }
+    return _buildUrlForEndpoint(
+      queryYaml,
+      paramsYaml,
+      apiBase,
+      apiVersion,
+      endpoint,
+    );
   }
 
   // ── API calls ──────────────────────────────────────────────────────────────
@@ -459,6 +471,48 @@ class QueryBuilder {
       return resp.json();
     }
     return resp.text();
+  }
+
+  /**
+   * Fetch all matching records using cursor-based pagination.
+   *
+   * Uses the `/searchPaginated` endpoint in chunks of 1 000 records per page.
+   * Pagination continues until all pages are retrieved or maxRecords is reached.
+   *
+   * @param {number} [maxRecords=Infinity]
+   * @param {string} [apiBase]
+   * @returns {Promise<object[]>}
+   */
+  async searchAll(maxRecords = Infinity, apiBase = API_BASE) {
+    const CHUNK_SIZE = 1000;
+    const allRecords = [];
+    let searchAfter = null;
+
+    while (true) {
+      let url = this.toUrl(apiBase, API_VERSION, "searchPaginated");
+      url += (url.includes("?") ? "&" : "?") + `size=${CHUNK_SIZE}`;
+      if (searchAfter !== null) {
+        url += `&searchAfter=${encodeURIComponent(JSON.stringify(searchAfter))}`;
+      }
+
+      const resp = await fetch(url, {
+        headers: { Accept: "application/json" },
+      });
+      if (!resp.ok)
+        throw new Error(
+          `API request failed: ${resp.status} ${resp.statusText}`,
+        );
+
+      const page = JSON.parse(_parsePaginatedJson(await resp.text()));
+      const records = page.records ?? [];
+      const remaining = maxRecords - allRecords.length;
+      allRecords.push(...records.slice(0, remaining));
+
+      if (!page.hasMore || allRecords.length >= maxRecords) break;
+      searchAfter = page.searchAfter;
+    }
+
+    return allRecords;
   }
 
   // ── Utilities ──────────────────────────────────────────────────────────────
@@ -563,6 +617,25 @@ class QueryBuilder {
   }
 }
 
+/**
+ * Reshape flat records from parseSearchJson into long/tidy format.
+ *
+ * Each flat record is exploded so that every bare field becomes its own row
+ * with columns: identity columns (taxon_id, scientific_name, …), `field`,
+ * `value`, and `source`.  Explicitly-requested modifier columns are emitted
+ * as separate rows with `field` set to `"{bare}:{modifier}"` and `source`
+ * as `null`.
+ *
+ * Suitable as input for d3 or Vega-Lite pivot charts.
+ *
+ * @param {string|object[]} records - Flat records from parseSearchJson.
+ * @returns {object[]}
+ */
+function toTidyRecords(records) {
+  const str = typeof records === "string" ? records : JSON.stringify(records);
+  return JSON.parse(_toTidyRecords(str));
+}
+
 export {
   QueryBuilder,
   parseSearchJson,
@@ -570,4 +643,5 @@ export {
   splitSourceColumns,
   valuesOnly,
   annotatedValues,
+  toTidyRecords,
 };

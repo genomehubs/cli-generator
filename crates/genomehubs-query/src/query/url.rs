@@ -368,6 +368,12 @@ fn assemble_url(
         parts.push("summaryValues=false".to_string());
     }
 
+    if let Some(ref cursor) = params.search_after {
+        if let Ok(encoded) = serde_json::to_string(cursor) {
+            parts.push(format!("searchAfter={}", encode_param(&encoded)));
+        }
+    }
+
     for ep in exclusion_params {
         parts.push(format!(
             "{}={}",

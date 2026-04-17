@@ -222,6 +222,29 @@ fn annotated_values(records_json: &str, mode: &str, keep_columns_json: &str) -> 
     genomehubs_query::annotated_values(records_json, mode, keep_columns_json)
 }
 
+/// Reshape flat records into long/tidy format — one row per field per record.
+///
+/// Accepts the JSON array produced by `parse_search_json`.  Each output row
+/// contains identity columns, `"field"`, `"value"`, and `"source"`.
+/// Explicitly-requested modifier columns are emitted with `"field"` as
+/// `"{bare}:{modifier}"`.
+#[cfg(feature = "extension-module")]
+#[pyfunction]
+fn to_tidy_records(records_json: &str) -> String {
+    genomehubs_query::to_tidy_records(records_json)
+}
+
+/// Parse one page from a `/searchPaginated` response.
+///
+/// Returns a JSON object with `"records"` (flat, same format as
+/// `parse_search_json`), `"hasMore"` (bool), `"searchAfter"` (array or null),
+/// and `"totalHits"` (int).
+#[cfg(feature = "extension-module")]
+#[pyfunction]
+fn parse_paginated_json(raw: &str) -> String {
+    genomehubs_query::parse_paginated_json(raw)
+}
+
 /// Python module definition for `cli_generator`.
 #[cfg(feature = "extension-module")]
 #[pymodule]
@@ -236,5 +259,7 @@ fn cli_generator(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(split_source_columns, m)?)?;
     m.add_function(wrap_pyfunction!(values_only, m)?)?;
     m.add_function(wrap_pyfunction!(annotated_values, m)?)?;
+    m.add_function(wrap_pyfunction!(to_tidy_records, m)?)?;
+    m.add_function(wrap_pyfunction!(parse_paginated_json, m)?)?;
     Ok(())
 }
