@@ -253,4 +253,73 @@ fn paginated_url(
     format!("{API_BASE}/searchPaginated?{}", parts.join("&"))
 }
 
+/// Execute multiple searches simultaneously via the `/msearch` endpoint.
+///
+/// `queries` is a slice of compiled query strings (the raw `query=` value,
+/// not percent-encoded).  All searches share the same `fields`, `limit`,
+/// `include_estimates`, and `opts`.
+///
+/// Automatically splits into multiple POST requests when `queries.len() > 100`
+/// (the API's hard limit per request) and reassembles results in order.
+///
+/// Returns one `Vec<Record>` per input query, in the same order as `queries`.
+pub fn msearch(
+    index: super::indexes::Index,
+    queries: &[String],
+    fields: &[&str],
+    limit: usize,
+    include_estimates: bool,
+    opts: &SearchOptions,
+) -> Result<Vec<Vec<serde_json::Value>>> {
+    use crate::embedded::core::parse::parse_msearch_json;
+
+    const BATCH_SIZE: usize = 100;
+    let fields_str = fields.join(",");
+    let mut all_results: Vec<Vec<serde_json::Value>> = vec![Vec::new(); queries.len()];
+    let client = reqwest::blocking::Client::new();
+
+    for (batch_idx, chunk) in queries.chunks(BATCH_SIZE).enumerate() {
+        let searches: Vec<serde_json::Value> = chunk
+            .iter()
+            .map(|q| {
+                let mut obj = serde_json::json!({
+                    "query": q,
+                    "result": index.as_str(),
+                    "taxonomy": opts.taxonomy,
+                    "limit": limit,
+                    "includeEstimates": include_estimates,
+                });
+                if !fields_str.is_empty() {
+                    obj["fields"] = serde_json::Value::String(fields_str.clone());
+                }
+                if let Some(ref sort_by) = opts.sort_by {
+                    obj["sortBy"] = serde_json::Value::String(sort_by.clone());
+                    obj["sortOrder"] = serde_json::Value::String(opts.sort_order.clone());
+                }
+                obj
+            })
+            .collect();
+
+        let body = serde_json::json!({ "searches": searches });
+        let url = format!("{API_BASE}/msearch");
+        let raw = client
+            .post(&url)
+            .header("Content-Type", "application/json")
+            .header("Accept", "application/json")
+            .json(&body)
+            .send()
+            .with_context(|| format!("HTTP POST {url}"))?
+            .error_for_status()
+            .with_context(|| format!("non-2xx response from {url}"))?
+            .text()
+            .context("reading msearch response body")?;
+
+        let result = parse_msearch_json(&raw).map_err(|e| anyhow::anyhow!("{e}"))?;
+        for (i, query_result) in result.results.into_iter().enumerate() {
+            all_results[batch_idx * BATCH_SIZE + i] = query_result.records;
+        }
+    }
+
+    Ok(all_results)
+}
 

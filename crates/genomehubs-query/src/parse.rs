@@ -854,6 +854,113 @@ pub fn paginated_page_to_json(page: &PaginatedPage) -> String {
     obj.to_string()
 }
 
+// ── parse_msearch_json ────────────────────────────────────────────────────────
+
+/// Flat records + metadata for one query within an msearch response.
+pub struct MsearchQueryResult {
+    /// Flat records parsed by the same rules as [`parse_search_json`].
+    pub records: Vec<serde_json::Value>,
+    /// Total hits reported by the API for this query (may exceed `records.len()`).
+    pub total: u64,
+    /// API error message for this query, if any.
+    pub error: Option<String>,
+}
+
+/// The result of parsing a full `/msearch` response.
+pub struct MsearchResult {
+    /// Per-query results, in the same order as the request's `searches` array.
+    pub results: Vec<MsearchQueryResult>,
+    /// Sum of all per-query totals from the outer `status.hits` field.
+    pub total_hits: u64,
+}
+
+#[derive(Deserialize)]
+struct MsearchApiResponse {
+    status: Option<ApiStatus>,
+    results: Option<Vec<MsearchApiQueryResult>>,
+}
+
+#[derive(Deserialize)]
+struct MsearchApiQueryResult {
+    total: Option<serde_json::Value>,
+    hits: Option<Vec<serde_json::Value>>,
+    error: Option<String>,
+}
+
+/// Parse a raw `/msearch` response into per-query flat record lists.
+///
+/// Each element of [`MsearchResult::results`] corresponds to one entry in the
+/// `searches` array of the request.  Records are flattened with the same rules
+/// as [`parse_search_json`].
+///
+/// Returns `Err` only on completely unparseable JSON.
+pub fn parse_msearch_json(raw: &str) -> Result<MsearchResult, String> {
+    let envelope: MsearchApiResponse =
+        serde_json::from_str(raw).map_err(|e| format!("invalid JSON: {e}"))?;
+
+    let total_hits = envelope
+        .status
+        .as_ref()
+        .map(|s| parse_hits(s.hits.as_ref()))
+        .unwrap_or(0);
+
+    let raw_results = envelope.results.unwrap_or_default();
+    let mut results = Vec::with_capacity(raw_results.len());
+
+    for query_result in &raw_results {
+        let raw_hits = query_result.hits.as_deref().unwrap_or(&[]);
+        let mut records = Vec::with_capacity(raw_hits.len());
+        for hit in raw_hits {
+            let hit_result = hit.get("result").unwrap_or(&serde_json::Value::Null);
+            let index = hit.get("index").and_then(|v| v.as_str()).unwrap_or("taxon");
+            let flat = flatten_result(hit_result, index);
+            records.push(serde_json::Value::Object(flat));
+        }
+        let total = parse_hits(query_result.total.as_ref());
+        results.push(MsearchQueryResult {
+            records,
+            total,
+            error: query_result.error.clone(),
+        });
+    }
+
+    Ok(MsearchResult {
+        results,
+        total_hits,
+    })
+}
+
+/// Serialise an [`MsearchResult`] into a JSON object for FFI callers.
+///
+/// ```json
+/// {
+///   "results": [
+///     {"records": [...], "total": 5200, "error": null},
+///     {"records": [...], "total": 7300, "error": null}
+///   ],
+///   "totalHits": 12500
+/// }
+/// ```
+pub fn msearch_result_to_json(result: &MsearchResult) -> String {
+    let results_json: Vec<serde_json::Value> = result
+        .results
+        .iter()
+        .map(|r| {
+            serde_json::json!({
+                "records": r.records,
+                "total": r.total,
+                "error": r.error,
+            })
+        })
+        .collect();
+
+    serde_json::json!({
+        "results": results_json,
+        "totalHits": result.total_hits,
+    })
+    .to_string()
+}
+
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 #[cfg(test)]
@@ -1429,5 +1536,125 @@ mod tests {
     #[test]
     fn paginated_invalid_json_returns_err() {
         assert!(parse_paginated_json("not json").is_err());
+    }
+
+    // ── parse_msearch_json ────────────────────────────────────────────────────
+
+    /// Build a minimal `/msearch` response JSON string.
+    ///
+    /// Each `(fields_json, total)` pair becomes one entry in `results`.
+    fn msearch_response(entries: &[(&str, u64)]) -> String {
+        let overall_total: u64 = entries.iter().map(|(_, t)| t).sum();
+        let results: Vec<String> = entries
+            .iter()
+            .map(|(fields_json, total)| {
+                format!(
+                    r#"{{"status":"ok","count":1,"total":{total},
+                    "hits":[{{"index":"taxon--ncbi","id":"9606","score":1.0,
+                      "result":{{"taxon_id":"9606","scientific_name":"Homo sapiens",
+                        "taxon_rank":"species","fields":{fields_json}}}}}]}}"#
+                )
+            })
+            .collect();
+        format!(
+            r#"{{"status":{{"hits":{overall_total},"success":true}},
+              "results":[{}]}}"#,
+            results.join(",")
+        )
+    }
+
+    #[test]
+    fn parse_msearch_json_two_queries_returns_two_result_groups() {
+        let raw = msearch_response(&[("{}", 5200), ("{}", 7300)]);
+        let result = parse_msearch_json(&raw).unwrap();
+        assert_eq!(result.results.len(), 2);
+        assert_eq!(result.total_hits, 12500);
+    }
+
+    #[test]
+    fn parse_msearch_json_each_group_has_one_record() {
+        let raw = msearch_response(&[("{}", 5200), ("{}", 7300)]);
+        let result = parse_msearch_json(&raw).unwrap();
+        assert_eq!(result.results[0].records.len(), 1);
+        assert_eq!(result.results[1].records.len(), 1);
+    }
+
+    #[test]
+    fn parse_msearch_json_per_query_totals_are_preserved() {
+        let raw = msearch_response(&[("{}", 5200), ("{}", 7300)]);
+        let result = parse_msearch_json(&raw).unwrap();
+        assert_eq!(result.results[0].total, 5200);
+        assert_eq!(result.results[1].total, 7300);
+    }
+
+    #[test]
+    fn parse_msearch_json_records_are_flat() {
+        let raw = msearch_response(&[("{}", 100)]);
+        let result = parse_msearch_json(&raw).unwrap();
+        let record = &result.results[0].records[0];
+        assert_eq!(record["taxon_id"], "9606");
+        assert_eq!(record["scientific_name"], "Homo sapiens");
+        assert_eq!(record["taxon_rank"], "species");
+    }
+
+    #[test]
+    fn parse_msearch_json_empty_results_array() {
+        let raw = r#"{"status":{"hits":0,"success":true},"results":[]}"#;
+        let result = parse_msearch_json(raw).unwrap();
+        assert_eq!(result.results.len(), 0);
+        assert_eq!(result.total_hits, 0);
+    }
+
+    #[test]
+    fn parse_msearch_json_missing_results_key() {
+        let raw = r#"{"status":{"hits":0,"success":true}}"#;
+        let result = parse_msearch_json(raw).unwrap();
+        assert!(result.results.is_empty());
+    }
+
+    #[test]
+    fn parse_msearch_json_error_field_is_captured() {
+        let raw = r#"{"status":{"hits":0,"success":true},"results":[
+            {"status":"error","total":0,"hits":[],"error":"taxonomy not found"}
+        ]}"#;
+        let result = parse_msearch_json(raw).unwrap();
+        assert_eq!(
+            result.results[0].error.as_deref(),
+            Some("taxonomy not found")
+        );
+        assert_eq!(result.results[0].records.len(), 0);
+    }
+
+    #[test]
+    fn parse_msearch_json_no_error_is_none() {
+        let raw = msearch_response(&[("{}", 10)]);
+        let result = parse_msearch_json(&raw).unwrap();
+        assert!(result.results[0].error.is_none());
+    }
+
+    #[test]
+    fn parse_msearch_json_invalid_input_returns_err() {
+        assert!(parse_msearch_json("not json at all {{}}").is_err());
+    }
+
+    #[test]
+    fn msearch_result_to_json_round_trips() {
+        let raw = msearch_response(&[("{}", 42)]);
+        let result = parse_msearch_json(&raw).unwrap();
+        let json_str = msearch_result_to_json(&result);
+        let v: serde_json::Value = serde_json::from_str(&json_str).unwrap();
+        assert_eq!(v["totalHits"], 42);
+        assert_eq!(v["results"].as_array().unwrap().len(), 1);
+        assert_eq!(v["results"][0]["total"], 42);
+        assert!(!v["results"][0]["records"].as_array().unwrap().is_empty());
+    }
+
+    #[test]
+    fn msearch_result_to_json_null_error_in_output() {
+        let raw = msearch_response(&[("{}", 5)]);
+        let result = parse_msearch_json(&raw).unwrap();
+        let json_str = msearch_result_to_json(&result);
+        let v: serde_json::Value = serde_json::from_str(&json_str).unwrap();
+        assert!(v["results"][0]["error"].is_null());
     }
 }

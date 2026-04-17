@@ -245,6 +245,16 @@ fn parse_paginated_json(raw: &str) -> String {
     genomehubs_query::parse_paginated_json(raw)
 }
 
+/// Parse a raw `/msearch` response into per-query flat record lists.
+///
+/// Returns a JSON object with `"results"` (array of per-query objects each
+/// containing `"records"`, `"total"`, and `"error"`) and `"totalHits"`.
+#[cfg(feature = "extension-module")]
+#[pyfunction]
+fn parse_msearch_json(raw: &str) -> String {
+    genomehubs_query::parse_msearch_json(raw)
+}
+
 /// Python module definition for `cli_generator`.
 #[cfg(feature = "extension-module")]
 #[pymodule]
@@ -261,5 +271,6 @@ fn cli_generator(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(annotated_values, m)?)?;
     m.add_function(wrap_pyfunction!(to_tidy_records, m)?)?;
     m.add_function(wrap_pyfunction!(parse_paginated_json, m)?)?;
+    m.add_function(wrap_pyfunction!(parse_msearch_json, m)?)?;
     Ok(())
 }

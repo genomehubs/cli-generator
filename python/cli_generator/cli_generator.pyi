@@ -296,3 +296,30 @@ def parse_paginated_json(raw: str) -> str:
         and ``totalHits``.
     """
     ...
+
+def parse_msearch_json(raw: str) -> str:
+    """Parse a raw ``/msearch`` POST response into per-query flat record lists.
+
+    Returns a JSON object:
+
+    .. code-block:: json
+
+        {
+          "results": [
+            {"records": [...], "total": 5200, "error": null},
+            {"records": [...], "total": 7300, "error": null}
+          ],
+          "totalHits": 12500
+        }
+
+    Each ``records`` array is in the same flat format as :func:`parse_search_json`
+    output.  Results are in the same order as the request's ``searches`` array.
+
+    Args:
+        raw: Raw JSON string from the ``/msearch`` endpoint.
+
+    Returns:
+        JSON object string with ``results`` (array of per-query objects each
+        containing ``records``, ``total``, and ``error``) and ``totalHits``.
+    """
+    ...

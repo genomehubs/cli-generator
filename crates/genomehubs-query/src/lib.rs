@@ -214,3 +214,29 @@ pub fn parse_paginated_json(raw: &str) -> String {
         Err(e) => format!(r#"{{"error":{e:?}}}"#),
     }
 }
+
+/// Parse a raw `/msearch` response into per-query flat record lists.
+///
+/// Returns a JSON object:
+/// ```json
+/// {
+///   "results": [
+///     {"records": [...], "total": 5200, "error": null},
+///     {"records": [...], "total": 7300, "error": null}
+///   ],
+///   "totalHits": 12500
+/// }
+/// ```
+///
+/// Each `records` array contains flat records in the same format as
+/// [`parse_search_json`].  Results are in the same order as the request's
+/// `searches` array.
+///
+/// Returns `{"error":"..."}` if the input is not valid JSON.
+#[cfg_attr(feature = "wasm", wasm_bindgen)]
+pub fn parse_msearch_json(raw: &str) -> String {
+    match parse::parse_msearch_json(raw) {
+        Ok(result) => parse::msearch_result_to_json(&result),
+        Err(e) => format!(r#"{{"error":{e:?}}}"#),
+    }
+}

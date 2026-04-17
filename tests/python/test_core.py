@@ -6,6 +6,8 @@ Covers:
 - Smoke tests — `build_url` and `QueryBuilder` round-trip.
 """
 
+import json
+import pathlib
 import re
 
 from cli_generator import QueryBuilder, build_url, version
@@ -817,8 +819,6 @@ def test_cli_snippet_all_languages_together() -> None:
 
 # ── parse_search_json / values_only / annotated_values smoke tests ────────────
 
-import json
-
 _TAXON_RESPONSE = json.dumps(
     {
         "status": {"hits": 1, "success": True},
@@ -1168,3 +1168,241 @@ def test_parse_paginated_json_invalid_input_returns_error_key() -> None:
 
     result = json.loads(parse_paginated_json("not json"))
     assert "error" in result
+
+
+# ── parse_msearch_json ────────────────────────────────────────────────────────
+
+
+def _minimal_msearch_response(entries: list[tuple[int, int]]) -> str:
+    """Build a minimal /msearch response string.
+
+    Each ``(taxon_id, total)`` pair becomes one element in ``results``.
+    """
+    overall = sum(t for _, t in entries)
+    results = []
+    for taxon_id, total in entries:
+        results.append(
+            f'{{"status":"ok","count":1,"total":{total},'
+            f'"hits":[{{"index":"taxon--ncbi","id":"{taxon_id}","score":1.0,'
+            f'"result":{{"taxon_id":"{taxon_id}","scientific_name":"Species {taxon_id}",'
+            f'"taxon_rank":"species","fields":{{}}}}}}]}}'
+        )
+    return f'{{"status":{{"hits":{overall},"success":true}},' f'"results":[{",".join(results)}]}}'
+
+
+def test_parse_msearch_json_two_queries_return_two_groups() -> None:
+    from cli_generator import parse_msearch_json
+
+    raw = _minimal_msearch_response([(9606, 5200), (10090, 7300)])
+    result = json.loads(parse_msearch_json(raw))
+    assert len(result["results"]) == 2
+    assert result["totalHits"] == 12500
+
+
+def test_parse_msearch_json_per_query_totals() -> None:
+    from cli_generator import parse_msearch_json
+
+    raw = _minimal_msearch_response([(9606, 5200), (10090, 7300)])
+    result = json.loads(parse_msearch_json(raw))
+    assert result["results"][0]["total"] == 5200
+    assert result["results"][1]["total"] == 7300
+
+
+def test_parse_msearch_json_records_contain_identity() -> None:
+    from cli_generator import parse_msearch_json
+
+    raw = _minimal_msearch_response([(9606, 10)])
+    result = json.loads(parse_msearch_json(raw))
+    record = result["results"][0]["records"][0]
+    assert record["taxon_id"] == "9606"
+    assert record["scientific_name"] == "Species 9606"
+
+
+def test_parse_msearch_json_empty_results_returns_empty_list() -> None:
+    from cli_generator import parse_msearch_json
+
+    raw = json.dumps({"status": {"hits": 0, "success": True}, "results": []})
+    result = json.loads(parse_msearch_json(raw))
+    assert result["results"] == []
+    assert result["totalHits"] == 0
+
+
+def test_parse_msearch_json_error_field_preserved() -> None:
+    from cli_generator import parse_msearch_json
+
+    raw = json.dumps(
+        {
+            "status": {"hits": 0, "success": True},
+            "results": [{"status": "error", "total": 0, "hits": [], "error": "bad query"}],
+        }
+    )
+    result = json.loads(parse_msearch_json(raw))
+    assert result["results"][0]["error"] == "bad query"
+    assert result["results"][0]["records"] == []
+
+
+def test_parse_msearch_json_invalid_input_returns_error_key() -> None:
+    from cli_generator import parse_msearch_json
+
+    result = json.loads(parse_msearch_json("{{not valid json"))
+    assert "error" in result
+
+
+# ── MultiQueryBuilder unit tests (no network) ─────────────────────────────────
+
+
+def test_multi_query_builder_empty_on_init() -> None:
+    from cli_generator import MultiQueryBuilder
+
+    mq = MultiQueryBuilder("taxon")
+    assert len(mq) == 0
+
+
+def test_multi_query_builder_add_query_increments_len() -> None:
+    from cli_generator import MultiQueryBuilder, QueryBuilder
+
+    mq = MultiQueryBuilder("taxon")
+    mq.add_query(QueryBuilder("taxon"))
+    assert len(mq) == 1
+
+
+def test_multi_query_builder_set_size_stored() -> None:
+    from cli_generator import MultiQueryBuilder
+
+    mq = MultiQueryBuilder("taxon")
+    mq.set_size(50)
+    assert mq._size == 50
+
+
+def test_multi_query_builder_set_sort_stored() -> None:
+    from cli_generator import MultiQueryBuilder
+
+    mq = MultiQueryBuilder("taxon")
+    mq.set_sort("genome_size", "desc")
+    assert mq._sort_by == "genome_size"
+    assert mq._sort_order == "desc"
+
+
+def test_multi_query_builder_set_fields_stored() -> None:
+    from cli_generator import MultiQueryBuilder
+
+    mq = MultiQueryBuilder("taxon")
+    mq.set_fields(["genome_size", "assembly_level"])
+    assert len(mq._fields) == 2
+
+
+def test_multi_query_builder_wrong_index_raises() -> None:
+    import pytest
+
+    from cli_generator import MultiQueryBuilder, QueryBuilder
+
+    mq = MultiQueryBuilder("taxon")
+    with pytest.raises(ValueError, match="assembly"):
+        mq.add_query(QueryBuilder("assembly"))
+
+
+def test_multi_query_builder_include_estimates_mismatch_raises() -> None:
+    import pytest
+
+    from cli_generator import MultiQueryBuilder, QueryBuilder
+
+    mq = MultiQueryBuilder("taxon")
+    mq.set_include_estimates(False)
+    qb = QueryBuilder("taxon")
+    qb.set_include_estimates(True)
+    with pytest.raises(ValueError, match="include_estimates"):
+        mq.add_query(qb)
+
+
+def test_multi_query_builder_taxonomy_mismatch_raises() -> None:
+    import pytest
+
+    from cli_generator import MultiQueryBuilder, QueryBuilder
+
+    mq = MultiQueryBuilder("taxon")
+    mq.set_taxonomy("ott")
+    qb = QueryBuilder("taxon")
+    qb.set_taxonomy("ncbi")
+    with pytest.raises(ValueError, match="taxonomy"):
+        mq.add_query(qb)
+
+
+def test_multi_query_builder_repr() -> None:
+    from cli_generator import MultiQueryBuilder, QueryBuilder
+
+    mq = MultiQueryBuilder("taxon")
+    mq.add_query(QueryBuilder("taxon"))
+    assert "MultiQueryBuilder" in repr(mq)
+    assert "queries=1" in repr(mq)
+
+
+def test_multi_query_builder_from_file_bare_list(tmp_path: pathlib.Path) -> None:
+    from cli_generator import MultiQueryBuilder
+
+    batch_file = tmp_path / "taxa.txt"
+    batch_file.write_text("Caenorhabditis\nHomo sapiens\n")
+    mq = MultiQueryBuilder("taxon").from_file(str(batch_file))
+    assert len(mq) == 2
+
+
+def test_multi_query_builder_from_file_bare_list_skips_blanks(tmp_path: pathlib.Path) -> None:
+    from cli_generator import MultiQueryBuilder
+
+    batch_file = tmp_path / "taxa.txt"
+    batch_file.write_text("Caenorhabditis\n\n  \nHomo sapiens\n")
+    mq = MultiQueryBuilder("taxon").from_file(str(batch_file))
+    assert len(mq) == 2
+
+
+def test_multi_query_builder_from_file_patch_array(tmp_path: pathlib.Path) -> None:
+    from cli_generator import MultiQueryBuilder
+
+    batch_file = tmp_path / "batch.yaml"
+    batch_file.write_text("- taxon: Caenorhabditis\n  rank: species\n- taxon: Homo sapiens\n")
+    mq = MultiQueryBuilder("taxon").from_file(str(batch_file))
+    assert len(mq) == 2
+
+
+def test_multi_query_builder_from_file_full_yaml(tmp_path: pathlib.Path) -> None:
+    from cli_generator import MultiQueryBuilder
+
+    batch_file = tmp_path / "full.yaml"
+    batch_file.write_text("shared:\n  size: 50\nqueries:\n  - taxon: Caenorhabditis\n  - taxon: Homo\n")
+    mq = MultiQueryBuilder("taxon").from_file(str(batch_file))
+    assert len(mq) == 2
+    assert mq._size == 50
+
+
+def test_multi_query_builder_from_file_full_yaml_forbidden_key_raises(
+    tmp_path: pathlib.Path,
+) -> None:
+    import pytest
+
+    from cli_generator import MultiQueryBuilder
+
+    batch_file = tmp_path / "bad.yaml"
+    batch_file.write_text("shared:\n  taxa: [Caenorhabditis]\nqueries:\n  - taxon: Homo\n")
+    with pytest.raises(ValueError, match="taxa"):
+        MultiQueryBuilder("taxon").from_file(str(batch_file))
+
+
+def test_multi_query_builder_from_file_frozen_key_per_query_raises(
+    tmp_path: pathlib.Path,
+) -> None:
+    import pytest
+
+    from cli_generator import MultiQueryBuilder
+
+    batch_file = tmp_path / "bad.yaml"
+    batch_file.write_text("- taxon: Homo\n  include_estimates: false\n")
+    with pytest.raises(ValueError, match="include_estimates"):
+        MultiQueryBuilder("taxon").from_file(str(batch_file))
+
+
+def test_multi_query_builder_from_file_module_level(tmp_path: pathlib.Path) -> None:
+    from cli_generator import from_file
+
+    batch_file = tmp_path / "taxa.txt"
+    batch_file.write_text("Caenorhabditis\nDrosophila\n")
+    mq = from_file("taxon", str(batch_file))
+    assert len(mq) == 2

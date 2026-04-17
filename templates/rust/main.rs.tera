@@ -118,6 +118,31 @@ enum {{ index.name | capitalize }}Commands {
         #[arg(long = "max-results")]
         max_results: Option<usize>,
 
+        /// Path to a file containing batch queries.
+        ///
+        /// Three formats are supported (auto-detected):
+        ///
+        ///   • Full search YAML — top-level `queries:` key; optional `shared:`
+        ///     section sets defaults that CLI flags can override.
+        ///
+        ///   • Patch YAML array — sequence of dicts with `taxon`, `rank`, and/or
+        ///     `filter` keys; applied on top of CLI-flag defaults.
+        ///
+        ///   • Bare taxon list — one taxon name per line; uses --taxon-filter.
+        ///
+        /// Results include a `query_index` column (0-based) unless
+        /// --no-query-column is passed.
+        #[arg(long)]
+        file: Option<std::path::PathBuf>,
+
+        /// Suppress the `query_index` column in batch output.
+        #[arg(long = "no-query-column")]
+        no_query_column: bool,
+
+        /// Suppress per-query size/sort divergence warnings when using --file.
+        #[arg(long)]
+        suppress_divergence_warnings: bool,
+
         /// Print a human-readable description of the query instead of executing it.
         #[arg(long)]
         describe: bool,
@@ -175,7 +200,7 @@ fn run(cli: Cli) -> anyhow::Result<()> {
     match cli.command {
 {% for index in indexes %}
         Commands::{{ index.name | capitalize }} { subcommand } => match subcommand {
-            {{ index.name | capitalize }}Commands::Search { taxon, taxon_filter, query, filter, rank, sort, size, page, include_estimates, taxonomy, lineage_ranks, name_classes, url, all, max_results, describe, verbose, snippet_languages, format, flags } => {
+            {{ index.name | capitalize }}Commands::Search { taxon, taxon_filter, query, filter, rank, sort, size, page, include_estimates, taxonomy, lineage_ranks, name_classes, url, all, max_results, file, no_query_column, suppress_divergence_warnings, describe, verbose, snippet_languages, format, flags } => {
                 if flags.list_field_groups {
                     for (name, short, desc) in generated::cli_flags::{{ index.name | capitalize }}Flags::list_groups() {
                         match short {
@@ -304,6 +329,43 @@ fn run(cli: Cli) -> anyhow::Result<()> {
                         &opts,
                     );
                     println!("{query_url}");
+                    return Ok(());
+                }
+
+                if let Some(ref file_path) = file {
+                    // ── Batch mode: load queries from file ────────────────────
+                    let batch_queries = load_batch_file(
+                        file_path,
+                        &taxon_filter,
+                        taxon.as_deref(),
+                        rank.as_deref(),
+                        &filter,
+                        &query,  // raw --query string only (not the compiled full_query)
+                        suppress_divergence_warnings,
+                    )?;
+
+                    let per_query_results = generated::client::msearch(
+                        generated::indexes::Index::{{ index.name | capitalize }},
+                        &batch_queries,
+                        &fields,
+                        size,
+                        include_estimates,
+                        &opts,
+                    )?;
+
+                    let include_query_col = !no_query_column;
+                    let mut all_flat: Vec<serde_json::Value> = Vec::new();
+                    for (qi, records) in per_query_results.into_iter().enumerate() {
+                        for mut rec in records {
+                            if include_query_col {
+                                rec["query_index"] = serde_json::Value::Number(qi.into());
+                            }
+                            all_flat.push(rec);
+                        }
+                    }
+                    let json = serde_json::to_string(&all_flat)
+                        .context("serialising batch records")?;
+                    println!("{json}");
                     return Ok(());
                 }
 
@@ -486,3 +548,263 @@ fn render_snippet_for_cli(
         .render_all_snippets(&snapshot, &site, &lang_refs)
         .map_err(|e| anyhow::anyhow!("snippet rendering failed: {e}"))
 }
+
+/// Parse a `--file` input into a list of compiled query strings.
+///
+/// Supports three formats (auto-detected):
+/// - Full search YAML: top-level `queries:` key; `shared:` section sets base
+///   params that CLI flags can override.
+/// - Patch YAML array: sequence of dicts with `taxon`, `rank`, `filter` etc.
+/// - Bare taxon list: one taxon name per non-empty line.
+///
+/// The `base_query` string (pre-built from CLI `--taxon`, `--filter`, `--rank`
+/// args) is ANDed with each per-file query fragment so CLI flags always apply.
+fn load_batch_file(
+    file_path: &std::path::Path,
+    taxon_filter: &TaxonFilter,
+    cli_taxon: Option<&str>,
+    cli_rank: Option<&str>,
+    cli_filters: &[String],
+    base_query: &str,
+    suppress_divergence_warnings: bool,
+) -> anyhow::Result<Vec<String>> {
+    let content = std::fs::read_to_string(file_path)
+        .with_context(|| format!("reading batch file {}", file_path.display()))?;
+    let trimmed = content.trim();
+
+    // Detect format: full YAML dict, YAML sequence, or bare list.
+    let parsed: serde_yaml::Value = serde_yaml::from_str(trimmed)
+        .unwrap_or(serde_yaml::Value::Null);
+
+    match &parsed {
+        serde_yaml::Value::Mapping(map)
+            if map.contains_key(&serde_yaml::Value::String("queries".into())) =>
+        {
+            // ── Full search YAML ────────────────────────────────────────────
+            let shared = map
+                .get(&serde_yaml::Value::String("shared".into()))
+                .and_then(|v| v.as_mapping())
+                .cloned()
+                .unwrap_or_default();
+            let queries_val = map
+                .get(&serde_yaml::Value::String("queries".into()))
+                .and_then(|v| v.as_sequence())
+                .cloned()
+                .unwrap_or_default();
+            build_queries_from_patches(
+                &queries_val,
+                Some(&shared),
+                taxon_filter,
+                cli_taxon,
+                cli_rank,
+                cli_filters,
+                base_query,
+                suppress_divergence_warnings,
+            )
+        }
+        serde_yaml::Value::Sequence(items) => {
+            // ── Patch YAML array ────────────────────────────────────────────
+            build_queries_from_patches(
+                items,
+                None,
+                taxon_filter,
+                cli_taxon,
+                cli_rank,
+                cli_filters,
+                base_query,
+                suppress_divergence_warnings,
+            )
+        }
+        _ => {
+            // ── Bare taxon list ─────────────────────────────────────────────
+            let filter_fn = match taxon_filter {
+                TaxonFilter::Name => "tax_name",
+                TaxonFilter::Tree => "tax_tree",
+                TaxonFilter::Lineage => "tax_lineage",
+            };
+            trimmed
+                .lines()
+                .filter(|l| !l.trim().is_empty())
+                .map(|line| {
+                    let taxon_clause = format!("{filter_fn}({})", line.trim());
+                    build_query_string(Some(taxon_clause.as_str()), None, &[], base_query)
+                })
+                .collect::<Vec<_>>()
+                .pipe(Ok)
+        }
+    }
+}
+
+/// Build a list of query strings from a YAML sequence of patch dicts.
+///
+/// Each dict may contain: `taxon`, `rank`, `filter` (string or list of
+/// `[FIELD, OP, VALUE]` triples).  The optional `shared` mapping is applied
+/// first (lower precedence than CLI flags supplied through `base_query`).
+fn build_queries_from_patches(
+    patches: &[serde_yaml::Value],
+    shared: Option<&serde_yaml::Mapping>,
+    taxon_filter: &TaxonFilter,
+    cli_taxon: Option<&str>,
+    cli_rank: Option<&str>,
+    cli_filters: &[String],
+    base_query: &str,
+    suppress_divergence_warnings: bool,
+) -> anyhow::Result<Vec<String>> {
+    // Extract shared rank as a fallback when the patch doesn't supply one.
+    let shared_rank: Option<String> = shared
+        .and_then(|m| m.get(&serde_yaml::Value::String("rank".into())))
+        .and_then(|v| v.as_str())
+        .map(str::to_string);
+
+    patches
+        .iter()
+        .map(|patch| {
+            let dict = match patch.as_mapping() {
+                Some(m) => m,
+                None => anyhow::bail!("each entry in the batch file must be a YAML mapping"),
+            };
+
+            // Warn about per-entry size/sort divergence if present.
+            if !suppress_divergence_warnings {
+                for key in &["size", "sort"] {
+                    if dict.contains_key(&serde_yaml::Value::String((*key).into())) {
+                        eprintln!(
+                            "warning: per-query '{key}' in batch file is noted but \
+                             the CLI --size/--sort value is used for all searches; \
+                             pass --suppress-divergence-warnings to silence this"
+                        );
+                    }
+                }
+            }
+
+            // taxon: use patch value, else CLI value.
+            let taxon_clause: Option<String> =
+                dict.get(&serde_yaml::Value::String("taxon".into()))
+                    .and_then(|v| v.as_str())
+                    .map(|t| {
+                        let filter_fn = match taxon_filter {
+                            TaxonFilter::Name => "tax_name",
+                            TaxonFilter::Tree => "tax_tree",
+                            TaxonFilter::Lineage => "tax_lineage",
+                        };
+                        format!("{filter_fn}({t})")
+                    })
+                    .or_else(|| {
+                        cli_taxon.map(|t| {
+                            let filter_fn = match taxon_filter {
+                                TaxonFilter::Name => "tax_name",
+                                TaxonFilter::Tree => "tax_tree",
+                                TaxonFilter::Lineage => "tax_lineage",
+                            };
+                            format!("{filter_fn}({t})")
+                        })
+                    });
+
+            // rank: patch > CLI > shared.
+            let rank_clause: Option<String> = dict
+                .get(&serde_yaml::Value::String("rank".into()))
+                .and_then(|v| v.as_str())
+                .or(cli_rank)
+                .or(shared_rank.as_deref())
+                .map(|r| format!("tax_rank({r})"));
+
+            // filters: collect per-patch filter expressions.
+            let patch_filters: Vec<String> =
+                match dict.get(&serde_yaml::Value::String("filter".into())) {
+                    Some(serde_yaml::Value::String(s)) => vec![s.clone()],
+                    Some(serde_yaml::Value::Sequence(seq)) => seq
+                        .chunks(3)
+                        .filter_map(|chunk| {
+                            if chunk.len() < 3 {
+                                return None;
+                            }
+                            let f = chunk[0].as_str()?;
+                            let op = match chunk[1].as_str()? {
+                                "eq" | "==" | "=" => "=",
+                                "ne" | "!=" => "!=",
+                                "gt" | ">" => ">",
+                                "ge" | ">=" => ">=",
+                                "lt" | "<" => "<",
+                                "le" | "<=" => "<=",
+                                other => other,
+                            };
+                            let v = chunk[2].as_str()?;
+                            Some(format!("{f}{op}{v}"))
+                        })
+                        .collect(),
+                    _ => Vec::new(),
+                };
+
+            // Merge patch filters with CLI-supplied filter strings.
+            let all_filters: Vec<String> = {
+                let mut f = cli_filter_fragments(cli_filters);
+                f.extend(patch_filters);
+                f
+            };
+
+            Ok(build_query_string(
+                taxon_clause.as_deref(),
+                rank_clause.as_deref(),
+                &all_filters,
+                // base_query already includes CLI taxon/rank/filters; for per-file
+                // queries we build fresh so as not to double-apply CLI filters.
+                "",
+            ))
+        })
+        .collect()
+}
+
+/// Convert raw `--filter FIELD OP VALUE` triples into expression strings.
+fn cli_filter_fragments(filter: &[String]) -> Vec<String> {
+    filter
+        .chunks(3)
+        .filter_map(|chunk| {
+            if chunk.len() < 3 {
+                return None;
+            }
+            let op_symbol = match chunk[1].as_str() {
+                "eq" | "==" | "=" => "=",
+                "ne" | "!=" => "!=",
+                "gt" | ">" => ">",
+                "ge" | ">=" => ">=",
+                "lt" | "<" => "<",
+                "le" | "<=" => "<=",
+                other => other,
+            };
+            Some(format!("{}{}{}", chunk[0], op_symbol, chunk[2]))
+        })
+        .collect()
+}
+
+/// Build a final `AND`-joined query string from component clauses.
+fn build_query_string(
+    taxon_clause: Option<&str>,
+    rank_clause: Option<&str>,
+    filter_fragments: &[String],
+    extra: &str,
+) -> String {
+    let mut parts: Vec<&str> = Vec::new();
+    if let Some(t) = taxon_clause {
+        parts.push(t);
+    }
+    if let Some(r) = rank_clause {
+        parts.push(r);
+    }
+    let filter_strs: Vec<&str> = filter_fragments.iter().map(String::as_str).collect();
+    parts.extend_from_slice(&filter_strs);
+    if !extra.is_empty() {
+        parts.push(extra);
+    }
+    parts.join(" AND ")
+}
+
+/// Extension trait for ergonomic `pipe(f)` chaining.
+trait Pipe: Sized {
+    fn pipe<F, R>(self, f: F) -> R
+    where
+        F: FnOnce(Self) -> R,
+    {
+        f(self)
+    }
+}
+impl<T> Pipe for T {}

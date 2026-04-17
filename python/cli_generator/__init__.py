@@ -11,6 +11,7 @@ try:
         annotated_values,
         build_url,
         describe_query,
+        parse_msearch_json,
         parse_paginated_json,
         parse_response_status,
         parse_search_json,
@@ -24,6 +25,7 @@ except ImportError:
     # Rust extension not yet compiled; type stubs will be used for mypy/pyright
     pass  # type: ignore[unreachable]
 
+from .multi_query_builder import MultiQueryBuilder, from_file
 from .query import QueryBuilder
 
 __all__ = [
@@ -31,6 +33,9 @@ __all__ = [
     "annotated_values",
     "build_url",
     "describe_query",
+    "from_file",
+    "MultiQueryBuilder",
+    "parse_msearch_json",
     "parse_paginated_json",
     "parse_response_status",
     "parse_search_json",
