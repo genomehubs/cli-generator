@@ -114,6 +114,14 @@ class QueryBuilder:
         self._attributes.append(entry)
         return self
 
+    def set_attributes(
+        self,
+        attributes: list[dict[str, Any]],
+    ) -> "QueryBuilder":
+        """Replace all attribute filters at once."""
+        self._attributes = [dict(a) for a in attributes]
+        return self
+
     def add_field(self, name: str, modifiers: list[str] | None = None) -> "QueryBuilder":
         """Request a field in the response."""
         entry: dict[str, Any] = {"name": name}
@@ -136,6 +144,14 @@ class QueryBuilder:
             mods: list[str] = field.get("modifier", []) if isinstance(field, dict) else []
             result.extend(f"{field_name}__{mod}" for mod in mods)
         return result
+
+    def set_fields(
+        self,
+        fields: list[str | dict[str, Any]],
+    ) -> "QueryBuilder":
+        """Replace the field selection at once."""
+        self._fields = [{"name": f} if isinstance(f, str) else dict(f) for f in fields]
+        return self
 
     def to_tidy_records(self, records: "list[dict[str, Any]] | str") -> "list[dict[str, Any]]":
         """Reshape flat records from ``parse_search_json`` into long/tidy format.
