@@ -4,6 +4,23 @@
   "description": "Query builder and API client for {{ site_display_name }}",
   "main": "query.js",
   "type": "module",
+  "exports": {
+    ".": {
+      "node": "./query.node.js",
+      "browser": "./query.browser.js",
+      "import": "./query.js"
+    }
+  },
+  "browser": {
+    "./query.js": "./query.browser.js"
+  },
+  "files": [
+    "query.js",
+    "query.node.js",
+    "query.browser.js",
+    "pkg-web/",
+    "pkg-nodejs/"
+  ],
   "scripts": {
     "build": "bash build-wasm.sh",
     "test": "node --test tests/"

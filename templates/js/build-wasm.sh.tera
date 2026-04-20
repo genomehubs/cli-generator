@@ -1,7 +1,11 @@
 #!/bin/bash
-# Rebuild the WASM module for this JavaScript SDK.
+# Rebuild the WASM module for this JavaScript SDK (Node.js + Browser).
 #
-# The pkg/ directory is pre-built and included when this package is generated.
+# This script produces dual WASM builds:
+#   - pkg-nodejs/ : optimized for Node.js
+#   - pkg-web/    : optimized for browsers
+#
+# The pre-built packages are included when this project is generated.
 # Only run this script if you need to rebuild from a modified cli-generator source.
 #
 # Prerequisites:
@@ -30,7 +34,7 @@ if [ -z "$REPO_ROOT" ]; then
   exit 1
 fi
 
-echo "Building WASM from $REPO_ROOT/crates/genomehubs-query ..."
+echo "Building dual WASM packages from $REPO_ROOT/crates/genomehubs-query ..."
 
 if ! command -v wasm-pack &> /dev/null; then
   echo "wasm-pack not found. Install with: cargo install wasm-pack"
@@ -38,11 +42,19 @@ if ! command -v wasm-pack &> /dev/null; then
 fi
 
 cd "$REPO_ROOT/crates/genomehubs-query"
-wasm-pack build --target nodejs --features wasm
 
-# Copy the built package here
-cp -r pkg/. "$SCRIPT_DIR/pkg/"
-echo "Done. pkg/ updated."
+# Build for web
+echo "  → Building for browsers (--target web)"
+wasm-pack build --target web --features wasm
+rm -rf "$SCRIPT_DIR/pkg-web" && mv pkg "$SCRIPT_DIR/pkg-web"
+
+# Build for Node.js
+echo "  → Building for Node.js (--target nodejs)"
+wasm-pack build --target nodejs --features wasm
+rm -rf "$SCRIPT_DIR/pkg-nodejs" && mv pkg "$SCRIPT_DIR/pkg-nodejs"
+
+echo "✓ Done. pkg-web/ and pkg-nodejs/ updated."
+
 
 
 

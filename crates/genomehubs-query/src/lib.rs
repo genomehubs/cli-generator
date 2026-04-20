@@ -16,8 +16,11 @@
 //! use genomehubs_query::query::{SearchQuery, QueryParams, build_query_url};
 //! ```
 
+pub mod describe;
 pub mod parse;
 pub mod query;
+pub mod snippet;
+pub mod types;
 
 #[cfg(feature = "wasm")]
 use wasm_bindgen::prelude::*;
@@ -239,4 +242,108 @@ pub fn parse_msearch_json(raw: &str) -> String {
         Ok(result) => parse::msearch_result_to_json(&result),
         Err(e) => format!(r#"{{"error":{e:?}}}"#),
     }
+}
+
+/// Describe a query in human-readable form.
+///
+/// Generates a concise or verbose prose description of a genomehubs query,
+/// using field metadata from the API for display names.
+///
+/// # Arguments
+/// - `query_yaml`: YAML serialization of [`query::SearchQuery`]
+/// - `params_yaml`: YAML serialization of [`query::QueryParams`] (reserved for future use)
+/// - `field_metadata_json`: JSON object mapping field names to [`types::FieldDef`] structures
+/// - `mode`: `"concise"` or `"verbose"` (default: `"concise"`)
+///
+/// # Returns
+/// Plain text description, or JSON `{"error":"..."}` on parse failure.
+#[cfg_attr(feature = "wasm", wasm_bindgen)]
+pub fn describe_query(
+    query_yaml: &str,
+    _params_yaml: &str,
+    field_metadata_json: &str,
+    mode: &str,
+) -> String {
+    use std::collections::HashMap;
+
+    let query = match query::SearchQuery::from_yaml(query_yaml) {
+        Ok(q) => q,
+        Err(e) => return format!(r#"{{"error":"Invalid query YAML: {}"}}"#, e),
+    };
+
+    let field_metadata: HashMap<String, types::FieldDef> =
+        match serde_json::from_str(field_metadata_json) {
+            Ok(meta) => meta,
+            Err(e) => return format!(r#"{{"error":"Invalid field metadata JSON: {}"}}"#, e),
+        };
+
+    let describer = describe::QueryDescriber::new(field_metadata);
+
+    let result = match mode {
+        "verbose" => describer.describe_verbose(&query),
+        _ => describer.describe_concise(&query),
+    };
+
+    // Return as JSON string (for consistency with other WASM exports)
+    format!(r#""{}""#, result.replace('"', "\\\"").replace('\n', "\\n"))
+}
+
+/// Render code snippets for a query in one or more languages.
+///
+/// Accepts a JSON-serialised [`types::QuerySnapshot`] and minimal site
+/// parameters, and returns a JSON object mapping each requested language name
+/// to its rendered code snippet string.
+///
+/// `languages` is a comma-separated list of language keys, e.g. `"python"` or
+/// `"python,r"`.  Each key must match a loaded snippet template.
+///
+/// Returns `{"error":"..."}` when snapshot JSON cannot be parsed or rendering fails.
+#[cfg_attr(feature = "wasm", wasm_bindgen)]
+pub fn render_snippet(
+    snapshot_json: &str,
+    site_name: &str,
+    api_base: &str,
+    sdk_name: &str,
+    languages: &str,
+) -> String {
+    let snapshot: types::QuerySnapshot = match serde_json::from_str(snapshot_json) {
+        Ok(s) => s,
+        Err(e) => return format!(r#"{{"error":"Invalid snapshot JSON: {}"}}"#, e),
+    };
+
+    let site = types::SiteConfig {
+        name: site_name.to_string(),
+        api_base: api_base.to_string(),
+        sdk_name: Some(sdk_name.to_string()),
+    };
+
+    let lang_list: Vec<&str> = languages.split(',').map(str::trim).collect();
+
+    // Create the snippet generator
+    let generator = match snippet::SnippetGenerator::new() {
+        Ok(gen) => gen,
+        Err(e) => {
+            return format!(
+                r#"{{"error":"Failed to initialise snippet generator: {}"}}"#,
+                e
+            )
+        }
+    };
+
+    // Render snippets for all requested languages
+    match generator.render_all_snippets(&snapshot, &site, &lang_list) {
+        Ok(snippets) => snippet::snippets_to_json(&snippets),
+        Err(e) => {
+            format!(r#"{{"error":"Failed to render snippet: {}"}}"#, e)
+        }
+    }
+}
+
+/// Return the cli-generator version string.
+///
+/// Corresponds to the version in `src/cli_meta.rs` in the main crate,
+/// bumped with each release.
+#[cfg_attr(feature = "wasm", wasm_bindgen)]
+pub fn version() -> String {
+    "0.1.0".to_string() // TODO: sync with main crate version
 }

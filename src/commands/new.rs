@@ -813,6 +813,28 @@ fn create_js_package(repo_dir: &Path, site: &SiteConfig) -> Result<()> {
         }
     }
 
+    // 2b. Render query.node.js.tera (Node.js entry point)
+    if let Ok(tmpl) = std::fs::read_to_string(template_dir.join("query.node.js.tera")) {
+        match tera::Tera::one_off(&tmpl, &context, false) {
+            Ok(content) => {
+                std::fs::write(js_dir.join("query.node.js"), content)
+                    .with_context(|| format!("writing js/{}/query.node.js", &js_package_name))?;
+            }
+            Err(e) => eprintln!("warn: failed to render query.node.js template: {e}"),
+        }
+    }
+
+    // 2c. Render query.browser.js.tera (Browser entry point)
+    if let Ok(tmpl) = std::fs::read_to_string(template_dir.join("query.browser.js.tera")) {
+        match tera::Tera::one_off(&tmpl, &context, false) {
+            Ok(content) => {
+                std::fs::write(js_dir.join("query.browser.js"), content)
+                    .with_context(|| format!("writing js/{}/query.browser.js", &js_package_name))?;
+            }
+            Err(e) => eprintln!("warn: failed to render query.browser.js template: {e}"),
+        }
+    }
+
     // 3. Copy pre-built WASM package into js/{package}/pkg/
     if wasm_pkg_dir.is_dir() {
         let pkg_dest = js_dir.join("pkg");

@@ -2,7 +2,7 @@
  * QueryBuilder for {{ site_display_name }}
  *
  * Builds API queries programmatically with method chaining.
- * Works in Node.js (≥ 18). URL building is backed by a pre-compiled
+ * Works in browsers (≥ 18). URL building is backed by a pre-compiled
  * WebAssembly module generated from the same Rust code as the Python SDK,
  * guaranteeing identical output across all language bindings.
  *
@@ -13,24 +13,32 @@
 const API_BASE = "{{ api_base_url }}";
 const API_VERSION = "v2";
 
-// Load the pre-compiled WASM module (Node.js)
-// Use dynamic import to handle CommonJS exports from wasm-pack (Node.js target)
-const wasmModule = await import("./pkg-nodejs/genomehubs_query.js");
-const {
-  annotate_source_labels: _annotateSourceLabels,
-  annotated_values: _annotatedValues,
-  build_url_for_endpoint: _buildUrlForEndpoint,
-  describe_query: _describeQuery,
-  parse_paginated_json: _parsePaginatedJson,
-  parse_search_json: _parseSearchJson,
-  render_snippet: _renderSnippet,
-  split_source_columns: _splitSourceColumns,
-  to_tidy_records: _toTidyRecords,
-  values_only: _valuesOnly,
+// Load the pre-compiled WASM module (browser-optimized)
+// Note: WASM must be initialized before use; handled via lazy init on first call
+import initWasm, {
+  annotate_source_labels as _annotateSourceLabels,
+  annotated_values as _annotatedValues,
+  build_url_for_endpoint as _buildUrlForEndpoint,
+  describe_query as _describeQuery,
+  parse_paginated_json as _parsePaginatedJson,
+  parse_search_json as _parseSearchJson,
+  render_snippet as _renderSnippet,
+  split_source_columns as _splitSourceColumns,
+  to_tidy_records as _toTidyRecords,
+  values_only as _valuesOnly,
   build_url,
   parse_response_status,
   version,
-} = wasmModule;
+} from "./pkg-web/genomehubs_query.js";
+
+// WASM initialization state
+let wasmInitialized = false;
+async function ensureWasmInitialized() {
+  if (!wasmInitialized) {
+    await initWasm();
+    wasmInitialized = true;
+  }
+}
 
 /** Flatten a raw API response string or object into an array of flat record objects. */
 function parseSearchJson(raw) {
@@ -595,6 +603,7 @@ class QueryBuilder {
    * @returns {string}
    */
   async describe(fieldMetadata = null, mode = "concise") {
+    await ensureWasmInitialized();
     const fieldMetadataJson = fieldMetadata
       ? JSON.stringify(fieldMetadata)
       : "{}";
@@ -627,6 +636,7 @@ class QueryBuilder {
     sdkName = "{{ js_package_name }}",
     apiBase = "{{ api_base_url }}",
   ) {
+    await ensureWasmInitialized();
     const snapshot = {
       index: this._index,
       taxa: this._taxa,

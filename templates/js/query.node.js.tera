@@ -1,0 +1,3 @@
+// Node.js entry point: re-export from query.js (which uses pkg-nodejs/)
+export * from "./query.js";
+
