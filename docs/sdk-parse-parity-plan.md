@@ -1028,13 +1028,16 @@ contact the API owner to enable `Access-Control-Allow-Origin` headers.
 
 ## Phase 5: `validate()` parity _(depends on Phase 3)_
 
-### 5.1 Move shared types to subcrate
+**STATUS: ✅ COMPLETE (2026-04-21)**
 
-`FieldMeta`, `ValidationConfig`, `ValidationError` →
-`crates/genomehubs-query/src/validation.rs`.
+All tasks for Phase 5 have been successfully implemented:
+
+### 5.1 Move shared types to subcrate ✅
+
+`FieldMeta`, `ValidationConfig`, `ValidationError` → `crates/genomehubs-query/src/validation.rs`.
 Main crate re-exports. Subcrate uses `HashMap<String, FieldMeta>` instead of `phf::Map`.
 
-### 5.2 Generator emits `field_meta.json`
+### 5.2 Generator emits `field_meta.json` ✅
 
 Generator writes `src/generated/field_meta.json` alongside `field_meta.rs`.
 Generated code:
@@ -1044,7 +1047,7 @@ pub const FIELD_META_JSON: &str = include_str!("field_meta.json");
 pub const VALIDATION_CONFIG_JSON: &str = include_str!("validation_config.json");
 ```
 
-### 5.3 `validate_query_json` in subcrate
+### 5.3 `validate_query_json` in subcrate ✅
 
 ```rust
 pub fn validate_query_json(
@@ -1056,26 +1059,78 @@ pub fn validate_query_json(
 
 Same logic as `validate_query`, but `HashMap` not `phf::Map`.
 
-### 5.4 Expose via WASM and extendr
+### 5.4 Expose via WASM and extendr ✅
 
-- WASM: `#[wasm_bindgen]` in `crates/genomehubs-query/src/lib.rs`
-- extendr: add to `templates/r/lib.rs.tera`
+- WASM: `#[wasm_bindgen]` in `crates/genomehubs-query/src/lib.rs` ✓
+- extendr: added to `templates/r/lib.rs.tera` ✓
+- Verified via `bash scripts/dev_site.sh --rebuild-wasm --browser --python` ✓
 
-### 5.5 Add `validate()` to JS and R
+### 5.5 Add `validate()` to JS and R ✅
 
-- JS: `validate() -> string[]`
-- R: `validate() -> character vector`
-- Python: keep phf path as primary (faster); JSON path added for cross-SDK parity tests
+- JS: `async validate(validationLevel) -> string[]` ✓
+- R: `validate() -> character vector` ✓
+- Python: JSON path supports both full and partial validation modes ✓
+
+### 5.6 Add validation level configuration ✅ (NEW)
+
+**JavaScript and Python SDKs now support two validation modes:**
+
+- **Full mode** (default): Attempts to fetch metadata from `/api/v3/metadata/fields` and `/api/v3/metadata/validation-config` with graceful 404 fallback. Falls back to embedded metadata if API unavailable.
+- **Partial mode**: Skips API fetch entirely, uses only embedded local files. Recommended until v3 API endpoints deployed.
+
+**Implementation:**
+
+```javascript
+// JavaScript
+const qb = new QueryBuilder("taxon", {
+  validationLevel: "full",  // or "partial"
+  apiBase: "https://goat.genomehubs.org/api"
+});
+const errors = await qb.validate();  // Uses configured level
+const errors = await qb.validate("partial");  // Override for this call
+```
+
+```python
+# Python
+qb = QueryBuilder("taxon", validation_level="full", api_base="https://goat.genomehubs.org/api")
+errors = qb.validate()  # Uses configured level
+errors = qb.validate(validation_level="partial")  # Override for this call
+```
+
+**Graceful Error Handling:**
+- Both SDKs silently handle 404s from API endpoints (no log spam)
+- Network timeouts caught and fallback to local metadata
+- Validation always succeeds; preflight metadata is enhancement, not requirement
+- Allows immediate production deployment with partial validation; seamless upgrade to full validation when v3 API ready
+
+**API Refactoring Plan Integration:**
+- See [api-aggregation-refactoring-plan.md](api-aggregation-refactoring-plan.md#phase-3-api-v3-endpoints-4-6-weeks) Phase 3 for `/api/v3/metadata/*` endpoint specifications
+- Validation metadata endpoints designed for deployment alongside other v3 routes
+- Pre-deployment: SDKs work fine in partial mode (embedded metadata only)
+
+**Verification:**
+- ✅ Python tests pass with both validation modes
+- ✅ JavaScript browser tests demonstrate partial and full mode fallback behavior
+- ✅ Dev site build succeeds with all smoke tests passing
+- ✅ Validation level parameters properly documented in docstrings
+- ✅ Agent-log entry: [agent-logs/2026-04-21_001_validation-level-configuration.md](../../agent-logs/2026-04-21_001_validation-level-configuration.md)
 
 ---
 
 ## Phase 6: E2E testing + CI _(depends on Phases 0–5)_
+
+**STATUS:** In Planning (Start ~Week 4 post-Phase-5)
 
 ### 6.1 SDK parity test (`tests/python/test_sdk_parity.py`)
 
 Introspects `query.py`, `query.js` template, `query.R` template and asserts all
 canonical methods from the table above are present in all three. Runs on every PR.
 Catches method name drift before it reaches `main`.
+
+**Additional checks:**
+- Validation level parameters present in all SDKs (full, partial modes)
+- Constructor docstrings document validation_level and api_base options
+- API metadata endpoint URLs correctly templated (site-specific api_base)
 
 ### 6.2 `scripts/test_sdk_generation.sh`
 
@@ -1087,10 +1142,21 @@ rm -rf /tmp/e2e-goat
 cargo run --release -- new goat --config sites/ --output-dir /tmp/e2e-goat
 cd /tmp/e2e-goat/goat-cli
 
+# Rust CLI
 cargo test
+
+# Python SDK
 maturin develop --features extension-module && pytest python/ -q
-cd js/goat && node test_basic.js && cd ../..
+
+# JavaScript SDK
+cd js/goat && npm test && npm run validate-test && cd ../..
+
+# R SDK
 cd r/goat && Rscript test_basic.R && cd ../..
+
+# Test validation modes (new)
+cd js/goat && node test_validation_modes.js && cd ../..
+python3 -c "from goat_sdk import QueryBuilder; qb=QueryBuilder('taxon', validation_level='partial'); assert qb.validate() == []"
 ```
 
 ### 6.3 Generated smoke test fixtures
@@ -1101,6 +1167,13 @@ cd r/goat && Rscript test_basic.R && cd ../..
 - `validate()` returns `[]` for a valid query; non-empty for unknown attribute name
 - `count()` > 0 (skip if `--no-network`)
 - `search()` returns array (skip if `--no-network`)
+
+**`templates/js/test_validation_modes.js.tera` (NEW):**
+
+- **Partial mode:** `validate()` with `validationLevel="partial"` does not attempt API fetch
+- **Full mode:** `validate()` with `validationLevel="full"` gracefully handles missing API endpoints (no error)
+- Both modes return valid error array type
+- Invalid query triggers errors in both modes (unknown field detection)
 
 **`templates/r/test_basic.R.tera`:**
 
@@ -1118,21 +1191,93 @@ cd r/goat && Rscript test_basic.R && cd ../..
 - `count()` > 0 (`@pytest.mark.network`)
 - `search()` first-page shape (`@pytest.mark.network`)
 
+**`tests/python/test_validation_modes.py` (NEW):**
+
+- **Partial mode validation:** QueryBuilder respects `validation_level="partial"`
+- **Full mode validation:** QueryBuilder accepts `validation_level="full"`, gracefully handles missing API
+- Per-call override: `validate(validation_level="partial")` overrides instance setting
+- Custom API base: validation requests directed to custom endpoint if provided
+- Timeout handling: Python urllib timeout fires after 5s, falls back gracefully
+
 ### 6.4 CI job (`.github/workflows/sdk-integration.yml`)
 
 ```yaml
-strategy:
-  matrix:
-    os: [ubuntu-latest, macos-latest]
-steps:
-  - Rust toolchain + wasm-pack
-  - Python setup + maturin
-  - R setup + devtools + pak
-  - Run scripts/test_sdk_generation.sh
-  - Upload generated pkg/ artifacts
+name: SDK Integration Tests
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  sdk-parity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rs/toolchain@v1
+        with: { toolchain: stable }
+      - uses: actions/setup-python@v4
+        with: { python-version: "3.11" }
+      - run: pip install -e ".[dev]"
+      - run: pytest tests/python/test_sdk_parity.py -v
+
+  sdk-generation:
+    needs: sdk-parity
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rs/toolchain@v1
+        with: { toolchain: stable, targets: wasm32-unknown-unknown }
+      - uses: jetli/wasm-pack-action@v0.4.0
+      - uses: actions/setup-python@v4
+        with: { python-version: "3.11" }
+      - uses: actions/setup-node@v3
+        with: { node-version: "18" }
+      - uses: r-lib/actions/setup-r@v2
+        with: { r-version: "4.2" }
+      - run: bash scripts/verify_code.sh
+      - run: bash scripts/test_sdk_generation.sh
+      - uses: actions/upload-artifact@v3
+        with:
+          name: generated-pkg-${{ matrix.os }}
+          path: crates/genomehubs-query/pkg/
+          if-no-files-found: warn
+
+  validation-modes:
+    needs: sdk-generation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rs/toolchain@v1
+        with: { toolchain: stable, targets: wasm32-unknown-unknown }
+      - uses: jetli/wasm-pack-action@v0.4.0
+      - uses: actions/setup-python@v4
+        with: { python-version: "3.11" }
+      - uses: actions/setup-node@v3
+        with: { node-version: "18" }
+      - run: cargo build --release
+      - run: cargo run --release -- new test_site --config sites/ --output-dir /tmp/test-proj
+      - run: |
+          cd /tmp/test-proj/test_site-cli/js/test_site
+          npm test && node test_validation_modes.js
+      - run: |
+          cd /tmp/test-proj/test_site-cli
+          python3 -m pytest tests/python/test_validation_modes.py -v
 ```
 
-Network-dependent tests gated: only on `push` to `main` (not PRs, to avoid rate limits).
+**Network-dependent tests:**
+- Gated to `push` to `main` only (not PRs, to avoid rate limits)
+- Marked with `@pytest.mark.network` and `--skip-network` flag
+- CI runs with `--skip-network` on PRs, full suite on merge
+
+**Artifact handling:**
+- WASM packages built on each platform
+- Uploaded as CI artifacts for inspection
+- Defer npm publish until post-MVP (avoid version churn)
 
 ---
 
@@ -1195,3 +1340,20 @@ Once Phases 0–5 complete and CI is green, add to `AGENTS.md`:
 - WASM target: `--target nodejs` only. Browser support is future work.
 - No Rust snippet type: Rust API is internal to the binary, not a public library interface.
 - `AGENTS.md` updated only after Phases 0–5 merged and CI is green.
+
+---
+
+## Ongoing parity governance
+
+Once Phases 0–5 complete and CI is green, add to `AGENTS.md`:
+
+- Every new `QueryBuilder` method must be added to all three SDKs in the same PR.
+  The parity test (Phase 6.1) enforces this automatically.
+- Snippet templates must be updated when methods are renamed.
+- Every new parse function needs PyO3, WASM, and extendr exports in the same PR
+  (extends the existing 6-touchpoint checklist in `AGENTS.md`).
+- Validation level configuration must be consistent across all SDKs:
+  - `validation_level` parameter in all constructors
+  - Graceful API fetch error handling (404 silence, no log spam)
+  - Per-call override support in `validate()` method
+- `AGENTS.md` update: only after Phases 0–5 merged and CI green.

@@ -286,6 +286,55 @@ impl CodeGenerator {
             out.insert(dest_path, rendered);
         }
 
+        // Generate field_meta.json and validation_config.json for JavaScript/Python/R SDKs (shared)
+        if language == "shared" {
+            // Generate field_meta.json: flatten all field metadata across all indexes
+            let mut field_meta_json = serde_json::Map::new();
+            for fields in fields_by_index.values() {
+                for field in fields {
+                    let processed_type = field
+                        .processed_type
+                        .clone()
+                        .or_else(|| field.field_type.clone())
+                        .unwrap_or_else(|| "keyword".to_string());
+                    let constraint_enum = field
+                        .constraint
+                        .as_ref()
+                        .map(|c| c.enum_values.clone())
+                        .filter(|v| !v.is_empty());
+
+                    let meta = serde_json::json!({
+                        "processed_type": processed_type,
+                        "traverse_direction": field.traverse_direction,
+                        "summary": field.summary.clone(),
+                        "constraint_enum": constraint_enum
+                    });
+
+                    field_meta_json.insert(field.name.clone(), meta);
+                }
+            }
+            let field_meta_content =
+                serde_json::to_string_pretty(&field_meta_json).unwrap_or_else(|_| "{}".to_string());
+            out.insert(
+                "src/generated/field_meta.json".to_string(),
+                field_meta_content,
+            );
+
+            // Generate validation_config.json with defaults
+            let validation_config = serde_json::json!({
+                "assembly_accession_prefixes": ["gca_", "gcf_", "gcs_", "gcn_", "gcp_", "gcr_", "wgs", "asm"],
+                "sample_accession_prefixes": ["srs", "srr", "srx", "sam", "ers", "erp", "erx", "drr", "drx", "samea", "sameg"],
+                "taxon_name_classes": ["scientific_name", "common_name", "synonym", "tolid_prefix", "authority"],
+                "taxon_filter_types": ["name", "tree", "lineage"]
+            });
+            let validation_config_content = serde_json::to_string_pretty(&validation_config)
+                .unwrap_or_else(|_| "{}".to_string());
+            out.insert(
+                "src/generated/validation_config.json".to_string(),
+                validation_config_content,
+            );
+        }
+
         Ok(out)
     }
 

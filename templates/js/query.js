@@ -26,6 +26,7 @@ const {
   render_snippet: _renderSnippet,
   split_source_columns: _splitSourceColumns,
   to_tidy_records: _toTidyRecords,
+  validate_query_json: _validateQueryJson,
   values_only: _valuesOnly,
   build_url,
   parse_response_status,
@@ -92,8 +93,11 @@ function annotatedValues(records, mode = "non_direct", keepColumns = []) {
 class QueryBuilder {
   /**
    * @param {string} index - Index to query: "taxon", "assembly", "sample".
+   * @param {Object} [options] - Optional configuration.
+   * @param {string} [options.validationLevel="full"] - "full" (fetch from API) or "partial" (no API fetch).
+   * @param {string} [options.apiBase="{{ api_base_url }}"] - Base URL for API metadata endpoints (v3+).
    */
-  constructor(index) {
+  constructor(index, options = {}) {
     this._index = index;
     this._taxa = [];
     this._assemblies = [];
@@ -112,6 +116,9 @@ class QueryBuilder {
     this._includeEstimates = true;
     this._tidy = false;
     this._taxonomy = "ncbi";
+    // Validation options
+    this._validationLevel = options.validationLevel || "full";
+    this._apiBase = options.apiBase || API_BASE;
   }
 
   // ── Identifiers ────────────────────────────────────────────────────────────
@@ -665,6 +672,124 @@ class QueryBuilder {
         // Re-throw original error if JSON parsing failed
       }
       throw new Error(`snippet() failed: ${result}`);
+    }
+  }
+
+  /**
+   * Validate this query against field metadata and configuration.
+   *
+   * Validate the current query state.
+   *
+   * Returns an array of error strings. Empty array means the query is valid.
+   *
+   * @returns {Promise<string[]>} Promise that resolves to array of validation error messages (empty if valid)
+   */
+  /**
+   * Validate the current query against metadata and field constraints.
+   *
+   * @param {string} [validationLevel] - Override instance validationLevel: "full" or "partial".
+   * @returns {Promise<string[]>} Array of validation error messages (empty if valid).
+   *
+   * **Validation Modes:**
+   * - "full": Attempts to fetch metadata from API (v3+) via /api/v3/metadata/fields and
+   *   /api/v3/metadata/validation-config. Falls back to local files (Node.js) or empty
+   *   metadata (browser) if API is unavailable. Gracefully handles 404s without logging.
+   * - "partial": Skips API fetch entirely. Uses local files (Node.js) or empty metadata
+   *   (browser) for validation. Best until v3 API endpoints are available.
+   *
+   * **Integration with api-refactoring-plan.md (v3):**
+   * Currently defaults to "full" for forward compatibility. When v3 API is deployed with
+   * metadata endpoints available, validation will automatically use them. Until then,
+   * "" mode parameter or set `options.validationLevel = "partial"` in constructor to
+   * avoid 404 attempts and logs.
+   */
+  async validate(validationLevel) {
+    let fieldMetadata = {};
+    let validationConfig = {};
+    let synonyms = {};
+
+    // Use override or instance setting
+    const level = validationLevel || this._validationLevel;
+
+    // If full mode, attempt API fetch first (graceful fallback if unavailable)
+    if (level === "full") {
+      try {
+        const apiFieldsUrl = `${this._apiBase}/api/v3/metadata/fields`;
+        const apiConfigUrl = `${this._apiBase}/api/v3/metadata/validation-config`;
+
+        try {
+          const fieldsResponse = await fetch(apiFieldsUrl);
+          if (fieldsResponse.ok) {
+            fieldMetadata = await fieldsResponse.json();
+          }
+          // Silently skip on 404 or other non-ok status (API not ready yet)
+        } catch {
+          // Network error or fetch not available; continue with fallback
+        }
+
+        try {
+          const configResponse = await fetch(apiConfigUrl);
+          if (configResponse.ok) {
+            validationConfig = await configResponse.json();
+          }
+          // Silently skip on 404 or other non-ok status (API not ready yet)
+        } catch {
+          // Network error or fetch not available; continue with fallback
+        }
+      } catch {
+        // Fallback to local/empty metadata below
+      }
+    }
+
+    // Try to load metadata files from disk (Node.js only; browsers will skip gracefully)
+    // This is the fallback for full mode and the only source for partial mode
+    try {
+      const { default: fs } = await import("fs");
+      const { dirname } = await import("path");
+      const { fileURLToPath } = await import("url");
+
+      const __dirname = dirname(fileURLToPath(import.meta.url));
+
+      try {
+        const fieldMetaPath = `${__dirname}/generated/field_meta.json`;
+        if (fs.existsSync(fieldMetaPath)) {
+          const content = fs.readFileSync(fieldMetaPath, "utf8");
+          fieldMetadata = JSON.parse(content);
+        }
+      } catch {
+        // Silently continue if not available
+      }
+
+      try {
+        const configPath = `${__dirname}/generated/validation_config.json`;
+        if (fs.existsSync(configPath)) {
+          const content = fs.readFileSync(configPath, "utf8");
+          validationConfig = JSON.parse(content);
+        }
+      } catch {
+        // Silently continue if not available
+      }
+    } catch {
+      // If fs is not available (browser), continue with empty metadata
+      // This is expected in browser environments
+    }
+
+    const fieldMetadataJson = JSON.stringify(fieldMetadata || {});
+    const validationConfigJson = JSON.stringify(validationConfig || {});
+    const synonymsJson = JSON.stringify(synonyms);
+
+    const result = _validateQueryJson(
+      this.toQueryYaml(),
+      fieldMetadataJson,
+      validationConfigJson,
+      synonymsJson,
+    );
+
+    try {
+      return JSON.parse(result);
+    } catch {
+      // If parsing fails, return the result as a single error
+      return [result];
     }
   }
 }

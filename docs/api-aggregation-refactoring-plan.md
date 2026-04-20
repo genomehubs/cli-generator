@@ -247,6 +247,39 @@ Handler:
 - Mount v3 routes for MVP types (histogram, scatter, arc)
 - Others use v2 compat shim
 
+**Validation Metadata Endpoints** — [genomehubs-api/src/api/v3/routes/metadata.js](../../genomehubs/genomehubs/src/genomehubs-api/src/api/v3/routes/metadata.js)
+
+> **Note:** These endpoints were designed to support full validation in generated SDKs during Phase 5 (validate() parity). The QueryBuilder.validate() method in JavaScript/Python SDKs defaults to mode="full", which gracefully attempts to fetch these endpoints with 404 fallback. Partial validation (no API fetch) is available via validation_level="partial" until these endpoints are deployed.
+
+```javascript
+GET /api/v3/metadata/fields
+
+Response: {
+  field_name: {
+    type: "integer" | "keyword" | "nested",
+    display_name: "Field Display Name",
+    description: "Field description",
+    constraint: { enum_values: [...] } | { min, max } | null,
+    ...
+  },
+  ...
+}
+
+GET /api/v3/metadata/validation-config
+
+Response: {
+  required_fields: [...],
+  index_required_ranks: { taxon: ["species"], assembly: [] },
+  ...
+}
+```
+
+**Implementation:**
+- Extract field metadata from existing `/api/v2/report/types` endpoint
+- Shape into JSON schema consumed by validator
+- Cache at Redis (daily TTL, matches index rebuild)
+- Return 200 + empty object if not deployed (graceful degradation)
+
 **Modifications to v2 API:**
 
 - Remove calls to setAggs, getBounds (now in SDK)

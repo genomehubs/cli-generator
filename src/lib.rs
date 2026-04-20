@@ -15,6 +15,8 @@
 //! 4. Add a typed signature to `python/cli_generator/cli_generator.pyi`.
 //! 5. Re-export from `python/cli_generator/__init__.py`.
 
+#![allow(clippy::useless_conversion)]
+
 pub mod cli_meta;
 pub mod commands;
 pub mod core;
@@ -257,12 +259,42 @@ fn parse_msearch_json(raw: &str) -> String {
 
 /// Python module definition for `cli_generator`.
 #[cfg(feature = "extension-module")]
+/// Validate a query against field metadata and configuration.
+///
+/// Accepts YAML representations of the query and field metadata as JSON, and
+/// returns a JSON array of error strings. An empty array means the query is
+/// valid.
+///
+/// Arguments:
+/// - `query_yaml`: YAML for SearchQuery
+/// - `field_metadata_json`: JSON mapping field names to metadata
+/// - `validation_config_json`: JSON for ValidationConfig
+/// - `synonyms_json`: JSON mapping attribute synonyms (or `{}` for none)
+///
+/// Returns: JSON array of error strings, or `["error: ..."]` if parsing fails.
+#[pyfunction]
+fn validate_query_json(
+    query_yaml: &str,
+    field_metadata_json: &str,
+    validation_config_json: &str,
+    synonyms_json: &str,
+) -> String {
+    genomehubs_query::validate_query_json(
+        query_yaml,
+        field_metadata_json,
+        validation_config_json,
+        synonyms_json,
+    )
+}
+
+#[cfg(feature = "extension-module")]
 #[pymodule]
 fn cli_generator(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(version, m)?)?;
     m.add_function(wrap_pyfunction!(build_url, m)?)?;
     m.add_function(wrap_pyfunction!(describe_query, m)?)?;
     m.add_function(wrap_pyfunction!(render_snippet, m)?)?;
+    m.add_function(wrap_pyfunction!(validate_query_json, m)?)?;
     m.add_function(wrap_pyfunction!(parse_response_status, m)?)?;
     m.add_function(wrap_pyfunction!(parse_search_json, m)?)?;
     m.add_function(wrap_pyfunction!(annotate_source_labels, m)?)?;

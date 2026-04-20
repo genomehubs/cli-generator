@@ -119,11 +119,45 @@ fn render_snippet(
     }
 }
 
+/// Validate a query against JSON field metadata and configuration.
+///
+/// Validation checks field names, operators, value ranges, and enum constraints.
+/// Returns a character vector of error strings; an empty vector means the query
+/// is valid.
+///
+/// `field_metadata_json` is a JSON object mapping field names to `FieldMeta`
+/// objects (output from the generator). `validation_config_json` is a JSON object
+/// with prefixes, valid enum values, etc. `synonyms_json` is a JSON object mapping
+/// attribute synonyms to canonical names (pass `"{}"` for none).
+#[extendr]
+fn validate_query_json(
+    query_yaml: &str,
+    field_metadata_json: &str,
+    validation_config_json: &str,
+    synonyms_json: &str,
+) -> Vec<String> {
+    use embedded::core::query::validation::validate_query_json as validate_impl;
+
+    let result = validate_impl(
+        query_yaml,
+        field_metadata_json,
+        validation_config_json,
+        synonyms_json,
+    );
+
+    // Parse JSON array result into Vec<String>
+    match serde_json::from_str::<Vec<String>>(&result) {
+        Ok(errors) => errors,
+        Err(_) => vec![format!("Failed to parse validation result: {}", result)],
+    }
+}
+
 // Register all exported functions with R.
 extendr_module! {
     mod {% endraw %}{{ r_package_name }}{% raw %};
     fn describe_query;
     fn build_url;
     fn render_snippet;
+    fn validate_query_json;
 }
 {% endraw %}

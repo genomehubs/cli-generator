@@ -14,6 +14,10 @@
 #                    pkg/ is committed to the repo; forgetting to rebuild it means
 #                    generated JS projects will see "is not a function" errors at
 #                    runtime for any newly-added WASM export.
+#   --browser        Build dual WASM targets: --target web (browsers) and
+#                    --target nodejs (Node.js). Generates pkg-web/ and pkg-nodejs/
+#                    in the JavaScript SDK directory for universal browser+Node
+#                    support.
 #   --python         After generating, run maturin develop + Python smoke-test.
 #   --output DIR     Output directory (default: /tmp/<site>-cli)
 #   -h, --help       Show this help.
@@ -21,6 +25,7 @@
 # Examples:
 #   bash scripts/dev_site.sh                          # generate goat to /tmp/goat-cli
 #   bash scripts/dev_site.sh --rebuild-wasm           # rebuild WASM first, then generate
+#   bash scripts/dev_site.sh --rebuild-wasm --browser # rebuild dual targets for browsers
 #   bash scripts/dev_site.sh --rebuild-wasm --python  # also run Python smoke-test
 #   bash scripts/dev_site.sh boat                     # generate boat instead
 #   bash scripts/dev_site.sh --output /tmp/my-goat goat
@@ -32,6 +37,7 @@ PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 
 SITE="goat"
 REBUILD_WASM=0
+BUILD_BROWSER=0
 RUN_PYTHON=0
 OUTPUT_DIR=""
 
@@ -40,6 +46,7 @@ OUTPUT_DIR=""
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --rebuild-wasm) REBUILD_WASM=1; shift ;;
+        --browser)      BUILD_BROWSER=1; shift ;;
         --python)       RUN_PYTHON=1;   shift ;;
         --output)       OUTPUT_DIR="$2"; shift 2 ;;
         -h|--help)
@@ -67,49 +74,71 @@ fail() { echo -e "${RED}✗${NC}  $*" >&2; exit 1; }
 # ── Step 1: Rebuild WASM pkg if requested ─────────────────────────────────────
 
 if [[ $REBUILD_WASM -eq 1 ]]; then
-    echo "Rebuilding WASM package..."
     if ! command -v wasm-pack &>/dev/null; then
         fail "wasm-pack not found. Install with: cargo install wasm-pack"
     fi
-    (
-        cd crates/genomehubs-query
-        wasm-pack build --target nodejs --features wasm
-    )
 
-    # wasm-pack --target nodejs generates CJS. Convert to ESM so query.js
-    # (which uses ESM import syntax) can load it directly in Node ≥ 18.
-    PKG_JS="crates/genomehubs-query/pkg/genomehubs_query.js"
-    PKG_JSON="crates/genomehubs-query/pkg/package.json"
+    if [[ $BUILD_BROWSER -eq 1 ]]; then
+        echo "Rebuilding dual WASM targets (web + nodejs)..."
+        (
+            cd crates/genomehubs-query
+            # Build for web (browsers)
+            echo "  → Building for browsers (--target web)..."
+            wasm-pack build --target web --features wasm
+            rm -rf "$PROJECT_ROOT/crates/genomehubs-query/pkg-web"
+            mv "$PROJECT_ROOT/crates/genomehubs-query/pkg" "$PROJECT_ROOT/crates/genomehubs-query/pkg-web"
 
-    # Add ESM header imports (idempotent — skip if already present)
-    if ! grep -q "^import { readFileSync" "$PKG_JS"; then
-        sed -i '' 's|/\* @ts-self-types=.*\*/|/* @ts-self-types="./genomehubs_query.d.ts" */\n\nimport { readFileSync } from '"'"'fs'"'"';\nimport { fileURLToPath } from '"'"'url'"'"';|' "$PKG_JS"
+            # Build for Node.js
+            echo "  → Building for Node.js (--target nodejs)..."
+            wasm-pack build --target nodejs --features wasm
+            rm -rf "$PROJECT_ROOT/crates/genomehubs-query/pkg-nodejs"
+            mv "$PROJECT_ROOT/crates/genomehubs-query/pkg" "$PROJECT_ROOT/crates/genomehubs-query/pkg-nodejs"
+        )
+        ok "Dual WASM builds complete:"
+        ok "  • pkg-web/ — for browsers"
+        ok "  • pkg-nodejs/ — for Node.js"
+    else
+        echo "Rebuilding WASM package (Node.js only)..."
+        (
+            cd crates/genomehubs-query
+            wasm-pack build --target nodejs --features wasm
+        )
+
+        # wasm-pack --target nodejs generates CJS. Convert to ESM so query.js
+        # (which uses ESM import syntax) can load it directly in Node ≥ 18.
+        PKG_JS="crates/genomehubs-query/pkg/genomehubs_query.js"
+        PKG_JSON="crates/genomehubs-query/pkg/package.json"
+
+        # Add ESM header imports (idempotent — skip if already present)
+        if ! grep -q "^import { readFileSync" "$PKG_JS"; then
+            sed -i '' 's|/\* @ts-self-types=.*\*/|/* @ts-self-types="./genomehubs_query.d.ts" */\n\nimport { readFileSync } from '"'"'fs'"'"';\nimport { fileURLToPath } from '"'"'url'"'"';|' "$PKG_JS"
+        fi
+        # Replace require('fs').readFileSync with ESM equivalent
+        sed -i '' \
+            's|const wasmPath = `\${__dirname}/\(.*\)`;|const wasmPath = fileURLToPath(new URL('"'"'./\1'"'"', import.meta.url));|' \
+            "$PKG_JS"
+        sed -i '' 's|const wasmBytes = require(.fs.)\.readFileSync(wasmPath);|const wasmBytes = readFileSync(wasmPath);|' "$PKG_JS"
+
+        # Replace exports.X = X with a single named export block at the end
+        ALL_EXPORTS=$(grep "^exports\." "$PKG_JS" | sed "s/exports\.\([^ =]*\) = .*/\1/" | tr '\n' ' ')
+        sed -i '' '/^exports\./d' "$PKG_JS"
+        if [[ -n "$ALL_EXPORTS" ]]; then
+            EXPORT_NAMES=$(echo "$ALL_EXPORTS" | tr ' ' ',' | sed 's/,$//')
+            echo "" >> "$PKG_JS"
+            echo "export { ${EXPORT_NAMES} };" >> "$PKG_JS"
+        fi
+
+        # Mark the pkg as ESM
+        if ! grep -q '"type": "module"' "$PKG_JSON"; then
+            sed -i '' 's|"main": "genomehubs_query.js",|"main": "genomehubs_query.js",\n  "type": "module",|' "$PKG_JSON"
+        fi
+
+        ok "WASM package rebuilt → crates/genomehubs-query/pkg/"
+        echo ""
+        echo "  NOTE: the updated pkg/ should be committed so generated projects"
+        echo "  pick up any new WASM exports (e.g. a new parse_* function)."
+        echo ""
     fi
-    # Replace require('fs').readFileSync with ESM equivalent
-    sed -i '' \
-        's|const wasmPath = `\${__dirname}/\(.*\)`;|const wasmPath = fileURLToPath(new URL('"'"'./\1'"'"', import.meta.url));|' \
-        "$PKG_JS"
-    sed -i '' 's|const wasmBytes = require(.fs.)\.readFileSync(wasmPath);|const wasmBytes = readFileSync(wasmPath);|' "$PKG_JS"
-
-    # Replace exports.X = X with a single named export block at the end
-    ALL_EXPORTS=$(grep "^exports\." "$PKG_JS" | sed "s/exports\.\([^ =]*\) = .*/\1/" | tr '\n' ' ')
-    sed -i '' '/^exports\./d' "$PKG_JS"
-    if [[ -n "$ALL_EXPORTS" ]]; then
-        EXPORT_NAMES=$(echo "$ALL_EXPORTS" | tr ' ' ',' | sed 's/,$//')
-        echo "" >> "$PKG_JS"
-        echo "export { ${EXPORT_NAMES} };" >> "$PKG_JS"
-    fi
-
-    # Mark the pkg as ESM
-    if ! grep -q '"type": "module"' "$PKG_JSON"; then
-        sed -i '' 's|"main": "genomehubs_query.js",|"main": "genomehubs_query.js",\n  "type": "module",|' "$PKG_JSON"
-    fi
-
-    ok "WASM package rebuilt → crates/genomehubs-query/pkg/"
-    echo ""
-    echo "  NOTE: the updated pkg/ should be committed so generated projects"
-    echo "  pick up any new WASM exports (e.g. a new parse_* function)."
-    echo ""
 else
     # Warn if pkg/ looks stale (lib.rs newer than the built wasm)
     PKG_JS="crates/genomehubs-query/pkg/genomehubs_query.js"
@@ -126,6 +155,28 @@ echo "Generating ${SITE}-cli into ${OUTPUT_DIR}..."
 rm -rf "$OUTPUT_DIR"
 cargo run -- new "$SITE" --config sites/ --output-dir "$OUTPUT_DIR"
 ok "Generated ${SITE}-cli → ${SITE_CLI_DIR}"
+
+# Copy WASM packages to generated project if they exist
+if [[ $BUILD_BROWSER -eq 1 || $REBUILD_WASM -eq 1 ]]; then
+    JS_PACKAGE="${SITE//-/_}"
+    JS_OUT_DIR="${SITE_CLI_DIR}/js/${JS_PACKAGE}"
+
+    # Copy dual WASM builds if they exist
+    if [[ -d "$PROJECT_ROOT/crates/genomehubs-query/pkg-web" ]]; then
+        cp -r "$PROJECT_ROOT/crates/genomehubs-query/pkg-web" "$JS_OUT_DIR/pkg-web"
+        ok "Copied pkg-web/ → ${JS_PACKAGE}/pkg-web/"
+    fi
+    if [[ -d "$PROJECT_ROOT/crates/genomehubs-query/pkg-nodejs" ]]; then
+        cp -r "$PROJECT_ROOT/crates/genomehubs-query/pkg-nodejs" "$JS_OUT_DIR/pkg-nodejs"
+        ok "Copied pkg-nodejs/ → ${JS_PACKAGE}/pkg-nodejs/"
+    fi
+
+    # Also copy pkg/ as fallback for standard Node.js builds
+    if [[ -d "$PROJECT_ROOT/crates/genomehubs-query/pkg" ]]; then
+        cp -r "$PROJECT_ROOT/crates/genomehubs-query/pkg" "$JS_OUT_DIR/pkg"
+        ok "Copied pkg/ → ${JS_PACKAGE}/pkg/"
+    fi
+fi
 
 # ── Step 3: Quick Rust smoke-test (URL flag, no network) ──────────────────────
 
@@ -154,7 +205,9 @@ JS_DIR="$(cd "${SITE_CLI_DIR}/js/${JS_PACKAGE}" 2>/dev/null && pwd || true)"
 if [[ -d "$JS_DIR" ]]; then
     echo ""
     echo "Running JS smoke-test (toUrl, no network)..."
-    SMOKE_MJS=$(mktemp /tmp/js-smoke-XXXXXX.mjs)
+    SMOKE_MJS=$(mktemp)
+    mv "$SMOKE_MJS" "${SMOKE_MJS}.mjs"
+    SMOKE_MJS="${SMOKE_MJS}.mjs"
     cat > "$SMOKE_MJS" << JSEOF
 import { QueryBuilder } from '${JS_DIR}/query.js';
 const qb = new QueryBuilder('taxon').setTaxa(['Mammalia'], 'tree').setSize(10);

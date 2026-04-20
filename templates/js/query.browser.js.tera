@@ -25,6 +25,7 @@ import initWasm, {
   render_snippet as _renderSnippet,
   split_source_columns as _splitSourceColumns,
   to_tidy_records as _toTidyRecords,
+  validate_query_json as _validateQueryJson,
   values_only as _valuesOnly,
   build_url,
   parse_response_status,
@@ -675,6 +676,61 @@ class QueryBuilder {
         // Re-throw original error if JSON parsing failed
       }
       throw new Error(`snippet() failed: ${result}`);
+    }
+  }
+
+  /**
+   * Validate this query against field metadata and configuration.
+   *
+   * Returns an array of error strings. Empty array means the query is valid.
+   *
+   * @returns {string[]} Array of validation error messages (empty if valid)
+   */
+  async validate() {
+    await ensureWasmInitialized();
+
+    // Load field metadata and validation config from generated files
+    // These should be served as static assets in the dist/generated/ directory
+    let fieldMetadata = {};
+    let validationConfig = {};
+    let synonyms = {};
+
+    try {
+      // Try to fetch field metadata JSON
+      const fieldMetaRes = await fetch("./generated/field_meta.json");
+      if (fieldMetaRes.ok) {
+        fieldMetadata = await fieldMetaRes.json();
+      }
+    } catch {
+      // Silently continue if not available
+    }
+
+    try {
+      // Try to fetch validation config JSON
+      const configRes = await fetch("./generated/validation_config.json");
+      if (configRes.ok) {
+        validationConfig = await configRes.json();
+      }
+    } catch {
+      // Silently continue if not available
+    }
+
+    const fieldMetadataJson = JSON.stringify(fieldMetadata || {});
+    const validationConfigJson = JSON.stringify(validationConfig || {});
+    const synonymsJson = JSON.stringify(synonyms);
+
+    const result = _validateQueryJson(
+      this.toQueryYaml(),
+      fieldMetadataJson,
+      validationConfigJson,
+      synonymsJson,
+    );
+
+    try {
+      return JSON.parse(result);
+    } catch {
+      // If parsing fails, return the result as a single error
+      return [result];
     }
   }
 }

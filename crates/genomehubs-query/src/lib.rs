@@ -21,6 +21,7 @@ pub mod parse;
 pub mod query;
 pub mod snippet;
 pub mod types;
+pub mod validation;
 
 #[cfg(feature = "wasm")]
 use wasm_bindgen::prelude::*;
@@ -346,4 +347,44 @@ pub fn render_snippet(
 #[cfg_attr(feature = "wasm", wasm_bindgen)]
 pub fn version() -> String {
     "0.1.0".to_string() // TODO: sync with main crate version
+}
+
+/// Validate a query against field metadata and configuration.
+///
+/// Accepts YAML representations of the query, field metadata, and validation
+/// configuration as JSON, and returns a JSON array of error strings.
+/// An empty array `[]` means the query is valid.
+///
+/// # Arguments
+/// - `query_yaml`: YAML for `validation::SearchQuery`
+/// - `field_metadata_json`: JSON mapping field names to `validation::FieldMeta`
+/// - `validation_config_json`: JSON for `validation::ValidationConfig`
+/// - `synonyms_json`: JSON mapping attribute synonyms (or `{}` for none)
+///
+/// # Returns
+/// A JSON array of error strings, or `["error: ..."]` if parsing fails.
+///
+/// # Example
+/// ```ignore
+/// let errors = validate_query_json(
+///   "index: taxon\ntaxa: [Mammalia]",
+///   "{\"genome_size\": {...}}",
+///   "{}",
+///   "{}"
+/// );
+/// // Returns "[]" for valid, or "[\"error message\"]" for invalid
+/// ```
+#[cfg_attr(feature = "wasm", wasm_bindgen)]
+pub fn validate_query_json(
+    query_yaml: &str,
+    field_metadata_json: &str,
+    validation_config_json: &str,
+    synonyms_json: &str,
+) -> String {
+    validation::validate_query_json(
+        query_yaml,
+        field_metadata_json,
+        validation_config_json,
+        synonyms_json,
+    )
 }
