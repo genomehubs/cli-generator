@@ -697,6 +697,335 @@ After these changes: expose `describe()` and `snippet()` in `templates/js/query.
 
 ---
 
+## Phase 4.5: Universal JavaScript SDK (Node + Browser) _(depends on Phase 4)_
+
+The JavaScript SDK currently targets Node.js only. Browser support requires:
+
+1. Dual WASM builds (Node.js + web)
+2. Universal module resolution and entry points
+3. CORS-aware HTTP wrapper
+4. Browser-specific CI testing
+
+### 4.5.1 WASM Build Targets
+
+**Current state:** `build-wasm.sh.tera` uses `--target nodejs`.
+
+**Change:** Generate dual WASM builds:
+
+```bash
+# In build-wasm.sh.tera
+cd "$REPO_ROOT/crates/genomehubs-query"
+wasm-pack build --target web     --features wasm  # pkg-web/
+wasm-pack build --target nodejs  --features wasm  # pkg-nodejs/
+```
+
+**Output structure** (in generated project):
+
+```
+js/{site}/
+  ├── pkg-web/              # WASM + .js glue (browser-ready)
+  │   ├── genomehubs_query.wasm
+  │   ├── genomehubs_query.js
+  │   ├── genomehubs_query.d.ts
+  │   └── package.json       # type: module
+  ├── pkg-nodejs/            # Node.js-specific bindings
+  │   ├── genomehubs_query.wasm
+  │   ├── genomehubs_query.js
+  │   └── package.json
+  ├── query.js               # Universal wrapper (env-aware)
+  └── package.json           # Declares both entry points
+```
+
+**Key differences:**
+
+| Aspect                  | `--target web` | `--target nodejs`           |
+| ----------------------- | -------------- | --------------------------- |
+| Contains `.wasm` binary | ✓              | ✓ (same)                    |
+| Module format           | ESM            | ESM (Node-specific)         |
+| Async initialization    | Required       | Optional                    |
+| File path resolution    | Bundler-aware  | Native path                 |
+| Browser-compatible      | ✓              | ✗ (Node-only require paths) |
+| Tree-shaking            | ✓              | ✗                           |
+
+### 4.5.2 Universal Module Entry Points
+
+**Update `templates/js/package.json.tera`:**
+
+```json
+{
+  "name": "@{{ site_name }}/goat",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "./query.js",
+  "exports": {
+    ".": {
+      "node": "./query.node.js",
+      "browser": "./query.browser.js",
+      "import": "./query.js"
+    }
+  },
+  "browser": {
+    "./query.js": "./query.browser.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "query.js",
+    "query.node.js",
+    "query.browser.js",
+    "pkg-web/",
+    "pkg-nodejs/"
+  ]
+}
+```
+
+**New templates:**
+
+- `query.node.js` — Imports from `./pkg-nodejs/`; includes Node.js-specific setup
+- `query.browser.js` — Imports from `./pkg-web/`; includes browser-specific setup
+- `query.js` — Universal wrapper (uses environment detection to require the right one)
+
+**Environment detection logic:**
+
+```javascript
+// query.js (universal wrapper)
+const isNode = typeof process !== 'undefined'
+  && process.versions?.node;
+const entrypoint = isNode ? './query.node.js' : './query.browser.js';
+export * from entrypoint;
+```
+
+Or use conditional exports (preferred for bundlers):
+
+```javascript
+// query.js — merely re-exports from the correct target
+export * from "#node"; // for Node.js
+export * from "#web"; // for browsers
+```
+
+With `package.json` `exports` field directing bundlers to the right file.
+
+### 4.5.3 CORS and Fetch Wrapping
+
+Browser fetch requests are blocked by CORS if the API doesn't send appropriate headers.
+
+**Required:** API server must set:
+
+```
+Access-Control-Allow-Origin: *
+// or: Access-Control-Allow-Origin: https://your-ui-domain.com
+Access-Control-Allow-Methods: GET, POST, OPTIONS
+Access-Control-Allow-Headers: Content-Type, Accept
+```
+
+**SDK wrapper** (already uses `fetch`, which respects CORS):
+
+The current QueryBuilder methods (`count()`, `search()`, `searchAll()`) already use
+native `fetch()`, which works in browsers. No changes needed if the API sets CORS
+headers.
+
+**For problematic APIs** (CORS not enabled):
+
+Add an optional `apiProxy` configuration:
+
+```javascript
+const qb = new QueryBuilder("taxon", {
+  apiBase: "{{ api_base_url }}",
+  apiProxy: "https://your-proxy.com/api", // Optional: proxy all requests through this
+});
+```
+
+Document this in `GETTING_STARTED.md` as a fallback only (prefer fixing the API).
+
+### 4.5.4 Browser-specific build files
+
+**New template files:**
+
+| File                                 | Purpose                                                  |
+| ------------------------------------ | -------------------------------------------------------- |
+| `templates/js/query.node.js.tera`    | Node.js entry; loads `./pkg-nodejs/`                     |
+| `templates/js/query.browser.js.tera` | Browser entry; loads `./pkg-web/`; includes CORS warning |
+| `templates/js/test.browser.js.tera`  | Vite/Vitest smoke test for browser                       |
+
+**`templates/js/test.browser.js.tera` example:**
+
+```javascript
+// Run with Vitest or similar browser test runner
+import { QueryBuilder } from './query.js';
+
+describe('QueryBuilder (browser)', () => {
+  it('builds a valid URL', () => {
+    const qb = new QueryBuilder('taxon')
+      .setTaxa(['Mammalia'], 'tree')
+      .setSize(10);
+    const url = qb.toUrl();
+    expect(url).toMatch(/^https:\/\/);
+    expect(url).toContain('limit=10');
+  });
+
+  it('parses response JSON', () => {
+    const mockResponse = {
+      status: { hits: 10, ok: true },
+      results: [
+        { index: 'taxon', id: '9606', result: { scientific_name: 'Homo' } }
+      ]
+    };
+    const records = parseSearchJson(mockResponse);
+    expect(records).toHaveLength(1);
+    expect(records[0].scientific_name).toBe('Homo');
+  });
+
+  // Network tests skipped in browser (no --network flag equivalent)
+});
+```
+
+### 4.5.5 CI: Browser testing
+
+**Add to `.github/workflows/sdk-integration.yml`:**
+
+```yaml
+- name: Browser SDK tests
+  run: |
+    cd /tmp/e2e-goat/goat-cli/js/goat
+    npm install -D vitest jsdom @vitest/browser
+    vitest run --browser jsdom test.browser.js
+```
+
+Alternatively, use Playwright for e2e browser testing:
+
+```yaml
+- name: Browser e2e test (Playwright)
+  run: |
+    cd /tmp/e2e-goat/goat-cli/js/goat
+    npx playwright install chromium
+    npx playwright test test.playwright.js
+```
+
+### 4.5.6 Generated project updates
+
+**bundle structure** (at generation time):
+
+```bash
+cd js/{site}
+sh build-wasm.sh          # Produces pkg-web/ and pkg-nodejs/
+npm install               # Installs both pkg dirs as local deps
+```
+
+Or use `workspaces` in monorepo style:
+
+```json
+{
+  "workspaces": ["pkg-web", "pkg-nodejs"]
+}
+```
+
+**Type definitions:** Both `pkg-web` and `pkg-nodejs` include identical `.d.ts` files
+from wasm-pack, so TypeScript consumers see the same interface regardless of target.
+
+### 4.5.7 Documentation updates
+
+**In generated project `README.md`:**
+
+```markdown
+## Browser Support
+
+The JavaScript SDK works in modern browsers (ES2020+) via WebAssembly.
+
+### Setup
+
+For a browser app (Vite, webpack, etc.):
+
+\`\`\`javascript
+import { QueryBuilder, parseSearchJson } from '@{{ site_name }}/goat';
+
+const qb = new QueryBuilder('taxon')
+.setTaxa(['Mammalia'], 'tree')
+.setSize(50);
+
+const url = qb.toUrl();
+const response = await fetch(url);
+const data = await response.json();
+const records = parseSearchJson(data);
+\`\`\`
+
+### Requirements
+
+- **CORs:** The API must allow cross-origin requests. If not, configure a proxy or ask the API owner to enable CORS headers.
+- **Modern browser:** ES2020+ (Chrome 91+, Safari 15+, Firefox 88+, Edge 91+)
+- **Bundler:** Vite, webpack, Parcel, esbuild, or similar; ensures `.wasm` files are copied to output
+
+### Bundler configuration examples
+
+**Vite (`vite.config.js`):**
+
+\`\`\`javascript
+import { defineConfig } from 'vite';
+export default defineConfig({
+// wasm-pack output is automatically handled
+// Ensure public/ or assets/ copies the .wasm file if needed
+});
+\`\`\`
+
+**webpack:**
+
+\`\`\`javascript
+module.exports = {
+module: {
+rules: [
+{
+test: /\.wasm$/,
+type: 'webassembly/async',
+},
+],
+},
+experiments: { asyncWebAssembly: true },
+};
+\`\`\`
+```
+
+**In main `GETTING_STARTED.md` (cli-generator):**
+
+Add "Browser Support" section:
+
+```markdown
+### JavaScript: Browser + Node.js
+
+Generated JavaScript SDKs work in both Node.js (≥18) and browsers.
+
+**In Node.js:** Install and use directly.
+\`\`\`javascript
+const { QueryBuilder } = require('./query.js');
+const qb = new QueryBuilder('taxon').setTaxa(['Homo']).toUrl();
+\`\`\`
+
+**In browsers:** Use with any bundler (Vite, webpack, etc.).
+\`\`\`javascript
+import { QueryBuilder } from '@{{ site }}/{{ site }}-cli';
+const qb = new QueryBuilder('taxon').setTaxa(['Homo']).toUrl();
+\`\`\`
+
+**Important:** The API must have CORS enabled. If requests fail with "blocked by CORS",
+contact the API owner to enable `Access-Control-Allow-Origin` headers.
+```
+
+### 4.5.8 File inventory (Phase 4.5)
+
+**New/Modified:**
+
+| File                                    | Changes                                                      |
+| --------------------------------------- | ------------------------------------------------------------ |
+| `templates/js/build-wasm.sh.tera`       | Add `--target web` build; output to separate `pkg-web/`      |
+| `templates/js/package.json.tera`        | Add `exports`, `browser` fields; include both `pkg-*` dirs   |
+| `templates/js/query.js.tera`            | Universal wrapper using conditional imports or env detection |
+| `templates/js/query.node.js.tera`       | **New:** Node.js-specific entry; imports from `pkg-nodejs/`  |
+| `templates/js/query.browser.js.tera`    | **New:** Browser-specific entry; imports from `pkg-web/`     |
+| `templates/js/test.browser.js.tera`     | **New:** Browser smoke tests (Vitest/jsdom or Playwright)    |
+| `.github/workflows/sdk-integration.yml` | Add browser test job (Vitest + jsdom or Playwright)          |
+| `GETTING_STARTED.md`                    | Add "Browser Support" section with bundler examples          |
+
+---
+
 ## Phase 5: `validate()` parity _(depends on Phase 3)_
 
 ### 5.1 Move shared types to subcrate
