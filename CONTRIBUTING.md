@@ -25,6 +25,8 @@ style debates.
 | Rust           | `rustfmt` via `rust-analyzer` | `cargo fmt --all`                                               |
 | Python         | `black`                       | `black --line-length 120 python/ tests/python/`                 |
 | Python imports | `isort`                       | `isort --profile black --line-length 120 python/ tests/python/` |
+| JavaScript     | `prettier`                    | Applied in generated projects (via template pre-commit hooks)   |
+| R              | `styleR` / `lintr`            | Applied in generated projects (via template CI)                 |
 | TOML           | `even-better-toml` (VS Code)  | on save                                                         |
 
 Line length: **120** for both Rust and Python.
@@ -35,7 +37,7 @@ Install pre-commit hooks to enforce this automatically before every commit:
 pre-commit install
 ```
 
-### Naming
+### Naming and cross-language consistency
 
 Names should communicate intent such that a reader with no prior context
 understands what a value holds or what a function does.
@@ -55,8 +57,19 @@ let n = reads.iter().filter(|r| r.mean_quality >= min_quality).count();
 let temp = result.unwrap();
 ```
 
-Rust: use `snake_case` for functions and variables, `CamelCase` for types.
-Python: use `snake_case` for functions and variables, `PascalCase` for classes.
+**Convention across all languages:**
+
+- Rust: `snake_case` for functions and variables, `CamelCase` for types
+- Python: `snake_case` for functions and variables, `PascalCase` for classes
+- JavaScript: `camelCase` for functions and variables, `PascalCase` for classes
+- R: `snake_case` for functions and variables, `PascalCase` for classes (S6)
+
+**SDK method parity:** When adding a new QueryBuilder method, use the same base name across all three SDKs:
+
+- Rust/Python/R: `set_taxa()`, `add_field()`, `to_url()`, `validate()`, etc.
+- JavaScript: `setTaxa()`, `addField()`, `toUrl()`, `validate()` (camelCase)
+
+See [SDK Parse Parity Plan](/memories/repo/sdk-parse-parity-plan-draft.md) for canonical method list.
 
 ---
 
@@ -179,17 +192,22 @@ def gc_content(sequence: str) -> float:
 - Every new function requires at least one unit test.
 - Every function with a mathematical contract (commutativity, idempotency,
   round-trip, ordering) requires a property-based test.
-- Tests must pass on CI before merging.
+- Every new SDK method must be added to **all three SDKs (Python, R, JavaScript)** in the same PR.
+  The parity test (`tests/python/test_sdk_parity.py`) enforces this automatically.
+- Tests must pass on CI before merging (all platforms: Linux, macOS).
 
 ### Test layout
 
-| Language         | Location                                   | Framework    |
-| ---------------- | ------------------------------------------ | ------------ |
-| Rust unit        | `#[cfg(test)]` in the same file            | `cargo test` |
-| Rust integration | `tests/*.rs`                               | `cargo test` |
-| Rust property    | `proptest!` blocks in `#[cfg(test)]`       | proptest     |
-| Python unit      | `tests/python/test_*.py`                   | pytest       |
-| Python property  | `@given` tests in `tests/python/test_*.py` | Hypothesis   |
+| Language            | Location                                        | Framework            |
+| ------------------- | ----------------------------------------------- | -------------------- |
+| Rust unit           | `#[cfg(test)]` in the same file                 | `cargo test`         |
+| Rust integration    | `tests/*.rs`                                    | `cargo test`         |
+| Rust property       | `proptest!` blocks in `#[cfg(test)]`            | proptest             |
+| Python unit         | `tests/python/test_*.py`                        | pytest               |
+| Python property     | `@given` tests in `tests/python/test_*.py`      | Hypothesis           |
+| SDK parity          | `tests/python/test_sdk_parity.py`               | pytest               |
+| SDK fixtures        | `tests/python/test_sdk_fixtures.py`             | pytest               |
+| Generated SDK tests | Generated project: `tests/python/`, `js/`, `r/` | pytest/Jest/testthat |
 
 Commit `proptest-regressions/` and `.hypothesis/examples/` — they ensure CI
 replays every known-failing case.
@@ -204,24 +222,89 @@ pyright python/ tests/python/
 
 All function signatures must have full type annotations.
 
+### SDK parity testing
+
+When you add a new QueryBuilder method, it must work identically across all three SDKs:
+
+1. **Add to Rust core** (`src/core/`): Implement the logic once.
+2. **Expose via PyO3, WASM, and extendr**: Wire the Rust function in `src/lib.rs`, templates, and crates.
+3. **Update all three templates**: `templates/python/`, `templates/js/`, `templates/r/`.
+4. **Run the parity test**:
+
+   ```bash
+   pytest tests/python/test_sdk_parity.py -v
+   ```
+
+   This test introspects the generated QueryBuilder methods in all three languages and asserts they are identical.
+
+5. **Test with `test_sdk_fixtures.sh`** to validate round-trip behavior across languages:
+   ```bash
+   bash scripts/test_sdk_fixtures.sh --site goat --python --r --javascript
+   ```
+
+For detailed guidance on extending cli-generator across languages, see
+[Extension Guide](docs/planning/extension-guide.md) and rule #10 in
+[Copilot Instructions](.github/copilot-instructions.md).
+
 ---
 
-## Generated code
+## Architecture: Hand-written vs. generated code
 
-Code in `src/generated/` is produced by the CLI generator tool. Do not edit it
-by hand — changes will be overwritten on the next generator run. If the generated
-output is wrong, fix the generator, not the generated file.
+### Generator-managed directories (read-only)
 
-Hand-written code in `src/core/` and `src/lib.rs` is never modified by the
-generator.
+**`src/generated/`** — Output from the CLI generator. Never edit by hand.
+
+- `cli_meta.rs` — CLI name/description constants (generated from YAML)
+- `field_*.rs` — Field metadata and validation rules (generated from API schema)
+- If generated output is wrong, fix the generator templates, not the output.
+
+**Template-managed files** — Rendered into generated projects.
+
+- `templates/rust/`, `templates/python/`, `templates/js/`, `templates/r/` — Not edited directly; edit templates and regenerate.
+- `src/commands/new.rs` → copies templates + embedded modules into `/tmp/generated/<site>/`.
+
+### Hand-written code (your domain)
+
+**`src/core/`** — Pure Rust library logic. Never modified by the generator.
+
+- Add new functions, types, and validators here.
+- This is where logic for new parameters, validators, and introspection lives.
+
+**`src/lib.rs`** — PyO3 module FFI boundary. Wires `src/core/` functions to Python.
+
+- When adding to `src/core/`, expose it via `#[pyfunction]` and `#[pymodule]`.
+
+**`crates/genomehubs-query/src/`** — WASM + extendr subcrate.
+
+- Shared parsing and introspection logic exposed to all three SDKs.
+- When adding a parse function, add it here and export via WASM + extendr.
+
+**`python/cli_generator/`** — Python package re-exporting the Rust extension.
+
+- `__init__.py` — imports from Rust extension
+- `query.py` — QueryBuilder wrapper (high-level SDK API)
+- Keep signatures in sync with `templates/python/query.py.tera`
+
+### Rust-first pattern for multi-language features
+
+When adding functionality that spans Python, R, and JavaScript:
+
+1. **Add logic in Rust** (`src/core/`) ← All intelligence lives here
+2. **Expose via PyO3** (`src/lib.rs` + `python/cli_generator.pyi`)
+3. **Expose via WASM + extendr** (`crates/genomehubs-query/src/`)
+4. **Update templates** (`templates/python/`, `templates/js/`, `templates/r/`)
+   - These are **wiring only** — they call the Rust function, do not re-implement logic
+5. **Test parity** (`pytest tests/python/test_sdk_parity.py`)
+
+**Why:** Maintaining the same logic across 3 languages is a maintenance nightmare. Do it once in Rust; expose it; wire it in templates. See [AGENTS.md](AGENTS.md) for the extension checklist and [Extension Guide](docs/planning/extension-guide.md) for worked examples.
 
 ---
 
 ## Helper scripts
 
-This repository includes scripts to automate code verification and template validation.
+This repository includes scripts to automate code verification, SDK testing, and end-to-end validation.
 
-### `scripts/verify_code.sh` — Code quality checks
+### `scripts/verify_code.sh` — Complete code quality checks
 
 Runs formatting, linting, type checking, and tests on Rust and Python code.
 
@@ -247,15 +330,74 @@ PROJECT_ROOT=/path/to/project bash scripts/verify_code.sh
 | Rust     | Tests   | `cargo test --lib`        |
 | Python   | Format  | `black --line-length 120` |
 | Python   | Imports | `isort --profile black`   |
-| Python   | Types   | `pyright`                 |
-| Python   | Tests   | `pytest`                  |
+| Python   | Types   | `pyright` (strict mode)   |
+| Python   | Tests   | `pytest` all modules      |
 
 Exit code 0 = all checks pass; 1 = one or more checks failed.
 
+### `scripts/test_sdk_fixtures.sh` — SDK fixture validation
+
+Generates SDKs and validates fixture round-trips across Python, R, and JavaScript.
+Tests that generated SDKs can fetch, parse, and round-trip API responses.
+
+**Usage:**
+
+```bash
+# Test Python SDK fixtures
+bash scripts/test_sdk_fixtures.sh --site goat --python
+
+# Test R SDK fixtures (requires R + devtools)
+bash scripts/test_sdk_fixtures.sh --site goat --r
+
+# Test all language SDKs
+bash scripts/test_sdk_fixtures.sh --site goat --python --r --javascript
+
+# Show available options
+bash scripts/test_sdk_fixtures.sh --help
+```
+
+**What it does:**
+
+1. Generates SDKs for the specified site
+2. Validates fixture JSON files against API schema
+3. Tests round-trip: SDK method → URL → cached fixture → response parsing
+4. Verifies response shape consistency across languages
+
+**Fixtures:** Cached API responses committed to `docs/api-schemas/` ensure
+tests run without network access and with identical canned data across CI runs.
+
+### `scripts/dev_site.sh` — Full end-to-end test
+
+Generates a site, builds CLI + all SDKs, and runs smoke tests.
+Use this after major changes to templates or generation logic.
+
+**Usage:**
+
+```bash
+# Quick smoke test (CLI + fixture validation)
+bash scripts/dev_site.sh goat
+
+# Rebuild WASM and test JavaScript SDK
+bash scripts/dev_site.sh --rebuild-wasm goat
+
+# Run Python SDK tests in generated project
+bash scripts/dev_site.sh --python boar
+```
+
+**What it does:**
+
+1. Cleans previous output (`/tmp/generated/<site>`)
+2. Generates the CLI and SDKs
+3. Builds Rust CLI (`cargo build --release`)
+4. Tests CLI with `--url` flag (no network)
+5. Builds WASM (if `--rebuild-wasm`)
+6. Smoke-tests all SDKs: constructors, methods, serialization
+7. Optionally runs full Python test suite
+
 ### `scripts/validate_templates.sh` — Template formatting
 
-Validates Tera template files without rendered context. Extracts embedded Rust and
-Python code, then validates formatting with the appropriate tools (rustfmt, black, isort).
+Validates Tera template files without rendered context. Extracts embedded Rust,
+Python, JavaScript, and R code, then validates formatting with appropriate tools.
 
 **Usage:**
 
@@ -266,25 +408,25 @@ bash scripts/validate_templates.sh
 
 **How it works:**
 
-1. Locates all `.tera` files (supports both flat `templates/*.tera` and
-   organized `templates/rust/*.tera`, `templates/python/*.tera` structures)
+1. Locates all `.tera` files in `templates/` and subdirectories
 2. Extracts code by replacing Tera expressions with valid placeholders:
-   - Rust: `{{ ... }}` → `0`, `{% ... %}` → comments
+   - Rust/JavaScript: `{{ ... }}` → `0`, `{% ... %}` → comments
    - Python: `{{ ... }}` → `None`, `{% ... %}` → comments
-3. Validates extracted code with rustfmt/black/isort
+   - R: `{{ ... }}` → `NULL`, `{% ... %}` → comments
+3. Validates extracted code with rustfmt/black/isort/prettier/styler
 
-Exit code 0 = all templates pass; 1 = one or more templates have formatting issues.
+Exit code 0 = all templates pass; 1 = one or more templates have issues.
 
 **Troubleshooting template errors:**
 
 If a template fails validation:
 
-1. Generate the CLI: `cli-generator new <site> --output /tmp/test-site`
-2. Edit the generated file (e.g., `/tmp/test-site/src/generated/cli_meta.rs`)
+1. Generate the SDK: `bash scripts/dev_site.sh <site>`
+2. Edit the generated file (e.g., `/tmp/generated/<site>/<lang>/<module>.rs`)
    - You'll get full syntax highlighting and linting in your editor
-3. Verify formatting: `cargo fmt` / `black` / `isort`
+3. Verify formatting: `cargo fmt` / `black` / `isort` / `prettier`
 4. Once the generated file is correct, apply the changes back to the template
-5. Regenerate and verify output is identical to your edits
+5. Regenerate and verify output matches your edits
 
 ---
 
@@ -314,20 +456,31 @@ docs: clarify maturin develop step in GETTING_STARTED
 Use `bash scripts/verify_code.sh` to run all checks automatically:
 
 ```bash
-# Run all code verification checks
+# Run all code and test verification checks
 bash scripts/verify_code.sh
 
 # Or with verbose output showing diffs/errors
 bash scripts/verify_code.sh --verbose
 ```
 
+For SDK-related changes:
+
+```bash
+# Validate SDKs round-trip correctly across languages
+bash scripts/test_sdk_fixtures.sh --site goat --python --r --javascript
+
+# Full end-to-end test (regenerate + build + test)
+bash scripts/dev_site.sh goat
+```
+
 Manual verification:
 
 - [ ] `cargo fmt --all` and `cargo clippy -- -D warnings` pass clean.
 - [ ] `black`, `isort`, and `pyright` pass clean.
-- [ ] All new functions have doc comments / docstrings.
-- [ ] All new functions have tests; CI passes.
-- [ ] If you modified Tera templates: `bash scripts/validate_templates.sh` passes.
+- [ ] All new functions have doc comments (Rust) / docstrings (Python).
+- [ ] All new functions have unit tests; all 371+ tests pass locally.
+- [ ] **If you added a QueryBuilder method:** Also added to all three SDK templates (`templates/python/`, `templates/js/`, `templates/r/`); `test_sdk_parity.py` passes.
+- [ ] **If you modified Tera templates:** `bash scripts/validate_templates.sh` and `bash scripts/dev_site.sh <site>` pass.
 - [ ] No dead code, no commented-out blocks, no speculative features.
 - [ ] Agent-log entry created in `agent-logs/` if an AI agent contributed
       significantly (see [AGENTS.md](AGENTS.md)).

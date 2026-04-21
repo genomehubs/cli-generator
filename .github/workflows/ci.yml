@@ -281,8 +281,10 @@ jobs:
           retention-days: 14
 
   # ── SDK artifacts: build, test, and upload (JavaScript npm, R, fixture validation)
+  # Note: R setup takes ~12 mins. Only run on main branch + manual trigger to keep PR checks fast.
   sdk-artifacts:
     name: Build and test SDK artifacts
+    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -347,7 +349,7 @@ jobs:
       # ── R: Build package tarball ─────────────────────────────────────────
       - name: Build R package
         run: |
-          cd /tmp/generated/goat-cli/r
+          cd /tmp/generated/goat-cli/r/goat
           R CMD build --compact-vignettes=both .
         shell: bash
 
@@ -362,7 +364,7 @@ jobs:
       # ── Artifact Testing: Check R package ────────────────────────────────
       - name: Check R package
         run: |
-          cd /tmp/generated/goat-cli/r
+          cd /tmp/generated/goat-cli/r/goat
           R CMD check *.tar.gz --no-manual --no-build-vignettes || true
         shell: bash
         continue-on-error: true
@@ -379,5 +381,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: goat-sdk-r
-          path: /tmp/generated/goat-cli/r/*.tar.gz
+          path: /tmp/generated/goat-cli/r/goat/*.tar.gz
           retention-days: 14

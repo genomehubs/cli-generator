@@ -1,9 +1,17 @@
 # Getting started
 
-Two scenarios are covered here:
+Choose your path based on what you want to do:
 
-1. **Try the goat-CLI preview** — download a pre-built binary, no tools required.
-2. **Generate a custom CLI** from a modified YAML config — requires Rust.
+| Goal                                      | Path                                                                 | Time   |
+| ----------------------------------------- | -------------------------------------------------------------------- | ------ |
+| Try the CLI without installing anything   | [1. Try the goat-CLI preview](#1-try-the-goat-cli-preview)           | 5 min  |
+| Generate a CLI for your own API           | [2. Generate a custom CLI](#2-generate-a-custom-cli)                 | 10 min |
+| Use the Python SDK (programmatic queries) | [3. Python SDK](#3-python-sdk)                                       | 5 min  |
+| Use the R SDK                             | [4. R SDK](#4-r-sdk)                                                 | 5 min  |
+| Use the JavaScript/Node.js SDK            | [5. JavaScript SDK](#5-javascript-sdk)                               | 5 min  |
+| Contribute to cli-generator               | [8. Contributing to cli-generator](#8-contributing-to-cli-generator) | 20 min |
+
+**New to cli-generator?** Start with section 1, then read [MAIN.md](docs/MAIN.md) (project overview) or [extension-guide.md](docs/planning/extension-guide.md) (how to extend it).
 
 ---
 
@@ -55,6 +63,8 @@ what has changed, and how to give feedback on the design.
 ---
 
 ## 2. Generate a custom CLI
+
+Generate your own CLI from a YAML config file pointing to your API.
 
 ### Prerequisites
 
@@ -158,8 +168,7 @@ Pre-built wheel files are uploaded alongside the CLI binary as CI artifacts
 on every push to `main`.
 
 Go to the [Actions tab](https://github.com/genomehubs/cli-generator/actions) →
-most recent **"Generated CLI tests"** run → **Artifacts** and download
-`goat-sdk-wheel-<platform>`.
+most recent **"Generated CLI tests"** run → **Artifacts** button → find **`goat-sdk-wheel-*`**.
 
 ```bash
 # Install the wheel
@@ -592,3 +601,61 @@ bash scripts/dev_site.sh boat             # test a different site
 | `scripts/dev_site.sh`                | Generate + Rust `--url` + JS `toUrl()` smoke-tests |
 | `scripts/dev_site.sh --python`       | As above + maturin develop + Python smoke-test     |
 | `scripts/dev_site.sh --rebuild-wasm` | Rebuild `crates/genomehubs-query/pkg/` first       |
+
+---
+
+## 9. Where to go next
+
+**Got cli-generator working?** Here's the documentation structure:
+
+### Quick Navigation
+
+| I want to...                                      | Read this                                                                                          |
+| ------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| Understand what cli-generator is and how it works | [MAIN.md](docs/MAIN.md) — Overview + documentation index                                           |
+| Add a new parameter, language, or validator       | [extension-guide.md](docs/planning/extension-guide.md) — Full task-based patterns                  |
+| Integrate cli-generator into my project           | [integration-runbook.md](docs/planning/integration-runbook.md) — Step-by-step walkthrough          |
+| Learn the release strategy                        | [release-strategy.md](docs/planning/release-strategy.md) — Package managers + versioning           |
+| Understand SDK parity across Python/R/JS          | [sdk-parity-testing.md](docs/testing/sdk-parity-testing.md) — Verification approach                |
+| Set up Python/R/JS packaging and CI               | [release-strategy.md](docs/planning/release-strategy.md) — Full CI/CD template                     |
+| See test fixtures + examples                      | [fixtures-complete-guide.md](docs/testing/fixtures-complete-guide.md) — Fixture discovery, caching |
+
+### By Role
+
+**SDK developers** (adding parameters, validators):
+→ [extension-guide.md](docs/planning/extension-guide.md) + [.github/copilot-instructions.md](.github/copilot-instructions.md)
+
+**Integration teams** (deploying to boat-cli, assessment-api):
+→ [integration-runbook.md](docs/planning/integration-runbook.md)
+
+**Release managers** (publishing Python/R/JS packages):
+→ [release-strategy.md](docs/planning/release-strategy.md)
+
+**Contributors** (fixing bugs, improving templates):
+→ [CONTRIBUTING.md](CONTRIBUTING.md) + [AGENTS.md](AGENTS.md)
+
+### Where the Docs Live
+
+```
+docs/
+  MAIN.md                        # Start here: overview + index
+  HISTORY.md                     # Archive of completed phases
+  planning/                      # Planning documents + roadmaps
+    extension-guide.md           # How to extend cli-generator
+    integration-runbook.md       # How to integrate into your project
+    release-strategy.md          # Package manager strategy
+    GAPS-AND-OPPORTUNITIES.md    # What's missing + priorities
+  testing/                       # Test documentation
+    sdk-parity-testing.md        # Cross-language consistency
+    fixtures-complete-guide.md   # Test fixture strategies
+  reference/                     # Design & architecture docs
+    python-sdk-design.md
+    query-builder-design.md
+```
+
+### Still have questions?
+
+- **For CLI usage**: Run `./my-site-cli --help` or check the `PREVIEW.md` from CI artifacts
+- **For SDK questions**: Read the docstrings in generated code + examples in this file
+- **For extending**: See [extension-guide.md](docs/planning/extension-guide.md) tasks 1–5
+- **For bugs/issues**: Check [CONTRIBUTING.md](CONTRIBUTING.md) → "When to ask for help"

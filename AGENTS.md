@@ -77,6 +77,37 @@ points for agents:
 
 ---
 
+## Extending cli-generator (Adding Parameters, Validators, Languages)
+
+When adding new functionality that spans multiple languages (Python, R, JavaScript),
+follow the **Rust-first pattern** to keep code DRY:
+
+### Quick reference: Rust → Python → R/JS → Docs
+
+1. **Rust core** (`src/core/`) — Add logic + unit tests
+2. **Python FFI** (`src/lib.rs` + `python/cli_generator.pyi`) — PyO3 binding
+3. **R/JS templates** (`templates/r/query.R`, `templates/js/query.js`) — Call Rust binding
+4. **Cross-language tests** (`tests/python/test_sdk_parity.py`) — Verify all languages work
+5. **Documentation** (GETTING_STARTED.md, docstrings) — Add examples
+
+### What NOT to do
+
+❌ Add logic to Python template that duplicates Rust
+❌ Implement same validator in R and JS separately
+❌ Create language-specific implementations of identical functionality
+
+✅ Add it once in Rust; expose via PyO3 + templates; test all languages together
+
+### Full guide
+
+See [docs/planning/extension-guide.md](../docs/planning/extension-guide.md) for:
+
+- 5 worked examples (new parameter, new language, validator, snippet language, custom structure)
+- Task checklist before submitting
+- Common pitfalls and anti-patterns
+
+---
+
 ## Verification before committing
 
 Use `scripts/verify_code.sh` to run all checks in one step:

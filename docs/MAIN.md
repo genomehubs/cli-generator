@@ -39,6 +39,8 @@
 
 | Document                                                        | Purpose                                            | Status                             |
 | --------------------------------------------------------------- | -------------------------------------------------- | ---------------------------------- |
+| [integration-runbook.md](planning/integration-runbook.md)       | Step-by-step guide for onboarding new repos        | ✅ Complete                        |
+| [extension-guide.md](planning/extension-guide.md)               | Add parameters, validators, languages to generator | ✅ Complete                        |
 | [api-refactoring-phases.md](planning/api-refactoring-phases.md) | 5-phase SDK-driven architecture refactoring        | 📋 Planned (blocking: other repos) |
 | [release-strategy.md](planning/release-strategy.md)             | Multi-language SDK release + package manager plan  | ✅ Complete                        |
 | [multi-language-roadmap.md](planning/multi-language-roadmap.md) | R, JS, Go snippet generation + multi-repo strategy | 📋 Planned                         |
