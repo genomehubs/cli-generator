@@ -74,6 +74,66 @@ CANONICAL_METHODS = {
         "js_name": "setRanks",
         "r_name": "set_ranks",
     },
+    "set_exclude_ancestral": {
+        "params": ["fields"],
+        "python_name": "set_exclude_ancestral",
+        "js_name": "setExcludeAncestral",
+        "r_name": "set_exclude_ancestral",
+    },
+    "add_exclude_ancestral": {
+        "params": ["field"],
+        "python_name": "add_exclude_ancestral",
+        "js_name": "addExcludeAncestral",
+        "r_name": "add_exclude_ancestral",
+    },
+    "set_exclude_descendant": {
+        "params": ["fields"],
+        "python_name": "set_exclude_descendant",
+        "js_name": "setExcludeDescendant",
+        "r_name": "set_exclude_descendant",
+    },
+    "add_exclude_descendant": {
+        "params": ["field"],
+        "python_name": "add_exclude_descendant",
+        "js_name": "addExcludeDescendant",
+        "r_name": "add_exclude_descendant",
+    },
+    "set_exclude_direct": {
+        "params": ["fields"],
+        "python_name": "set_exclude_direct",
+        "js_name": "setExcludeDirect",
+        "r_name": "set_exclude_direct",
+    },
+    "add_exclude_direct": {
+        "params": ["field"],
+        "python_name": "add_exclude_direct",
+        "js_name": "addExcludeDirect",
+        "r_name": "add_exclude_direct",
+    },
+    "set_exclude_missing": {
+        "params": ["fields"],
+        "python_name": "set_exclude_missing",
+        "js_name": "setExcludeMissing",
+        "r_name": "set_exclude_missing",
+    },
+    "add_exclude_missing": {
+        "params": ["field"],
+        "python_name": "add_exclude_missing",
+        "js_name": "addExcludeMissing",
+        "r_name": "add_exclude_missing",
+    },
+    "set_exclude_derived": {
+        "params": ["fields"],
+        "python_name": "set_exclude_derived",
+        "js_name": "setExcludeDerived",
+        "r_name": "set_exclude_derived",
+    },
+    "set_exclude_estimated": {
+        "params": ["fields"],
+        "python_name": "set_exclude_estimated",
+        "js_name": "setExcludeEstimated",
+        "r_name": "set_exclude_estimated",
+    },
     "set_size": {
         "params": ["size"],
         "python_name": "set_size",
@@ -183,20 +243,17 @@ CONSTRUCTOR_PARAMS = {
 def get_python_constructor_params():
     """Extract constructor parameters from Python template."""
     query_py_tera = PROJECT_ROOT / "templates" / "python" / "query.py.tera"
-    with open(query_py_tera) as f:
-        content = f.read()
-
+    content = Path(query_py_tera).read_text()
     # Find __init__ signature and extract parameter names
     pattern = r"def __init__\s*\(\s*self,([^)]+)\)"
     match = re.search(pattern, content, re.DOTALL)
     if not match:
         return []
 
-    params_str = match.group(1)
+    params_str = match[1]
     params = []
     for p in params_str.split(","):
-        p = p.strip()
-        if p:
+        if p := p.strip():
             param_name = p.split(":")[0].strip()
             params.append(param_name)
     return params
@@ -205,20 +262,17 @@ def get_python_constructor_params():
 def get_js_constructor_params():
     """Extract constructor parameters from JavaScript template."""
     query_js = PROJECT_ROOT / "templates" / "js" / "query.js"
-    with open(query_js) as f:
-        content = f.read()
-
-    # Find constructor(options) and list properties
-    pattern = r"constructor\s*\(\s*{\s*([^}]+)\s*}\s*\)"
+    content = Path(query_js).read_text()
+    # constructor(index, options = {}) pattern
+    pattern = r"constructor\s*\(([^)]+)\)"
     match = re.search(pattern, content, re.DOTALL)
     if not match:
         return []
 
-    import_str = match.group(1)
+    params_str = match[1]
     params = []
-    for p in import_str.split(","):
-        p = p.strip()
-        if p and "=" in p:
+    for p in params_str.split(","):
+        if p := p.strip():
             param_name = p.split("=")[0].strip()
             params.append(param_name)
     return params
@@ -227,16 +281,14 @@ def get_js_constructor_params():
 def get_r_constructor_params():
     """Extract constructor parameters from R template."""
     query_r = PROJECT_ROOT / "templates" / "r" / "query.R"
-    with open(query_r) as f:
-        content = f.read()
-
+    content = Path(query_r).read_text()
     # Find initialize = function(...) pattern
     pattern = r"initialize\s*=\s*function\s*\(([^)]+)\)"
     match = re.search(pattern, content, re.DOTALL)
     if not match:
         return []
 
-    params_str = match.group(1)
+    params_str = match[1]
     params = []
     for p in params_str.split(","):
         p = p.strip()
@@ -252,9 +304,7 @@ def get_python_methods():
     query_py_tera = PROJECT_ROOT / "templates" / "python" / "query.py.tera"
     assert query_py_tera.exists(), f"Python query template not found at {query_py_tera}"
 
-    with open(query_py_tera) as f:
-        content = f.read()
-
+    content = Path(query_py_tera).read_text()
     # Rough parsing: look for "def method_name("
     methods = {}
     pattern = r"^\s{4}def\s+(\w+)\s*\("
@@ -278,11 +328,7 @@ def get_python_methods():
 
             # Extract parameters from the signature
             params_str = content[paren_start + 1 : paren_end]
-            params = [
-                p.strip()
-                for p in params_str.split(",")
-                if p.strip() and p.strip() != "self"
-            ]
+            params = [p.strip() for p in params_str.split(",") if p.strip() and p.strip() != "self"]
             # Remove type annotations and defaults
             params = [p.split(":")[0].split("=")[0].strip() for p in params]
             methods[name] = params
@@ -295,9 +341,7 @@ def get_js_methods():
     query_js = PROJECT_ROOT / "templates" / "js" / "query.js"
     assert query_js.exists(), f"JavaScript query template not found at {query_js}"
 
-    with open(query_js) as f:
-        content = f.read()
-
+    content = Path(query_js).read_text()
     methods = {}
     # Look for method definitions: methodName(params) {
     pattern = r"(\w+)\s*\(\s*([^)]*)\s*\)\s*{"
@@ -305,11 +349,7 @@ def get_js_methods():
         name = match.group(1)
         if not name.startswith("_") and name not in ("constructor", "if", "for", "while"):
             params_str = match.group(2)
-            params = [
-                p.strip()
-                for p in params_str.split(",")
-                if p.strip() and p.strip() != "this"
-            ]
+            params = [p.strip() for p in params_str.split(",") if p.strip() and p.strip() != "this"]
             # Remove default values and destructuring
             params = [p.split("=")[0].split("{")[0].split("}")[0].strip() for p in params]
             methods[name] = [p for p in params if p]
@@ -322,9 +362,7 @@ def get_r_methods():
     query_r = PROJECT_ROOT / "templates" / "r" / "query.R"
     assert query_r.exists(), f"R query template not found at {query_r}"
 
-    with open(query_r) as f:
-        content = f.read()
-
+    content = Path(query_r).read_text()
     methods = {}
     # Look for method definitions: method_name = function(...) {
     pattern = r"(\w+)\s*=\s*function\s*\(([^)]*)\)"
@@ -332,11 +370,7 @@ def get_r_methods():
         name = match.group(1)
         if not name.startswith("_") and name != "private":
             params_str = match.group(2)
-            params = [
-                p.strip()
-                for p in params_str.split(",")
-                if p.strip()
-            ]
+            params = [p.strip() for p in params_str.split(",") if p.strip()]
             params = [p.split("=")[0].strip() for p in params]
             methods[name] = [p for p in params if p]
 
@@ -349,9 +383,7 @@ def get_python_docstring(method_name: str) -> str:
     For __init__, returns the class docstring (standard Python convention).
     """
     query_py_tera = PROJECT_ROOT / "templates" / "python" / "query.py.tera"
-    with open(query_py_tera) as f:
-        content = f.read()
-
+    content = Path(query_py_tera).read_text()
     if method_name == "__init__":
         # For __init__, return the class docstring (Python convention)
         class_pattern = r"class\s+QueryBuilder.*?:\s*\n\s+\"\"\"(.*?)\"\"\""
@@ -361,9 +393,7 @@ def get_python_docstring(method_name: str) -> str:
         method_pattern = rf'def\s+{method_name}\s*\([^)]*\).*?:\s*\n\s+"""(.*?)"""'
         match = re.search(method_pattern, content, re.DOTALL)
 
-    if match:
-        return match.group(1).strip()
-    return ""
+    return match[1].strip() if match else ""
 
 
 # ── Tests ────────────────────────────────────────────────────────────────────
@@ -378,9 +408,7 @@ class TestSDKParity:
 
         for concept, spec in CANONICAL_METHODS.items():
             method_name = spec["python_name"]
-            assert (
-                method_name in python_methods
-            ), f"Python missing method: {method_name}"
+            assert method_name in python_methods, f"Python missing method: {method_name}"
 
     def test_javascript_canonical_methods_present(self):
         """All canonical methods must exist in JavaScript SDK."""
@@ -388,58 +416,38 @@ class TestSDKParity:
 
         for concept, spec in CANONICAL_METHODS.items():
             method_name = spec["js_name"]
-            assert (
-                method_name in js_methods
-            ), f"JavaScript missing method: {method_name}"
+            assert method_name in js_methods, f"JavaScript missing method: {method_name}"
 
-    @pytest.mark.skip(reason="R template updates pending for Phase 6")
     def test_r_canonical_methods_present(self):
         """All canonical methods must exist in R SDK."""
         r_methods = get_r_methods()
 
         for concept, spec in CANONICAL_METHODS.items():
             method_name = spec["r_name"]
-            assert (
-                method_name in r_methods
-            ), f"R missing method: {method_name}"
+            assert method_name in r_methods, f"R missing method: {method_name}"
 
-    @pytest.mark.skip(reason="R template updates pending for Phase 6")
     def test_constructor_has_validation_level_param(self):
         """Constructor must accept validation_level parameter in all SDKs."""
         python_params = get_python_constructor_params()
-        assert (
-            "validation_level" in python_params
-        ), "Python constructor missing validation_level"
+        assert "validation_level" in python_params, "Python constructor missing validation_level"
 
         js_params = get_js_constructor_params()
-        assert any(
-            "option" in p or "opts" in p for p in js_params
-        ), "JavaScript constructor missing options parameter"
+        assert any("option" in p.lower() for p in js_params), "JavaScript constructor missing options parameter"
 
         r_params = get_r_constructor_params()
-        assert (
-            "validation_level" in r_params
-        ), "R constructor missing validation_level"
+        assert "validation_level" in r_params, "R constructor missing validation_level"
 
-    @pytest.mark.skip(reason="R template updates pending for Phase 6")
     def test_constructor_has_api_base_param(self):
         """Constructor must accept api_base parameter in all SDKs."""
         python_params = get_python_constructor_params()
-        assert (
-            "api_base" in python_params
-        ), "Python constructor missing api_base"
+        assert "api_base" in python_params, "Python constructor missing api_base"
 
         js_params = get_js_constructor_params()
-        assert any(
-            "option" in p or "opts" in p for p in js_params
-        ), "JavaScript constructor missing options parameter"
+        assert any("option" in p.lower() for p in js_params), "JavaScript constructor missing options parameter"
 
         r_params = get_r_constructor_params()
-        assert (
-            "api_base" in r_params
-        ), "R constructor missing api_base"
+        assert "api_base" in r_params, "R constructor missing api_base"
 
-    @pytest.mark.skip(reason="R template updates pending for Phase 6")
     def test_validate_method_accepts_override(self):
         """validate() method must accept validation_level override in all SDKs."""
         python_methods = get_python_methods()
@@ -453,39 +461,25 @@ class TestSDKParity:
         ), "JavaScript validate() missing validationLevel param"
 
         r_methods = get_r_methods()
-        assert "validation_level" in r_methods.get(
-            "validate", []
-        ), "R validate() missing validation_level param"
+        assert "validation_level" in r_methods.get("validate", []), "R validate() missing validation_level param"
 
     def test_python_constructor_docstring_documents_validation_level(self):
         """Python constructor docstring should document validation_level."""
         docstring = get_python_docstring("__init__")
-        assert (
-            "validation_level" in docstring
-        ), "Python __init__ docstring missing validation_level documentation"
-        assert (
-            "full" in docstring.lower()
-        ), "Python __init__ docstring should mention 'full' mode"
-        assert (
-            "partial" in docstring.lower()
-        ), "Python __init__ docstring should mention 'partial' mode"
+        assert "validation_level" in docstring, "Python __init__ docstring missing validation_level documentation"
+        assert "full" in docstring.lower(), "Python __init__ docstring should mention 'full' mode"
+        assert "partial" in docstring.lower(), "Python __init__ docstring should mention 'partial' mode"
 
     def test_python_validate_method_docstring_documents_modes(self):
         """Python validate() docstring should document validation modes."""
         docstring = get_python_docstring("validate")
-        assert (
-            "full" in docstring.lower()
-        ), "Python validate() docstring missing 'full' mode documentation"
-        assert (
-            "partial" in docstring.lower()
-        ), "Python validate() docstring missing 'partial' mode documentation"
+        assert "full" in docstring.lower(), "Python validate() docstring missing 'full' mode documentation"
+        assert "partial" in docstring.lower(), "Python validate() docstring missing 'partial' mode documentation"
 
     def test_no_extra_methods_in_python(self):
         """Python should not have extra methods beyond canonical set."""
         python_methods = get_python_methods()
-        canonical_python_names = {
-            spec["python_name"] for spec in CANONICAL_METHODS.values()
-        }
+        canonical_python_names = {spec["python_name"] for spec in CANONICAL_METHODS.values()}
         # Allow documented utility methods
         canonical_python_names.update(
             [
@@ -502,9 +496,7 @@ class TestSDKParity:
         )
 
         extra = set(python_methods.keys()) - canonical_python_names
-        assert (
-            len(extra) == 0
-        ), f"Python has extra methods not in canonical list: {extra}"
+        assert len(extra) == 0, f"Python has extra methods not in canonical list: {extra}"
 
 
 class TestValidationConfiguration:
@@ -513,37 +505,29 @@ class TestValidationConfiguration:
     def test_python_template_has_validation_level_param(self):
         """Python template should have validation_level in constructor."""
         python_params = get_python_constructor_params()
-        assert (
-            "validation_level" in python_params
-        ), "Python template constructor missing validation_level"
+        assert "validation_level" in python_params, "Python template constructor missing validation_level"
 
     def test_python_template_has_api_base_param(self):
         """Python template should have api_base in constructor."""
         python_params = get_python_constructor_params()
-        assert (
-            "api_base" in python_params
-        ), "Python template constructor missing api_base"
+        assert "api_base" in python_params, "Python template constructor missing api_base"
 
     def test_python_validate_method_exists(self):
         """Python template should have validate() method."""
         python_methods = get_python_methods()
-        assert (
-            "validate" in python_methods
-        ), "Python template missing validate() method"
+        assert "validate" in python_methods, "Python template missing validate() method"
 
     def test_python_validate_has_override_param(self):
         """Python template validate() should accept validation_level override."""
         python_methods = get_python_methods()
-        assert (
-            "validation_level" in python_methods.get("validate", [])
+        assert "validation_level" in python_methods.get(
+            "validate", []
         ), "Python validate() missing validation_level param"
 
     def test_python_constructor_docstring_documents_validation_level(self):
         """Python template constructor docstring should document validation_level."""
         docstring = get_python_docstring("__init__")
-        assert (
-            len(docstring) > 0
-        ), "Python template __init__ has no docstring"
+        assert len(docstring) > 0, "Python template __init__ has no docstring"
         assert (
             "validation_level" in docstring
         ), "Python template __init__ docstring missing validation_level documentation"
@@ -551,12 +535,8 @@ class TestValidationConfiguration:
     def test_python_validate_docstring_documents_modes(self):
         """Python template validate() docstring should document validation modes."""
         docstring = get_python_docstring("validate")
-        assert (
-            len(docstring) > 0
-        ), "Python template validate() has no docstring"
-        assert (
-            "full" in docstring.lower()
-        ), "Python template validate() docstring missing 'full' mode documentation"
+        assert len(docstring) > 0, "Python template validate() has no docstring"
+        assert "full" in docstring.lower(), "Python template validate() docstring missing 'full' mode documentation"
         assert (
             "partial" in docstring.lower()
         ), "Python template validate() docstring missing 'partial' mode documentation"
@@ -566,15 +546,36 @@ class TestDocumentationParity:
     """Test that Quarto reference documentation includes all SDK methods."""
 
     def get_documented_methods(self) -> set[str]:
-        """Extract method names from the Quarto reference guide.
+        """Return the set of canonical method names that appear in the Quarto reference.
 
-        Returns:
-            Set of documented method names (lowercase).
+        Uses a simple membership check: a method is considered documented if its
+        name appears in a backtick context anywhere in the file.  This is robust
+        against heading style, table vs list format, and any punctuation convention
+        — the only requirement is that the method name is mentioned at least once
+        as a backtick-quoted identifier.
         """
-        quarto_path = (
-            PROJECT_ROOT
-            / "workdir/my-goat/goat-cli/docs/reference/query-builder.qmd"
-        )
+        quarto_path = PROJECT_ROOT / "workdir/my-goat/goat-cli/docs/reference/query-builder.qmd"
+        if not quarto_path.exists():
+            pytest.skip(
+                f"Quarto reference guide not found at {quarto_path}. "
+                "This test requires the generated goat CLI project."
+            )
+
+        content = quarto_path.read_text()
+        canonical_names = set(CANONICAL_METHODS.keys())
+        return {name for name in canonical_names if f"`{name}" in content}
+
+    def test_documented_methods_include_all_canonical(self):
+        """All canonical methods should be documented in Quarto reference."""
+        documented = self.get_documented_methods()
+        canonical_names = set(CANONICAL_METHODS.keys())
+
+        missing = canonical_names - documented
+        assert len(missing) == 0, f"Documentation missing these canonical methods: {sorted(missing)}"
+
+    def test_documented_methods_include_utilities(self):
+        """Documentation should include documented utility methods."""
+        quarto_path = PROJECT_ROOT / "workdir/my-goat/goat-cli/docs/reference/query-builder.qmd"
         if not quarto_path.exists():
             pytest.skip(
                 f"Quarto reference guide not found at {quarto_path}. "
@@ -583,36 +584,8 @@ class TestDocumentationParity:
 
         content = quarto_path.read_text()
 
-        documented = set()
-
-        # Pattern 1: heading format like `### method_name(...)`
-        pattern1 = r"^###\s+`([a-z_]+)(?:\(|`)"
-        matches1 = re.findall(pattern1, content, re.MULTILINE)
-        documented.update(matches1)
-
-        # Pattern 2: inline backtick format like `method_name(...)` or `method_name` -> ...`
-        # This catches both `method()` and `method(params)` formats
-        pattern2 = r"`([a-z_]+)(?:\([^)]*\))?\s*(?:->|—)"
-        matches2 = re.findall(pattern2, content)
-        documented.update(matches2)
-
-        return documented
-
-    def test_documented_methods_include_all_canonical(self):
-        """All canonical methods should be documented in Quarto reference."""
-        documented = self.get_documented_methods()
-        canonical_names = set(CANONICAL_METHODS.keys())
-
-        missing = canonical_names - documented
-        assert (
-            len(missing) == 0
-        ), f"Documentation missing these canonical methods: {sorted(missing)}"
-
-    def test_documented_methods_include_utilities(self):
-        """Documentation should include documented utility methods."""
-        # These are implied by the canonical set and are separately documented
-        documented = self.get_documented_methods()
-
+        # These utility methods are not in CANONICAL_METHODS (they are Python-only wrappers)
+        # but should still appear in the reference documentation.
         utilities = {
             "search_df",  # pandas wrapper
             "search_polars",  # polars wrapper
@@ -620,16 +593,11 @@ class TestDocumentationParity:
         }
 
         for util in utilities:
-            assert (
-                util in documented
-            ), f"Documentation missing utility method: {util}"
+            assert f"`{util}" in content, f"Documentation missing utility method: {util}"
 
     def test_documented_methods_reference_parameters(self):
         """Documented methods should include parameter tables where applicable."""
-        quarto_path = (
-            PROJECT_ROOT
-            / "workdir/my-goat/goat-cli/docs/reference/query-builder.qmd"
-        )
+        quarto_path = PROJECT_ROOT / "workdir/my-goat/goat-cli/docs/reference/query-builder.qmd"
         if not quarto_path.exists():
             pytest.skip(
                 f"Quarto reference guide not found at {quarto_path}. "
@@ -647,9 +615,7 @@ class TestDocumentationParity:
         for method, expected_params in methods_with_params.items():
             # Find the method section
             method_pattern = rf"^###\s+`{method}\("
-            assert re.search(
-                method_pattern, content, re.MULTILINE
-            ), f"Method {method} not found in documentation"
+            assert re.search(method_pattern, content, re.MULTILINE), f"Method {method} not found in documentation"
 
             # Check for parameter table after the method heading
             for param in expected_params:
@@ -661,4 +627,3 @@ class TestDocumentationParity:
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
-

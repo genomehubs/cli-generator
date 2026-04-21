@@ -297,8 +297,11 @@ def parse_paginated_json(raw: str) -> str:
     """
     ...
 
-def parse_msearch_json(raw: str) -> str:
-    """Parse a raw ``/msearch`` POST response into per-query flat record lists.
+def parse_batch_json(raw: str) -> str:
+    """Parse a raw batch search (``/msearch``) response into per-query flat record lists.
+
+    The genomehubs ``/msearch`` endpoint accepts multiple queries in a single POST
+    and returns results grouped by query.  This function parses that envelope.
 
     Returns a JSON object:
 
@@ -321,5 +324,34 @@ def parse_msearch_json(raw: str) -> str:
     Returns:
         JSON object string with ``results`` (array of per-query objects each
         containing ``records``, ``total``, and ``error``) and ``totalHits``.
+    """
+    ...
+
+def validate_query_json(
+    query_yaml: str,
+    field_metadata_json: str,
+    validation_config_json: str,
+    synonyms_json: str,
+) -> str:
+    """Validate a query against field metadata and site configuration.
+
+    Accepts YAML for the query and JSON for the field metadata, validation
+    config, and synonym map.  Returns a JSON array of error strings — an empty
+    array (``"[]"``) means the query is valid.
+
+    Args:
+        query_yaml: YAML-serialised ``SearchQuery``.
+        field_metadata_json: JSON object mapping field names to metadata
+            (same shape as the API ``resultFields`` response).  Pass ``"{}"``
+            when no metadata is available.
+        validation_config_json: JSON-serialised ``ValidationConfig`` (prefix
+            rules, allowed name classes, etc.).  Pass ``"{}"`` for defaults.
+        synonyms_json: JSON object mapping synonym names to canonical field
+            names.  Pass ``"{}"`` for no synonym expansion.
+
+    Returns:
+        JSON array of error strings, e.g. ``"[]"`` for a valid query or
+        ``'["unknown field: foo"]'`` for an invalid one.  Returns
+        ``'["error: ..."]'`` if parsing fails.
     """
     ...

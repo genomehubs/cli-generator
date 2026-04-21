@@ -8,26 +8,20 @@
 #   SITE          Site name to generate (default: goat)
 #
 # Options:
-#   --rebuild-wasm   Rebuild crates/genomehubs-query/pkg/ via wasm-pack before
-#                    generating. Required whenever a new #[wasm_bindgen] function
-#                    is added to crates/genomehubs-query/src/lib.rs. The bundled
-#                    pkg/ is committed to the repo; forgetting to rebuild it means
-#                    generated JS projects will see "is not a function" errors at
-#                    runtime for any newly-added WASM export.
-#   --browser        Build dual WASM targets: --target web (browsers) and
-#                    --target nodejs (Node.js). Generates pkg-web/ and pkg-nodejs/
-#                    in the JavaScript SDK directory for universal browser+Node
-#                    support.
-#   --python         After generating, run maturin develop + Python smoke-test.
-#   --output DIR     Output directory (default: /tmp/<site>-cli)
-#   -h, --help       Show this help.
+#   --no-rebuild-wasm  Skip rebuilding crates/genomehubs-query/pkg/ (default: rebuild).
+#   --no-browser       Skip building the browser (pkg-web) WASM target (default: build).
+#   --python           After generating, run maturin develop + Python smoke-test.
+#   --output DIR       Output directory (default: /tmp/<site>-cli)
+#   -h, --help         Show this help.
+#
+# By default both WASM targets (pkg-nodejs and pkg-web) are rebuilt on every run.
+# Use --no-rebuild-wasm to skip the rebuild when only template changes were made.
 #
 # Examples:
-#   bash scripts/dev_site.sh                          # generate goat to /tmp/goat-cli
-#   bash scripts/dev_site.sh --rebuild-wasm           # rebuild WASM first, then generate
-#   bash scripts/dev_site.sh --rebuild-wasm --browser # rebuild dual targets for browsers
-#   bash scripts/dev_site.sh --rebuild-wasm --python  # also run Python smoke-test
-#   bash scripts/dev_site.sh boat                     # generate boat instead
+#   bash scripts/dev_site.sh                              # generate goat, rebuild WASM
+#   bash scripts/dev_site.sh --no-rebuild-wasm            # skip WASM rebuild
+#   bash scripts/dev_site.sh --python                     # also run Python smoke-test
+#   bash scripts/dev_site.sh boat                         # generate boat instead
 #   bash scripts/dev_site.sh --output /tmp/my-goat goat
 
 set -euo pipefail
@@ -36,8 +30,8 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 
 SITE="goat"
-REBUILD_WASM=0
-BUILD_BROWSER=0
+REBUILD_WASM=1
+BUILD_BROWSER=1
 RUN_PYTHON=0
 OUTPUT_DIR=""
 
@@ -45,10 +39,12 @@ OUTPUT_DIR=""
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --rebuild-wasm) REBUILD_WASM=1; shift ;;
-        --browser)      BUILD_BROWSER=1; shift ;;
-        --python)       RUN_PYTHON=1;   shift ;;
-        --output)       OUTPUT_DIR="$2"; shift 2 ;;
+        --no-rebuild-wasm) REBUILD_WASM=0; shift ;;
+        --no-browser)      BUILD_BROWSER=0; shift ;;
+        --rebuild-wasm)    REBUILD_WASM=1; shift ;;  # kept for back-compat
+        --browser)         BUILD_BROWSER=1; shift ;; # kept for back-compat
+        --python)          RUN_PYTHON=1;   shift ;;
+        --output)          OUTPUT_DIR="$2"; shift 2 ;;
         -h|--help)
             sed -n '/^# Usage:/,/^[^#]/p' "$0" | grep '^#' | sed 's/^# \?//'
             exit 0

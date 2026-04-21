@@ -1,0 +1,3624 @@
+{
+  "status": {
+    "hits": 746,
+    "success": true,
+    "took": 10,
+    "size": 15,
+    "offset": 0
+  },
+  "results": [
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-976298",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "scientific_name": "Primates sp. BOLD:AAA0001",
+            "taxon_id": "976298",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 1,
+            "scientific_name": "unclassified Primates",
+            "taxon_id": "57118",
+            "taxon_rank": "no rank"
+          },
+          {
+            "node_depth": 2,
+            "scientific_name": "Primates",
+            "taxon_id": "9443",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 3,
+            "scientific_name": "Euarchontoglires",
+            "taxon_id": "314146",
+            "taxon_rank": "superorder"
+          },
+          {
+            "node_depth": 4,
+            "scientific_name": "Boreoeutheria",
+            "taxon_id": "1437010",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 5,
+            "scientific_name": "Eutheria",
+            "taxon_id": "9347",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 6,
+            "scientific_name": "Theria",
+            "taxon_id": "32525",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 7,
+            "scientific_name": "Mammalia",
+            "taxon_id": "40674",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 8,
+            "scientific_name": "Amniota",
+            "taxon_id": "32524",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 9,
+            "scientific_name": "Tetrapoda",
+            "taxon_id": "32523",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "scientific_name": "Dipnotetrapodomorpha",
+            "taxon_id": "1338369",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "scientific_name": "Sarcopterygii",
+            "taxon_id": "8287",
+            "taxon_rank": "superclass"
+          },
+          {
+            "node_depth": 12,
+            "scientific_name": "Euteleostomi",
+            "taxon_id": "117571",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 13,
+            "scientific_name": "Teleostomi",
+            "taxon_id": "117570",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 14,
+            "scientific_name": "Gnathostomata",
+            "taxon_id": "7776",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 15,
+            "scientific_name": "Vertebrata",
+            "taxon_id": "7742",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 16,
+            "scientific_name": "Craniata",
+            "taxon_id": "89593",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 17,
+            "scientific_name": "Chordata",
+            "taxon_id": "7711",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 18,
+            "scientific_name": "Deuterostomia",
+            "taxon_id": "33511",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 19,
+            "scientific_name": "Bilateria",
+            "taxon_id": "33213",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 20,
+            "scientific_name": "Eumetazoa",
+            "taxon_id": "6072",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 21,
+            "scientific_name": "Metazoa",
+            "taxon_id": "33208",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 22,
+            "scientific_name": "Opisthokonta",
+            "taxon_id": "33154",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 23,
+            "scientific_name": "Eukaryota",
+            "taxon_id": "2759",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 24,
+            "scientific_name": "cellular organisms",
+            "taxon_id": "131567",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 25,
+            "scientific_name": "root",
+            "taxon_id": "1",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "57118",
+        "scientific_name": "Primates sp. BOLD:AAA0001",
+        "taxon_id": "976298",
+        "taxon_names": [
+          {
+            "class": "scientific name",
+            "name": "Primates sp. BOLD:AAA0001",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "xref",
+            "name": "ncbi:976298",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          }
+        ],
+        "taxon_rank": "species",
+        "fields": {
+          "genome_size": {
+            "aggregation_source": [
+              "ancestor"
+            ],
+            "min": 2210280000,
+            "value": 3885181406,
+            "aggregation_method": "median",
+            "median": 3885181406.25,
+            "count": 2,
+            "aggregation_rank": "order",
+            "max": 5144280000,
+            "aggregation_taxon_id": "9443"
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-976299",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "scientific_name": "Primates sp. BOLD:AAC9009",
+            "taxon_id": "976299",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 1,
+            "scientific_name": "unclassified Primates",
+            "taxon_id": "57118",
+            "taxon_rank": "no rank"
+          },
+          {
+            "node_depth": 2,
+            "scientific_name": "Primates",
+            "taxon_id": "9443",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 3,
+            "scientific_name": "Euarchontoglires",
+            "taxon_id": "314146",
+            "taxon_rank": "superorder"
+          },
+          {
+            "node_depth": 4,
+            "scientific_name": "Boreoeutheria",
+            "taxon_id": "1437010",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 5,
+            "scientific_name": "Eutheria",
+            "taxon_id": "9347",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 6,
+            "scientific_name": "Theria",
+            "taxon_id": "32525",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 7,
+            "scientific_name": "Mammalia",
+            "taxon_id": "40674",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 8,
+            "scientific_name": "Amniota",
+            "taxon_id": "32524",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 9,
+            "scientific_name": "Tetrapoda",
+            "taxon_id": "32523",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "scientific_name": "Dipnotetrapodomorpha",
+            "taxon_id": "1338369",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "scientific_name": "Sarcopterygii",
+            "taxon_id": "8287",
+            "taxon_rank": "superclass"
+          },
+          {
+            "node_depth": 12,
+            "scientific_name": "Euteleostomi",
+            "taxon_id": "117571",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 13,
+            "scientific_name": "Teleostomi",
+            "taxon_id": "117570",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 14,
+            "scientific_name": "Gnathostomata",
+            "taxon_id": "7776",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 15,
+            "scientific_name": "Vertebrata",
+            "taxon_id": "7742",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 16,
+            "scientific_name": "Craniata",
+            "taxon_id": "89593",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 17,
+            "scientific_name": "Chordata",
+            "taxon_id": "7711",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 18,
+            "scientific_name": "Deuterostomia",
+            "taxon_id": "33511",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 19,
+            "scientific_name": "Bilateria",
+            "taxon_id": "33213",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 20,
+            "scientific_name": "Eumetazoa",
+            "taxon_id": "6072",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 21,
+            "scientific_name": "Metazoa",
+            "taxon_id": "33208",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 22,
+            "scientific_name": "Opisthokonta",
+            "taxon_id": "33154",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 23,
+            "scientific_name": "Eukaryota",
+            "taxon_id": "2759",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 24,
+            "scientific_name": "cellular organisms",
+            "taxon_id": "131567",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 25,
+            "scientific_name": "root",
+            "taxon_id": "1",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "57118",
+        "scientific_name": "Primates sp. BOLD:AAC9009",
+        "taxon_id": "976299",
+        "taxon_names": [
+          {
+            "class": "scientific name",
+            "name": "Primates sp. BOLD:AAC9009",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "xref",
+            "name": "ncbi:976299",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          }
+        ],
+        "taxon_rank": "species",
+        "fields": {
+          "genome_size": {
+            "aggregation_source": [
+              "ancestor"
+            ],
+            "min": 2210280000,
+            "value": 3885181406,
+            "aggregation_method": "median",
+            "median": 3885181406.25,
+            "count": 2,
+            "aggregation_rank": "order",
+            "max": 5144280000,
+            "aggregation_taxon_id": "9443"
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-976300",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "scientific_name": "Primates sp. BOLD:AAE4744",
+            "taxon_id": "976300",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 1,
+            "scientific_name": "unclassified Primates",
+            "taxon_id": "57118",
+            "taxon_rank": "no rank"
+          },
+          {
+            "node_depth": 2,
+            "scientific_name": "Primates",
+            "taxon_id": "9443",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 3,
+            "scientific_name": "Euarchontoglires",
+            "taxon_id": "314146",
+            "taxon_rank": "superorder"
+          },
+          {
+            "node_depth": 4,
+            "scientific_name": "Boreoeutheria",
+            "taxon_id": "1437010",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 5,
+            "scientific_name": "Eutheria",
+            "taxon_id": "9347",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 6,
+            "scientific_name": "Theria",
+            "taxon_id": "32525",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 7,
+            "scientific_name": "Mammalia",
+            "taxon_id": "40674",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 8,
+            "scientific_name": "Amniota",
+            "taxon_id": "32524",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 9,
+            "scientific_name": "Tetrapoda",
+            "taxon_id": "32523",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "scientific_name": "Dipnotetrapodomorpha",
+            "taxon_id": "1338369",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "scientific_name": "Sarcopterygii",
+            "taxon_id": "8287",
+            "taxon_rank": "superclass"
+          },
+          {
+            "node_depth": 12,
+            "scientific_name": "Euteleostomi",
+            "taxon_id": "117571",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 13,
+            "scientific_name": "Teleostomi",
+            "taxon_id": "117570",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 14,
+            "scientific_name": "Gnathostomata",
+            "taxon_id": "7776",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 15,
+            "scientific_name": "Vertebrata",
+            "taxon_id": "7742",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 16,
+            "scientific_name": "Craniata",
+            "taxon_id": "89593",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 17,
+            "scientific_name": "Chordata",
+            "taxon_id": "7711",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 18,
+            "scientific_name": "Deuterostomia",
+            "taxon_id": "33511",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 19,
+            "scientific_name": "Bilateria",
+            "taxon_id": "33213",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 20,
+            "scientific_name": "Eumetazoa",
+            "taxon_id": "6072",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 21,
+            "scientific_name": "Metazoa",
+            "taxon_id": "33208",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 22,
+            "scientific_name": "Opisthokonta",
+            "taxon_id": "33154",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 23,
+            "scientific_name": "Eukaryota",
+            "taxon_id": "2759",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 24,
+            "scientific_name": "cellular organisms",
+            "taxon_id": "131567",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 25,
+            "scientific_name": "root",
+            "taxon_id": "1",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "57118",
+        "scientific_name": "Primates sp. BOLD:AAE4744",
+        "taxon_id": "976300",
+        "taxon_names": [
+          {
+            "class": "scientific name",
+            "name": "Primates sp. BOLD:AAE4744",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "xref",
+            "name": "ncbi:976300",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          }
+        ],
+        "taxon_rank": "species",
+        "fields": {
+          "genome_size": {
+            "aggregation_source": [
+              "ancestor"
+            ],
+            "min": 2210280000,
+            "value": 3885181406,
+            "aggregation_method": "median",
+            "median": 3885181406.25,
+            "count": 2,
+            "aggregation_rank": "order",
+            "max": 5144280000,
+            "aggregation_taxon_id": "9443"
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-976301",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "scientific_name": "Primates sp. BOLD:AAJ7304",
+            "taxon_id": "976301",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 1,
+            "scientific_name": "unclassified Primates",
+            "taxon_id": "57118",
+            "taxon_rank": "no rank"
+          },
+          {
+            "node_depth": 2,
+            "scientific_name": "Primates",
+            "taxon_id": "9443",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 3,
+            "scientific_name": "Euarchontoglires",
+            "taxon_id": "314146",
+            "taxon_rank": "superorder"
+          },
+          {
+            "node_depth": 4,
+            "scientific_name": "Boreoeutheria",
+            "taxon_id": "1437010",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 5,
+            "scientific_name": "Eutheria",
+            "taxon_id": "9347",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 6,
+            "scientific_name": "Theria",
+            "taxon_id": "32525",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 7,
+            "scientific_name": "Mammalia",
+            "taxon_id": "40674",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 8,
+            "scientific_name": "Amniota",
+            "taxon_id": "32524",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 9,
+            "scientific_name": "Tetrapoda",
+            "taxon_id": "32523",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "scientific_name": "Dipnotetrapodomorpha",
+            "taxon_id": "1338369",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "scientific_name": "Sarcopterygii",
+            "taxon_id": "8287",
+            "taxon_rank": "superclass"
+          },
+          {
+            "node_depth": 12,
+            "scientific_name": "Euteleostomi",
+            "taxon_id": "117571",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 13,
+            "scientific_name": "Teleostomi",
+            "taxon_id": "117570",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 14,
+            "scientific_name": "Gnathostomata",
+            "taxon_id": "7776",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 15,
+            "scientific_name": "Vertebrata",
+            "taxon_id": "7742",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 16,
+            "scientific_name": "Craniata",
+            "taxon_id": "89593",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 17,
+            "scientific_name": "Chordata",
+            "taxon_id": "7711",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 18,
+            "scientific_name": "Deuterostomia",
+            "taxon_id": "33511",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 19,
+            "scientific_name": "Bilateria",
+            "taxon_id": "33213",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 20,
+            "scientific_name": "Eumetazoa",
+            "taxon_id": "6072",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 21,
+            "scientific_name": "Metazoa",
+            "taxon_id": "33208",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 22,
+            "scientific_name": "Opisthokonta",
+            "taxon_id": "33154",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 23,
+            "scientific_name": "Eukaryota",
+            "taxon_id": "2759",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 24,
+            "scientific_name": "cellular organisms",
+            "taxon_id": "131567",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 25,
+            "scientific_name": "root",
+            "taxon_id": "1",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "57118",
+        "scientific_name": "Primates sp. BOLD:AAJ7304",
+        "taxon_id": "976301",
+        "taxon_names": [
+          {
+            "class": "scientific name",
+            "name": "Primates sp. BOLD:AAJ7304",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "xref",
+            "name": "ncbi:976301",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          }
+        ],
+        "taxon_rank": "species",
+        "fields": {
+          "genome_size": {
+            "aggregation_source": [
+              "ancestor"
+            ],
+            "min": 2210280000,
+            "value": 3885181406,
+            "aggregation_method": "median",
+            "median": 3885181406.25,
+            "count": 2,
+            "aggregation_rank": "order",
+            "max": 5144280000,
+            "aggregation_taxon_id": "9443"
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-976302",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "scientific_name": "Primates sp. BOLD:AAO0053",
+            "taxon_id": "976302",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 1,
+            "scientific_name": "unclassified Primates",
+            "taxon_id": "57118",
+            "taxon_rank": "no rank"
+          },
+          {
+            "node_depth": 2,
+            "scientific_name": "Primates",
+            "taxon_id": "9443",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 3,
+            "scientific_name": "Euarchontoglires",
+            "taxon_id": "314146",
+            "taxon_rank": "superorder"
+          },
+          {
+            "node_depth": 4,
+            "scientific_name": "Boreoeutheria",
+            "taxon_id": "1437010",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 5,
+            "scientific_name": "Eutheria",
+            "taxon_id": "9347",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 6,
+            "scientific_name": "Theria",
+            "taxon_id": "32525",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 7,
+            "scientific_name": "Mammalia",
+            "taxon_id": "40674",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 8,
+            "scientific_name": "Amniota",
+            "taxon_id": "32524",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 9,
+            "scientific_name": "Tetrapoda",
+            "taxon_id": "32523",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "scientific_name": "Dipnotetrapodomorpha",
+            "taxon_id": "1338369",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "scientific_name": "Sarcopterygii",
+            "taxon_id": "8287",
+            "taxon_rank": "superclass"
+          },
+          {
+            "node_depth": 12,
+            "scientific_name": "Euteleostomi",
+            "taxon_id": "117571",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 13,
+            "scientific_name": "Teleostomi",
+            "taxon_id": "117570",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 14,
+            "scientific_name": "Gnathostomata",
+            "taxon_id": "7776",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 15,
+            "scientific_name": "Vertebrata",
+            "taxon_id": "7742",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 16,
+            "scientific_name": "Craniata",
+            "taxon_id": "89593",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 17,
+            "scientific_name": "Chordata",
+            "taxon_id": "7711",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 18,
+            "scientific_name": "Deuterostomia",
+            "taxon_id": "33511",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 19,
+            "scientific_name": "Bilateria",
+            "taxon_id": "33213",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 20,
+            "scientific_name": "Eumetazoa",
+            "taxon_id": "6072",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 21,
+            "scientific_name": "Metazoa",
+            "taxon_id": "33208",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 22,
+            "scientific_name": "Opisthokonta",
+            "taxon_id": "33154",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 23,
+            "scientific_name": "Eukaryota",
+            "taxon_id": "2759",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 24,
+            "scientific_name": "cellular organisms",
+            "taxon_id": "131567",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 25,
+            "scientific_name": "root",
+            "taxon_id": "1",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "57118",
+        "scientific_name": "Primates sp. BOLD:AAO0053",
+        "taxon_id": "976302",
+        "taxon_names": [
+          {
+            "class": "scientific name",
+            "name": "Primates sp. BOLD:AAO0053",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "xref",
+            "name": "ncbi:976302",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          }
+        ],
+        "taxon_rank": "species",
+        "fields": {
+          "genome_size": {
+            "aggregation_source": [
+              "ancestor"
+            ],
+            "min": 2210280000,
+            "value": 3885181406,
+            "aggregation_method": "median",
+            "median": 3885181406.25,
+            "count": 2,
+            "aggregation_rank": "order",
+            "max": 5144280000,
+            "aggregation_taxon_id": "9443"
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-1068292",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "scientific_name": "Primates sp. BOLD:AAC7735",
+            "taxon_id": "1068292",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 1,
+            "scientific_name": "unclassified Primates",
+            "taxon_id": "57118",
+            "taxon_rank": "no rank"
+          },
+          {
+            "node_depth": 2,
+            "scientific_name": "Primates",
+            "taxon_id": "9443",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 3,
+            "scientific_name": "Euarchontoglires",
+            "taxon_id": "314146",
+            "taxon_rank": "superorder"
+          },
+          {
+            "node_depth": 4,
+            "scientific_name": "Boreoeutheria",
+            "taxon_id": "1437010",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 5,
+            "scientific_name": "Eutheria",
+            "taxon_id": "9347",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 6,
+            "scientific_name": "Theria",
+            "taxon_id": "32525",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 7,
+            "scientific_name": "Mammalia",
+            "taxon_id": "40674",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 8,
+            "scientific_name": "Amniota",
+            "taxon_id": "32524",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 9,
+            "scientific_name": "Tetrapoda",
+            "taxon_id": "32523",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "scientific_name": "Dipnotetrapodomorpha",
+            "taxon_id": "1338369",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "scientific_name": "Sarcopterygii",
+            "taxon_id": "8287",
+            "taxon_rank": "superclass"
+          },
+          {
+            "node_depth": 12,
+            "scientific_name": "Euteleostomi",
+            "taxon_id": "117571",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 13,
+            "scientific_name": "Teleostomi",
+            "taxon_id": "117570",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 14,
+            "scientific_name": "Gnathostomata",
+            "taxon_id": "7776",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 15,
+            "scientific_name": "Vertebrata",
+            "taxon_id": "7742",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 16,
+            "scientific_name": "Craniata",
+            "taxon_id": "89593",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 17,
+            "scientific_name": "Chordata",
+            "taxon_id": "7711",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 18,
+            "scientific_name": "Deuterostomia",
+            "taxon_id": "33511",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 19,
+            "scientific_name": "Bilateria",
+            "taxon_id": "33213",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 20,
+            "scientific_name": "Eumetazoa",
+            "taxon_id": "6072",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 21,
+            "scientific_name": "Metazoa",
+            "taxon_id": "33208",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 22,
+            "scientific_name": "Opisthokonta",
+            "taxon_id": "33154",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 23,
+            "scientific_name": "Eukaryota",
+            "taxon_id": "2759",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 24,
+            "scientific_name": "cellular organisms",
+            "taxon_id": "131567",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 25,
+            "scientific_name": "root",
+            "taxon_id": "1",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "57118",
+        "scientific_name": "Primates sp. BOLD:AAC7735",
+        "taxon_id": "1068292",
+        "taxon_names": [
+          {
+            "class": "scientific name",
+            "name": "Primates sp. BOLD:AAC7735",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "xref",
+            "name": "ncbi:1068292",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          }
+        ],
+        "taxon_rank": "species",
+        "fields": {
+          "genome_size": {
+            "aggregation_source": [
+              "ancestor"
+            ],
+            "min": 2210280000,
+            "value": 3885181406,
+            "aggregation_method": "median",
+            "median": 3885181406.25,
+            "count": 2,
+            "aggregation_rank": "order",
+            "max": 5144280000,
+            "aggregation_taxon_id": "9443"
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-1068293",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "scientific_name": "Primates sp. BOLD:AAD0215",
+            "taxon_id": "1068293",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 1,
+            "scientific_name": "unclassified Primates",
+            "taxon_id": "57118",
+            "taxon_rank": "no rank"
+          },
+          {
+            "node_depth": 2,
+            "scientific_name": "Primates",
+            "taxon_id": "9443",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 3,
+            "scientific_name": "Euarchontoglires",
+            "taxon_id": "314146",
+            "taxon_rank": "superorder"
+          },
+          {
+            "node_depth": 4,
+            "scientific_name": "Boreoeutheria",
+            "taxon_id": "1437010",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 5,
+            "scientific_name": "Eutheria",
+            "taxon_id": "9347",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 6,
+            "scientific_name": "Theria",
+            "taxon_id": "32525",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 7,
+            "scientific_name": "Mammalia",
+            "taxon_id": "40674",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 8,
+            "scientific_name": "Amniota",
+            "taxon_id": "32524",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 9,
+            "scientific_name": "Tetrapoda",
+            "taxon_id": "32523",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "scientific_name": "Dipnotetrapodomorpha",
+            "taxon_id": "1338369",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "scientific_name": "Sarcopterygii",
+            "taxon_id": "8287",
+            "taxon_rank": "superclass"
+          },
+          {
+            "node_depth": 12,
+            "scientific_name": "Euteleostomi",
+            "taxon_id": "117571",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 13,
+            "scientific_name": "Teleostomi",
+            "taxon_id": "117570",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 14,
+            "scientific_name": "Gnathostomata",
+            "taxon_id": "7776",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 15,
+            "scientific_name": "Vertebrata",
+            "taxon_id": "7742",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 16,
+            "scientific_name": "Craniata",
+            "taxon_id": "89593",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 17,
+            "scientific_name": "Chordata",
+            "taxon_id": "7711",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 18,
+            "scientific_name": "Deuterostomia",
+            "taxon_id": "33511",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 19,
+            "scientific_name": "Bilateria",
+            "taxon_id": "33213",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 20,
+            "scientific_name": "Eumetazoa",
+            "taxon_id": "6072",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 21,
+            "scientific_name": "Metazoa",
+            "taxon_id": "33208",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 22,
+            "scientific_name": "Opisthokonta",
+            "taxon_id": "33154",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 23,
+            "scientific_name": "Eukaryota",
+            "taxon_id": "2759",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 24,
+            "scientific_name": "cellular organisms",
+            "taxon_id": "131567",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 25,
+            "scientific_name": "root",
+            "taxon_id": "1",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "57118",
+        "scientific_name": "Primates sp. BOLD:AAD0215",
+        "taxon_id": "1068293",
+        "taxon_names": [
+          {
+            "class": "scientific name",
+            "name": "Primates sp. BOLD:AAD0215",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "xref",
+            "name": "ncbi:1068293",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          }
+        ],
+        "taxon_rank": "species",
+        "fields": {
+          "genome_size": {
+            "aggregation_source": [
+              "ancestor"
+            ],
+            "min": 2210280000,
+            "value": 3885181406,
+            "aggregation_method": "median",
+            "median": 3885181406.25,
+            "count": 2,
+            "aggregation_rank": "order",
+            "max": 5144280000,
+            "aggregation_taxon_id": "9443"
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-1068294",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "scientific_name": "Primates sp. BOLD:AAF0367",
+            "taxon_id": "1068294",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 1,
+            "scientific_name": "unclassified Primates",
+            "taxon_id": "57118",
+            "taxon_rank": "no rank"
+          },
+          {
+            "node_depth": 2,
+            "scientific_name": "Primates",
+            "taxon_id": "9443",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 3,
+            "scientific_name": "Euarchontoglires",
+            "taxon_id": "314146",
+            "taxon_rank": "superorder"
+          },
+          {
+            "node_depth": 4,
+            "scientific_name": "Boreoeutheria",
+            "taxon_id": "1437010",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 5,
+            "scientific_name": "Eutheria",
+            "taxon_id": "9347",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 6,
+            "scientific_name": "Theria",
+            "taxon_id": "32525",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 7,
+            "scientific_name": "Mammalia",
+            "taxon_id": "40674",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 8,
+            "scientific_name": "Amniota",
+            "taxon_id": "32524",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 9,
+            "scientific_name": "Tetrapoda",
+            "taxon_id": "32523",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "scientific_name": "Dipnotetrapodomorpha",
+            "taxon_id": "1338369",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "scientific_name": "Sarcopterygii",
+            "taxon_id": "8287",
+            "taxon_rank": "superclass"
+          },
+          {
+            "node_depth": 12,
+            "scientific_name": "Euteleostomi",
+            "taxon_id": "117571",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 13,
+            "scientific_name": "Teleostomi",
+            "taxon_id": "117570",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 14,
+            "scientific_name": "Gnathostomata",
+            "taxon_id": "7776",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 15,
+            "scientific_name": "Vertebrata",
+            "taxon_id": "7742",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 16,
+            "scientific_name": "Craniata",
+            "taxon_id": "89593",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 17,
+            "scientific_name": "Chordata",
+            "taxon_id": "7711",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 18,
+            "scientific_name": "Deuterostomia",
+            "taxon_id": "33511",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 19,
+            "scientific_name": "Bilateria",
+            "taxon_id": "33213",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 20,
+            "scientific_name": "Eumetazoa",
+            "taxon_id": "6072",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 21,
+            "scientific_name": "Metazoa",
+            "taxon_id": "33208",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 22,
+            "scientific_name": "Opisthokonta",
+            "taxon_id": "33154",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 23,
+            "scientific_name": "Eukaryota",
+            "taxon_id": "2759",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 24,
+            "scientific_name": "cellular organisms",
+            "taxon_id": "131567",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 25,
+            "scientific_name": "root",
+            "taxon_id": "1",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "57118",
+        "scientific_name": "Primates sp. BOLD:AAF0367",
+        "taxon_id": "1068294",
+        "taxon_names": [
+          {
+            "class": "scientific name",
+            "name": "Primates sp. BOLD:AAF0367",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "xref",
+            "name": "ncbi:1068294",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          }
+        ],
+        "taxon_rank": "species",
+        "fields": {
+          "genome_size": {
+            "aggregation_source": [
+              "ancestor"
+            ],
+            "min": 2210280000,
+            "value": 3885181406,
+            "aggregation_method": "median",
+            "median": 3885181406.25,
+            "count": 2,
+            "aggregation_rank": "order",
+            "max": 5144280000,
+            "aggregation_taxon_id": "9443"
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-322025",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "scientific_name": "Palaeopropithecus sp. UA4466",
+            "taxon_id": "322025",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 1,
+            "scientific_name": "unclassified Palaeopropithecus",
+            "taxon_id": "2619300",
+            "taxon_rank": "no rank"
+          },
+          {
+            "node_depth": 2,
+            "scientific_name": "Palaeopropithecus",
+            "taxon_id": "322024",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 3,
+            "scientific_name": "Palaeopropithecidae",
+            "taxon_id": "1513476",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 4,
+            "scientific_name": "Lemuriformes",
+            "taxon_id": "376915",
+            "taxon_rank": "infraorder"
+          },
+          {
+            "node_depth": 5,
+            "scientific_name": "Strepsirrhini",
+            "taxon_id": "376911",
+            "taxon_rank": "suborder"
+          },
+          {
+            "node_depth": 6,
+            "scientific_name": "Primates",
+            "taxon_id": "9443",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 7,
+            "scientific_name": "Euarchontoglires",
+            "taxon_id": "314146",
+            "taxon_rank": "superorder"
+          },
+          {
+            "node_depth": 8,
+            "scientific_name": "Boreoeutheria",
+            "taxon_id": "1437010",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 9,
+            "scientific_name": "Eutheria",
+            "taxon_id": "9347",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "scientific_name": "Theria",
+            "taxon_id": "32525",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "scientific_name": "Mammalia",
+            "taxon_id": "40674",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 12,
+            "scientific_name": "Amniota",
+            "taxon_id": "32524",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 13,
+            "scientific_name": "Tetrapoda",
+            "taxon_id": "32523",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 14,
+            "scientific_name": "Dipnotetrapodomorpha",
+            "taxon_id": "1338369",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 15,
+            "scientific_name": "Sarcopterygii",
+            "taxon_id": "8287",
+            "taxon_rank": "superclass"
+          },
+          {
+            "node_depth": 16,
+            "scientific_name": "Euteleostomi",
+            "taxon_id": "117571",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 17,
+            "scientific_name": "Teleostomi",
+            "taxon_id": "117570",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 18,
+            "scientific_name": "Gnathostomata",
+            "taxon_id": "7776",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 19,
+            "scientific_name": "Vertebrata",
+            "taxon_id": "7742",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 20,
+            "scientific_name": "Craniata",
+            "taxon_id": "89593",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 21,
+            "scientific_name": "Chordata",
+            "taxon_id": "7711",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 22,
+            "scientific_name": "Deuterostomia",
+            "taxon_id": "33511",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 23,
+            "scientific_name": "Bilateria",
+            "taxon_id": "33213",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 24,
+            "scientific_name": "Eumetazoa",
+            "taxon_id": "6072",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 25,
+            "scientific_name": "Metazoa",
+            "taxon_id": "33208",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 26,
+            "scientific_name": "Opisthokonta",
+            "taxon_id": "33154",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 27,
+            "scientific_name": "Eukaryota",
+            "taxon_id": "2759",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 28,
+            "scientific_name": "cellular organisms",
+            "taxon_id": "131567",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 29,
+            "scientific_name": "root",
+            "taxon_id": "1",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "2619300",
+        "scientific_name": "Palaeopropithecus sp. UA4466",
+        "taxon_id": "322025",
+        "taxon_names": [
+          {
+            "class": "scientific name",
+            "name": "Palaeopropithecus sp. UA4466",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "xref",
+            "name": "ncbi:322025",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          }
+        ],
+        "taxon_rank": "species",
+        "fields": {
+          "genome_size": {
+            "aggregation_source": [
+              "ancestor"
+            ],
+            "min": 2533020000,
+            "value": 3178500000,
+            "aggregation_method": "median",
+            "median": 3178500000,
+            "count": 3,
+            "aggregation_rank": "infraorder",
+            "max": 3628380000,
+            "aggregation_taxon_id": "376915"
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-322026",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "scientific_name": "Palaeopropithecus sp. UA6184",
+            "taxon_id": "322026",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 1,
+            "scientific_name": "unclassified Palaeopropithecus",
+            "taxon_id": "2619300",
+            "taxon_rank": "no rank"
+          },
+          {
+            "node_depth": 2,
+            "scientific_name": "Palaeopropithecus",
+            "taxon_id": "322024",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 3,
+            "scientific_name": "Palaeopropithecidae",
+            "taxon_id": "1513476",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 4,
+            "scientific_name": "Lemuriformes",
+            "taxon_id": "376915",
+            "taxon_rank": "infraorder"
+          },
+          {
+            "node_depth": 5,
+            "scientific_name": "Strepsirrhini",
+            "taxon_id": "376911",
+            "taxon_rank": "suborder"
+          },
+          {
+            "node_depth": 6,
+            "scientific_name": "Primates",
+            "taxon_id": "9443",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 7,
+            "scientific_name": "Euarchontoglires",
+            "taxon_id": "314146",
+            "taxon_rank": "superorder"
+          },
+          {
+            "node_depth": 8,
+            "scientific_name": "Boreoeutheria",
+            "taxon_id": "1437010",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 9,
+            "scientific_name": "Eutheria",
+            "taxon_id": "9347",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "scientific_name": "Theria",
+            "taxon_id": "32525",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "scientific_name": "Mammalia",
+            "taxon_id": "40674",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 12,
+            "scientific_name": "Amniota",
+            "taxon_id": "32524",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 13,
+            "scientific_name": "Tetrapoda",
+            "taxon_id": "32523",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 14,
+            "scientific_name": "Dipnotetrapodomorpha",
+            "taxon_id": "1338369",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 15,
+            "scientific_name": "Sarcopterygii",
+            "taxon_id": "8287",
+            "taxon_rank": "superclass"
+          },
+          {
+            "node_depth": 16,
+            "scientific_name": "Euteleostomi",
+            "taxon_id": "117571",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 17,
+            "scientific_name": "Teleostomi",
+            "taxon_id": "117570",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 18,
+            "scientific_name": "Gnathostomata",
+            "taxon_id": "7776",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 19,
+            "scientific_name": "Vertebrata",
+            "taxon_id": "7742",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 20,
+            "scientific_name": "Craniata",
+            "taxon_id": "89593",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 21,
+            "scientific_name": "Chordata",
+            "taxon_id": "7711",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 22,
+            "scientific_name": "Deuterostomia",
+            "taxon_id": "33511",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 23,
+            "scientific_name": "Bilateria",
+            "taxon_id": "33213",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 24,
+            "scientific_name": "Eumetazoa",
+            "taxon_id": "6072",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 25,
+            "scientific_name": "Metazoa",
+            "taxon_id": "33208",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 26,
+            "scientific_name": "Opisthokonta",
+            "taxon_id": "33154",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 27,
+            "scientific_name": "Eukaryota",
+            "taxon_id": "2759",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 28,
+            "scientific_name": "cellular organisms",
+            "taxon_id": "131567",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 29,
+            "scientific_name": "root",
+            "taxon_id": "1",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "2619300",
+        "scientific_name": "Palaeopropithecus sp. UA6184",
+        "taxon_id": "322026",
+        "taxon_names": [
+          {
+            "class": "scientific name",
+            "name": "Palaeopropithecus sp. UA6184",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "xref",
+            "name": "ncbi:322026",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          }
+        ],
+        "taxon_rank": "species",
+        "fields": {
+          "genome_size": {
+            "aggregation_source": [
+              "ancestor"
+            ],
+            "min": 2533020000,
+            "value": 3178500000,
+            "aggregation_method": "median",
+            "median": 3178500000,
+            "count": 3,
+            "aggregation_rank": "infraorder",
+            "max": 3628380000,
+            "aggregation_taxon_id": "376915"
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-322027",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "scientific_name": "Palaeopropithecus sp. KPK-2005",
+            "taxon_id": "322027",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 1,
+            "scientific_name": "unclassified Palaeopropithecus",
+            "taxon_id": "2619300",
+            "taxon_rank": "no rank"
+          },
+          {
+            "node_depth": 2,
+            "scientific_name": "Palaeopropithecus",
+            "taxon_id": "322024",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 3,
+            "scientific_name": "Palaeopropithecidae",
+            "taxon_id": "1513476",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 4,
+            "scientific_name": "Lemuriformes",
+            "taxon_id": "376915",
+            "taxon_rank": "infraorder"
+          },
+          {
+            "node_depth": 5,
+            "scientific_name": "Strepsirrhini",
+            "taxon_id": "376911",
+            "taxon_rank": "suborder"
+          },
+          {
+            "node_depth": 6,
+            "scientific_name": "Primates",
+            "taxon_id": "9443",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 7,
+            "scientific_name": "Euarchontoglires",
+            "taxon_id": "314146",
+            "taxon_rank": "superorder"
+          },
+          {
+            "node_depth": 8,
+            "scientific_name": "Boreoeutheria",
+            "taxon_id": "1437010",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 9,
+            "scientific_name": "Eutheria",
+            "taxon_id": "9347",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "scientific_name": "Theria",
+            "taxon_id": "32525",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "scientific_name": "Mammalia",
+            "taxon_id": "40674",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 12,
+            "scientific_name": "Amniota",
+            "taxon_id": "32524",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 13,
+            "scientific_name": "Tetrapoda",
+            "taxon_id": "32523",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 14,
+            "scientific_name": "Dipnotetrapodomorpha",
+            "taxon_id": "1338369",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 15,
+            "scientific_name": "Sarcopterygii",
+            "taxon_id": "8287",
+            "taxon_rank": "superclass"
+          },
+          {
+            "node_depth": 16,
+            "scientific_name": "Euteleostomi",
+            "taxon_id": "117571",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 17,
+            "scientific_name": "Teleostomi",
+            "taxon_id": "117570",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 18,
+            "scientific_name": "Gnathostomata",
+            "taxon_id": "7776",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 19,
+            "scientific_name": "Vertebrata",
+            "taxon_id": "7742",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 20,
+            "scientific_name": "Craniata",
+            "taxon_id": "89593",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 21,
+            "scientific_name": "Chordata",
+            "taxon_id": "7711",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 22,
+            "scientific_name": "Deuterostomia",
+            "taxon_id": "33511",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 23,
+            "scientific_name": "Bilateria",
+            "taxon_id": "33213",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 24,
+            "scientific_name": "Eumetazoa",
+            "taxon_id": "6072",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 25,
+            "scientific_name": "Metazoa",
+            "taxon_id": "33208",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 26,
+            "scientific_name": "Opisthokonta",
+            "taxon_id": "33154",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 27,
+            "scientific_name": "Eukaryota",
+            "taxon_id": "2759",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 28,
+            "scientific_name": "cellular organisms",
+            "taxon_id": "131567",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 29,
+            "scientific_name": "root",
+            "taxon_id": "1",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "2619300",
+        "scientific_name": "Palaeopropithecus sp. KPK-2005",
+        "taxon_id": "322027",
+        "taxon_names": [
+          {
+            "class": "scientific name",
+            "name": "Palaeopropithecus sp. KPK-2005",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "xref",
+            "name": "ncbi:322027",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          }
+        ],
+        "taxon_rank": "species",
+        "fields": {
+          "genome_size": {
+            "aggregation_source": [
+              "ancestor"
+            ],
+            "min": 2533020000,
+            "value": 3178500000,
+            "aggregation_method": "median",
+            "median": 3178500000,
+            "count": 3,
+            "aggregation_rank": "infraorder",
+            "max": 3628380000,
+            "aggregation_taxon_id": "376915"
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-1597978",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "taxon_id": "1597978",
+            "scientific_name": "Palaeopropithecus maximus",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 1,
+            "taxon_id": "322024",
+            "scientific_name": "Palaeopropithecus",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 2,
+            "taxon_id": "1513476",
+            "scientific_name": "Palaeopropithecidae",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 3,
+            "taxon_id": "376915",
+            "scientific_name": "Lemuriformes",
+            "taxon_rank": "infraorder"
+          },
+          {
+            "node_depth": 4,
+            "taxon_id": "376911",
+            "scientific_name": "Strepsirrhini",
+            "taxon_rank": "suborder"
+          },
+          {
+            "node_depth": 5,
+            "taxon_id": "9443",
+            "scientific_name": "Primates",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 6,
+            "taxon_id": "314146",
+            "scientific_name": "Euarchontoglires",
+            "taxon_rank": "superorder"
+          },
+          {
+            "node_depth": 7,
+            "taxon_id": "1437010",
+            "scientific_name": "Boreoeutheria",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 8,
+            "taxon_id": "9347",
+            "scientific_name": "Eutheria",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 9,
+            "taxon_id": "32525",
+            "scientific_name": "Theria",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "taxon_id": "40674",
+            "scientific_name": "Mammalia",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 11,
+            "taxon_id": "32524",
+            "scientific_name": "Amniota",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 12,
+            "taxon_id": "32523",
+            "scientific_name": "Tetrapoda",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 13,
+            "taxon_id": "1338369",
+            "scientific_name": "Dipnotetrapodomorpha",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 14,
+            "taxon_id": "8287",
+            "scientific_name": "Sarcopterygii",
+            "taxon_rank": "superclass"
+          },
+          {
+            "node_depth": 15,
+            "taxon_id": "117571",
+            "scientific_name": "Euteleostomi",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 16,
+            "taxon_id": "117570",
+            "scientific_name": "Teleostomi",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 17,
+            "taxon_id": "7776",
+            "scientific_name": "Gnathostomata",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 18,
+            "taxon_id": "7742",
+            "scientific_name": "Vertebrata",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 19,
+            "taxon_id": "89593",
+            "scientific_name": "Craniata",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 20,
+            "taxon_id": "7711",
+            "scientific_name": "Chordata",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 21,
+            "taxon_id": "33511",
+            "scientific_name": "Deuterostomia",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 22,
+            "taxon_id": "33213",
+            "scientific_name": "Bilateria",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 23,
+            "taxon_id": "6072",
+            "scientific_name": "Eumetazoa",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 24,
+            "taxon_id": "33208",
+            "scientific_name": "Metazoa",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 25,
+            "taxon_id": "33154",
+            "scientific_name": "Opisthokonta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 26,
+            "taxon_id": "2759",
+            "scientific_name": "Eukaryota",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 27,
+            "taxon_id": "131567",
+            "scientific_name": "cellular organisms",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 28,
+            "taxon_id": "1",
+            "scientific_name": "root",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "322024",
+        "scientific_name": "Palaeopropithecus maximus",
+        "taxon_id": "1597978",
+        "taxon_names": [
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "giant sloth lemur",
+            "source": "NCBI Taxonomy",
+            "class": "genbank common name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Palaeopropithecus maximus",
+            "source": "NCBI Taxonomy",
+            "class": "scientific name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": null,
+            "name": "mPalMax",
+            "source": "Tree of Life ID",
+            "class": "tolid prefix",
+            "source_url": "https://id.tol.sanger.ac.uk"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "ncbi:1597978",
+            "source": "NCBI Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          }
+        ],
+        "taxon_rank": "species",
+        "fields": {
+          "genome_size": {
+            "aggregation_source": [
+              "ancestor"
+            ],
+            "min": 2533020000,
+            "value": 3178500000,
+            "aggregation_method": "median",
+            "median": 3178500000,
+            "count": 3,
+            "aggregation_rank": "infraorder",
+            "max": 3628380000,
+            "aggregation_taxon_id": "376915"
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-1513477",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "taxon_id": "1513477",
+            "scientific_name": "Palaeopropithecus ingens",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 1,
+            "taxon_id": "322024",
+            "scientific_name": "Palaeopropithecus",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 2,
+            "taxon_id": "1513476",
+            "scientific_name": "Palaeopropithecidae",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 3,
+            "taxon_id": "376915",
+            "scientific_name": "Lemuriformes",
+            "taxon_rank": "infraorder"
+          },
+          {
+            "node_depth": 4,
+            "taxon_id": "376911",
+            "scientific_name": "Strepsirrhini",
+            "taxon_rank": "suborder"
+          },
+          {
+            "node_depth": 5,
+            "taxon_id": "9443",
+            "scientific_name": "Primates",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 6,
+            "taxon_id": "314146",
+            "scientific_name": "Euarchontoglires",
+            "taxon_rank": "superorder"
+          },
+          {
+            "node_depth": 7,
+            "taxon_id": "1437010",
+            "scientific_name": "Boreoeutheria",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 8,
+            "taxon_id": "9347",
+            "scientific_name": "Eutheria",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 9,
+            "taxon_id": "32525",
+            "scientific_name": "Theria",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "taxon_id": "40674",
+            "scientific_name": "Mammalia",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 11,
+            "taxon_id": "32524",
+            "scientific_name": "Amniota",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 12,
+            "taxon_id": "32523",
+            "scientific_name": "Tetrapoda",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 13,
+            "taxon_id": "1338369",
+            "scientific_name": "Dipnotetrapodomorpha",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 14,
+            "taxon_id": "8287",
+            "scientific_name": "Sarcopterygii",
+            "taxon_rank": "superclass"
+          },
+          {
+            "node_depth": 15,
+            "taxon_id": "117571",
+            "scientific_name": "Euteleostomi",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 16,
+            "taxon_id": "117570",
+            "scientific_name": "Teleostomi",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 17,
+            "taxon_id": "7776",
+            "scientific_name": "Gnathostomata",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 18,
+            "taxon_id": "7742",
+            "scientific_name": "Vertebrata",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 19,
+            "taxon_id": "89593",
+            "scientific_name": "Craniata",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 20,
+            "taxon_id": "7711",
+            "scientific_name": "Chordata",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 21,
+            "taxon_id": "33511",
+            "scientific_name": "Deuterostomia",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 22,
+            "taxon_id": "33213",
+            "scientific_name": "Bilateria",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 23,
+            "taxon_id": "6072",
+            "scientific_name": "Eumetazoa",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 24,
+            "taxon_id": "33208",
+            "scientific_name": "Metazoa",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 25,
+            "taxon_id": "33154",
+            "scientific_name": "Opisthokonta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 26,
+            "taxon_id": "2759",
+            "scientific_name": "Eukaryota",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 27,
+            "taxon_id": "131567",
+            "scientific_name": "cellular organisms",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 28,
+            "taxon_id": "1",
+            "scientific_name": "root",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "322024",
+        "scientific_name": "Palaeopropithecus ingens",
+        "taxon_id": "1513477",
+        "taxon_names": [
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "large sloth lemur",
+            "source": "NCBI Taxonomy",
+            "class": "genbank common name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Palaeopropithecus ingens",
+            "source": "NCBI Taxonomy",
+            "class": "scientific name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": null,
+            "name": "mPalIng",
+            "source": "Tree of Life ID",
+            "class": "tolid prefix",
+            "source_url": "https://id.tol.sanger.ac.uk"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "ncbi:1513477",
+            "source": "NCBI Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "gbif:5786534",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.gbif.org/"
+          }
+        ],
+        "taxon_rank": "species",
+        "fields": {
+          "genome_size": {
+            "aggregation_source": [
+              "ancestor"
+            ],
+            "min": 2533020000,
+            "value": 3178500000,
+            "aggregation_method": "median",
+            "median": 3178500000,
+            "count": 3,
+            "aggregation_rank": "infraorder",
+            "max": 3628380000,
+            "aggregation_taxon_id": "376915"
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-1513475",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "taxon_id": "1513475",
+            "scientific_name": "Pachylemur jullyi",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 1,
+            "taxon_id": "1513474",
+            "scientific_name": "Pachylemur",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 2,
+            "taxon_id": "9445",
+            "scientific_name": "Lemuridae",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 3,
+            "taxon_id": "376915",
+            "scientific_name": "Lemuriformes",
+            "taxon_rank": "infraorder"
+          },
+          {
+            "node_depth": 4,
+            "taxon_id": "376911",
+            "scientific_name": "Strepsirrhini",
+            "taxon_rank": "suborder"
+          },
+          {
+            "node_depth": 5,
+            "taxon_id": "9443",
+            "scientific_name": "Primates",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 6,
+            "taxon_id": "314146",
+            "scientific_name": "Euarchontoglires",
+            "taxon_rank": "superorder"
+          },
+          {
+            "node_depth": 7,
+            "taxon_id": "1437010",
+            "scientific_name": "Boreoeutheria",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 8,
+            "taxon_id": "9347",
+            "scientific_name": "Eutheria",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 9,
+            "taxon_id": "32525",
+            "scientific_name": "Theria",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "taxon_id": "40674",
+            "scientific_name": "Mammalia",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 11,
+            "taxon_id": "32524",
+            "scientific_name": "Amniota",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 12,
+            "taxon_id": "32523",
+            "scientific_name": "Tetrapoda",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 13,
+            "taxon_id": "1338369",
+            "scientific_name": "Dipnotetrapodomorpha",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 14,
+            "taxon_id": "8287",
+            "scientific_name": "Sarcopterygii",
+            "taxon_rank": "superclass"
+          },
+          {
+            "node_depth": 15,
+            "taxon_id": "117571",
+            "scientific_name": "Euteleostomi",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 16,
+            "taxon_id": "117570",
+            "scientific_name": "Teleostomi",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 17,
+            "taxon_id": "7776",
+            "scientific_name": "Gnathostomata",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 18,
+            "taxon_id": "7742",
+            "scientific_name": "Vertebrata",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 19,
+            "taxon_id": "89593",
+            "scientific_name": "Craniata",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 20,
+            "taxon_id": "7711",
+            "scientific_name": "Chordata",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 21,
+            "taxon_id": "33511",
+            "scientific_name": "Deuterostomia",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 22,
+            "taxon_id": "33213",
+            "scientific_name": "Bilateria",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 23,
+            "taxon_id": "6072",
+            "scientific_name": "Eumetazoa",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 24,
+            "taxon_id": "33208",
+            "scientific_name": "Metazoa",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 25,
+            "taxon_id": "33154",
+            "scientific_name": "Opisthokonta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 26,
+            "taxon_id": "2759",
+            "scientific_name": "Eukaryota",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 27,
+            "taxon_id": "131567",
+            "scientific_name": "cellular organisms",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 28,
+            "taxon_id": "1",
+            "scientific_name": "root",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "1513474",
+        "scientific_name": "Pachylemur jullyi",
+        "taxon_id": "1513475",
+        "taxon_names": [
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Lemur jullyi",
+            "source": "NCBI Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Pachylemur jullyi",
+            "source": "NCBI Taxonomy",
+            "class": "scientific name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Palaeochirogalus jullyi",
+            "source": "NCBI Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": null,
+            "name": "mPacJul",
+            "source": "Tree of Life ID",
+            "class": "tolid prefix",
+            "source_url": "https://id.tol.sanger.ac.uk"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "ncbi:1513475",
+            "source": "NCBI Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          }
+        ],
+        "taxon_rank": "species",
+        "fields": {
+          "genome_size": {
+            "aggregation_source": [
+              "ancestor"
+            ],
+            "min": 2533020000,
+            "value": 3193170000,
+            "aggregation_method": "median",
+            "median": 3193170000,
+            "count": 4,
+            "aggregation_rank": "family",
+            "max": 3628380000,
+            "aggregation_taxon_id": "9445"
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-1417231",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "scientific_name": "Eulemur albifrons x rufifrons",
+            "taxon_id": "1417231",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 1,
+            "scientific_name": "Eulemur",
+            "taxon_id": "13513",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 2,
+            "scientific_name": "Lemuridae",
+            "taxon_id": "9445",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 3,
+            "scientific_name": "Lemuriformes",
+            "taxon_id": "376915",
+            "taxon_rank": "infraorder"
+          },
+          {
+            "node_depth": 4,
+            "scientific_name": "Strepsirrhini",
+            "taxon_id": "376911",
+            "taxon_rank": "suborder"
+          },
+          {
+            "node_depth": 5,
+            "scientific_name": "Primates",
+            "taxon_id": "9443",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 6,
+            "scientific_name": "Euarchontoglires",
+            "taxon_id": "314146",
+            "taxon_rank": "superorder"
+          },
+          {
+            "node_depth": 7,
+            "scientific_name": "Boreoeutheria",
+            "taxon_id": "1437010",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 8,
+            "scientific_name": "Eutheria",
+            "taxon_id": "9347",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 9,
+            "scientific_name": "Theria",
+            "taxon_id": "32525",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "scientific_name": "Mammalia",
+            "taxon_id": "40674",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 11,
+            "scientific_name": "Amniota",
+            "taxon_id": "32524",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 12,
+            "scientific_name": "Tetrapoda",
+            "taxon_id": "32523",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 13,
+            "scientific_name": "Dipnotetrapodomorpha",
+            "taxon_id": "1338369",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 14,
+            "scientific_name": "Sarcopterygii",
+            "taxon_id": "8287",
+            "taxon_rank": "superclass"
+          },
+          {
+            "node_depth": 15,
+            "scientific_name": "Euteleostomi",
+            "taxon_id": "117571",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 16,
+            "scientific_name": "Teleostomi",
+            "taxon_id": "117570",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 17,
+            "scientific_name": "Gnathostomata",
+            "taxon_id": "7776",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 18,
+            "scientific_name": "Vertebrata",
+            "taxon_id": "7742",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 19,
+            "scientific_name": "Craniata",
+            "taxon_id": "89593",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 20,
+            "scientific_name": "Chordata",
+            "taxon_id": "7711",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 21,
+            "scientific_name": "Deuterostomia",
+            "taxon_id": "33511",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 22,
+            "scientific_name": "Bilateria",
+            "taxon_id": "33213",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 23,
+            "scientific_name": "Eumetazoa",
+            "taxon_id": "6072",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 24,
+            "scientific_name": "Metazoa",
+            "taxon_id": "33208",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 25,
+            "scientific_name": "Opisthokonta",
+            "taxon_id": "33154",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 26,
+            "scientific_name": "Eukaryota",
+            "taxon_id": "2759",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 27,
+            "scientific_name": "cellular organisms",
+            "taxon_id": "131567",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 28,
+            "scientific_name": "root",
+            "taxon_id": "1",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "13513",
+        "scientific_name": "Eulemur albifrons x rufifrons",
+        "taxon_id": "1417231",
+        "taxon_names": [
+          {
+            "class": "scientific name",
+            "name": "Eulemur albifrons x rufifrons",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "xref",
+            "name": "ncbi:1417231",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          }
+        ],
+        "taxon_rank": "species",
+        "fields": {
+          "genome_size": {
+            "aggregation_source": [
+              "ancestor"
+            ],
+            "min": 2533020000,
+            "value": 2909550000,
+            "aggregation_method": "median",
+            "median": 2909550000,
+            "count": 5,
+            "aggregation_rank": "genus",
+            "max": 3628380000,
+            "aggregation_taxon_id": "13513"
+          }
+        }
+      }
+    }
+  ],
+  "aggs": {
+    "fields": {
+      "doc_count": 13653,
+      "by_key": {
+        "buckets": {
+          "assembly_level": {
+            "doc_count": 248,
+            "value_list": {
+              "doc_count_error_upper_bound": 0,
+              "sum_other_doc_count": 0,
+              "buckets": [
+                {
+                  "key": "scaffold",
+                  "doc_count": 202
+                },
+                {
+                  "key": "chromosome",
+                  "doc_count": 37
+                },
+                {
+                  "key": "contig",
+                  "doc_count": 6
+                },
+                {
+                  "key": "complete genome",
+                  "doc_count": 3
+                }
+              ]
+            },
+            "value_count": {
+              "value": 248
+            }
+          },
+          "chromosome_count": {
+            "doc_count": 49,
+            "value_list": {
+              "doc_count_error_upper_bound": 0,
+              "sum_other_doc_count": 0,
+              "buckets": []
+            },
+            "value_count": {
+              "value": 49
+            }
+          },
+          "genome_size": {
+            "doc_count": 746,
+            "value_list": {
+              "doc_count_error_upper_bound": 0,
+              "sum_other_doc_count": 0,
+              "buckets": []
+            },
+            "value_count": {
+              "value": 746
+            }
+          }
+        }
+      }
+    }
+  },
+  "fields": [
+    "genome_size",
+    "chromosome_count",
+    "chromosome_count:min",
+    "chromosome_count:max",
+    "assembly_level"
+  ],
+  "query": {
+    "size": 15,
+    "from": 0,
+    "query": {
+      "bool": {
+        "must_not": [],
+        "filter": [
+          {
+            "bool": {
+              "should": [
+                {
+                  "bool": {
+                    "filter": {
+                      "nested": {
+                        "path": "attributes",
+                        "query": {
+                          "bool": {
+                            "should": [
+                              {
+                                "bool": {
+                                  "filter": [
+                                    {
+                                      "match": {
+                                        "attributes.key": "genome_size"
+                                      }
+                                    },
+                                    {
+                                      "exists": {
+                                        "field": "attributes.long_value"
+                                      }
+                                    },
+                                    {
+                                      "exists": {
+                                        "field": "attributes.aggregation_source"
+                                      }
+                                    },
+                                    {
+                                      "exists": {
+                                        "field": "attributes.aggregation_method"
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              {
+                                "bool": {
+                                  "filter": [
+                                    {
+                                      "match": {
+                                        "attributes.key": "chromosome_count"
+                                      }
+                                    },
+                                    {
+                                      "exists": {
+                                        "field": "attributes.long_value"
+                                      }
+                                    },
+                                    {
+                                      "exists": {
+                                        "field": "attributes.aggregation_source"
+                                      }
+                                    },
+                                    {
+                                      "exists": {
+                                        "field": "attributes.aggregation_method"
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              {
+                                "bool": {
+                                  "filter": [
+                                    {
+                                      "match": {
+                                        "attributes.key": "assembly_level"
+                                      }
+                                    },
+                                    {
+                                      "exists": {
+                                        "field": "attributes.keyword_value"
+                                      }
+                                    },
+                                    {
+                                      "exists": {
+                                        "field": "attributes.aggregation_source"
+                                      }
+                                    },
+                                    {
+                                      "exists": {
+                                        "field": "attributes.aggregation_method"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "bool": {
+                    "should": {
+                      "nested": {
+                        "path": "attributes",
+                        "query": {
+                          "bool": {
+                            "should": [
+                              {
+                                "bool": {
+                                  "filter": [
+                                    {
+                                      "match": {
+                                        "attributes.key": "genome_size"
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              {
+                                "bool": {
+                                  "filter": [
+                                    {
+                                      "match": {
+                                        "attributes.key": "chromosome_count"
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              {
+                                "bool": {
+                                  "filter": [
+                                    {
+                                      "match": {
+                                        "attributes.key": "assembly_level"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        "inner_hits": {
+                          "_source": false,
+                          "name": "attributes",
+                          "docvalue_fields": [
+                            "attributes.key",
+                            "attributes.is_primary_value",
+                            "attributes.count",
+                            "attributes.sp_count",
+                            "attributes.max",
+                            "attributes.min",
+                            "attributes.mean",
+                            "attributes.median",
+                            "attributes.mode",
+                            "attributes.sum",
+                            "attributes.from",
+                            "attributes.to",
+                            "attributes.range",
+                            "attributes.length",
+                            "attributes.aggregation_method",
+                            "attributes.aggregation_source",
+                            "attributes.aggregation_rank",
+                            "attributes.aggregation_taxon_id",
+                            "attributes.long_value",
+                            "attributes.min",
+                            "attributes.max",
+                            "attributes.keyword_value.raw"
+                          ],
+                          "size": 100
+                        }
+                      }
+                    }
+                  }
+                }
+              ],
+              "minimum_should_match": 2
+            }
+          },
+          {
+            "nested": {
+              "path": "attributes",
+              "query": {
+                "bool": {
+                  "filter": [
+                    {
+                      "match": {
+                        "attributes.key": "assembly_span"
+                      }
+                    },
+                    {
+                      "exists": {
+                        "field": "attributes.aggregation_source"
+                      }
+                    },
+                    {
+                      "exists": {
+                        "field": "attributes.aggregation_method"
+                      }
+                    },
+                    {
+                      "bool": {
+                        "should": {
+                          "range": {
+                            "attributes.long_value": {
+                              "gte": "1000000000"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "bool": {
+              "should": [
+                {
+                  "bool": {
+                    "should": [
+                      {
+                        "bool": {
+                          "should": [
+                            {
+                              "nested": {
+                                "path": "taxon_names",
+                                "query": {
+                                  "bool": {
+                                    "filter": [
+                                      {
+                                        "match": {
+                                          "taxon_names.name": "primates"
+                                        }
+                                      }
+                                    ]
+                                  }
+                                }
+                              }
+                            },
+                            {
+                              "match": {
+                                "taxon_id": "primates"
+                              }
+                            },
+                            {
+                              "nested": {
+                                "path": "lineage",
+                                "query": {
+                                  "bool": {
+                                    "filter": [
+                                      {
+                                        "multi_match": {
+                                          "query": "primates",
+                                          "fields": [
+                                            "lineage.taxon_id",
+                                            "lineage.scientific_name"
+                                          ]
+                                        }
+                                      }
+                                    ]
+                                  }
+                                }
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "match": {
+              "taxon_rank": "species"
+            }
+          }
+        ],
+        "should": []
+      }
+    },
+    "_source": {
+      "include": [
+        "taxon_id",
+        "scientific_name",
+        "taxon_rank",
+        "parent",
+        "taxon_names.*",
+        "lineage.*",
+        "chromosome_count:min",
+        "chromosome_count:max"
+      ],
+      "exclude": []
+    },
+    "sort": [],
+    "aggs": {
+      "fields": {
+        "nested": {
+          "path": "attributes"
+        },
+        "aggs": {
+          "by_key": {
+            "filters": {
+              "filters": {
+                "genome_size": {
+                  "term": {
+                    "attributes.key": "genome_size"
+                  }
+                },
+                "chromosome_count": {
+                  "term": {
+                    "attributes.key": "chromosome_count"
+                  }
+                },
+                "assembly_level": {
+                  "term": {
+                    "attributes.key": "assembly_level"
+                  }
+                }
+              }
+            },
+            "aggs": {
+              "value_count": {
+                "value_count": {
+                  "field": "attributes.key"
+                }
+              },
+              "value_list": {
+                "terms": {
+                  "field": "attributes.keyword_value",
+                  "size": 64
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

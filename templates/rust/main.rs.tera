@@ -63,6 +63,13 @@ enum {{ index.name | capitalize }}Commands {
         #[arg(long = "filter", num_args = 3, value_names = ["FIELD", "OP", "VALUE"])]
         filter: Vec<String>,
 
+        /// Exclude fields with estimated values: FIELD TYPE (repeatable).
+        ///
+        /// TYPE is one of: ancestral, descendant, direct, missing.
+        /// Example: --exclude genome_size ancestral --exclude c_value missing
+        #[arg(long = "exclude", num_args = 2, value_names = ["FIELD", "TYPE"])]
+        exclude: Vec<String>,
+
         /// Restrict results to a specific taxonomic rank (e.g. `species`, `genus`).
         #[arg(long)]
         rank: Option<String>,
@@ -200,7 +207,7 @@ fn run(cli: Cli) -> anyhow::Result<()> {
     match cli.command {
 {% for index in indexes %}
         Commands::{{ index.name | capitalize }} { subcommand } => match subcommand {
-            {{ index.name | capitalize }}Commands::Search { taxon, taxon_filter, query, filter, rank, sort, size, page, include_estimates, taxonomy, lineage_ranks, name_classes, url, all, max_results, file, no_query_column, suppress_divergence_warnings, describe, verbose, snippet_languages, format, flags } => {
+            {{ index.name | capitalize }}Commands::Search { taxon, taxon_filter, query, filter, exclude, rank, sort, size, page, include_estimates, taxonomy, lineage_ranks, name_classes, url, all, max_results, file, no_query_column, suppress_divergence_warnings, describe, verbose, snippet_languages, format, flags } => {
                 if flags.list_field_groups {
                     for (name, short, desc) in generated::cli_flags::{{ index.name | capitalize }}Flags::list_groups() {
                         match short {
@@ -238,6 +245,25 @@ fn run(cli: Cli) -> anyhow::Result<()> {
                     })
                     .collect();
 
+                // Parse --exclude FIELD TYPE pairs into separate exclude field lists.
+                let mut exclude_ancestral = Vec::new();
+                let mut exclude_descendant = Vec::new();
+                let mut exclude_direct = Vec::new();
+                let mut exclude_missing = Vec::new();
+                for chunk in exclude.chunks(2) {
+                    if chunk.len() < 2 {
+                        continue;
+                    }
+                    let field = chunk[0].clone();
+                    match chunk[1].as_str() {
+                        "ancestral" => exclude_ancestral.push(field),
+                        "descendant" => exclude_descendant.push(field),
+                        "direct" => exclude_direct.push(field),
+                        "missing" => exclude_missing.push(field),
+                        other => eprintln!("warning: unknown exclude type '{other}', skipping field '{field}'"),
+                    }
+                }
+
                 // Combine all query parts: taxon, rank, raw --query, --filter expressions.
                 let full_query = {
                     let mut parts: Vec<String> = Vec::new();
@@ -266,6 +292,10 @@ fn run(cli: Cli) -> anyhow::Result<()> {
                 let opts = generated::client::SearchOptions {
                     lineage_ranks,
                     name_classes,
+                    exclude_ancestral,
+                    exclude_descendant,
+                    exclude_direct,
+                    exclude_missing,
                     sort_by: sort_by_opt,
                     sort_order: sort_order_str,
                     page,

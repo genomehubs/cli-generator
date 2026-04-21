@@ -39,6 +39,12 @@ function parseSearchJson(raw) {
   return JSON.parse(_parseSearchJson(str));
 }
 
+/** Parse the status block from a raw API response. Returns `{hits, ok, error?}`. */
+function parseResponseStatus(raw) {
+  const str = typeof raw === "string" ? raw : JSON.stringify(raw);
+  return JSON.parse(parse_response_status(str));
+}
+
 /** Add `{field}__label` columns. mode: "all" | "non_direct" | "ancestral_only" */
 function annotateSourceLabels(records, mode = "non_direct") {
   const str = typeof records === "string" ? records : JSON.stringify(records);
@@ -108,6 +114,10 @@ class QueryBuilder {
     this._fields = [];
     this._names = [];
     this._ranks = [];
+    this._excludeAncestral = [];
+    this._excludeDescendant = [];
+    this._excludeDirect = [];
+    this._excludeMissing = [];
     // QueryParams
     this._size = 10;
     this._page = 1;
@@ -282,6 +292,135 @@ class QueryBuilder {
     return this;
   }
 
+  // ── Exclusion filters (field-level) ────────────────────────────────────────
+
+  /**
+   * Normalise a fields argument: shallow-copy an array, or return [] for null/undefined.
+   * @param {string[]|null|undefined} fields
+   * @returns {string[]}
+   */
+  _normaliseFields(fields) {
+    return Array.isArray(fields) ? [...fields] : [];
+  }
+
+  /**
+   * Exclude records with ancestrally derived estimated values for specified fields.
+   * @param {string[]|null} fields - Array of field names, or null to clear.
+   * @returns {QueryBuilder}
+   */
+  setExcludeAncestral(fields) {
+    this._excludeAncestral = this._normaliseFields(fields);
+    return this;
+  }
+
+  /**
+   * Add a field to exclude ancestrally derived values for.
+   * @param {string} field
+   * @returns {QueryBuilder}
+   */
+  addExcludeAncestral(field) {
+    if (!this._excludeAncestral.includes(field)) {
+      this._excludeAncestral.push(field);
+    }
+    return this;
+  }
+
+  /**
+   * Exclude records with descendant-derived estimated values for specified fields.
+   * @param {string[]|null} fields - Array of field names, or null to clear.
+   * @returns {QueryBuilder}
+   */
+  setExcludeDescendant(fields) {
+    this._excludeDescendant = this._normaliseFields(fields);
+    return this;
+  }
+
+  /**
+   * Add a field to exclude descendant-derived values for.
+   * @param {string} field
+   * @returns {QueryBuilder}
+   */
+  addExcludeDescendant(field) {
+    if (!this._excludeDescendant.includes(field)) {
+      this._excludeDescendant.push(field);
+    }
+    return this;
+  }
+
+  /**
+   * Exclude records with directly estimated values for specified fields.
+   * @param {string[]|null} fields - Array of field names, or null to clear.
+   * @returns {QueryBuilder}
+   */
+  setExcludeDirect(fields) {
+    this._excludeDirect = this._normaliseFields(fields);
+    return this;
+  }
+
+  /**
+   * Add a field to exclude direct estimates for.
+   * @param {string} field
+   * @returns {QueryBuilder}
+   */
+  addExcludeDirect(field) {
+    if (!this._excludeDirect.includes(field)) {
+      this._excludeDirect.push(field);
+    }
+    return this;
+  }
+
+  /**
+   * Exclude records with missing values for specified fields.
+   * @param {string[]|null} fields - Array of field names, or null to clear.
+   * @returns {QueryBuilder}
+   */
+  setExcludeMissing(fields) {
+    this._excludeMissing = this._normaliseFields(fields);
+    return this;
+  }
+
+  /**
+   * Add a field to exclude records with missing values for.
+   * @param {string} field
+   * @returns {QueryBuilder}
+   */
+  addExcludeMissing(field) {
+    if (!this._excludeMissing.includes(field)) {
+      this._excludeMissing.push(field);
+    }
+    return this;
+  }
+
+  /**
+   * Exclude all non-direct estimates (ancestral and descendant).
+   *
+   * Shorthand for: setExcludeAncestral() + setExcludeDescendant().
+   *
+   * @param {string[]|null} fields - Array of field names, or null to clear.
+   * @returns {QueryBuilder}
+   */
+  setExcludeDerived(fields) {
+    const normalised = this._normaliseFields(fields);
+    this._excludeAncestral = normalised;
+    this._excludeDescendant = [...normalised];
+    return this;
+  }
+
+  /**
+   * Exclude ancestral estimates and missing values.
+   *
+   * Shorthand for: setExcludeAncestral() + setExcludeMissing().
+   *
+   * @param {string[]|null} fields - Array of field names, or null to clear.
+   * @returns {QueryBuilder}
+   */
+  setExcludeEstimated(fields) {
+    const normalised = this._normaliseFields(fields);
+    this._excludeAncestral = normalised;
+    this._excludeMissing = [...normalised];
+    return this;
+  }
+
   // ── Query params ───────────────────────────────────────────────────────────
 
   /**
@@ -399,6 +538,22 @@ class QueryBuilder {
     if (this._ranks.length > 0) {
       lines.push("ranks:");
       for (const r of this._ranks) lines.push(`  - ${r}`);
+    }
+    if (this._excludeAncestral.length > 0) {
+      lines.push("excludeAncestral:");
+      for (const f of this._excludeAncestral) lines.push(`  - ${f}`);
+    }
+    if (this._excludeDescendant.length > 0) {
+      lines.push("excludeDescendant:");
+      for (const f of this._excludeDescendant) lines.push(`  - ${f}`);
+    }
+    if (this._excludeDirect.length > 0) {
+      lines.push("excludeDirect:");
+      for (const f of this._excludeDirect) lines.push(`  - ${f}`);
+    }
+    if (this._excludeMissing.length > 0) {
+      lines.push("excludeMissing:");
+      for (const f of this._excludeMissing) lines.push(`  - ${f}`);
     }
     return lines.join("\n") + "\n";
   }
@@ -816,6 +971,7 @@ function toTidyRecords(records) {
 export {
   QueryBuilder,
   parseSearchJson,
+  parseResponseStatus,
   annotateSourceLabels,
   splitSourceColumns,
   valuesOnly,

@@ -113,6 +113,10 @@ class QueryBuilder {
     this._fields = [];
     this._names = [];
     this._ranks = [];
+    this._excludeAncestral = [];
+    this._excludeDescendant = [];
+    this._excludeDirect = [];
+    this._excludeMissing = [];
     // QueryParams
     this._size = 10;
     this._page = 1;
@@ -284,6 +288,164 @@ class QueryBuilder {
     return this;
   }
 
+  // ── Exclusion filters (field-level) ────────────────────────────────────────
+
+  /**
+   * Exclude records with ancestrally derived estimated values for specified fields.
+   * @param {string|string[]} fields - Field name or array of field names.
+   * @returns {QueryBuilder}
+   */
+  setExcludeAncestral(fields) {
+    if (Array.isArray(fields)) {
+      this._excludeAncestral = [...fields];
+    } else if (typeof fields === "string") {
+      this._excludeAncestral = [fields];
+    } else {
+      this._excludeAncestral = [];
+    }
+    return this;
+  }
+
+  /**
+   * Add a field to exclude ancestrally derived values for.
+   * @param {string} field
+   * @returns {QueryBuilder}
+   */
+  addExcludeAncestral(field) {
+    if (!this._excludeAncestral.includes(field)) {
+      this._excludeAncestral.push(field);
+    }
+    return this;
+  }
+
+  /**
+   * Exclude records with descendant-derived estimated values for specified fields.
+   * @param {string|string[]} fields - Field name or array of field names.
+   * @returns {QueryBuilder}
+   */
+  setExcludeDescendant(fields) {
+    if (Array.isArray(fields)) {
+      this._excludeDescendant = [...fields];
+    } else if (typeof fields === "string") {
+      this._excludeDescendant = [fields];
+    } else {
+      this._excludeDescendant = [];
+    }
+    return this;
+  }
+
+  /**
+   * Add a field to exclude descendant-derived values for.
+   * @param {string} field
+   * @returns {QueryBuilder}
+   */
+  addExcludeDescendant(field) {
+    if (!this._excludeDescendant.includes(field)) {
+      this._excludeDescendant.push(field);
+    }
+    return this;
+  }
+
+  /**
+   * Exclude records with directly estimated values for specified fields.
+   * @param {string|string[]} fields - Field name or array of field names.
+   * @returns {QueryBuilder}
+   */
+  setExcludeDirect(fields) {
+    if (Array.isArray(fields)) {
+      this._excludeDirect = [...fields];
+    } else if (typeof fields === "string") {
+      this._excludeDirect = [fields];
+    } else {
+      this._excludeDirect = [];
+    }
+    return this;
+  }
+
+  /**
+   * Add a field to exclude direct estimates for.
+   * @param {string} field
+   * @returns {QueryBuilder}
+   */
+  addExcludeDirect(field) {
+    if (!this._excludeDirect.includes(field)) {
+      this._excludeDirect.push(field);
+    }
+    return this;
+  }
+
+  /**
+   * Exclude records with missing values for specified fields.
+   * @param {string|string[]} fields - Field name or array of field names.
+   * @returns {QueryBuilder}
+   */
+  setExcludeMissing(fields) {
+    if (Array.isArray(fields)) {
+      this._excludeMissing = [...fields];
+    } else if (typeof fields === "string") {
+      this._excludeMissing = [fields];
+    } else {
+      this._excludeMissing = [];
+    }
+    return this;
+  }
+
+  /**
+   * Add a field to exclude records with missing values for.
+   * @param {string} field
+   * @returns {QueryBuilder}
+   */
+  addExcludeMissing(field) {
+    if (!this._excludeMissing.includes(field)) {
+      this._excludeMissing.push(field);
+    }
+    return this;
+  }
+
+  /**
+   * Exclude all non-direct estimates (ancestral and descendant).
+   *
+   * Shorthand for: setExcludeAncestral() + setExcludeDescendant().
+   *
+   * @param {string|string[]} fields - Field name or array of field names.
+   * @returns {QueryBuilder}
+   */
+  setExcludeDerived(fields) {
+    if (Array.isArray(fields)) {
+      this._excludeAncestral = [...fields];
+      this._excludeDescendant = [...fields];
+    } else if (typeof fields === "string") {
+      this._excludeAncestral = [fields];
+      this._excludeDescendant = [fields];
+    } else {
+      this._excludeAncestral = [];
+      this._excludeDescendant = [];
+    }
+    return this;
+  }
+
+  /**
+   * Exclude ancestral estimates and missing values.
+   *
+   * Shorthand for: setExcludeAncestral() + setExcludeMissing().
+   *
+   * @param {string|string[]} fields - Field name or array of field names.
+   * @returns {QueryBuilder}
+   */
+  setExcludeEstimated(fields) {
+    if (Array.isArray(fields)) {
+      this._excludeAncestral = [...fields];
+      this._excludeMissing = [...fields];
+    } else if (typeof fields === "string") {
+      this._excludeAncestral = [fields];
+      this._excludeMissing = [fields];
+    } else {
+      this._excludeAncestral = [];
+      this._excludeMissing = [];
+    }
+    return this;
+  }
+
   // ── Query params ───────────────────────────────────────────────────────────
 
   /**
@@ -401,6 +563,22 @@ class QueryBuilder {
     if (this._ranks.length > 0) {
       lines.push("ranks:");
       for (const r of this._ranks) lines.push(`  - ${r}`);
+    }
+    if (this._excludeAncestral.length > 0) {
+      lines.push("excludeAncestral:");
+      for (const f of this._excludeAncestral) lines.push(`  - ${f}`);
+    }
+    if (this._excludeDescendant.length > 0) {
+      lines.push("excludeDescendant:");
+      for (const f of this._excludeDescendant) lines.push(`  - ${f}`);
+    }
+    if (this._excludeDirect.length > 0) {
+      lines.push("excludeDirect:");
+      for (const f of this._excludeDirect) lines.push(`  - ${f}`);
+    }
+    if (this._excludeMissing.length > 0) {
+      lines.push("excludeMissing:");
+      for (const f of this._excludeMissing) lines.push(`  - ${f}`);
     }
     return lines.join("\n") + "\n";
   }

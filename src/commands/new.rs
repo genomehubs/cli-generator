@@ -373,13 +373,20 @@ fn copy_embedded_modules(repo_dir: &Path) -> Result<()> {
         }
     }
 
-    // Copy parse.rs from the subcrate root (not the query subdirectory).
+    // Copy parse.rs and validation.rs from the subcrate root (not the query subdirectory).
+    // These modules are self-contained and need no path rewriting.
     let subcrate_src =
         std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("crates/genomehubs-query/src");
     let parse_src = subcrate_src.join("parse.rs");
     let parse_dest = embedded_dir.join("core/parse.rs");
     if parse_src.exists() {
         std::fs::copy(&parse_src, &parse_dest).context("copying subcrate parse.rs")?;
+    }
+    let validation_src = subcrate_src.join("validation.rs");
+    let validation_dest = embedded_dir.join("core/validation.rs");
+    if validation_src.exists() {
+        std::fs::copy(&validation_src, &validation_dest)
+            .context("copying subcrate validation.rs")?;
     }
 
     // validation.rs is cli-generator-specific and not in the subcrate's mod.rs.
@@ -435,6 +442,7 @@ pub mod fetch;
 pub mod parse;
 pub mod query;
 pub mod snippet;
+pub mod validation;
 "#;
 
     std::fs::write(embedded_dir.join("core/mod.rs"), core_mod_rs_content)

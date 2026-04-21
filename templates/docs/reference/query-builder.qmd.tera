@@ -91,6 +91,14 @@ const qb = new QueryBuilder('taxon')
 Restrict results to a single taxonomic rank (e.g. `"species"`, `"genus"`,
 `"family"`).
 
+### `set_assemblies(accessions)`
+
+Filter by assembly accession IDs (e.g. `["GCA_000001405"]`).
+
+### `set_samples(accessions)`
+
+Filter by sample accession IDs (e.g. `["SRS000001"]`).
+
 ---
 
 ## Attribute filters
@@ -199,6 +207,68 @@ Include lineage rank columns (e.g. `["genus", "family", "order"]`).
 
 ---
 
+## Exclusion filters
+
+Exclusion filters suppress records where a field value was derived via a
+particular inference pathway.  Each method accepts a list of field names.
+
+- `set_exclude_ancestral(fields)` — Ancestrally derived estimates
+- `set_exclude_descendant(fields)` — Descendant-derived estimates
+- `set_exclude_direct(fields)` — Directly measured values
+- `set_exclude_missing(fields)` — Records with missing values
+- `set_exclude_derived(fields)` — Shorthand: ancestral + descendant
+- `set_exclude_estimated(fields)` — Shorthand: ancestral + missing
+
+Each `set_exclude_*` method replaces the list for that type.  Pass `None` (Python/R)
+or `null` (JavaScript) to clear.  Use the corresponding `add_exclude_*` method to
+append a single field name without replacing the existing list.
+
+- `add_exclude_ancestral(field)` — Append to ancestral exclusion list
+- `add_exclude_descendant(field)` — Append to descendant exclusion list
+- `add_exclude_direct(field)` — Append to direct exclusion list
+- `add_exclude_missing(field)` — Append to missing-value exclusion list
+
+::: {.panel-tabset group="language"}
+
+## Python
+
+```python
+# Keep only directly measured genome sizes
+qb.add_field("genome_size").set_exclude_ancestral(["genome_size"])
+
+# Shorthand: exclude any non-direct estimate
+qb.add_field("genome_size").set_exclude_derived(["genome_size"])
+
+# Extend existing exclusion list one field at a time
+qb.add_exclude_ancestral("c_value").add_exclude_ancestral("genome_size")
+```
+
+## R
+
+```r
+# Keep only directly measured genome sizes
+qb <- qb |>
+  add_field("genome_size") |>
+  set_exclude_ancestral(c("genome_size"))
+
+# Extend exclusion list
+qb <- qb |> add_exclude_ancestral("c_value")
+```
+
+## JavaScript
+
+```javascript
+// Keep only directly measured genome sizes
+qb.addField('genome_size').setExcludeAncestral(['genome_size']);
+
+// Extend exclusion list
+qb.addExcludeAncestral('c_value');
+```
+
+:::
+
+---
+
 ## Query parameters
 
 ### `set_size(n)` — page size (default `10`)
@@ -285,6 +355,53 @@ console.log(records.length);
 ```
 
 :::
+
+---
+
+## Snippet generation
+
+### `snippet(languages, site_name, sdk_name, api_base) -> dict`
+
+Generate runnable code snippets for the current query in one or more languages.
+Returns a dict mapping language codes (`"python"`, `"r"`, `"javascript"`) to
+formatted source strings.
+
+```python
+snips = qb.snippet()
+print(snips["python"])
+```
+
+---
+
+## Validation
+
+### `validate(field_metadata=None, validation_config=None, synonyms=None) -> list[str]`
+
+Validate the current query against field metadata.  Returns a list of error
+strings; an empty list means the query is valid.
+
+Pass `field_metadata` as a dict mapping field names to their metadata objects
+(as returned by the API).  If omitted, only structural checks are performed.
+
+```python
+errors = qb.validate()
+if errors:
+    print("\n".join(errors))
+```
+
+---
+
+## Utility
+
+### `reset() -> self`
+
+Clear all query filters (taxa, attributes, fields, exclusions) while preserving
+the index and execution parameters (`size`, `page`, `sort`, etc.).
+
+```python
+qb.set_taxa(["Mammalia"]).add_attribute("genome_size", "exists")
+qb.reset()  # back to a bare QueryBuilder("taxon")
+```
 
 ---
 

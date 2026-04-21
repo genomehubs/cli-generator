@@ -219,9 +219,12 @@ pub fn parse_paginated_json(raw: &str) -> String {
     }
 }
 
-/// Parse a raw `/msearch` response into per-query flat record lists.
+/// Parse a raw batch search (`/msearch`) response into per-query flat record lists.
 ///
-/// Returns a JSON object:
+/// The genomehubs `/msearch` endpoint accepts multiple queries in a single POST
+/// and returns results grouped by query.  This function parses that envelope into
+/// a structured JSON object:
+///
 /// ```json
 /// {
 ///   "results": [
@@ -238,8 +241,8 @@ pub fn parse_paginated_json(raw: &str) -> String {
 ///
 /// Returns `{"error":"..."}` if the input is not valid JSON.
 #[cfg_attr(feature = "wasm", wasm_bindgen)]
-pub fn parse_msearch_json(raw: &str) -> String {
-    match parse::parse_msearch_json(raw) {
+pub fn parse_batch_json(raw: &str) -> String {
+    match parse::parse_batch_json(raw) {
         Ok(result) => parse::msearch_result_to_json(&result),
         Err(e) => format!(r#"{{"error":{e:?}}}"#),
     }

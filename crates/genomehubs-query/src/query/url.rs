@@ -241,6 +241,7 @@ fn build_exclusion_params(attributes: &AttributeSet) -> Vec<ExclusionParam> {
     let mut counters: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
     let mut params: Vec<ExclusionParam> = Vec::new();
 
+    // Collect status modifiers from attribute filters
     for attr in &attributes.attributes {
         for modifier in attr.modifier.iter().filter(|m| m.is_status()) {
             let key_base = format!("exclude{}", modifier.as_str());
@@ -251,6 +252,43 @@ fn build_exclusion_params(attributes: &AttributeSet) -> Vec<ExclusionParam> {
             });
             *index += 1;
         }
+    }
+
+    // Collect top-level field exclusions
+    for field in &attributes.exclude_ancestral {
+        let index = counters.entry("excludeAncestral".to_string()).or_insert(0);
+        params.push(ExclusionParam {
+            key: format!("excludeAncestral[{index}]"),
+            value: field.clone(),
+        });
+        *index += 1;
+    }
+
+    for field in &attributes.exclude_descendant {
+        let index = counters.entry("excludeDescendant".to_string()).or_insert(0);
+        params.push(ExclusionParam {
+            key: format!("excludeDescendant[{index}]"),
+            value: field.clone(),
+        });
+        *index += 1;
+    }
+
+    for field in &attributes.exclude_direct {
+        let index = counters.entry("excludeDirect".to_string()).or_insert(0);
+        params.push(ExclusionParam {
+            key: format!("excludeDirect[{index}]"),
+            value: field.clone(),
+        });
+        *index += 1;
+    }
+
+    for field in &attributes.exclude_missing {
+        let index = counters.entry("excludeMissing".to_string()).or_insert(0);
+        params.push(ExclusionParam {
+            key: format!("excludeMissing[{index}]"),
+            value: field.clone(),
+        });
+        *index += 1;
     }
 
     params

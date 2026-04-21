@@ -279,3 +279,63 @@ jobs:
             ${{ matrix.bin_path }}
             /tmp/generated/goat-cli/PREVIEW.md
           retention-days: 14
+
+  # ── SDK fixture tests: JS (no network, uses committed fixtures) ────────────
+  sdk-fixture-tests:
+    name: SDK fixture tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust stable with wasm-pack targets
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Cache Cargo registry and build artefacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target/
+          key: ${{ runner.os }}-cargo-sdk-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-sdk-
+
+      - name: Install wasm-pack
+        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install cargo-generate
+        run: cargo install cargo-generate
+
+      - name: Add ~/.cargo/bin to PATH
+        run: echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+      # Generate the goat SDK project into /tmp/generated
+      - name: Generate goat-cli SDK
+        run: cargo run -- new goat --output-dir /tmp/generated --config sites/
+
+      # Build both WASM targets (pkg-nodejs + pkg-web)
+      - name: Build JS WASM packages
+        run: bash build-wasm.sh
+        working-directory: /tmp/generated/goat-cli/js/goat
+
+      # Install JS SDK dependencies
+      - name: Install JS SDK dependencies
+        run: npm install
+        working-directory: /tmp/generated/goat-cli/js/goat
+
+      # Run the committed fixtures against the generated JS SDK.
+      # Fixtures are checked in at tests/python/fixtures-goat/ and require no network.
+      - name: Run JavaScript fixture tests
+        run: |
+          SITE=goat \
+          JS_SDK_PATH=/tmp/generated/goat-cli/js/goat/query.js \
+          FIXTURES_DIR=$GITHUB_WORKSPACE/tests/python/fixtures-goat \
+            node --test tests/javascript/test_sdk_fixtures.mjs

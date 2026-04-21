@@ -1170,11 +1170,11 @@ def test_parse_paginated_json_invalid_input_returns_error_key() -> None:
     assert "error" in result
 
 
-# ── parse_msearch_json ────────────────────────────────────────────────────────
+# ── parse_batch_json ─────────────────────────────────────────────────────────
 
 
 def _minimal_msearch_response(entries: list[tuple[int, int]]) -> str:
-    """Build a minimal /msearch response string.
+    """Build a minimal /msearch batch response string.
 
     Each ``(taxon_id, total)`` pair becomes one element in ``results``.
     """
@@ -1190,45 +1190,45 @@ def _minimal_msearch_response(entries: list[tuple[int, int]]) -> str:
     return f'{{"status":{{"hits":{overall},"success":true}},' f'"results":[{",".join(results)}]}}'
 
 
-def test_parse_msearch_json_two_queries_return_two_groups() -> None:
-    from cli_generator import parse_msearch_json
+def test_parse_batch_json_two_queries_return_two_groups() -> None:
+    from cli_generator import parse_batch_json
 
     raw = _minimal_msearch_response([(9606, 5200), (10090, 7300)])
-    result = json.loads(parse_msearch_json(raw))
+    result = json.loads(parse_batch_json(raw))
     assert len(result["results"]) == 2
     assert result["totalHits"] == 12500
 
 
-def test_parse_msearch_json_per_query_totals() -> None:
-    from cli_generator import parse_msearch_json
+def test_parse_batch_json_per_query_totals() -> None:
+    from cli_generator import parse_batch_json
 
     raw = _minimal_msearch_response([(9606, 5200), (10090, 7300)])
-    result = json.loads(parse_msearch_json(raw))
+    result = json.loads(parse_batch_json(raw))
     assert result["results"][0]["total"] == 5200
     assert result["results"][1]["total"] == 7300
 
 
-def test_parse_msearch_json_records_contain_identity() -> None:
-    from cli_generator import parse_msearch_json
+def test_parse_batch_json_records_contain_identity() -> None:
+    from cli_generator import parse_batch_json
 
     raw = _minimal_msearch_response([(9606, 10)])
-    result = json.loads(parse_msearch_json(raw))
+    result = json.loads(parse_batch_json(raw))
     record = result["results"][0]["records"][0]
     assert record["taxon_id"] == "9606"
     assert record["scientific_name"] == "Species 9606"
 
 
-def test_parse_msearch_json_empty_results_returns_empty_list() -> None:
-    from cli_generator import parse_msearch_json
+def test_parse_batch_json_empty_results_returns_empty_list() -> None:
+    from cli_generator import parse_batch_json
 
     raw = json.dumps({"status": {"hits": 0, "success": True}, "results": []})
-    result = json.loads(parse_msearch_json(raw))
+    result = json.loads(parse_batch_json(raw))
     assert result["results"] == []
     assert result["totalHits"] == 0
 
 
-def test_parse_msearch_json_error_field_preserved() -> None:
-    from cli_generator import parse_msearch_json
+def test_parse_batch_json_error_field_preserved() -> None:
+    from cli_generator import parse_batch_json
 
     raw = json.dumps(
         {
@@ -1236,15 +1236,15 @@ def test_parse_msearch_json_error_field_preserved() -> None:
             "results": [{"status": "error", "total": 0, "hits": [], "error": "bad query"}],
         }
     )
-    result = json.loads(parse_msearch_json(raw))
+    result = json.loads(parse_batch_json(raw))
     assert result["results"][0]["error"] == "bad query"
     assert result["results"][0]["records"] == []
 
 
-def test_parse_msearch_json_invalid_input_returns_error_key() -> None:
-    from cli_generator import parse_msearch_json
+def test_parse_batch_json_invalid_input_returns_error_key() -> None:
+    from cli_generator import parse_batch_json
 
-    result = json.loads(parse_msearch_json("{{not valid json"))
+    result = json.loads(parse_batch_json("{{not valid json"))
     assert "error" in result
 
 

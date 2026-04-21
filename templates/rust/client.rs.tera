@@ -32,6 +32,14 @@ pub struct SearchOptions {
     pub lineage_ranks: Vec<String>,
     /// Taxon name classes to include in results (e.g. `["common_name", "synonym"]`).
     pub name_classes: Vec<String>,
+    /// Fields to exclude ancestrally derived estimates for.
+    pub exclude_ancestral: Vec<String>,
+    /// Fields to exclude descendant-derived estimates for.
+    pub exclude_descendant: Vec<String>,
+    /// Fields to exclude directly estimated values for.
+    pub exclude_direct: Vec<String>,
+    /// Fields to exclude missing values for.
+    pub exclude_missing: Vec<String>,
     /// Field to sort results by, e.g. `"genome_size"`.
     pub sort_by: Option<String>,
     /// Sort direction: `"asc"` (default) or `"desc"`.
@@ -47,6 +55,10 @@ impl Default for SearchOptions {
         Self {
             lineage_ranks: Vec::new(),
             name_classes: Vec::new(),
+            exclude_ancestral: Vec::new(),
+            exclude_descendant: Vec::new(),
+            exclude_direct: Vec::new(),
+            exclude_missing: Vec::new(),
             sort_by: None,
             sort_order: "asc".to_string(),
             page: 1,
@@ -105,6 +117,19 @@ pub fn search_url(
     }
     if !opts.lineage_ranks.is_empty() {
         parts.push(format!("ranks={}", pct_encode(&opts.lineage_ranks.join(","))));
+    }
+    // Add exclude parameters (indexed format for API arrays).
+    for (i, field) in opts.exclude_ancestral.iter().enumerate() {
+        parts.push(format!("excludeAncestral[{}]={}", i, pct_encode(field)));
+    }
+    for (i, field) in opts.exclude_descendant.iter().enumerate() {
+        parts.push(format!("excludeDescendant[{}]={}", i, pct_encode(field)));
+    }
+    for (i, field) in opts.exclude_direct.iter().enumerate() {
+        parts.push(format!("excludeDirect[{}]={}", i, pct_encode(field)));
+    }
+    for (i, field) in opts.exclude_missing.iter().enumerate() {
+        parts.push(format!("excludeMissing[{}]={}", i, pct_encode(field)));
     }
     parts.push(format!("size={size}"));
     let offset = opts.page.saturating_sub(1) * size;
@@ -240,6 +265,19 @@ fn paginated_url(
     if !opts.lineage_ranks.is_empty() {
         parts.push(format!("ranks={}", pct_encode(&opts.lineage_ranks.join(","))));
     }
+    // Add exclude parameters (indexed format for API arrays).
+    for (i, field) in opts.exclude_ancestral.iter().enumerate() {
+        parts.push(format!("excludeAncestral[{}]={}", i, pct_encode(field)));
+    }
+    for (i, field) in opts.exclude_descendant.iter().enumerate() {
+        parts.push(format!("excludeDescendant[{}]={}", i, pct_encode(field)));
+    }
+    for (i, field) in opts.exclude_direct.iter().enumerate() {
+        parts.push(format!("excludeDirect[{}]={}", i, pct_encode(field)));
+    }
+    for (i, field) in opts.exclude_missing.iter().enumerate() {
+        parts.push(format!("excludeMissing[{}]={}", i, pct_encode(field)));
+    }
     if let Some(ref sort_by) = opts.sort_by {
         parts.push(format!("sortBy={}", pct_encode(sort_by)));
         parts.push(format!("sortOrder={}", pct_encode(&opts.sort_order)));
@@ -271,7 +309,7 @@ pub fn msearch(
     include_estimates: bool,
     opts: &SearchOptions,
 ) -> Result<Vec<Vec<serde_json::Value>>> {
-    use crate::embedded::core::parse::parse_msearch_json;
+    use crate::embedded::core::parse::parse_batch_json;
 
     const BATCH_SIZE: usize = 100;
     let fields_str = fields.join(",");
@@ -296,6 +334,19 @@ pub fn msearch(
                     obj["sortBy"] = serde_json::Value::String(sort_by.clone());
                     obj["sortOrder"] = serde_json::Value::String(opts.sort_order.clone());
                 }
+                // Add exclude parameters as JSON arrays.
+                if !opts.exclude_ancestral.is_empty() {
+                    obj["excludeAncestral"] = serde_json::json!(opts.exclude_ancestral);
+                }
+                if !opts.exclude_descendant.is_empty() {
+                    obj["excludeDescendant"] = serde_json::json!(opts.exclude_descendant);
+                }
+                if !opts.exclude_direct.is_empty() {
+                    obj["excludeDirect"] = serde_json::json!(opts.exclude_direct);
+                }
+                if !opts.exclude_missing.is_empty() {
+                    obj["excludeMissing"] = serde_json::json!(opts.exclude_missing);
+                }
                 obj
             })
             .collect();
@@ -314,7 +365,7 @@ pub fn msearch(
             .text()
             .context("reading msearch response body")?;
 
-        let result = parse_msearch_json(&raw).map_err(|e| anyhow::anyhow!("{e}"))?;
+        let result = parse_batch_json(&raw).map_err(|e| anyhow::anyhow!("{e}"))?;
         for (i, query_result) in result.results.into_iter().enumerate() {
             all_results[batch_idx * BATCH_SIZE + i] = query_result.records;
         }

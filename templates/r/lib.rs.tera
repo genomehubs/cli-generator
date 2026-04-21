@@ -136,7 +136,7 @@ fn validate_query_json(
     validation_config_json: &str,
     synonyms_json: &str,
 ) -> Vec<String> {
-    use embedded::core::query::validation::validate_query_json as validate_impl;
+    use embedded::core::validation::validate_query_json as validate_impl;
 
     let result = validate_impl(
         query_yaml,

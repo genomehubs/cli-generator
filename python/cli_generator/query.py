@@ -68,6 +68,11 @@ class QueryBuilder:
         self._fields: list[dict[str, Any]] = []
         self._names: list[str] = []
         self._ranks: list[str] = []
+        # Exclusion filters (field-level)
+        self._exclude_ancestral: list[str] = []
+        self._exclude_descendant: list[str] = []
+        self._exclude_direct: list[str] = []
+        self._exclude_missing: list[str] = []
         # QueryParams
         self._size: int = 10
         self._page: int = 1
@@ -265,6 +270,92 @@ class QueryBuilder:
         self._ranks = list(ranks)
         return self
 
+    # ── Exclusion filters (field-level) ──────────────────────────────────────
+
+    @staticmethod
+    def _normalise_fields(fields: list[str] | None) -> list[str]:
+        """Return a shallow copy of ``fields``, or an empty list when ``None``."""
+        return list(fields) if fields is not None else []
+
+    def set_exclude_ancestral(self, fields: list[str] | None) -> "QueryBuilder":
+        """Exclude records with ancestrally derived estimated values for specified fields.
+
+        Args:
+            fields: Field names to exclude ancestral estimates for. Pass ``None``
+                or an empty list to clear.
+        """
+        self._exclude_ancestral = self._normalise_fields(fields)
+        return self
+
+    def add_exclude_ancestral(self, field: str) -> "QueryBuilder":
+        """Add a field to exclude ancestrally derived values for."""
+        if field not in self._exclude_ancestral:
+            self._exclude_ancestral.append(field)
+        return self
+
+    def set_exclude_descendant(self, fields: list[str] | None) -> "QueryBuilder":
+        """Exclude records with descendant-derived estimated values for specified fields."""
+        self._exclude_descendant = self._normalise_fields(fields)
+        return self
+
+    def add_exclude_descendant(self, field: str) -> "QueryBuilder":
+        """Add a field to exclude descendant-derived values for."""
+        if field not in self._exclude_descendant:
+            self._exclude_descendant.append(field)
+        return self
+
+    def set_exclude_direct(self, fields: list[str] | None) -> "QueryBuilder":
+        """Exclude records with directly estimated values for specified fields."""
+        self._exclude_direct = self._normalise_fields(fields)
+        return self
+
+    def add_exclude_direct(self, field: str) -> "QueryBuilder":
+        """Add a field to exclude direct estimates for."""
+        if field not in self._exclude_direct:
+            self._exclude_direct.append(field)
+        return self
+
+    def set_exclude_missing(self, fields: list[str] | None) -> "QueryBuilder":
+        """Exclude records with missing values for specified fields."""
+        self._exclude_missing = self._normalise_fields(fields)
+        return self
+
+    def add_exclude_missing(self, field: str) -> "QueryBuilder":
+        """Add a field to exclude records with missing values for."""
+        if field not in self._exclude_missing:
+            self._exclude_missing.append(field)
+        return self
+
+    def set_exclude_derived(self, fields: list[str] | None) -> "QueryBuilder":
+        """Exclude all non-direct estimates (excludes ancestral and descendant).
+
+        Shorthand for: exclude ancestral + exclude descendant.
+        Keeps only directly estimated values.
+
+        Args:
+            fields: Field names to restrict to direct estimates only.
+                Pass ``None`` or an empty list to clear this exclusion.
+        """
+        normalised = self._normalise_fields(fields)
+        self._exclude_ancestral = normalised
+        self._exclude_descendant = list(normalised)
+        return self
+
+    def set_exclude_estimated(self, fields: list[str] | None) -> "QueryBuilder":
+        """Exclude ancestral estimates and missing values.
+
+        Shorthand for: exclude ancestral + exclude missing.
+        Keeps directly estimated values and descendant-derived estimates.
+
+        Args:
+            fields: Field names to restrict to confirmed (non-ancestral) values.
+                Pass ``None`` or an empty list to clear this exclusion.
+        """
+        normalised = self._normalise_fields(fields)
+        self._exclude_ancestral = normalised
+        self._exclude_missing = list(normalised)
+        return self
+
     # ── Query params ─────────────────────────────────────────────────────────
 
     def set_size(self, size: int) -> "QueryBuilder":
@@ -319,6 +410,14 @@ class QueryBuilder:
             doc["names"] = self._names
         if self._ranks:
             doc["ranks"] = self._ranks
+        if self._exclude_ancestral:
+            doc["exclude_ancestral"] = self._exclude_ancestral
+        if self._exclude_descendant:
+            doc["exclude_descendant"] = self._exclude_descendant
+        if self._exclude_direct:
+            doc["exclude_direct"] = self._exclude_direct
+        if self._exclude_missing:
+            doc["exclude_missing"] = self._exclude_missing
 
         return yaml.safe_dump(doc, sort_keys=False)
 
@@ -495,6 +594,10 @@ class QueryBuilder:
         self._fields = []
         self._names = []
         self._ranks = []
+        self._exclude_ancestral = []
+        self._exclude_descendant = []
+        self._exclude_direct = []
+        self._exclude_missing = []
         return self
 
     # ── Merging ───────────────────────────────────────────────────────────────
@@ -528,6 +631,10 @@ class QueryBuilder:
         self._fields.extend(other._fields)
         self._names.extend(other._names)
         self._ranks.extend(other._ranks)
+        self._exclude_ancestral.extend(other._exclude_ancestral)
+        self._exclude_descendant.extend(other._exclude_descendant)
+        self._exclude_direct.extend(other._exclude_direct)
+        self._exclude_missing.extend(other._exclude_missing)
         # Scalars — overwrite only if other differs from its default
         if other._rank is not None:
             self._rank = other._rank
@@ -574,6 +681,46 @@ class QueryBuilder:
         for b in builders:
             result.merge(b)
         return result
+
+    def validate(
+        self,
+        field_metadata: dict[str, Any] | None = None,
+        validation_config: dict[str, Any] | None = None,
+        synonyms: dict[str, str] | None = None,
+    ) -> list[str]:
+        """Validate the current query state against known field metadata.
+
+        Field and attribute name checks are only performed when ``field_metadata``
+        is provided. Without it, only structural checks (index, operator validity,
+        name class values, etc.) are run.
+
+        Args:
+            field_metadata: Field metadata dict mapping field names to metadata
+                objects (``processed_type``, ``summary``, ``constraint_enum``, etc.).
+                Typically loaded from ``src/generated/field_meta.json`` in a
+                generated project.
+            validation_config: Optional override for validation rules (name classes,
+                accession prefixes, etc.). Defaults to built-in rules.
+            synonyms: Optional mapping of alias field names to canonical names.
+
+        Returns:
+            List of error strings. Empty list means the query is valid.
+        """
+        import json
+
+        from cli_generator import validate_query_json
+
+        result = validate_query_json(
+            self.to_query_yaml(),
+            json.dumps(field_metadata or {}),
+            json.dumps(validation_config or {}),
+            json.dumps(synonyms or {}),
+        )
+
+        try:
+            return list(json.loads(result))
+        except json.JSONDecodeError:
+            return [result]
 
     def describe(self, field_metadata: dict[str, Any] | None = None, mode: str = "concise") -> str:
         """Get a human-readable description of this query.

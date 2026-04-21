@@ -1,0 +1,2862 @@
+{
+  "status": {
+    "hits": 1661357,
+    "success": true,
+    "took": 2167,
+    "size": 10,
+    "offset": 10
+  },
+  "results": [
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-2600420",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "scientific_name": "Afzelia sp. MP 409",
+            "taxon_id": "2600420",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 1,
+            "scientific_name": "unclassified Afzelia",
+            "taxon_id": "2600417",
+            "taxon_rank": "no rank"
+          },
+          {
+            "node_depth": 2,
+            "scientific_name": "Afzelia",
+            "taxon_id": "162640",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 3,
+            "scientific_name": "Afzelieae",
+            "taxon_id": "2213181",
+            "taxon_rank": "tribe"
+          },
+          {
+            "node_depth": 4,
+            "scientific_name": "Detarioideae",
+            "taxon_id": "1978182",
+            "taxon_rank": "subfamily"
+          },
+          {
+            "node_depth": 5,
+            "scientific_name": "Fabaceae",
+            "taxon_id": "3803",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 6,
+            "scientific_name": "Fabales",
+            "taxon_id": "72025",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 7,
+            "scientific_name": "fabids",
+            "taxon_id": "91835",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 8,
+            "scientific_name": "rosids",
+            "taxon_id": "71275",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 9,
+            "scientific_name": "Pentapetalae",
+            "taxon_id": "1437201",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "scientific_name": "Gunneridae",
+            "taxon_id": "91827",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "scientific_name": "eudicotyledons",
+            "taxon_id": "71240",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 12,
+            "scientific_name": "Mesangiospermae",
+            "taxon_id": "1437183",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 13,
+            "scientific_name": "Magnoliopsida",
+            "taxon_id": "3398",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 14,
+            "scientific_name": "Spermatophyta",
+            "taxon_id": "58024",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 15,
+            "scientific_name": "Euphyllophyta",
+            "taxon_id": "78536",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 16,
+            "scientific_name": "Tracheophyta",
+            "taxon_id": "58023",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 17,
+            "scientific_name": "Embryophyta",
+            "taxon_id": "3193",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 18,
+            "scientific_name": "Streptophytina",
+            "taxon_id": "131221",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 19,
+            "scientific_name": "Streptophyta",
+            "taxon_id": "35493",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 20,
+            "scientific_name": "Viridiplantae",
+            "taxon_id": "33090",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 21,
+            "scientific_name": "Eukaryota",
+            "taxon_id": "2759",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 22,
+            "scientific_name": "cellular organisms",
+            "taxon_id": "131567",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 23,
+            "scientific_name": "root",
+            "taxon_id": "1",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "2600417",
+        "scientific_name": "Afzelia sp. MP 409",
+        "taxon_id": "2600420",
+        "taxon_names": [
+          {
+            "class": "scientific name",
+            "name": "Afzelia sp. MP 409",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "xref",
+            "name": "ncbi:2600420",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          }
+        ],
+        "taxon_rank": "species",
+        "fields": {
+          "haploid_number": {
+            "aggregation_source": [
+              "ancestor"
+            ],
+            "min": 10,
+            "aggregation_method": "mode_low",
+            "median": 12,
+            "count": 6,
+            "aggregation_rank": "genus",
+            "max": 35,
+            "value": 12,
+            "mode": 12,
+            "aggregation_taxon_id": "162640"
+          },
+          "assembly_span": {
+            "aggregation_source": [
+              "ancestor"
+            ],
+            "min": 252364908,
+            "value": 1360260789,
+            "aggregation_method": "median",
+            "median": 1360260789,
+            "count": 2,
+            "aggregation_rank": "subfamily",
+            "max": 1651794440,
+            "aggregation_taxon_id": "1978182"
+          },
+          "chromosome_number": {
+            "aggregation_source": [
+              "ancestor"
+            ],
+            "min": 24,
+            "aggregation_method": "mode",
+            "median": 26,
+            "count": 2,
+            "aggregation_rank": "subfamily",
+            "max": 26,
+            "value": 26,
+            "mode": 26,
+            "aggregation_taxon_id": "1978182"
+          },
+          "genome_size": {
+            "aggregation_source": [
+              "ancestor"
+            ],
+            "min": 819075000,
+            "value": 1387537500,
+            "aggregation_method": "median",
+            "median": 1387537500,
+            "count": 2,
+            "aggregation_rank": "subfamily",
+            "max": 1956000000,
+            "aggregation_taxon_id": "1978182"
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-2600421",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "scientific_name": "Afzelia sp. MP 432",
+            "taxon_id": "2600421",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 1,
+            "scientific_name": "unclassified Afzelia",
+            "taxon_id": "2600417",
+            "taxon_rank": "no rank"
+          },
+          {
+            "node_depth": 2,
+            "scientific_name": "Afzelia",
+            "taxon_id": "162640",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 3,
+            "scientific_name": "Afzelieae",
+            "taxon_id": "2213181",
+            "taxon_rank": "tribe"
+          },
+          {
+            "node_depth": 4,
+            "scientific_name": "Detarioideae",
+            "taxon_id": "1978182",
+            "taxon_rank": "subfamily"
+          },
+          {
+            "node_depth": 5,
+            "scientific_name": "Fabaceae",
+            "taxon_id": "3803",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 6,
+            "scientific_name": "Fabales",
+            "taxon_id": "72025",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 7,
+            "scientific_name": "fabids",
+            "taxon_id": "91835",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 8,
+            "scientific_name": "rosids",
+            "taxon_id": "71275",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 9,
+            "scientific_name": "Pentapetalae",
+            "taxon_id": "1437201",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "scientific_name": "Gunneridae",
+            "taxon_id": "91827",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "scientific_name": "eudicotyledons",
+            "taxon_id": "71240",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 12,
+            "scientific_name": "Mesangiospermae",
+            "taxon_id": "1437183",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 13,
+            "scientific_name": "Magnoliopsida",
+            "taxon_id": "3398",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 14,
+            "scientific_name": "Spermatophyta",
+            "taxon_id": "58024",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 15,
+            "scientific_name": "Euphyllophyta",
+            "taxon_id": "78536",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 16,
+            "scientific_name": "Tracheophyta",
+            "taxon_id": "58023",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 17,
+            "scientific_name": "Embryophyta",
+            "taxon_id": "3193",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 18,
+            "scientific_name": "Streptophytina",
+            "taxon_id": "131221",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 19,
+            "scientific_name": "Streptophyta",
+            "taxon_id": "35493",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 20,
+            "scientific_name": "Viridiplantae",
+            "taxon_id": "33090",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 21,
+            "scientific_name": "Eukaryota",
+            "taxon_id": "2759",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 22,
+            "scientific_name": "cellular organisms",
+            "taxon_id": "131567",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 23,
+            "scientific_name": "root",
+            "taxon_id": "1",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "2600417",
+        "scientific_name": "Afzelia sp. MP 432",
+        "taxon_id": "2600421",
+        "taxon_names": [
+          {
+            "class": "scientific name",
+            "name": "Afzelia sp. MP 432",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "xref",
+            "name": "ncbi:2600421",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          }
+        ],
+        "taxon_rank": "species",
+        "fields": {
+          "haploid_number": {
+            "aggregation_source": [
+              "ancestor"
+            ],
+            "min": 10,
+            "aggregation_method": "mode_low",
+            "median": 12,
+            "count": 6,
+            "aggregation_rank": "genus",
+            "max": 35,
+            "value": 12,
+            "mode": 12,
+            "aggregation_taxon_id": "162640"
+          },
+          "assembly_span": {
+            "aggregation_source": [
+              "ancestor"
+            ],
+            "min": 252364908,
+            "value": 1360260789,
+            "aggregation_method": "median",
+            "median": 1360260789,
+            "count": 2,
+            "aggregation_rank": "subfamily",
+            "max": 1651794440,
+            "aggregation_taxon_id": "1978182"
+          },
+          "chromosome_number": {
+            "aggregation_source": [
+              "ancestor"
+            ],
+            "min": 24,
+            "aggregation_method": "mode",
+            "median": 26,
+            "count": 2,
+            "aggregation_rank": "subfamily",
+            "max": 26,
+            "value": 26,
+            "mode": 26,
+            "aggregation_taxon_id": "1978182"
+          },
+          "genome_size": {
+            "aggregation_source": [
+              "ancestor"
+            ],
+            "min": 819075000,
+            "value": 1387537500,
+            "aggregation_method": "median",
+            "median": 1387537500,
+            "count": 2,
+            "aggregation_rank": "subfamily",
+            "max": 1956000000,
+            "aggregation_taxon_id": "1978182"
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-2695942",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "scientific_name": "Afzelia sp. MP 476",
+            "taxon_id": "2695942",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 1,
+            "scientific_name": "unclassified Afzelia",
+            "taxon_id": "2600417",
+            "taxon_rank": "no rank"
+          },
+          {
+            "node_depth": 2,
+            "scientific_name": "Afzelia",
+            "taxon_id": "162640",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 3,
+            "scientific_name": "Afzelieae",
+            "taxon_id": "2213181",
+            "taxon_rank": "tribe"
+          },
+          {
+            "node_depth": 4,
+            "scientific_name": "Detarioideae",
+            "taxon_id": "1978182",
+            "taxon_rank": "subfamily"
+          },
+          {
+            "node_depth": 5,
+            "scientific_name": "Fabaceae",
+            "taxon_id": "3803",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 6,
+            "scientific_name": "Fabales",
+            "taxon_id": "72025",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 7,
+            "scientific_name": "fabids",
+            "taxon_id": "91835",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 8,
+            "scientific_name": "rosids",
+            "taxon_id": "71275",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 9,
+            "scientific_name": "Pentapetalae",
+            "taxon_id": "1437201",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "scientific_name": "Gunneridae",
+            "taxon_id": "91827",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "scientific_name": "eudicotyledons",
+            "taxon_id": "71240",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 12,
+            "scientific_name": "Mesangiospermae",
+            "taxon_id": "1437183",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 13,
+            "scientific_name": "Magnoliopsida",
+            "taxon_id": "3398",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 14,
+            "scientific_name": "Spermatophyta",
+            "taxon_id": "58024",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 15,
+            "scientific_name": "Euphyllophyta",
+            "taxon_id": "78536",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 16,
+            "scientific_name": "Tracheophyta",
+            "taxon_id": "58023",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 17,
+            "scientific_name": "Embryophyta",
+            "taxon_id": "3193",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 18,
+            "scientific_name": "Streptophytina",
+            "taxon_id": "131221",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 19,
+            "scientific_name": "Streptophyta",
+            "taxon_id": "35493",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 20,
+            "scientific_name": "Viridiplantae",
+            "taxon_id": "33090",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 21,
+            "scientific_name": "Eukaryota",
+            "taxon_id": "2759",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 22,
+            "scientific_name": "cellular organisms",
+            "taxon_id": "131567",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 23,
+            "scientific_name": "root",
+            "taxon_id": "1",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "2600417",
+        "scientific_name": "Afzelia sp. MP 476",
+        "taxon_id": "2695942",
+        "taxon_names": [
+          {
+            "class": "scientific name",
+            "name": "Afzelia sp. MP 476",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          }
+        ],
+        "taxon_rank": "species",
+        "fields": {
+          "haploid_number": {
+            "aggregation_source": [
+              "ancestor"
+            ],
+            "min": 10,
+            "aggregation_method": "mode_low",
+            "median": 12,
+            "count": 6,
+            "aggregation_rank": "genus",
+            "max": 35,
+            "value": 12,
+            "mode": 12,
+            "aggregation_taxon_id": "162640"
+          },
+          "assembly_span": {
+            "aggregation_source": [
+              "ancestor"
+            ],
+            "min": 252364908,
+            "value": 1360260789,
+            "aggregation_method": "median",
+            "median": 1360260789,
+            "count": 2,
+            "aggregation_rank": "subfamily",
+            "max": 1651794440,
+            "aggregation_taxon_id": "1978182"
+          },
+          "chromosome_number": {
+            "aggregation_source": [
+              "ancestor"
+            ],
+            "min": 24,
+            "aggregation_method": "mode",
+            "median": 26,
+            "count": 2,
+            "aggregation_rank": "subfamily",
+            "max": 26,
+            "value": 26,
+            "mode": 26,
+            "aggregation_taxon_id": "1978182"
+          },
+          "genome_size": {
+            "aggregation_source": [
+              "ancestor"
+            ],
+            "min": 819075000,
+            "value": 1387537500,
+            "aggregation_method": "median",
+            "median": 1387537500,
+            "count": 2,
+            "aggregation_rank": "subfamily",
+            "max": 1956000000,
+            "aggregation_taxon_id": "1978182"
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-2925777",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "scientific_name": "Afzelia sp.",
+            "taxon_id": "2925777",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 1,
+            "scientific_name": "unclassified Afzelia",
+            "taxon_id": "2600417",
+            "taxon_rank": "no rank"
+          },
+          {
+            "node_depth": 2,
+            "scientific_name": "Afzelia",
+            "taxon_id": "162640",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 3,
+            "scientific_name": "Afzelieae",
+            "taxon_id": "2213181",
+            "taxon_rank": "tribe"
+          },
+          {
+            "node_depth": 4,
+            "scientific_name": "Detarioideae",
+            "taxon_id": "1978182",
+            "taxon_rank": "subfamily"
+          },
+          {
+            "node_depth": 5,
+            "scientific_name": "Fabaceae",
+            "taxon_id": "3803",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 6,
+            "scientific_name": "Fabales",
+            "taxon_id": "72025",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 7,
+            "scientific_name": "fabids",
+            "taxon_id": "91835",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 8,
+            "scientific_name": "rosids",
+            "taxon_id": "71275",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 9,
+            "scientific_name": "Pentapetalae",
+            "taxon_id": "1437201",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "scientific_name": "Gunneridae",
+            "taxon_id": "91827",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "scientific_name": "eudicotyledons",
+            "taxon_id": "71240",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 12,
+            "scientific_name": "Mesangiospermae",
+            "taxon_id": "1437183",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 13,
+            "scientific_name": "Magnoliopsida",
+            "taxon_id": "3398",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 14,
+            "scientific_name": "Spermatophyta",
+            "taxon_id": "58024",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 15,
+            "scientific_name": "Euphyllophyta",
+            "taxon_id": "78536",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 16,
+            "scientific_name": "Tracheophyta",
+            "taxon_id": "58023",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 17,
+            "scientific_name": "Embryophyta",
+            "taxon_id": "3193",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 18,
+            "scientific_name": "Streptophytina",
+            "taxon_id": "131221",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 19,
+            "scientific_name": "Streptophyta",
+            "taxon_id": "35493",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 20,
+            "scientific_name": "Viridiplantae",
+            "taxon_id": "33090",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 21,
+            "scientific_name": "Eukaryota",
+            "taxon_id": "2759",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 22,
+            "scientific_name": "cellular organisms",
+            "taxon_id": "131567",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 23,
+            "scientific_name": "root",
+            "taxon_id": "1",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "2600417",
+        "scientific_name": "Afzelia sp.",
+        "taxon_id": "2925777",
+        "taxon_names": [
+          {
+            "class": "scientific name",
+            "name": "Afzelia sp.",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          }
+        ],
+        "taxon_rank": "species",
+        "fields": {
+          "haploid_number": {
+            "aggregation_source": [
+              "ancestor"
+            ],
+            "min": 10,
+            "aggregation_method": "mode_low",
+            "median": 12,
+            "count": 6,
+            "aggregation_rank": "genus",
+            "max": 35,
+            "value": 12,
+            "mode": 12,
+            "aggregation_taxon_id": "162640"
+          },
+          "assembly_span": {
+            "aggregation_source": [
+              "ancestor"
+            ],
+            "min": 252364908,
+            "value": 1360260789,
+            "aggregation_method": "median",
+            "median": 1360260789,
+            "count": 2,
+            "aggregation_rank": "subfamily",
+            "max": 1651794440,
+            "aggregation_taxon_id": "1978182"
+          },
+          "chromosome_number": {
+            "aggregation_source": [
+              "ancestor"
+            ],
+            "min": 24,
+            "aggregation_method": "mode",
+            "median": 26,
+            "count": 2,
+            "aggregation_rank": "subfamily",
+            "max": 26,
+            "value": 26,
+            "mode": 26,
+            "aggregation_taxon_id": "1978182"
+          },
+          "genome_size": {
+            "aggregation_source": [
+              "ancestor"
+            ],
+            "min": 819075000,
+            "value": 1387537500,
+            "aggregation_method": "median",
+            "median": 1387537500,
+            "count": 2,
+            "aggregation_rank": "subfamily",
+            "max": 1956000000,
+            "aggregation_taxon_id": "1978182"
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-3083636",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "scientific_name": "Afzelia javanica",
+            "taxon_id": "3083636",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 1,
+            "scientific_name": "Afzelia",
+            "taxon_id": "162640",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 2,
+            "scientific_name": "Afzelieae",
+            "taxon_id": "2213181",
+            "taxon_rank": "tribe"
+          },
+          {
+            "node_depth": 3,
+            "scientific_name": "Detarioideae",
+            "taxon_id": "1978182",
+            "taxon_rank": "subfamily"
+          },
+          {
+            "node_depth": 4,
+            "scientific_name": "Fabaceae",
+            "taxon_id": "3803",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 5,
+            "scientific_name": "Fabales",
+            "taxon_id": "72025",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 6,
+            "scientific_name": "fabids",
+            "taxon_id": "91835",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 7,
+            "scientific_name": "rosids",
+            "taxon_id": "71275",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 8,
+            "scientific_name": "Pentapetalae",
+            "taxon_id": "1437201",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 9,
+            "scientific_name": "Gunneridae",
+            "taxon_id": "91827",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "scientific_name": "eudicotyledons",
+            "taxon_id": "71240",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "scientific_name": "Mesangiospermae",
+            "taxon_id": "1437183",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 12,
+            "scientific_name": "Magnoliopsida",
+            "taxon_id": "3398",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 13,
+            "scientific_name": "Spermatophyta",
+            "taxon_id": "58024",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 14,
+            "scientific_name": "Euphyllophyta",
+            "taxon_id": "78536",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 15,
+            "scientific_name": "Tracheophyta",
+            "taxon_id": "58023",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 16,
+            "scientific_name": "Embryophyta",
+            "taxon_id": "3193",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 17,
+            "scientific_name": "Streptophytina",
+            "taxon_id": "131221",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 18,
+            "scientific_name": "Streptophyta",
+            "taxon_id": "35493",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 19,
+            "scientific_name": "Viridiplantae",
+            "taxon_id": "33090",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 20,
+            "scientific_name": "Eukaryota",
+            "taxon_id": "2759",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 21,
+            "scientific_name": "cellular organisms",
+            "taxon_id": "131567",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 22,
+            "scientific_name": "root",
+            "taxon_id": "1",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "162640",
+        "scientific_name": "Afzelia javanica",
+        "taxon_id": "3083636",
+        "taxon_names": [
+          {
+            "class": "scientific name",
+            "name": "Afzelia javanica",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "synonym",
+            "name": "Pahudia javanica",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          }
+        ],
+        "taxon_rank": "species",
+        "fields": {
+          "haploid_number": {
+            "aggregation_source": [
+              "ancestor"
+            ],
+            "min": 10,
+            "aggregation_method": "mode_low",
+            "median": 12,
+            "count": 6,
+            "aggregation_rank": "genus",
+            "max": 35,
+            "value": 12,
+            "mode": 12,
+            "aggregation_taxon_id": "162640"
+          },
+          "assembly_span": {
+            "aggregation_source": [
+              "ancestor"
+            ],
+            "min": 252364908,
+            "value": 1360260789,
+            "aggregation_method": "median",
+            "median": 1360260789,
+            "count": 2,
+            "aggregation_rank": "subfamily",
+            "max": 1651794440,
+            "aggregation_taxon_id": "1978182"
+          },
+          "chromosome_number": {
+            "aggregation_source": [
+              "ancestor"
+            ],
+            "min": 24,
+            "aggregation_method": "mode",
+            "median": 26,
+            "count": 2,
+            "aggregation_rank": "subfamily",
+            "max": 26,
+            "value": 26,
+            "mode": 26,
+            "aggregation_taxon_id": "1978182"
+          },
+          "genome_size": {
+            "aggregation_source": [
+              "ancestor"
+            ],
+            "min": 819075000,
+            "value": 1387537500,
+            "aggregation_method": "median",
+            "median": 1387537500,
+            "count": 2,
+            "aggregation_rank": "subfamily",
+            "max": 1956000000,
+            "aggregation_taxon_id": "1978182"
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-3083637",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "taxon_id": "3083637",
+            "scientific_name": "Afzelia martabanica",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 1,
+            "taxon_id": "162640",
+            "scientific_name": "Afzelia",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 2,
+            "taxon_id": "2213181",
+            "scientific_name": "Afzelieae",
+            "taxon_rank": "tribe"
+          },
+          {
+            "node_depth": 3,
+            "taxon_id": "1978182",
+            "scientific_name": "Detarioideae",
+            "taxon_rank": "subfamily"
+          },
+          {
+            "node_depth": 4,
+            "taxon_id": "3803",
+            "scientific_name": "Fabaceae",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 5,
+            "taxon_id": "72025",
+            "scientific_name": "Fabales",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 6,
+            "taxon_id": "91835",
+            "scientific_name": "fabids",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 7,
+            "taxon_id": "71275",
+            "scientific_name": "rosids",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 8,
+            "taxon_id": "1437201",
+            "scientific_name": "Pentapetalae",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 9,
+            "taxon_id": "91827",
+            "scientific_name": "Gunneridae",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "taxon_id": "71240",
+            "scientific_name": "eudicotyledons",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "taxon_id": "1437183",
+            "scientific_name": "Mesangiospermae",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 12,
+            "taxon_id": "3398",
+            "scientific_name": "Magnoliopsida",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 13,
+            "taxon_id": "58024",
+            "scientific_name": "Spermatophyta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 14,
+            "taxon_id": "78536",
+            "scientific_name": "Euphyllophyta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 15,
+            "taxon_id": "58023",
+            "scientific_name": "Tracheophyta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 16,
+            "taxon_id": "3193",
+            "scientific_name": "Embryophyta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 17,
+            "taxon_id": "131221",
+            "scientific_name": "Streptophytina",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 18,
+            "taxon_id": "35493",
+            "scientific_name": "Streptophyta",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 19,
+            "taxon_id": "33090",
+            "scientific_name": "Viridiplantae",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 20,
+            "taxon_id": "2759",
+            "scientific_name": "Eukaryota",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 21,
+            "taxon_id": "131567",
+            "scientific_name": "cellular organisms",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 22,
+            "taxon_id": "1",
+            "scientific_name": "root",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "162640",
+        "scientific_name": "Afzelia martabanica",
+        "taxon_id": "3083637",
+        "taxon_names": [
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Afzelia martabanica",
+            "source": "NCBI Taxonomy",
+            "class": "scientific name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Pahudia martabanica",
+            "source": "NCBI Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          }
+        ],
+        "taxon_rank": "species",
+        "fields": {
+          "haploid_number": {
+            "aggregation_source": "direct",
+            "sp_count": 0,
+            "min": 12,
+            "aggregation_method": "mode_low",
+            "median": 14,
+            "count": 1,
+            "max": 14,
+            "value": 12,
+            "mode": 12
+          },
+          "assembly_span": {
+            "aggregation_source": [
+              "ancestor"
+            ],
+            "min": 252364908,
+            "value": 1360260789,
+            "aggregation_method": "median",
+            "median": 1360260789,
+            "count": 2,
+            "aggregation_rank": "subfamily",
+            "max": 1651794440,
+            "aggregation_taxon_id": "1978182"
+          },
+          "chromosome_number": {
+            "aggregation_source": [
+              "ancestor"
+            ],
+            "min": 24,
+            "aggregation_method": "mode",
+            "median": 26,
+            "count": 2,
+            "aggregation_rank": "subfamily",
+            "max": 26,
+            "value": 26,
+            "mode": 26,
+            "aggregation_taxon_id": "1978182"
+          },
+          "genome_size": {
+            "aggregation_source": [
+              "ancestor"
+            ],
+            "min": 819075000,
+            "value": 1387537500,
+            "aggregation_method": "median",
+            "median": 1387537500,
+            "count": 2,
+            "aggregation_rank": "subfamily",
+            "max": 1956000000,
+            "aggregation_taxon_id": "1978182"
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-162642",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "taxon_id": "162642",
+            "scientific_name": "Afzelia bella",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 1,
+            "taxon_id": "162640",
+            "scientific_name": "Afzelia",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 2,
+            "taxon_id": "2213181",
+            "scientific_name": "Afzelieae",
+            "taxon_rank": "tribe"
+          },
+          {
+            "node_depth": 3,
+            "taxon_id": "1978182",
+            "scientific_name": "Detarioideae",
+            "taxon_rank": "subfamily"
+          },
+          {
+            "node_depth": 4,
+            "taxon_id": "3803",
+            "scientific_name": "Fabaceae",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 5,
+            "taxon_id": "72025",
+            "scientific_name": "Fabales",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 6,
+            "taxon_id": "91835",
+            "scientific_name": "fabids",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 7,
+            "taxon_id": "71275",
+            "scientific_name": "rosids",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 8,
+            "taxon_id": "1437201",
+            "scientific_name": "Pentapetalae",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 9,
+            "taxon_id": "91827",
+            "scientific_name": "Gunneridae",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "taxon_id": "71240",
+            "scientific_name": "eudicotyledons",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "taxon_id": "1437183",
+            "scientific_name": "Mesangiospermae",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 12,
+            "taxon_id": "3398",
+            "scientific_name": "Magnoliopsida",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 13,
+            "taxon_id": "58024",
+            "scientific_name": "Spermatophyta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 14,
+            "taxon_id": "78536",
+            "scientific_name": "Euphyllophyta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 15,
+            "taxon_id": "58023",
+            "scientific_name": "Tracheophyta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 16,
+            "taxon_id": "3193",
+            "scientific_name": "Embryophyta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 17,
+            "taxon_id": "131221",
+            "scientific_name": "Streptophytina",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 18,
+            "taxon_id": "35493",
+            "scientific_name": "Streptophyta",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 19,
+            "taxon_id": "33090",
+            "scientific_name": "Viridiplantae",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 20,
+            "taxon_id": "2759",
+            "scientific_name": "Eukaryota",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 21,
+            "taxon_id": "131567",
+            "scientific_name": "cellular organisms",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 22,
+            "taxon_id": "1",
+            "scientific_name": "root",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "162640",
+        "scientific_name": "Afzelia bella",
+        "taxon_id": "162642",
+        "taxon_names": [
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Afzelia bella",
+            "source": "NCBI Taxonomy",
+            "class": "scientific name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": null,
+            "name": "drAfzBell",
+            "source": "Tree of Life ID",
+            "class": "tolid prefix",
+            "source_url": "https://id.tol.sanger.ac.uk"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "ncbi:162642",
+            "source": "NCBI Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "gbif:5358289",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.irmng.org/aphia.php?p=taxdetails&id=",
+            "name": "irmng:10760531",
+            "source": "IRMNG",
+            "class": "xref",
+            "source_url": "https://www.irmng.org/"
+          }
+        ],
+        "taxon_rank": "species",
+        "fields": {
+          "haploid_number": {
+            "aggregation_source": "direct",
+            "sp_count": 0,
+            "min": 12,
+            "aggregation_method": "mode_low",
+            "median": 12,
+            "count": 1,
+            "max": 12,
+            "value": 12,
+            "mode": 12
+          },
+          "assembly_span": {
+            "aggregation_source": [
+              "ancestor"
+            ],
+            "min": 252364908,
+            "value": 1360260789,
+            "aggregation_method": "median",
+            "median": 1360260789,
+            "count": 2,
+            "aggregation_rank": "subfamily",
+            "max": 1651794440,
+            "aggregation_taxon_id": "1978182"
+          },
+          "chromosome_number": {
+            "aggregation_source": [
+              "ancestor"
+            ],
+            "min": 24,
+            "aggregation_method": "mode",
+            "median": 26,
+            "count": 2,
+            "aggregation_rank": "subfamily",
+            "max": 26,
+            "value": 26,
+            "mode": 26,
+            "aggregation_taxon_id": "1978182"
+          },
+          "genome_size": {
+            "aggregation_source": [
+              "ancestor"
+            ],
+            "min": 819075000,
+            "value": 1387537500,
+            "aggregation_method": "median",
+            "median": 1387537500,
+            "count": 2,
+            "aggregation_rank": "subfamily",
+            "max": 1956000000,
+            "aggregation_taxon_id": "1978182"
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-162641",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "taxon_id": "162641",
+            "scientific_name": "Afzelia africana",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 1,
+            "taxon_id": "162640",
+            "scientific_name": "Afzelia",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 2,
+            "taxon_id": "2213181",
+            "scientific_name": "Afzelieae",
+            "taxon_rank": "tribe"
+          },
+          {
+            "node_depth": 3,
+            "taxon_id": "1978182",
+            "scientific_name": "Detarioideae",
+            "taxon_rank": "subfamily"
+          },
+          {
+            "node_depth": 4,
+            "taxon_id": "3803",
+            "scientific_name": "Fabaceae",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 5,
+            "taxon_id": "72025",
+            "scientific_name": "Fabales",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 6,
+            "taxon_id": "91835",
+            "scientific_name": "fabids",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 7,
+            "taxon_id": "71275",
+            "scientific_name": "rosids",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 8,
+            "taxon_id": "1437201",
+            "scientific_name": "Pentapetalae",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 9,
+            "taxon_id": "91827",
+            "scientific_name": "Gunneridae",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "taxon_id": "71240",
+            "scientific_name": "eudicotyledons",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "taxon_id": "1437183",
+            "scientific_name": "Mesangiospermae",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 12,
+            "taxon_id": "3398",
+            "scientific_name": "Magnoliopsida",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 13,
+            "taxon_id": "58024",
+            "scientific_name": "Spermatophyta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 14,
+            "taxon_id": "78536",
+            "scientific_name": "Euphyllophyta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 15,
+            "taxon_id": "58023",
+            "scientific_name": "Tracheophyta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 16,
+            "taxon_id": "3193",
+            "scientific_name": "Embryophyta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 17,
+            "taxon_id": "131221",
+            "scientific_name": "Streptophytina",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 18,
+            "taxon_id": "35493",
+            "scientific_name": "Streptophyta",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 19,
+            "taxon_id": "33090",
+            "scientific_name": "Viridiplantae",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 20,
+            "taxon_id": "2759",
+            "scientific_name": "Eukaryota",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 21,
+            "taxon_id": "131567",
+            "scientific_name": "cellular organisms",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 22,
+            "taxon_id": "1",
+            "scientific_name": "root",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "162640",
+        "scientific_name": "Afzelia africana",
+        "taxon_id": "162641",
+        "taxon_names": [
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Afzelia africana",
+            "source": "NCBI Taxonomy",
+            "class": "scientific name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": null,
+            "name": "drAfzAfri",
+            "source": "Tree of Life ID",
+            "class": "tolid prefix",
+            "source_url": "https://id.tol.sanger.ac.uk"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "ncbi:162641",
+            "source": "NCBI Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "gbif:5358300",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.irmng.org/aphia.php?p=taxdetails&id=",
+            "name": "irmng:10982153",
+            "source": "IRMNG",
+            "class": "xref",
+            "source_url": "https://www.irmng.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Intsia africana",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Pahudia africana",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          }
+        ],
+        "taxon_rank": "species",
+        "fields": {
+          "haploid_number": {
+            "aggregation_source": "direct",
+            "sp_count": 0,
+            "min": 12,
+            "aggregation_method": "mode_low",
+            "median": 12,
+            "count": 2,
+            "max": 12,
+            "value": 12,
+            "mode": 12
+          },
+          "assembly_span": {
+            "aggregation_source": [
+              "ancestor"
+            ],
+            "min": 252364908,
+            "value": 1360260789,
+            "aggregation_method": "median",
+            "median": 1360260789,
+            "count": 2,
+            "aggregation_rank": "subfamily",
+            "max": 1651794440,
+            "aggregation_taxon_id": "1978182"
+          },
+          "chromosome_number": {
+            "aggregation_source": [
+              "ancestor"
+            ],
+            "min": 24,
+            "aggregation_method": "mode",
+            "median": 26,
+            "count": 2,
+            "aggregation_rank": "subfamily",
+            "max": 26,
+            "value": 26,
+            "mode": 26,
+            "aggregation_taxon_id": "1978182"
+          },
+          "genome_size": {
+            "aggregation_source": [
+              "ancestor"
+            ],
+            "min": 819075000,
+            "value": 1387537500,
+            "aggregation_method": "median",
+            "median": 1387537500,
+            "count": 2,
+            "aggregation_rank": "subfamily",
+            "max": 1956000000,
+            "aggregation_taxon_id": "1978182"
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-543392",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "taxon_id": "543392",
+            "scientific_name": "Afzelia xylocarpa",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 1,
+            "taxon_id": "162640",
+            "scientific_name": "Afzelia",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 2,
+            "taxon_id": "2213181",
+            "scientific_name": "Afzelieae",
+            "taxon_rank": "tribe"
+          },
+          {
+            "node_depth": 3,
+            "taxon_id": "1978182",
+            "scientific_name": "Detarioideae",
+            "taxon_rank": "subfamily"
+          },
+          {
+            "node_depth": 4,
+            "taxon_id": "3803",
+            "scientific_name": "Fabaceae",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 5,
+            "taxon_id": "72025",
+            "scientific_name": "Fabales",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 6,
+            "taxon_id": "91835",
+            "scientific_name": "fabids",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 7,
+            "taxon_id": "71275",
+            "scientific_name": "rosids",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 8,
+            "taxon_id": "1437201",
+            "scientific_name": "Pentapetalae",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 9,
+            "taxon_id": "91827",
+            "scientific_name": "Gunneridae",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "taxon_id": "71240",
+            "scientific_name": "eudicotyledons",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "taxon_id": "1437183",
+            "scientific_name": "Mesangiospermae",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 12,
+            "taxon_id": "3398",
+            "scientific_name": "Magnoliopsida",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 13,
+            "taxon_id": "58024",
+            "scientific_name": "Spermatophyta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 14,
+            "taxon_id": "78536",
+            "scientific_name": "Euphyllophyta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 15,
+            "taxon_id": "58023",
+            "scientific_name": "Tracheophyta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 16,
+            "taxon_id": "3193",
+            "scientific_name": "Embryophyta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 17,
+            "taxon_id": "131221",
+            "scientific_name": "Streptophytina",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 18,
+            "taxon_id": "35493",
+            "scientific_name": "Streptophyta",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 19,
+            "taxon_id": "33090",
+            "scientific_name": "Viridiplantae",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 20,
+            "taxon_id": "2759",
+            "scientific_name": "Eukaryota",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 21,
+            "taxon_id": "131567",
+            "scientific_name": "cellular organisms",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 22,
+            "taxon_id": "1",
+            "scientific_name": "root",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "162640",
+        "scientific_name": "Afzelia xylocarpa",
+        "taxon_id": "543392",
+        "taxon_names": [
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Afzelia xylocarpa",
+            "source": "NCBI Taxonomy",
+            "class": "scientific name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": null,
+            "name": "drAfzXylo",
+            "source": "Tree of Life ID",
+            "class": "tolid prefix",
+            "source_url": "https://id.tol.sanger.ac.uk"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "ncbi:543392",
+            "source": "NCBI Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "gbif:5358297",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.irmng.org/aphia.php?p=taxdetails&id=",
+            "name": "irmng:10454906",
+            "source": "IRMNG",
+            "class": "xref",
+            "source_url": "https://www.irmng.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Afzelia cochinchinensis",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Afzelia siamica",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Pahudia cochinchinensis",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Pahudia xylocarpa",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          }
+        ],
+        "taxon_rank": "species",
+        "fields": {
+          "haploid_number": {
+            "aggregation_source": "direct",
+            "sp_count": 0,
+            "min": 10,
+            "aggregation_method": "mode_low",
+            "median": 12,
+            "count": 1,
+            "max": 12,
+            "value": 10,
+            "mode": 10
+          },
+          "assembly_span": {
+            "aggregation_source": [
+              "ancestor"
+            ],
+            "min": 252364908,
+            "value": 1360260789,
+            "aggregation_method": "median",
+            "median": 1360260789,
+            "count": 2,
+            "aggregation_rank": "subfamily",
+            "max": 1651794440,
+            "aggregation_taxon_id": "1978182"
+          },
+          "chromosome_number": {
+            "aggregation_source": [
+              "ancestor"
+            ],
+            "min": 24,
+            "aggregation_method": "mode",
+            "median": 26,
+            "count": 2,
+            "aggregation_rank": "subfamily",
+            "max": 26,
+            "value": 26,
+            "mode": 26,
+            "aggregation_taxon_id": "1978182"
+          },
+          "genome_size": {
+            "aggregation_source": [
+              "ancestor"
+            ],
+            "min": 819075000,
+            "value": 1387537500,
+            "aggregation_method": "median",
+            "median": 1387537500,
+            "count": 2,
+            "aggregation_rank": "subfamily",
+            "max": 1956000000,
+            "aggregation_taxon_id": "1978182"
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-162643",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "taxon_id": "162643",
+            "scientific_name": "Afzelia bipindensis",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 1,
+            "taxon_id": "162640",
+            "scientific_name": "Afzelia",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 2,
+            "taxon_id": "2213181",
+            "scientific_name": "Afzelieae",
+            "taxon_rank": "tribe"
+          },
+          {
+            "node_depth": 3,
+            "taxon_id": "1978182",
+            "scientific_name": "Detarioideae",
+            "taxon_rank": "subfamily"
+          },
+          {
+            "node_depth": 4,
+            "taxon_id": "3803",
+            "scientific_name": "Fabaceae",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 5,
+            "taxon_id": "72025",
+            "scientific_name": "Fabales",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 6,
+            "taxon_id": "91835",
+            "scientific_name": "fabids",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 7,
+            "taxon_id": "71275",
+            "scientific_name": "rosids",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 8,
+            "taxon_id": "1437201",
+            "scientific_name": "Pentapetalae",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 9,
+            "taxon_id": "91827",
+            "scientific_name": "Gunneridae",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "taxon_id": "71240",
+            "scientific_name": "eudicotyledons",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "taxon_id": "1437183",
+            "scientific_name": "Mesangiospermae",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 12,
+            "taxon_id": "3398",
+            "scientific_name": "Magnoliopsida",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 13,
+            "taxon_id": "58024",
+            "scientific_name": "Spermatophyta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 14,
+            "taxon_id": "78536",
+            "scientific_name": "Euphyllophyta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 15,
+            "taxon_id": "58023",
+            "scientific_name": "Tracheophyta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 16,
+            "taxon_id": "3193",
+            "scientific_name": "Embryophyta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 17,
+            "taxon_id": "131221",
+            "scientific_name": "Streptophytina",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 18,
+            "taxon_id": "35493",
+            "scientific_name": "Streptophyta",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 19,
+            "taxon_id": "33090",
+            "scientific_name": "Viridiplantae",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 20,
+            "taxon_id": "2759",
+            "scientific_name": "Eukaryota",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 21,
+            "taxon_id": "131567",
+            "scientific_name": "cellular organisms",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 22,
+            "taxon_id": "1",
+            "scientific_name": "root",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "162640",
+        "scientific_name": "Afzelia bipindensis",
+        "taxon_id": "162643",
+        "taxon_names": [
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Afzelia bipindensis",
+            "source": "NCBI Taxonomy",
+            "class": "scientific name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": null,
+            "name": "drAfzBipi",
+            "source": "Tree of Life ID",
+            "class": "tolid prefix",
+            "source_url": "https://id.tol.sanger.ac.uk"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "ncbi:162643",
+            "source": "NCBI Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "gbif:5358291",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.irmng.org/aphia.php?p=taxdetails&id=",
+            "name": "irmng:11358080",
+            "source": "IRMNG",
+            "class": "xref",
+            "source_url": "https://www.irmng.org/"
+          },
+          {
+            "source_url_stub": "https://www.irmng.org/aphia.php?p=taxdetails&id=",
+            "name": "Afzelia bella",
+            "source": "IRMNG",
+            "class": "synonym",
+            "source_url": "https://www.irmng.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Afzelia caudata",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Pahudia bequaertii",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          }
+        ],
+        "taxon_rank": "species",
+        "fields": {
+          "haploid_number": {
+            "aggregation_source": "direct",
+            "sp_count": 0,
+            "min": 12,
+            "aggregation_method": "mode_low",
+            "median": 12,
+            "count": 1,
+            "max": 12,
+            "value": 12,
+            "mode": 12
+          },
+          "assembly_span": {
+            "aggregation_source": [
+              "ancestor"
+            ],
+            "min": 252364908,
+            "value": 1360260789,
+            "aggregation_method": "median",
+            "median": 1360260789,
+            "count": 2,
+            "aggregation_rank": "subfamily",
+            "max": 1651794440,
+            "aggregation_taxon_id": "1978182"
+          },
+          "chromosome_number": {
+            "aggregation_source": [
+              "ancestor"
+            ],
+            "min": 24,
+            "aggregation_method": "mode",
+            "median": 26,
+            "count": 2,
+            "aggregation_rank": "subfamily",
+            "max": 26,
+            "value": 26,
+            "mode": 26,
+            "aggregation_taxon_id": "1978182"
+          },
+          "genome_size": {
+            "aggregation_source": [
+              "ancestor"
+            ],
+            "min": 819075000,
+            "value": 1387537500,
+            "aggregation_method": "median",
+            "median": 1387537500,
+            "count": 2,
+            "aggregation_rank": "subfamily",
+            "max": 1956000000,
+            "aggregation_taxon_id": "1978182"
+          }
+        }
+      }
+    }
+  ],
+  "aggs": {
+    "fields": {
+      "doc_count": 15113213,
+      "by_key": {
+        "buckets": {
+          "assembly_level": {
+            "doc_count": 25309,
+            "value_list": {
+              "doc_count_error_upper_bound": 0,
+              "sum_other_doc_count": 0,
+              "buckets": [
+                {
+                  "key": "scaffold",
+                  "doc_count": 12669
+                },
+                {
+                  "key": "chromosome",
+                  "doc_count": 7855
+                },
+                {
+                  "key": "contig",
+                  "doc_count": 4237
+                },
+                {
+                  "key": "complete genome",
+                  "doc_count": 548
+                }
+              ]
+            },
+            "value_count": {
+              "value": 25309
+            }
+          },
+          "assembly_span": {
+            "doc_count": 1661357,
+            "value_list": {
+              "doc_count_error_upper_bound": 0,
+              "sum_other_doc_count": 0,
+              "buckets": []
+            },
+            "value_count": {
+              "value": 1661357
+            }
+          },
+          "chromosome_number": {
+            "doc_count": 1661357,
+            "value_list": {
+              "doc_count_error_upper_bound": 0,
+              "sum_other_doc_count": 0,
+              "buckets": []
+            },
+            "value_count": {
+              "value": 1661357
+            }
+          },
+          "genome_size": {
+            "doc_count": 1661357,
+            "value_list": {
+              "doc_count_error_upper_bound": 0,
+              "sum_other_doc_count": 0,
+              "buckets": []
+            },
+            "value_count": {
+              "value": 1661357
+            }
+          },
+          "haploid_number": {
+            "doc_count": 1661357,
+            "value_list": {
+              "doc_count_error_upper_bound": 0,
+              "sum_other_doc_count": 0,
+              "buckets": []
+            },
+            "value_count": {
+              "value": 1661357
+            }
+          }
+        }
+      }
+    }
+  },
+  "fields": [
+    "genome_size",
+    "assembly_level",
+    "assembly_span",
+    "chromosome_number",
+    "haploid_number"
+  ],
+  "query": {
+    "size": 10,
+    "from": 10,
+    "query": {
+      "bool": {
+        "must_not": [],
+        "filter": [
+          {
+            "bool": {
+              "should": [
+                {
+                  "bool": {
+                    "filter": {
+                      "nested": {
+                        "path": "attributes",
+                        "query": {
+                          "bool": {
+                            "should": [
+                              {
+                                "bool": {
+                                  "filter": [
+                                    {
+                                      "match": {
+                                        "attributes.key": "genome_size"
+                                      }
+                                    },
+                                    {
+                                      "exists": {
+                                        "field": "attributes.long_value"
+                                      }
+                                    },
+                                    {
+                                      "exists": {
+                                        "field": "attributes.aggregation_source"
+                                      }
+                                    },
+                                    {
+                                      "exists": {
+                                        "field": "attributes.aggregation_method"
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              {
+                                "bool": {
+                                  "filter": [
+                                    {
+                                      "match": {
+                                        "attributes.key": "assembly_level"
+                                      }
+                                    },
+                                    {
+                                      "exists": {
+                                        "field": "attributes.keyword_value"
+                                      }
+                                    },
+                                    {
+                                      "exists": {
+                                        "field": "attributes.aggregation_source"
+                                      }
+                                    },
+                                    {
+                                      "exists": {
+                                        "field": "attributes.aggregation_method"
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              {
+                                "bool": {
+                                  "filter": [
+                                    {
+                                      "match": {
+                                        "attributes.key": "assembly_span"
+                                      }
+                                    },
+                                    {
+                                      "exists": {
+                                        "field": "attributes.long_value"
+                                      }
+                                    },
+                                    {
+                                      "exists": {
+                                        "field": "attributes.aggregation_source"
+                                      }
+                                    },
+                                    {
+                                      "exists": {
+                                        "field": "attributes.aggregation_method"
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              {
+                                "bool": {
+                                  "filter": [
+                                    {
+                                      "match": {
+                                        "attributes.key": "chromosome_number"
+                                      }
+                                    },
+                                    {
+                                      "exists": {
+                                        "field": "attributes.short_value"
+                                      }
+                                    },
+                                    {
+                                      "exists": {
+                                        "field": "attributes.aggregation_source"
+                                      }
+                                    },
+                                    {
+                                      "exists": {
+                                        "field": "attributes.aggregation_method"
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              {
+                                "bool": {
+                                  "filter": [
+                                    {
+                                      "match": {
+                                        "attributes.key": "haploid_number"
+                                      }
+                                    },
+                                    {
+                                      "exists": {
+                                        "field": "attributes.short_value"
+                                      }
+                                    },
+                                    {
+                                      "exists": {
+                                        "field": "attributes.aggregation_source"
+                                      }
+                                    },
+                                    {
+                                      "exists": {
+                                        "field": "attributes.aggregation_method"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "bool": {
+                    "should": {
+                      "nested": {
+                        "path": "attributes",
+                        "query": {
+                          "bool": {
+                            "should": [
+                              {
+                                "bool": {
+                                  "filter": [
+                                    {
+                                      "match": {
+                                        "attributes.key": "genome_size"
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              {
+                                "bool": {
+                                  "filter": [
+                                    {
+                                      "match": {
+                                        "attributes.key": "assembly_level"
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              {
+                                "bool": {
+                                  "filter": [
+                                    {
+                                      "match": {
+                                        "attributes.key": "assembly_span"
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              {
+                                "bool": {
+                                  "filter": [
+                                    {
+                                      "match": {
+                                        "attributes.key": "chromosome_number"
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              {
+                                "bool": {
+                                  "filter": [
+                                    {
+                                      "match": {
+                                        "attributes.key": "haploid_number"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        "inner_hits": {
+                          "_source": false,
+                          "name": "attributes",
+                          "docvalue_fields": [
+                            "attributes.key",
+                            "attributes.is_primary_value",
+                            "attributes.count",
+                            "attributes.sp_count",
+                            "attributes.max",
+                            "attributes.min",
+                            "attributes.mean",
+                            "attributes.median",
+                            "attributes.mode",
+                            "attributes.sum",
+                            "attributes.from",
+                            "attributes.to",
+                            "attributes.range",
+                            "attributes.length",
+                            "attributes.aggregation_method",
+                            "attributes.aggregation_source",
+                            "attributes.aggregation_rank",
+                            "attributes.aggregation_taxon_id",
+                            "attributes.long_value",
+                            "attributes.keyword_value.raw",
+                            "attributes.short_value"
+                          ],
+                          "size": 100
+                        }
+                      }
+                    }
+                  }
+                }
+              ],
+              "minimum_should_match": 2
+            }
+          },
+          {
+            "bool": {
+              "should": [
+                {
+                  "bool": {
+                    "should": [
+                      {
+                        "bool": {
+                          "should": [
+                            {
+                              "nested": {
+                                "path": "taxon_names",
+                                "query": {
+                                  "bool": {
+                                    "filter": [
+                                      {
+                                        "match": {
+                                          "taxon_names.name": "2759"
+                                        }
+                                      }
+                                    ]
+                                  }
+                                }
+                              }
+                            },
+                            {
+                              "match": {
+                                "taxon_id": "2759"
+                              }
+                            },
+                            {
+                              "nested": {
+                                "path": "lineage",
+                                "query": {
+                                  "bool": {
+                                    "filter": [
+                                      {
+                                        "multi_match": {
+                                          "query": "2759",
+                                          "fields": [
+                                            "lineage.taxon_id",
+                                            "lineage.scientific_name"
+                                          ]
+                                        }
+                                      }
+                                    ]
+                                  }
+                                }
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "match": {
+              "taxon_rank": "species"
+            }
+          }
+        ],
+        "should": []
+      }
+    },
+    "_source": {
+      "include": [
+        "taxon_id",
+        "scientific_name",
+        "taxon_rank",
+        "parent",
+        "taxon_names.*",
+        "lineage.*"
+      ],
+      "exclude": []
+    },
+    "sort": [],
+    "aggs": {
+      "fields": {
+        "nested": {
+          "path": "attributes"
+        },
+        "aggs": {
+          "by_key": {
+            "filters": {
+              "filters": {
+                "genome_size": {
+                  "term": {
+                    "attributes.key": "genome_size"
+                  }
+                },
+                "assembly_level": {
+                  "term": {
+                    "attributes.key": "assembly_level"
+                  }
+                },
+                "assembly_span": {
+                  "term": {
+                    "attributes.key": "assembly_span"
+                  }
+                },
+                "chromosome_number": {
+                  "term": {
+                    "attributes.key": "chromosome_number"
+                  }
+                },
+                "haploid_number": {
+                  "term": {
+                    "attributes.key": "haploid_number"
+                  }
+                }
+              }
+            },
+            "aggs": {
+              "value_count": {
+                "value_count": {
+                  "field": "attributes.key"
+                }
+              },
+              "value_list": {
+                "terms": {
+                  "field": "attributes.keyword_value",
+                  "size": 64
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

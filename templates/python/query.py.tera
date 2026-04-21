@@ -54,6 +54,11 @@ class QueryBuilder:
         self._fields: list[dict[str, Any]] = []
         self._names: list[str] = []
         self._ranks: list[str] = []
+        # Exclusion filters (field-level)
+        self._exclude_ancestral: list[str] = []
+        self._exclude_descendant: list[str] = []
+        self._exclude_direct: list[str] = []
+        self._exclude_missing: list[str] = []
         # QueryParams
         self._size: int = 10
         self._page: int = 1
@@ -185,6 +190,77 @@ class QueryBuilder:
         self._ranks = list(ranks)
         return self
 
+    # ── Exclusion filters (field-level) ──────────────────────────────────────
+
+    @staticmethod
+    def _normalise_fields(fields: list[str] | None) -> list[str]:
+        """Return a shallow copy of ``fields``, or an empty list when ``None``."""
+        return list(fields) if fields is not None else []
+
+    def set_exclude_ancestral(self, fields: list[str] | None) -> "QueryBuilder":
+        """Exclude records with ancestrally derived estimated values for specified fields."""
+        self._exclude_ancestral = self._normalise_fields(fields)
+        return self
+
+    def add_exclude_ancestral(self, field: str) -> "QueryBuilder":
+        """Add a field to exclude ancestrally derived values for."""
+        if field not in self._exclude_ancestral:
+            self._exclude_ancestral.append(field)
+        return self
+
+    def set_exclude_descendant(self, fields: list[str] | None) -> "QueryBuilder":
+        """Exclude records with descendant-derived estimated values for specified fields."""
+        self._exclude_descendant = self._normalise_fields(fields)
+        return self
+
+    def add_exclude_descendant(self, field: str) -> "QueryBuilder":
+        """Add a field to exclude descendant-derived values for."""
+        if field not in self._exclude_descendant:
+            self._exclude_descendant.append(field)
+        return self
+
+    def set_exclude_direct(self, fields: list[str] | None) -> "QueryBuilder":
+        """Exclude records with directly estimated values for specified fields."""
+        self._exclude_direct = self._normalise_fields(fields)
+        return self
+
+    def add_exclude_direct(self, field: str) -> "QueryBuilder":
+        """Add a field to exclude direct estimates for."""
+        if field not in self._exclude_direct:
+            self._exclude_direct.append(field)
+        return self
+
+    def set_exclude_missing(self, fields: list[str] | None) -> "QueryBuilder":
+        """Exclude records with missing values for specified fields."""
+        self._exclude_missing = self._normalise_fields(fields)
+        return self
+
+    def add_exclude_missing(self, field: str) -> "QueryBuilder":
+        """Add a field to exclude records with missing values for."""
+        if field not in self._exclude_missing:
+            self._exclude_missing.append(field)
+        return self
+
+    def set_exclude_derived(self, fields: list[str] | None) -> "QueryBuilder":
+        """Exclude all non-direct estimates (ancestral and descendant).
+
+        Shorthand for: exclude ancestral + exclude descendant.
+        """
+        normalised = self._normalise_fields(fields)
+        self._exclude_ancestral = normalised
+        self._exclude_descendant = list(normalised)
+        return self
+
+    def set_exclude_estimated(self, fields: list[str] | None) -> "QueryBuilder":
+        """Exclude ancestral estimates and missing values.
+
+        Shorthand for: exclude ancestral + exclude missing.
+        """
+        normalised = self._normalise_fields(fields)
+        self._exclude_ancestral = normalised
+        self._exclude_missing = list(normalised)
+        return self
+
     # ── Query params ─────────────────────────────────────────────────────────
 
     def set_size(self, size: int) -> "QueryBuilder":
@@ -238,6 +314,14 @@ class QueryBuilder:
             doc["names"] = self._names
         if self._ranks:
             doc["ranks"] = self._ranks
+        if self._exclude_ancestral:
+            doc["excludeAncestral"] = self._exclude_ancestral
+        if self._exclude_descendant:
+            doc["excludeDescendant"] = self._exclude_descendant
+        if self._exclude_direct:
+            doc["excludeDirect"] = self._exclude_direct
+        if self._exclude_missing:
+            doc["excludeMissing"] = self._exclude_missing
         return yaml.safe_dump(doc, sort_keys=False)
 
     def to_params_yaml(self) -> str:
@@ -267,6 +351,10 @@ class QueryBuilder:
         self._fields = []
         self._names = []
         self._ranks = []
+        self._exclude_ancestral = []
+        self._exclude_descendant = []
+        self._exclude_direct = []
+        self._exclude_missing = []
         return self
 
     def merge(self, other: "QueryBuilder") -> "QueryBuilder":
@@ -289,6 +377,10 @@ class QueryBuilder:
         self._fields.extend(other._fields)
         self._names.extend(other._names)
         self._ranks.extend(other._ranks)
+        self._exclude_ancestral.extend(other._exclude_ancestral)
+        self._exclude_descendant.extend(other._exclude_descendant)
+        self._exclude_direct.extend(other._exclude_direct)
+        self._exclude_missing.extend(other._exclude_missing)
         if other._rank is not None:
             self._rank = other._rank
         if other._taxon_filter_type != "name":

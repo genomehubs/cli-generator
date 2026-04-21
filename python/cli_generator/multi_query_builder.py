@@ -142,7 +142,7 @@ class MultiQueryBuilder:
             )
         # Overridable-param warnings.
         if warn_on_param_divergence:
-            if qb._size != 10 and qb._size != self._size:
+            if qb._size not in [10, self._size]:
                 import warnings
 
                 warnings.warn(
@@ -206,8 +206,7 @@ class MultiQueryBuilder:
         suppress_divergence_warnings: bool,
     ) -> None:
         shared: dict[str, Any] = doc.get("shared", {})
-        bad = set(shared) & _FORBIDDEN_IN_SHARED
-        if bad:
+        if bad := set(shared) & _FORBIDDEN_IN_SHARED:
             raise ValueError(f"{sorted(bad)} are not valid in shared:; " f"set them per-query under queries:")
         # Apply shared params to self (lower precedence than already-set values
         # only if the attribute is still at its default).
@@ -293,7 +292,7 @@ class MultiQueryBuilder:
         import json
         import urllib.request
 
-        from . import parse_msearch_json
+        from . import parse_batch_json
 
         if not self._queries:
             return []
@@ -345,7 +344,7 @@ class MultiQueryBuilder:
             with urllib.request.urlopen(req) as resp:
                 raw: str = resp.read().decode()
 
-            batch_result: dict[str, Any] = json.loads(parse_msearch_json(raw))
+            batch_result: dict[str, Any] = json.loads(parse_batch_json(raw))
             for i, query_result in enumerate(batch_result.get("results", [])):
                 all_results[batch_start + i] = query_result.get("records", [])
 
@@ -430,8 +429,7 @@ def _fields_to_str(fields: list[str | dict[str, Any]]) -> str:
             parts.append(f)
         elif isinstance(f, dict):
             name = str(f.get("name", ""))
-            mods: list[str] = f.get("modifier", [])
-            if mods:
+            if mods := f.get("modifier", []):
                 parts.extend(f"{name}:{m}" for m in mods)
             else:
                 parts.append(name)

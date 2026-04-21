@@ -1,0 +1,5152 @@
+{
+  "status": {
+    "hits": 1026,
+    "success": true,
+    "took": 13,
+    "size": 20,
+    "offset": 0
+  },
+  "results": [
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-9258",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "taxon_id": "9258",
+            "scientific_name": "Ornithorhynchus anatinus",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 1,
+            "taxon_id": "9257",
+            "scientific_name": "Ornithorhynchus",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 2,
+            "taxon_id": "9256",
+            "scientific_name": "Ornithorhynchidae",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 3,
+            "taxon_id": "9255",
+            "scientific_name": "Monotremata",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 4,
+            "taxon_id": "9254",
+            "scientific_name": "Prototheria",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 5,
+            "taxon_id": "40674",
+            "scientific_name": "Mammalia",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 6,
+            "taxon_id": "32524",
+            "scientific_name": "Amniota",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 7,
+            "taxon_id": "32523",
+            "scientific_name": "Tetrapoda",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 8,
+            "taxon_id": "1338369",
+            "scientific_name": "Dipnotetrapodomorpha",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 9,
+            "taxon_id": "8287",
+            "scientific_name": "Sarcopterygii",
+            "taxon_rank": "superclass"
+          },
+          {
+            "node_depth": 10,
+            "taxon_id": "117571",
+            "scientific_name": "Euteleostomi",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "taxon_id": "117570",
+            "scientific_name": "Teleostomi",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 12,
+            "taxon_id": "7776",
+            "scientific_name": "Gnathostomata",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 13,
+            "taxon_id": "7742",
+            "scientific_name": "Vertebrata",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 14,
+            "taxon_id": "89593",
+            "scientific_name": "Craniata",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 15,
+            "taxon_id": "7711",
+            "scientific_name": "Chordata",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 16,
+            "taxon_id": "33511",
+            "scientific_name": "Deuterostomia",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 17,
+            "taxon_id": "33213",
+            "scientific_name": "Bilateria",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 18,
+            "taxon_id": "6072",
+            "scientific_name": "Eumetazoa",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 19,
+            "taxon_id": "33208",
+            "scientific_name": "Metazoa",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 20,
+            "taxon_id": "33154",
+            "scientific_name": "Opisthokonta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 21,
+            "taxon_id": "2759",
+            "scientific_name": "Eukaryota",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 22,
+            "taxon_id": "131567",
+            "scientific_name": "cellular organisms",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 23,
+            "taxon_id": "1",
+            "scientific_name": "root",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "9257",
+        "scientific_name": "Ornithorhynchus anatinus",
+        "taxon_id": "9258",
+        "taxon_names": [
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "duck-billed platypus",
+            "source": "NCBI Taxonomy",
+            "class": "common name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "duckbill platypus",
+            "source": "NCBI Taxonomy",
+            "class": "common name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Ornithorhynchus anatinus",
+            "source": "NCBI Taxonomy",
+            "class": "scientific name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Platypus anatinus",
+            "source": "NCBI Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "platypus",
+            "source": "NCBI Taxonomy",
+            "class": "genbank common name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": null,
+            "name": "mOrnAna",
+            "source": "Tree of Life ID",
+            "class": "tolid prefix",
+            "source_url": "https://id.tol.sanger.ac.uk"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "ncbi:9258",
+            "source": "NCBI Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "gbif:2433376",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.irmng.org/aphia.php?p=taxdetails&id=",
+            "name": "irmng:10218352",
+            "source": "IRMNG",
+            "class": "xref",
+            "source_url": "https://www.irmng.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Ornithorhynchus agilis",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.irmng.org/aphia.php?p=taxdetails&id=",
+            "name": "Ornithorhynchus brevirostris",
+            "source": "IRMNG",
+            "class": "synonym",
+            "source_url": "https://www.irmng.org/"
+          },
+          {
+            "source_url_stub": "https://www.irmng.org/aphia.php?p=taxdetails&id=",
+            "name": "Ornithorhynchus crispus",
+            "source": "IRMNG",
+            "class": "synonym",
+            "source_url": "https://www.irmng.org/"
+          },
+          {
+            "source_url_stub": "https://www.irmng.org/aphia.php?p=taxdetails&id=",
+            "name": "Ornithorhynchus fuscus",
+            "source": "IRMNG",
+            "class": "synonym",
+            "source_url": "https://www.irmng.org/"
+          },
+          {
+            "source_url_stub": "https://www.irmng.org/aphia.php?p=taxdetails&id=",
+            "name": "Ornithorhynchus laevis",
+            "source": "IRMNG",
+            "class": "synonym",
+            "source_url": "https://www.irmng.org/"
+          },
+          {
+            "source_url_stub": "https://www.irmng.org/aphia.php?p=taxdetails&id=",
+            "name": "Ornithorhynchus novaehollandiae",
+            "source": "IRMNG",
+            "class": "synonym",
+            "source_url": "https://www.irmng.org/"
+          },
+          {
+            "source_url_stub": "https://www.irmng.org/aphia.php?p=taxdetails&id=",
+            "name": "Ornithorhynchus paradoxus",
+            "source": "IRMNG",
+            "class": "synonym",
+            "source_url": "https://www.irmng.org/"
+          },
+          {
+            "source_url_stub": "https://www.irmng.org/aphia.php?p=taxdetails&id=",
+            "name": "Ornithorhynchus rufus",
+            "source": "IRMNG",
+            "class": "synonym",
+            "source_url": "https://www.irmng.org/"
+          },
+          {
+            "name": "Duck-billed platypus",
+            "header": "common_name",
+            "index": 8,
+            "source": "Animal Genome Size Database",
+            "class": "common_name",
+            "source_url": "http://genomesize.com",
+            "source_date": "2026-04-20"
+          },
+          {
+            "name": "duck-billed platypus",
+            "header": "commonName",
+            "index": 2,
+            "source_slug": "CNA0007249",
+            "class": "common_name"
+          }
+        ],
+        "taxon_rank": "species",
+        "fields": {
+          "genome_size": {
+            "aggregation_source": "direct",
+            "sp_count": 0,
+            "min": 2992680000,
+            "value": 2992680000,
+            "aggregation_method": "primary",
+            "median": 2992680000,
+            "count": 1,
+            "max": 2992680000
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-9257",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "scientific_name": "Ornithorhynchus",
+            "taxon_id": "9257",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 1,
+            "scientific_name": "Ornithorhynchidae",
+            "taxon_id": "9256",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 2,
+            "scientific_name": "Monotremata",
+            "taxon_id": "9255",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 3,
+            "scientific_name": "Prototheria",
+            "taxon_id": "9254",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 4,
+            "scientific_name": "Mammalia",
+            "taxon_id": "40674",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 5,
+            "scientific_name": "Amniota",
+            "taxon_id": "32524",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 6,
+            "scientific_name": "Tetrapoda",
+            "taxon_id": "32523",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 7,
+            "scientific_name": "Dipnotetrapodomorpha",
+            "taxon_id": "1338369",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 8,
+            "scientific_name": "Sarcopterygii",
+            "taxon_id": "8287",
+            "taxon_rank": "superclass"
+          },
+          {
+            "node_depth": 9,
+            "scientific_name": "Euteleostomi",
+            "taxon_id": "117571",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "scientific_name": "Teleostomi",
+            "taxon_id": "117570",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "scientific_name": "Gnathostomata",
+            "taxon_id": "7776",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 12,
+            "scientific_name": "Vertebrata",
+            "taxon_id": "7742",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 13,
+            "scientific_name": "Craniata",
+            "taxon_id": "89593",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 14,
+            "scientific_name": "Chordata",
+            "taxon_id": "7711",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 15,
+            "scientific_name": "Deuterostomia",
+            "taxon_id": "33511",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 16,
+            "scientific_name": "Bilateria",
+            "taxon_id": "33213",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 17,
+            "scientific_name": "Eumetazoa",
+            "taxon_id": "6072",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 18,
+            "scientific_name": "Metazoa",
+            "taxon_id": "33208",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 19,
+            "scientific_name": "Opisthokonta",
+            "taxon_id": "33154",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 20,
+            "scientific_name": "Eukaryota",
+            "taxon_id": "2759",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 21,
+            "scientific_name": "cellular organisms",
+            "taxon_id": "131567",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 22,
+            "scientific_name": "root",
+            "taxon_id": "1",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "9256",
+        "scientific_name": "Ornithorhynchus",
+        "taxon_id": "9257",
+        "taxon_names": [
+          {
+            "class": "scientific name",
+            "name": "Ornithorhynchus",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "xref",
+            "name": "ncbi:9257",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "xref",
+            "name": "gbif:2433375",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "xref",
+            "name": "irmng:1107086",
+            "source": "IRMNG",
+            "source_url": "https://www.irmng.org/",
+            "source_url_stub": "https://www.irmng.org/aphia.php?p=taxdetails&id="
+          },
+          {
+            "class": "synonym",
+            "name": "Demipus",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Dermipus",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Dermopus",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Ornithorhyncus",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Ornithorinchus",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Ornithorinxus",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Ornithorrhynchus",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Ornitorhynchus",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Platypus",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "merged taxon id",
+            "name": "5857262",
+            "source": null,
+            "source_url": null,
+            "source_url_stub": null
+          }
+        ],
+        "taxon_rank": "genus",
+        "fields": {
+          "genome_size": {
+            "aggregation_source": [
+              "descendant"
+            ],
+            "sp_count": 1,
+            "min": 2992680000,
+            "value": 2992680000,
+            "aggregation_method": "median",
+            "median": 2992680000,
+            "count": 1,
+            "max": 2992680000
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-9256",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "scientific_name": "Ornithorhynchidae",
+            "taxon_id": "9256",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 1,
+            "scientific_name": "Monotremata",
+            "taxon_id": "9255",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 2,
+            "scientific_name": "Prototheria",
+            "taxon_id": "9254",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 3,
+            "scientific_name": "Mammalia",
+            "taxon_id": "40674",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 4,
+            "scientific_name": "Amniota",
+            "taxon_id": "32524",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 5,
+            "scientific_name": "Tetrapoda",
+            "taxon_id": "32523",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 6,
+            "scientific_name": "Dipnotetrapodomorpha",
+            "taxon_id": "1338369",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 7,
+            "scientific_name": "Sarcopterygii",
+            "taxon_id": "8287",
+            "taxon_rank": "superclass"
+          },
+          {
+            "node_depth": 8,
+            "scientific_name": "Euteleostomi",
+            "taxon_id": "117571",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 9,
+            "scientific_name": "Teleostomi",
+            "taxon_id": "117570",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "scientific_name": "Gnathostomata",
+            "taxon_id": "7776",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "scientific_name": "Vertebrata",
+            "taxon_id": "7742",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 12,
+            "scientific_name": "Craniata",
+            "taxon_id": "89593",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 13,
+            "scientific_name": "Chordata",
+            "taxon_id": "7711",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 14,
+            "scientific_name": "Deuterostomia",
+            "taxon_id": "33511",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 15,
+            "scientific_name": "Bilateria",
+            "taxon_id": "33213",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 16,
+            "scientific_name": "Eumetazoa",
+            "taxon_id": "6072",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 17,
+            "scientific_name": "Metazoa",
+            "taxon_id": "33208",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 18,
+            "scientific_name": "Opisthokonta",
+            "taxon_id": "33154",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 19,
+            "scientific_name": "Eukaryota",
+            "taxon_id": "2759",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 20,
+            "scientific_name": "cellular organisms",
+            "taxon_id": "131567",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 21,
+            "scientific_name": "root",
+            "taxon_id": "1",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "9255",
+        "scientific_name": "Ornithorhynchidae",
+        "taxon_id": "9256",
+        "taxon_names": [
+          {
+            "class": "scientific name",
+            "name": "Ornithorhynchidae",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "xref",
+            "name": "ncbi:9256",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "xref",
+            "name": "gbif:5940",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "xref",
+            "name": "irmng:104028",
+            "source": "IRMNG",
+            "source_url": "https://www.irmng.org/",
+            "source_url_stub": "https://www.irmng.org/aphia.php?p=taxdetails&id="
+          }
+        ],
+        "taxon_rank": "family",
+        "fields": {
+          "genome_size": {
+            "aggregation_source": [
+              "descendant"
+            ],
+            "sp_count": 1,
+            "min": 2992680000,
+            "value": 2992680000,
+            "aggregation_method": "median",
+            "median": 2992680000,
+            "count": 1,
+            "max": 2992680000
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-9261",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "taxon_id": "9261",
+            "scientific_name": "Tachyglossus aculeatus",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 1,
+            "taxon_id": "9260",
+            "scientific_name": "Tachyglossus",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 2,
+            "taxon_id": "9259",
+            "scientific_name": "Tachyglossidae",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 3,
+            "taxon_id": "9255",
+            "scientific_name": "Monotremata",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 4,
+            "taxon_id": "9254",
+            "scientific_name": "Prototheria",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 5,
+            "taxon_id": "40674",
+            "scientific_name": "Mammalia",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 6,
+            "taxon_id": "32524",
+            "scientific_name": "Amniota",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 7,
+            "taxon_id": "32523",
+            "scientific_name": "Tetrapoda",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 8,
+            "taxon_id": "1338369",
+            "scientific_name": "Dipnotetrapodomorpha",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 9,
+            "taxon_id": "8287",
+            "scientific_name": "Sarcopterygii",
+            "taxon_rank": "superclass"
+          },
+          {
+            "node_depth": 10,
+            "taxon_id": "117571",
+            "scientific_name": "Euteleostomi",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "taxon_id": "117570",
+            "scientific_name": "Teleostomi",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 12,
+            "taxon_id": "7776",
+            "scientific_name": "Gnathostomata",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 13,
+            "taxon_id": "7742",
+            "scientific_name": "Vertebrata",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 14,
+            "taxon_id": "89593",
+            "scientific_name": "Craniata",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 15,
+            "taxon_id": "7711",
+            "scientific_name": "Chordata",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 16,
+            "taxon_id": "33511",
+            "scientific_name": "Deuterostomia",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 17,
+            "taxon_id": "33213",
+            "scientific_name": "Bilateria",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 18,
+            "taxon_id": "6072",
+            "scientific_name": "Eumetazoa",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 19,
+            "taxon_id": "33208",
+            "scientific_name": "Metazoa",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 20,
+            "taxon_id": "33154",
+            "scientific_name": "Opisthokonta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 21,
+            "taxon_id": "2759",
+            "scientific_name": "Eukaryota",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 22,
+            "taxon_id": "131567",
+            "scientific_name": "cellular organisms",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 23,
+            "taxon_id": "1",
+            "scientific_name": "root",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "9260",
+        "scientific_name": "Tachyglossus aculeatus",
+        "taxon_id": "9261",
+        "taxon_names": [
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Australian echidna",
+            "source": "NCBI Taxonomy",
+            "class": "genbank common name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Myrmecophaga aculeata",
+            "source": "NCBI Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "short-beaked echidna",
+            "source": "NCBI Taxonomy",
+            "class": "common name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Tachyglossus aculeatus",
+            "source": "NCBI Taxonomy",
+            "class": "scientific name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": null,
+            "name": "mTacAcu",
+            "source": "Tree of Life ID",
+            "class": "tolid prefix",
+            "source_url": "https://id.tol.sanger.ac.uk"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "ncbi:9261",
+            "source": "NCBI Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "gbif:2433378",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.irmng.org/aphia.php?p=taxdetails&id=",
+            "name": "irmng:10661674",
+            "source": "IRMNG",
+            "class": "xref",
+            "source_url": "https://www.irmng.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Echidna aculeata",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Echidna australis",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.irmng.org/aphia.php?p=taxdetails&id=",
+            "name": "Tachyglossus aculeata",
+            "source": "IRMNG",
+            "class": "synonym",
+            "source_url": "https://www.irmng.org/"
+          },
+          {
+            "source_url_stub": null,
+            "name": "5541325",
+            "source": null,
+            "class": "merged taxon id",
+            "source_url": null
+          },
+          {
+            "source_url_stub": null,
+            "name": "5541321",
+            "source": null,
+            "class": "merged taxon id",
+            "source_url": null
+          },
+          {
+            "source_url_stub": null,
+            "name": "5541320",
+            "source": null,
+            "class": "merged taxon id",
+            "source_url": null
+          },
+          {
+            "source_url_stub": null,
+            "name": "5541324",
+            "source": null,
+            "class": "merged taxon id",
+            "source_url": null
+          },
+          {
+            "source_url_stub": null,
+            "name": "5541323",
+            "source": null,
+            "class": "merged taxon id",
+            "source_url": null
+          },
+          {
+            "name": "Short-nosed echidna",
+            "header": "common_name",
+            "index": 8,
+            "source": "Animal Genome Size Database",
+            "class": "common_name",
+            "source_url": "http://genomesize.com",
+            "source_date": "2026-04-20"
+          },
+          {
+            "name": "short-beaked echidna",
+            "header": "commonName",
+            "index": 2,
+            "source_slug": "CNA0006824",
+            "class": "common_name"
+          }
+        ],
+        "taxon_rank": "species",
+        "fields": {
+          "genome_size": {
+            "aggregation_source": "direct",
+            "sp_count": 0,
+            "min": 2826420000,
+            "value": 2826420000,
+            "aggregation_method": "primary",
+            "median": 2826420000,
+            "count": 1,
+            "max": 2826420000
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-9260",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "scientific_name": "Tachyglossus",
+            "taxon_id": "9260",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 1,
+            "scientific_name": "Tachyglossidae",
+            "taxon_id": "9259",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 2,
+            "scientific_name": "Monotremata",
+            "taxon_id": "9255",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 3,
+            "scientific_name": "Prototheria",
+            "taxon_id": "9254",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 4,
+            "scientific_name": "Mammalia",
+            "taxon_id": "40674",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 5,
+            "scientific_name": "Amniota",
+            "taxon_id": "32524",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 6,
+            "scientific_name": "Tetrapoda",
+            "taxon_id": "32523",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 7,
+            "scientific_name": "Dipnotetrapodomorpha",
+            "taxon_id": "1338369",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 8,
+            "scientific_name": "Sarcopterygii",
+            "taxon_id": "8287",
+            "taxon_rank": "superclass"
+          },
+          {
+            "node_depth": 9,
+            "scientific_name": "Euteleostomi",
+            "taxon_id": "117571",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "scientific_name": "Teleostomi",
+            "taxon_id": "117570",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "scientific_name": "Gnathostomata",
+            "taxon_id": "7776",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 12,
+            "scientific_name": "Vertebrata",
+            "taxon_id": "7742",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 13,
+            "scientific_name": "Craniata",
+            "taxon_id": "89593",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 14,
+            "scientific_name": "Chordata",
+            "taxon_id": "7711",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 15,
+            "scientific_name": "Deuterostomia",
+            "taxon_id": "33511",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 16,
+            "scientific_name": "Bilateria",
+            "taxon_id": "33213",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 17,
+            "scientific_name": "Eumetazoa",
+            "taxon_id": "6072",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 18,
+            "scientific_name": "Metazoa",
+            "taxon_id": "33208",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 19,
+            "scientific_name": "Opisthokonta",
+            "taxon_id": "33154",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 20,
+            "scientific_name": "Eukaryota",
+            "taxon_id": "2759",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 21,
+            "scientific_name": "cellular organisms",
+            "taxon_id": "131567",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 22,
+            "scientific_name": "root",
+            "taxon_id": "1",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "9259",
+        "scientific_name": "Tachyglossus",
+        "taxon_id": "9260",
+        "taxon_names": [
+          {
+            "class": "genbank common name",
+            "name": "short-nosed echidnas",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "scientific name",
+            "name": "Tachyglossus",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "xref",
+            "name": "ncbi:9260",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "xref",
+            "name": "gbif:2433377",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "xref",
+            "name": "irmng:1241253",
+            "source": "IRMNG",
+            "source_url": "https://www.irmng.org/",
+            "source_url_stub": "https://www.irmng.org/aphia.php?p=taxdetails&id="
+          },
+          {
+            "class": "synonym",
+            "name": "Acanthonotus",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Aculeata",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Echidea",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Echidna",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Echinopus",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Syphomia",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Syphonia",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          }
+        ],
+        "taxon_rank": "genus",
+        "fields": {
+          "genome_size": {
+            "aggregation_source": [
+              "descendant"
+            ],
+            "sp_count": 1,
+            "min": 2826420000,
+            "value": 2826420000,
+            "aggregation_method": "median",
+            "median": 2826420000,
+            "count": 1,
+            "max": 2826420000
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-9259",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "scientific_name": "Tachyglossidae",
+            "taxon_id": "9259",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 1,
+            "scientific_name": "Monotremata",
+            "taxon_id": "9255",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 2,
+            "scientific_name": "Prototheria",
+            "taxon_id": "9254",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 3,
+            "scientific_name": "Mammalia",
+            "taxon_id": "40674",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 4,
+            "scientific_name": "Amniota",
+            "taxon_id": "32524",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 5,
+            "scientific_name": "Tetrapoda",
+            "taxon_id": "32523",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 6,
+            "scientific_name": "Dipnotetrapodomorpha",
+            "taxon_id": "1338369",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 7,
+            "scientific_name": "Sarcopterygii",
+            "taxon_id": "8287",
+            "taxon_rank": "superclass"
+          },
+          {
+            "node_depth": 8,
+            "scientific_name": "Euteleostomi",
+            "taxon_id": "117571",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 9,
+            "scientific_name": "Teleostomi",
+            "taxon_id": "117570",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "scientific_name": "Gnathostomata",
+            "taxon_id": "7776",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "scientific_name": "Vertebrata",
+            "taxon_id": "7742",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 12,
+            "scientific_name": "Craniata",
+            "taxon_id": "89593",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 13,
+            "scientific_name": "Chordata",
+            "taxon_id": "7711",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 14,
+            "scientific_name": "Deuterostomia",
+            "taxon_id": "33511",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 15,
+            "scientific_name": "Bilateria",
+            "taxon_id": "33213",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 16,
+            "scientific_name": "Eumetazoa",
+            "taxon_id": "6072",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 17,
+            "scientific_name": "Metazoa",
+            "taxon_id": "33208",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 18,
+            "scientific_name": "Opisthokonta",
+            "taxon_id": "33154",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 19,
+            "scientific_name": "Eukaryota",
+            "taxon_id": "2759",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 20,
+            "scientific_name": "cellular organisms",
+            "taxon_id": "131567",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 21,
+            "scientific_name": "root",
+            "taxon_id": "1",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "9255",
+        "scientific_name": "Tachyglossidae",
+        "taxon_id": "9259",
+        "taxon_names": [
+          {
+            "class": "genbank common name",
+            "name": "echidnas",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "scientific name",
+            "name": "Tachyglossidae",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "xref",
+            "name": "ncbi:9259",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "xref",
+            "name": "gbif:5941",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "xref",
+            "name": "irmng:104843",
+            "source": "IRMNG",
+            "source_url": "https://www.irmng.org/",
+            "source_url_stub": "https://www.irmng.org/aphia.php?p=taxdetails&id="
+          }
+        ],
+        "taxon_rank": "family",
+        "fields": {
+          "genome_size": {
+            "aggregation_source": [
+              "descendant"
+            ],
+            "sp_count": 1,
+            "min": 2826420000,
+            "value": 2826420000,
+            "aggregation_method": "median",
+            "median": 2826420000,
+            "count": 1,
+            "max": 2826420000
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-9255",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "scientific_name": "Monotremata",
+            "taxon_id": "9255",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 1,
+            "scientific_name": "Prototheria",
+            "taxon_id": "9254",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 2,
+            "scientific_name": "Mammalia",
+            "taxon_id": "40674",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 3,
+            "scientific_name": "Amniota",
+            "taxon_id": "32524",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 4,
+            "scientific_name": "Tetrapoda",
+            "taxon_id": "32523",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 5,
+            "scientific_name": "Dipnotetrapodomorpha",
+            "taxon_id": "1338369",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 6,
+            "scientific_name": "Sarcopterygii",
+            "taxon_id": "8287",
+            "taxon_rank": "superclass"
+          },
+          {
+            "node_depth": 7,
+            "scientific_name": "Euteleostomi",
+            "taxon_id": "117571",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 8,
+            "scientific_name": "Teleostomi",
+            "taxon_id": "117570",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 9,
+            "scientific_name": "Gnathostomata",
+            "taxon_id": "7776",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "scientific_name": "Vertebrata",
+            "taxon_id": "7742",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "scientific_name": "Craniata",
+            "taxon_id": "89593",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 12,
+            "scientific_name": "Chordata",
+            "taxon_id": "7711",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 13,
+            "scientific_name": "Deuterostomia",
+            "taxon_id": "33511",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 14,
+            "scientific_name": "Bilateria",
+            "taxon_id": "33213",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 15,
+            "scientific_name": "Eumetazoa",
+            "taxon_id": "6072",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 16,
+            "scientific_name": "Metazoa",
+            "taxon_id": "33208",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 17,
+            "scientific_name": "Opisthokonta",
+            "taxon_id": "33154",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 18,
+            "scientific_name": "Eukaryota",
+            "taxon_id": "2759",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 19,
+            "scientific_name": "cellular organisms",
+            "taxon_id": "131567",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 20,
+            "scientific_name": "root",
+            "taxon_id": "1",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "9254",
+        "scientific_name": "Monotremata",
+        "taxon_id": "9255",
+        "taxon_names": [
+          {
+            "class": "common name",
+            "name": "egg-laying mammals",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "scientific name",
+            "name": "Monotremata",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "genbank common name",
+            "name": "monotremes",
+            "source": null,
+            "source_url": null,
+            "source_url_stub": null
+          },
+          {
+            "class": "xref",
+            "name": "ncbi:9255",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "xref",
+            "name": "gbif:791",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "xref",
+            "name": "irmng:10436",
+            "source": "IRMNG",
+            "source_url": "https://www.irmng.org/",
+            "source_url_stub": "https://www.irmng.org/aphia.php?p=taxdetails&id="
+          }
+        ],
+        "taxon_rank": "order",
+        "fields": {
+          "genome_size": {
+            "aggregation_source": [
+              "descendant"
+            ],
+            "sp_count": 2,
+            "min": 2826420000,
+            "value": 2909550000,
+            "aggregation_method": "median",
+            "median": 2909550000,
+            "count": 2,
+            "max": 2992680000
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-9254",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "scientific_name": "Prototheria",
+            "taxon_id": "9254",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 1,
+            "scientific_name": "Mammalia",
+            "taxon_id": "40674",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 2,
+            "scientific_name": "Amniota",
+            "taxon_id": "32524",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 3,
+            "scientific_name": "Tetrapoda",
+            "taxon_id": "32523",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 4,
+            "scientific_name": "Dipnotetrapodomorpha",
+            "taxon_id": "1338369",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 5,
+            "scientific_name": "Sarcopterygii",
+            "taxon_id": "8287",
+            "taxon_rank": "superclass"
+          },
+          {
+            "node_depth": 6,
+            "scientific_name": "Euteleostomi",
+            "taxon_id": "117571",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 7,
+            "scientific_name": "Teleostomi",
+            "taxon_id": "117570",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 8,
+            "scientific_name": "Gnathostomata",
+            "taxon_id": "7776",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 9,
+            "scientific_name": "Vertebrata",
+            "taxon_id": "7742",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "scientific_name": "Craniata",
+            "taxon_id": "89593",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 11,
+            "scientific_name": "Chordata",
+            "taxon_id": "7711",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 12,
+            "scientific_name": "Deuterostomia",
+            "taxon_id": "33511",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 13,
+            "scientific_name": "Bilateria",
+            "taxon_id": "33213",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 14,
+            "scientific_name": "Eumetazoa",
+            "taxon_id": "6072",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 15,
+            "scientific_name": "Metazoa",
+            "taxon_id": "33208",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 16,
+            "scientific_name": "Opisthokonta",
+            "taxon_id": "33154",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 17,
+            "scientific_name": "Eukaryota",
+            "taxon_id": "2759",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 18,
+            "scientific_name": "cellular organisms",
+            "taxon_id": "131567",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 19,
+            "scientific_name": "root",
+            "taxon_id": "1",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "40674",
+        "scientific_name": "Prototheria",
+        "taxon_id": "9254",
+        "taxon_names": [
+          {
+            "class": "scientific name",
+            "name": "Prototheria",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "xref",
+            "name": "ncbi:9254",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          }
+        ],
+        "taxon_rank": "clade",
+        "fields": {
+          "genome_size": {
+            "aggregation_source": [
+              "descendant"
+            ],
+            "sp_count": 2,
+            "min": 2826420000,
+            "value": 2909550000,
+            "aggregation_method": "median",
+            "median": 2909550000,
+            "count": 1,
+            "max": 2992680000
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-85694",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "taxon_id": "85694",
+            "scientific_name": "Didelphis aurita",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 1,
+            "taxon_id": "9266",
+            "scientific_name": "Didelphis",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 2,
+            "taxon_id": "126287",
+            "scientific_name": "Didelphinae",
+            "taxon_rank": "subfamily"
+          },
+          {
+            "node_depth": 3,
+            "taxon_id": "9265",
+            "scientific_name": "Didelphidae",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 4,
+            "taxon_id": "38605",
+            "scientific_name": "Didelphimorphia",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 5,
+            "taxon_id": "9263",
+            "scientific_name": "Metatheria",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 6,
+            "taxon_id": "32525",
+            "scientific_name": "Theria",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 7,
+            "taxon_id": "40674",
+            "scientific_name": "Mammalia",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 8,
+            "taxon_id": "32524",
+            "scientific_name": "Amniota",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 9,
+            "taxon_id": "32523",
+            "scientific_name": "Tetrapoda",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "taxon_id": "1338369",
+            "scientific_name": "Dipnotetrapodomorpha",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "taxon_id": "8287",
+            "scientific_name": "Sarcopterygii",
+            "taxon_rank": "superclass"
+          },
+          {
+            "node_depth": 12,
+            "taxon_id": "117571",
+            "scientific_name": "Euteleostomi",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 13,
+            "taxon_id": "117570",
+            "scientific_name": "Teleostomi",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 14,
+            "taxon_id": "7776",
+            "scientific_name": "Gnathostomata",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 15,
+            "taxon_id": "7742",
+            "scientific_name": "Vertebrata",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 16,
+            "taxon_id": "89593",
+            "scientific_name": "Craniata",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 17,
+            "taxon_id": "7711",
+            "scientific_name": "Chordata",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 18,
+            "taxon_id": "33511",
+            "scientific_name": "Deuterostomia",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 19,
+            "taxon_id": "33213",
+            "scientific_name": "Bilateria",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 20,
+            "taxon_id": "6072",
+            "scientific_name": "Eumetazoa",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 21,
+            "taxon_id": "33208",
+            "scientific_name": "Metazoa",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 22,
+            "taxon_id": "33154",
+            "scientific_name": "Opisthokonta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 23,
+            "taxon_id": "2759",
+            "scientific_name": "Eukaryota",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 24,
+            "taxon_id": "131567",
+            "scientific_name": "cellular organisms",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 25,
+            "taxon_id": "1",
+            "scientific_name": "root",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "9266",
+        "scientific_name": "Didelphis aurita",
+        "taxon_id": "85694",
+        "taxon_names": [
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "big-eared opossum",
+            "source": "NCBI Taxonomy",
+            "class": "genbank common name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Didelphis aurita",
+            "source": "NCBI Taxonomy",
+            "class": "scientific name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Didelphys aurita",
+            "source": "NCBI Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": null,
+            "name": "mDidAur",
+            "source": "Tree of Life ID",
+            "class": "tolid prefix",
+            "source_url": "https://id.tol.sanger.ac.uk"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "ncbi:85694",
+            "source": "NCBI Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "gbif:2439928",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.irmng.org/aphia.php?p=taxdetails&id=",
+            "name": "irmng:11414322",
+            "source": "IRMNG",
+            "class": "xref",
+            "source_url": "https://www.irmng.org/"
+          },
+          {
+            "name": "Opossum",
+            "header": "common_name",
+            "index": 8,
+            "source": "Animal Genome Size Database",
+            "class": "common_name",
+            "source_url": "http://genomesize.com",
+            "source_date": "2026-04-20"
+          }
+        ],
+        "taxon_rank": "species",
+        "fields": {
+          "genome_size": {
+            "aggregation_source": "direct",
+            "sp_count": 0,
+            "min": 4205400000,
+            "value": 4205400000,
+            "aggregation_method": "primary",
+            "median": 4205400000,
+            "count": 1,
+            "max": 4205400000
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-9268",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "taxon_id": "9268",
+            "scientific_name": "Didelphis marsupialis",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 1,
+            "taxon_id": "9266",
+            "scientific_name": "Didelphis",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 2,
+            "taxon_id": "126287",
+            "scientific_name": "Didelphinae",
+            "taxon_rank": "subfamily"
+          },
+          {
+            "node_depth": 3,
+            "taxon_id": "9265",
+            "scientific_name": "Didelphidae",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 4,
+            "taxon_id": "38605",
+            "scientific_name": "Didelphimorphia",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 5,
+            "taxon_id": "9263",
+            "scientific_name": "Metatheria",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 6,
+            "taxon_id": "32525",
+            "scientific_name": "Theria",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 7,
+            "taxon_id": "40674",
+            "scientific_name": "Mammalia",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 8,
+            "taxon_id": "32524",
+            "scientific_name": "Amniota",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 9,
+            "taxon_id": "32523",
+            "scientific_name": "Tetrapoda",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "taxon_id": "1338369",
+            "scientific_name": "Dipnotetrapodomorpha",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "taxon_id": "8287",
+            "scientific_name": "Sarcopterygii",
+            "taxon_rank": "superclass"
+          },
+          {
+            "node_depth": 12,
+            "taxon_id": "117571",
+            "scientific_name": "Euteleostomi",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 13,
+            "taxon_id": "117570",
+            "scientific_name": "Teleostomi",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 14,
+            "taxon_id": "7776",
+            "scientific_name": "Gnathostomata",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 15,
+            "taxon_id": "7742",
+            "scientific_name": "Vertebrata",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 16,
+            "taxon_id": "89593",
+            "scientific_name": "Craniata",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 17,
+            "taxon_id": "7711",
+            "scientific_name": "Chordata",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 18,
+            "taxon_id": "33511",
+            "scientific_name": "Deuterostomia",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 19,
+            "taxon_id": "33213",
+            "scientific_name": "Bilateria",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 20,
+            "taxon_id": "6072",
+            "scientific_name": "Eumetazoa",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 21,
+            "taxon_id": "33208",
+            "scientific_name": "Metazoa",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 22,
+            "taxon_id": "33154",
+            "scientific_name": "Opisthokonta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 23,
+            "taxon_id": "2759",
+            "scientific_name": "Eukaryota",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 24,
+            "taxon_id": "131567",
+            "scientific_name": "cellular organisms",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 25,
+            "taxon_id": "1",
+            "scientific_name": "root",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "9266",
+        "scientific_name": "Didelphis marsupialis",
+        "taxon_id": "9268",
+        "taxon_names": [
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Didelphis marsupialis",
+            "source": "NCBI Taxonomy",
+            "class": "scientific name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "southern opossum",
+            "source": "NCBI Taxonomy",
+            "class": "genbank common name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": null,
+            "name": "mDidMar",
+            "source": "Tree of Life ID",
+            "class": "tolid prefix",
+            "source_url": "https://id.tol.sanger.ac.uk"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "ncbi:9268",
+            "source": "NCBI Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "gbif:2439920",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.irmng.org/aphia.php?p=taxdetails&id=",
+            "name": "irmng:10939366",
+            "source": "IRMNG",
+            "class": "xref",
+            "source_url": "https://www.irmng.org/"
+          },
+          {
+            "name": "South American opossum",
+            "header": "common_name",
+            "index": 8,
+            "source": "Animal Genome Size Database",
+            "class": "common_name",
+            "source_url": "http://genomesize.com",
+            "source_date": "2026-04-20"
+          },
+          {
+            "name": "Southern opossum",
+            "header": "common_name",
+            "index": 8,
+            "source": "Animal Genome Size Database",
+            "class": "common_name",
+            "source_url": "http://genomesize.com",
+            "source_date": "2026-04-20"
+          }
+        ],
+        "taxon_rank": "species",
+        "fields": {
+          "genome_size": {
+            "aggregation_source": "direct",
+            "sp_count": 0,
+            "min": 3139380000,
+            "value": 3476790000,
+            "aggregation_method": "primary",
+            "median": 3476790000,
+            "count": 2,
+            "max": 3814200000
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-9267",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "taxon_id": "9267",
+            "scientific_name": "Didelphis virginiana",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 1,
+            "taxon_id": "9266",
+            "scientific_name": "Didelphis",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 2,
+            "taxon_id": "126287",
+            "scientific_name": "Didelphinae",
+            "taxon_rank": "subfamily"
+          },
+          {
+            "node_depth": 3,
+            "taxon_id": "9265",
+            "scientific_name": "Didelphidae",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 4,
+            "taxon_id": "38605",
+            "scientific_name": "Didelphimorphia",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 5,
+            "taxon_id": "9263",
+            "scientific_name": "Metatheria",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 6,
+            "taxon_id": "32525",
+            "scientific_name": "Theria",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 7,
+            "taxon_id": "40674",
+            "scientific_name": "Mammalia",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 8,
+            "taxon_id": "32524",
+            "scientific_name": "Amniota",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 9,
+            "taxon_id": "32523",
+            "scientific_name": "Tetrapoda",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "taxon_id": "1338369",
+            "scientific_name": "Dipnotetrapodomorpha",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "taxon_id": "8287",
+            "scientific_name": "Sarcopterygii",
+            "taxon_rank": "superclass"
+          },
+          {
+            "node_depth": 12,
+            "taxon_id": "117571",
+            "scientific_name": "Euteleostomi",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 13,
+            "taxon_id": "117570",
+            "scientific_name": "Teleostomi",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 14,
+            "taxon_id": "7776",
+            "scientific_name": "Gnathostomata",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 15,
+            "taxon_id": "7742",
+            "scientific_name": "Vertebrata",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 16,
+            "taxon_id": "89593",
+            "scientific_name": "Craniata",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 17,
+            "taxon_id": "7711",
+            "scientific_name": "Chordata",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 18,
+            "taxon_id": "33511",
+            "scientific_name": "Deuterostomia",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 19,
+            "taxon_id": "33213",
+            "scientific_name": "Bilateria",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 20,
+            "taxon_id": "6072",
+            "scientific_name": "Eumetazoa",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 21,
+            "taxon_id": "33208",
+            "scientific_name": "Metazoa",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 22,
+            "taxon_id": "33154",
+            "scientific_name": "Opisthokonta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 23,
+            "taxon_id": "2759",
+            "scientific_name": "Eukaryota",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 24,
+            "taxon_id": "131567",
+            "scientific_name": "cellular organisms",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 25,
+            "taxon_id": "1",
+            "scientific_name": "root",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "9266",
+        "scientific_name": "Didelphis virginiana",
+        "taxon_id": "9267",
+        "taxon_names": [
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Didelphis marsupialis virginiana",
+            "source": "NCBI Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Didelphis virginiana",
+            "source": "NCBI Taxonomy",
+            "class": "scientific name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "North American opossum",
+            "source": "NCBI Taxonomy",
+            "class": "genbank common name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Virginia opossum",
+            "source": "NCBI Taxonomy",
+            "class": "common name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": null,
+            "name": "mDidVir",
+            "source": "Tree of Life ID",
+            "class": "tolid prefix",
+            "source_url": "https://id.tol.sanger.ac.uk"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "ncbi:9267",
+            "source": "NCBI Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "gbif:2439923",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.irmng.org/aphia.php?p=taxdetails&id=",
+            "name": "irmng:10194072",
+            "source": "IRMNG",
+            "class": "xref",
+            "source_url": "https://www.irmng.org/"
+          },
+          {
+            "name": "Virginia opossum",
+            "header": "common_name",
+            "index": 8,
+            "source": "Animal Genome Size Database",
+            "class": "common_name",
+            "source_url": "http://genomesize.com",
+            "source_date": "2026-04-20"
+          }
+        ],
+        "taxon_rank": "species",
+        "fields": {
+          "genome_size": {
+            "aggregation_source": "direct",
+            "sp_count": 0,
+            "min": 4058700000,
+            "value": 4058700000,
+            "aggregation_method": "primary",
+            "median": 4058700000,
+            "count": 1,
+            "max": 4058700000
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-9266",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "scientific_name": "Didelphis",
+            "taxon_id": "9266",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 1,
+            "scientific_name": "Didelphinae",
+            "taxon_id": "126287",
+            "taxon_rank": "subfamily"
+          },
+          {
+            "node_depth": 2,
+            "scientific_name": "Didelphidae",
+            "taxon_id": "9265",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 3,
+            "scientific_name": "Didelphimorphia",
+            "taxon_id": "38605",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 4,
+            "scientific_name": "Metatheria",
+            "taxon_id": "9263",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 5,
+            "scientific_name": "Theria",
+            "taxon_id": "32525",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 6,
+            "scientific_name": "Mammalia",
+            "taxon_id": "40674",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 7,
+            "scientific_name": "Amniota",
+            "taxon_id": "32524",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 8,
+            "scientific_name": "Tetrapoda",
+            "taxon_id": "32523",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 9,
+            "scientific_name": "Dipnotetrapodomorpha",
+            "taxon_id": "1338369",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "scientific_name": "Sarcopterygii",
+            "taxon_id": "8287",
+            "taxon_rank": "superclass"
+          },
+          {
+            "node_depth": 11,
+            "scientific_name": "Euteleostomi",
+            "taxon_id": "117571",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 12,
+            "scientific_name": "Teleostomi",
+            "taxon_id": "117570",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 13,
+            "scientific_name": "Gnathostomata",
+            "taxon_id": "7776",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 14,
+            "scientific_name": "Vertebrata",
+            "taxon_id": "7742",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 15,
+            "scientific_name": "Craniata",
+            "taxon_id": "89593",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 16,
+            "scientific_name": "Chordata",
+            "taxon_id": "7711",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 17,
+            "scientific_name": "Deuterostomia",
+            "taxon_id": "33511",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 18,
+            "scientific_name": "Bilateria",
+            "taxon_id": "33213",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 19,
+            "scientific_name": "Eumetazoa",
+            "taxon_id": "6072",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 20,
+            "scientific_name": "Metazoa",
+            "taxon_id": "33208",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 21,
+            "scientific_name": "Opisthokonta",
+            "taxon_id": "33154",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 22,
+            "scientific_name": "Eukaryota",
+            "taxon_id": "2759",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 23,
+            "scientific_name": "cellular organisms",
+            "taxon_id": "131567",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 24,
+            "scientific_name": "root",
+            "taxon_id": "1",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "126287",
+        "scientific_name": "Didelphis",
+        "taxon_id": "9266",
+        "taxon_names": [
+          {
+            "class": "scientific name",
+            "name": "Didelphis",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "xref",
+            "name": "ncbi:9266",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "xref",
+            "name": "gbif:7932087",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "xref",
+            "name": "irmng:1211419",
+            "source": "IRMNG",
+            "source_url": "https://www.irmng.org/",
+            "source_url_stub": "https://www.irmng.org/aphia.php?p=taxdetails&id="
+          },
+          {
+            "class": "xref",
+            "name": "irmng:1189357",
+            "source": "IRMNG",
+            "source_url": "https://www.irmng.org/",
+            "source_url_stub": "https://www.irmng.org/aphia.php?p=taxdetails&id="
+          },
+          {
+            "class": "synonym",
+            "name": "Dasyurotherium",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Didelphus",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Didelphys",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Dimerodon",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Gamba",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Gambatherium",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Leucodidelphis",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Leucodidelphys",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Thylacotherium",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "merged taxon id",
+            "name": "5758906",
+            "source": null,
+            "source_url": null,
+            "source_url_stub": null
+          }
+        ],
+        "taxon_rank": "genus",
+        "fields": {
+          "genome_size": {
+            "aggregation_source": [
+              "descendant"
+            ],
+            "sp_count": 3,
+            "min": 3139380000,
+            "value": 4058700000,
+            "aggregation_method": "median",
+            "median": 4058700000,
+            "count": 3,
+            "max": 4205400000
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-42719",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "taxon_id": "42719",
+            "scientific_name": "Marmosa demerarae",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 1,
+            "taxon_id": "42718",
+            "scientific_name": "Micoureus",
+            "taxon_rank": "subgenus"
+          },
+          {
+            "node_depth": 2,
+            "taxon_id": "9269",
+            "scientific_name": "Marmosa",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 3,
+            "taxon_id": "126287",
+            "scientific_name": "Didelphinae",
+            "taxon_rank": "subfamily"
+          },
+          {
+            "node_depth": 4,
+            "taxon_id": "9265",
+            "scientific_name": "Didelphidae",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 5,
+            "taxon_id": "38605",
+            "scientific_name": "Didelphimorphia",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 6,
+            "taxon_id": "9263",
+            "scientific_name": "Metatheria",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 7,
+            "taxon_id": "32525",
+            "scientific_name": "Theria",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 8,
+            "taxon_id": "40674",
+            "scientific_name": "Mammalia",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 9,
+            "taxon_id": "32524",
+            "scientific_name": "Amniota",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "taxon_id": "32523",
+            "scientific_name": "Tetrapoda",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "taxon_id": "1338369",
+            "scientific_name": "Dipnotetrapodomorpha",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 12,
+            "taxon_id": "8287",
+            "scientific_name": "Sarcopterygii",
+            "taxon_rank": "superclass"
+          },
+          {
+            "node_depth": 13,
+            "taxon_id": "117571",
+            "scientific_name": "Euteleostomi",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 14,
+            "taxon_id": "117570",
+            "scientific_name": "Teleostomi",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 15,
+            "taxon_id": "7776",
+            "scientific_name": "Gnathostomata",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 16,
+            "taxon_id": "7742",
+            "scientific_name": "Vertebrata",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 17,
+            "taxon_id": "89593",
+            "scientific_name": "Craniata",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 18,
+            "taxon_id": "7711",
+            "scientific_name": "Chordata",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 19,
+            "taxon_id": "33511",
+            "scientific_name": "Deuterostomia",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 20,
+            "taxon_id": "33213",
+            "scientific_name": "Bilateria",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 21,
+            "taxon_id": "6072",
+            "scientific_name": "Eumetazoa",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 22,
+            "taxon_id": "33208",
+            "scientific_name": "Metazoa",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 23,
+            "taxon_id": "33154",
+            "scientific_name": "Opisthokonta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 24,
+            "taxon_id": "2759",
+            "scientific_name": "Eukaryota",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 25,
+            "taxon_id": "131567",
+            "scientific_name": "cellular organisms",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 26,
+            "taxon_id": "1",
+            "scientific_name": "root",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "42718",
+        "scientific_name": "Marmosa demerarae",
+        "taxon_id": "42719",
+        "taxon_names": [
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "long-furred woolly mouse opossum",
+            "source": "NCBI Taxonomy",
+            "class": "genbank common name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Marmosa cinerea demerarae",
+            "source": "NCBI Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Marmosa demerarae",
+            "source": "NCBI Taxonomy",
+            "class": "scientific name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Marmosa (Micoureus) demerarae",
+            "source": "NCBI Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Micoureus demerarae",
+            "source": "NCBI Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": null,
+            "name": "mMarDem",
+            "source": "Tree of Life ID",
+            "class": "tolid prefix",
+            "source_url": "https://id.tol.sanger.ac.uk"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "ncbi:42719",
+            "source": "NCBI Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "gbif:7368258",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "gbif:2439898",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.irmng.org/aphia.php?p=taxdetails&id=",
+            "name": "irmng:10459811",
+            "source": "IRMNG",
+            "class": "xref",
+            "source_url": "https://www.irmng.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Didelphis cinerea",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Marmosa cinerea",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Micoureus cinereus",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "name": "Long-furred woolly mouse opossum",
+            "header": "common_name",
+            "index": 8,
+            "source": "Animal Genome Size Database",
+            "class": "common_name",
+            "source_url": "http://genomesize.com",
+            "source_date": "2026-04-20"
+          }
+        ],
+        "taxon_rank": "species",
+        "fields": {
+          "genome_size": {
+            "aggregation_source": "direct",
+            "sp_count": 0,
+            "min": 4772640000,
+            "value": 4772640000,
+            "aggregation_method": "primary",
+            "median": 4772640000,
+            "count": 1,
+            "max": 4772640000
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-42718",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "scientific_name": "Micoureus",
+            "taxon_id": "42718",
+            "taxon_rank": "subgenus"
+          },
+          {
+            "node_depth": 1,
+            "scientific_name": "Marmosa",
+            "taxon_id": "9269",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 2,
+            "scientific_name": "Didelphinae",
+            "taxon_id": "126287",
+            "taxon_rank": "subfamily"
+          },
+          {
+            "node_depth": 3,
+            "scientific_name": "Didelphidae",
+            "taxon_id": "9265",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 4,
+            "scientific_name": "Didelphimorphia",
+            "taxon_id": "38605",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 5,
+            "scientific_name": "Metatheria",
+            "taxon_id": "9263",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 6,
+            "scientific_name": "Theria",
+            "taxon_id": "32525",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 7,
+            "scientific_name": "Mammalia",
+            "taxon_id": "40674",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 8,
+            "scientific_name": "Amniota",
+            "taxon_id": "32524",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 9,
+            "scientific_name": "Tetrapoda",
+            "taxon_id": "32523",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "scientific_name": "Dipnotetrapodomorpha",
+            "taxon_id": "1338369",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "scientific_name": "Sarcopterygii",
+            "taxon_id": "8287",
+            "taxon_rank": "superclass"
+          },
+          {
+            "node_depth": 12,
+            "scientific_name": "Euteleostomi",
+            "taxon_id": "117571",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 13,
+            "scientific_name": "Teleostomi",
+            "taxon_id": "117570",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 14,
+            "scientific_name": "Gnathostomata",
+            "taxon_id": "7776",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 15,
+            "scientific_name": "Vertebrata",
+            "taxon_id": "7742",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 16,
+            "scientific_name": "Craniata",
+            "taxon_id": "89593",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 17,
+            "scientific_name": "Chordata",
+            "taxon_id": "7711",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 18,
+            "scientific_name": "Deuterostomia",
+            "taxon_id": "33511",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 19,
+            "scientific_name": "Bilateria",
+            "taxon_id": "33213",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 20,
+            "scientific_name": "Eumetazoa",
+            "taxon_id": "6072",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 21,
+            "scientific_name": "Metazoa",
+            "taxon_id": "33208",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 22,
+            "scientific_name": "Opisthokonta",
+            "taxon_id": "33154",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 23,
+            "scientific_name": "Eukaryota",
+            "taxon_id": "2759",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 24,
+            "scientific_name": "cellular organisms",
+            "taxon_id": "131567",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 25,
+            "scientific_name": "root",
+            "taxon_id": "1",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "9269",
+        "scientific_name": "Micoureus",
+        "taxon_id": "42718",
+        "taxon_names": [
+          {
+            "class": "scientific name",
+            "name": "Micoureus",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "xref",
+            "name": "ncbi:42718",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "xref",
+            "name": "gbif:2439888",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "xref",
+            "name": "irmng:1306312",
+            "source": "IRMNG",
+            "source_url": "https://www.irmng.org/",
+            "source_url_stub": "https://www.irmng.org/aphia.php?p=taxdetails&id="
+          }
+        ],
+        "taxon_rank": "subgenus",
+        "fields": {
+          "genome_size": {
+            "aggregation_source": [
+              "descendant"
+            ],
+            "sp_count": 1,
+            "min": 4772640000,
+            "value": 4772640000,
+            "aggregation_method": "median",
+            "median": 4772640000,
+            "count": 1,
+            "max": 4772640000
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-91496",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "taxon_id": "91496",
+            "scientific_name": "Marmosa robinsoni",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 1,
+            "taxon_id": "2747333",
+            "scientific_name": "Exulomarmosa",
+            "taxon_rank": "subgenus"
+          },
+          {
+            "node_depth": 2,
+            "taxon_id": "9269",
+            "scientific_name": "Marmosa",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 3,
+            "taxon_id": "126287",
+            "scientific_name": "Didelphinae",
+            "taxon_rank": "subfamily"
+          },
+          {
+            "node_depth": 4,
+            "taxon_id": "9265",
+            "scientific_name": "Didelphidae",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 5,
+            "taxon_id": "38605",
+            "scientific_name": "Didelphimorphia",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 6,
+            "taxon_id": "9263",
+            "scientific_name": "Metatheria",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 7,
+            "taxon_id": "32525",
+            "scientific_name": "Theria",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 8,
+            "taxon_id": "40674",
+            "scientific_name": "Mammalia",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 9,
+            "taxon_id": "32524",
+            "scientific_name": "Amniota",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "taxon_id": "32523",
+            "scientific_name": "Tetrapoda",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "taxon_id": "1338369",
+            "scientific_name": "Dipnotetrapodomorpha",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 12,
+            "taxon_id": "8287",
+            "scientific_name": "Sarcopterygii",
+            "taxon_rank": "superclass"
+          },
+          {
+            "node_depth": 13,
+            "taxon_id": "117571",
+            "scientific_name": "Euteleostomi",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 14,
+            "taxon_id": "117570",
+            "scientific_name": "Teleostomi",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 15,
+            "taxon_id": "7776",
+            "scientific_name": "Gnathostomata",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 16,
+            "taxon_id": "7742",
+            "scientific_name": "Vertebrata",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 17,
+            "taxon_id": "89593",
+            "scientific_name": "Craniata",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 18,
+            "taxon_id": "7711",
+            "scientific_name": "Chordata",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 19,
+            "taxon_id": "33511",
+            "scientific_name": "Deuterostomia",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 20,
+            "taxon_id": "33213",
+            "scientific_name": "Bilateria",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 21,
+            "taxon_id": "6072",
+            "scientific_name": "Eumetazoa",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 22,
+            "taxon_id": "33208",
+            "scientific_name": "Metazoa",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 23,
+            "taxon_id": "33154",
+            "scientific_name": "Opisthokonta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 24,
+            "taxon_id": "2759",
+            "scientific_name": "Eukaryota",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 25,
+            "taxon_id": "131567",
+            "scientific_name": "cellular organisms",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 26,
+            "taxon_id": "1",
+            "scientific_name": "root",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "2747333",
+        "scientific_name": "Marmosa robinsoni",
+        "taxon_id": "91496",
+        "taxon_names": [
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Marmosa robinsoni",
+            "source": "NCBI Taxonomy",
+            "class": "scientific name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Robinson's mouse opossum",
+            "source": "NCBI Taxonomy",
+            "class": "genbank common name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": null,
+            "name": "mMarRob",
+            "source": "Tree of Life ID",
+            "class": "tolid prefix",
+            "source_url": "https://id.tol.sanger.ac.uk"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "ncbi:91496",
+            "source": "NCBI Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "gbif:2439862",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.irmng.org/aphia.php?p=taxdetails&id=",
+            "name": "irmng:10213144",
+            "source": "IRMNG",
+            "class": "xref",
+            "source_url": "https://www.irmng.org/"
+          },
+          {
+            "name": "Robinson's mouse opossum",
+            "header": "common_name",
+            "index": 8,
+            "source": "Animal Genome Size Database",
+            "class": "common_name",
+            "source_url": "http://genomesize.com",
+            "source_date": "2026-04-20"
+          }
+        ],
+        "taxon_rank": "species",
+        "fields": {
+          "genome_size": {
+            "aggregation_source": "direct",
+            "sp_count": 0,
+            "min": 3853320000,
+            "value": 3853320000,
+            "aggregation_method": "primary",
+            "median": 3853320000,
+            "count": 1,
+            "max": 3853320000
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-2747333",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "scientific_name": "Exulomarmosa",
+            "taxon_id": "2747333",
+            "taxon_rank": "subgenus"
+          },
+          {
+            "node_depth": 1,
+            "scientific_name": "Marmosa",
+            "taxon_id": "9269",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 2,
+            "scientific_name": "Didelphinae",
+            "taxon_id": "126287",
+            "taxon_rank": "subfamily"
+          },
+          {
+            "node_depth": 3,
+            "scientific_name": "Didelphidae",
+            "taxon_id": "9265",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 4,
+            "scientific_name": "Didelphimorphia",
+            "taxon_id": "38605",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 5,
+            "scientific_name": "Metatheria",
+            "taxon_id": "9263",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 6,
+            "scientific_name": "Theria",
+            "taxon_id": "32525",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 7,
+            "scientific_name": "Mammalia",
+            "taxon_id": "40674",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 8,
+            "scientific_name": "Amniota",
+            "taxon_id": "32524",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 9,
+            "scientific_name": "Tetrapoda",
+            "taxon_id": "32523",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "scientific_name": "Dipnotetrapodomorpha",
+            "taxon_id": "1338369",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "scientific_name": "Sarcopterygii",
+            "taxon_id": "8287",
+            "taxon_rank": "superclass"
+          },
+          {
+            "node_depth": 12,
+            "scientific_name": "Euteleostomi",
+            "taxon_id": "117571",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 13,
+            "scientific_name": "Teleostomi",
+            "taxon_id": "117570",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 14,
+            "scientific_name": "Gnathostomata",
+            "taxon_id": "7776",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 15,
+            "scientific_name": "Vertebrata",
+            "taxon_id": "7742",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 16,
+            "scientific_name": "Craniata",
+            "taxon_id": "89593",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 17,
+            "scientific_name": "Chordata",
+            "taxon_id": "7711",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 18,
+            "scientific_name": "Deuterostomia",
+            "taxon_id": "33511",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 19,
+            "scientific_name": "Bilateria",
+            "taxon_id": "33213",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 20,
+            "scientific_name": "Eumetazoa",
+            "taxon_id": "6072",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 21,
+            "scientific_name": "Metazoa",
+            "taxon_id": "33208",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 22,
+            "scientific_name": "Opisthokonta",
+            "taxon_id": "33154",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 23,
+            "scientific_name": "Eukaryota",
+            "taxon_id": "2759",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 24,
+            "scientific_name": "cellular organisms",
+            "taxon_id": "131567",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 25,
+            "scientific_name": "root",
+            "taxon_id": "1",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "9269",
+        "scientific_name": "Exulomarmosa",
+        "taxon_id": "2747333",
+        "taxon_names": [
+          {
+            "class": "scientific name",
+            "name": "Exulomarmosa",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          }
+        ],
+        "taxon_rank": "subgenus",
+        "fields": {
+          "genome_size": {
+            "aggregation_source": [
+              "descendant"
+            ],
+            "sp_count": 1,
+            "min": 3853320000,
+            "value": 3853320000,
+            "aggregation_method": "median",
+            "median": 3853320000,
+            "count": 1,
+            "max": 3853320000
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-9269",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "scientific_name": "Marmosa",
+            "taxon_id": "9269",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 1,
+            "scientific_name": "Didelphinae",
+            "taxon_id": "126287",
+            "taxon_rank": "subfamily"
+          },
+          {
+            "node_depth": 2,
+            "scientific_name": "Didelphidae",
+            "taxon_id": "9265",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 3,
+            "scientific_name": "Didelphimorphia",
+            "taxon_id": "38605",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 4,
+            "scientific_name": "Metatheria",
+            "taxon_id": "9263",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 5,
+            "scientific_name": "Theria",
+            "taxon_id": "32525",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 6,
+            "scientific_name": "Mammalia",
+            "taxon_id": "40674",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 7,
+            "scientific_name": "Amniota",
+            "taxon_id": "32524",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 8,
+            "scientific_name": "Tetrapoda",
+            "taxon_id": "32523",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 9,
+            "scientific_name": "Dipnotetrapodomorpha",
+            "taxon_id": "1338369",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "scientific_name": "Sarcopterygii",
+            "taxon_id": "8287",
+            "taxon_rank": "superclass"
+          },
+          {
+            "node_depth": 11,
+            "scientific_name": "Euteleostomi",
+            "taxon_id": "117571",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 12,
+            "scientific_name": "Teleostomi",
+            "taxon_id": "117570",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 13,
+            "scientific_name": "Gnathostomata",
+            "taxon_id": "7776",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 14,
+            "scientific_name": "Vertebrata",
+            "taxon_id": "7742",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 15,
+            "scientific_name": "Craniata",
+            "taxon_id": "89593",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 16,
+            "scientific_name": "Chordata",
+            "taxon_id": "7711",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 17,
+            "scientific_name": "Deuterostomia",
+            "taxon_id": "33511",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 18,
+            "scientific_name": "Bilateria",
+            "taxon_id": "33213",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 19,
+            "scientific_name": "Eumetazoa",
+            "taxon_id": "6072",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 20,
+            "scientific_name": "Metazoa",
+            "taxon_id": "33208",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 21,
+            "scientific_name": "Opisthokonta",
+            "taxon_id": "33154",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 22,
+            "scientific_name": "Eukaryota",
+            "taxon_id": "2759",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 23,
+            "scientific_name": "cellular organisms",
+            "taxon_id": "131567",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 24,
+            "scientific_name": "root",
+            "taxon_id": "1",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "126287",
+        "scientific_name": "Marmosa",
+        "taxon_id": "9269",
+        "taxon_names": [
+          {
+            "class": "scientific name",
+            "name": "Marmosa",
+            "source": null,
+            "source_url": null,
+            "source_url_stub": null
+          },
+          {
+            "class": "xref",
+            "name": "ncbi:9269",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "xref",
+            "name": "gbif:2439860",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "xref",
+            "name": "irmng:1288838",
+            "source": "IRMNG",
+            "source_url": "https://www.irmng.org/",
+            "source_url_stub": "https://www.irmng.org/aphia.php?p=taxdetails&id="
+          },
+          {
+            "class": "synonym",
+            "name": "Asagis",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Cuica",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Eomarmosa",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Exulomarmosa",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Grayium",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Grimaomys",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Grymaeomys",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Notagogus",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Notogogus",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Notogus",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Stegomarmosa",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          }
+        ],
+        "taxon_rank": "genus",
+        "fields": {
+          "genome_size": {
+            "aggregation_source": [
+              "descendant"
+            ],
+            "sp_count": 2,
+            "min": 3853320000,
+            "value": 4312980000,
+            "aggregation_method": "median",
+            "median": 4312980000,
+            "count": 2,
+            "max": 4772640000
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-203680",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "taxon_id": "203680",
+            "scientific_name": "Monodelphis brevicaudata",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 1,
+            "taxon_id": "13615",
+            "scientific_name": "Monodelphis",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 2,
+            "taxon_id": "126287",
+            "scientific_name": "Didelphinae",
+            "taxon_rank": "subfamily"
+          },
+          {
+            "node_depth": 3,
+            "taxon_id": "9265",
+            "scientific_name": "Didelphidae",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 4,
+            "taxon_id": "38605",
+            "scientific_name": "Didelphimorphia",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 5,
+            "taxon_id": "9263",
+            "scientific_name": "Metatheria",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 6,
+            "taxon_id": "32525",
+            "scientific_name": "Theria",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 7,
+            "taxon_id": "40674",
+            "scientific_name": "Mammalia",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 8,
+            "taxon_id": "32524",
+            "scientific_name": "Amniota",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 9,
+            "taxon_id": "32523",
+            "scientific_name": "Tetrapoda",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "taxon_id": "1338369",
+            "scientific_name": "Dipnotetrapodomorpha",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "taxon_id": "8287",
+            "scientific_name": "Sarcopterygii",
+            "taxon_rank": "superclass"
+          },
+          {
+            "node_depth": 12,
+            "taxon_id": "117571",
+            "scientific_name": "Euteleostomi",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 13,
+            "taxon_id": "117570",
+            "scientific_name": "Teleostomi",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 14,
+            "taxon_id": "7776",
+            "scientific_name": "Gnathostomata",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 15,
+            "taxon_id": "7742",
+            "scientific_name": "Vertebrata",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 16,
+            "taxon_id": "89593",
+            "scientific_name": "Craniata",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 17,
+            "taxon_id": "7711",
+            "scientific_name": "Chordata",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 18,
+            "taxon_id": "33511",
+            "scientific_name": "Deuterostomia",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 19,
+            "taxon_id": "33213",
+            "scientific_name": "Bilateria",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 20,
+            "taxon_id": "6072",
+            "scientific_name": "Eumetazoa",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 21,
+            "taxon_id": "33208",
+            "scientific_name": "Metazoa",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 22,
+            "taxon_id": "33154",
+            "scientific_name": "Opisthokonta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 23,
+            "taxon_id": "2759",
+            "scientific_name": "Eukaryota",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 24,
+            "taxon_id": "131567",
+            "scientific_name": "cellular organisms",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 25,
+            "taxon_id": "1",
+            "scientific_name": "root",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "13615",
+        "scientific_name": "Monodelphis brevicaudata",
+        "taxon_id": "203680",
+        "taxon_names": [
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Didelphis breuicaudata",
+            "source": "NCBI Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Didelphis brevicaudata",
+            "source": "NCBI Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Monodelphis brevicaudata",
+            "source": "NCBI Taxonomy",
+            "class": "scientific name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Red-legged short-tailed Opossum",
+            "source": "NCBI Taxonomy",
+            "class": "genbank common name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": null,
+            "name": "mMonBre",
+            "source": "Tree of Life ID",
+            "class": "tolid prefix",
+            "source_url": "https://id.tol.sanger.ac.uk"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "ncbi:203680",
+            "source": "NCBI Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "gbif:2439971",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.irmng.org/aphia.php?p=taxdetails&id=",
+            "name": "irmng:11344551",
+            "source": "IRMNG",
+            "class": "xref",
+            "source_url": "https://www.irmng.org/"
+          },
+          {
+            "name": "Red-legged short-tailed opossum",
+            "header": "common_name",
+            "index": 8,
+            "source": "Animal Genome Size Database",
+            "class": "common_name",
+            "source_url": "http://genomesize.com",
+            "source_date": "2026-04-20"
+          }
+        ],
+        "taxon_rank": "species",
+        "fields": {
+          "genome_size": {
+            "aggregation_source": "direct",
+            "sp_count": 0,
+            "min": 5105160000,
+            "value": 5105160000,
+            "aggregation_method": "primary",
+            "median": 5105160000,
+            "count": 1,
+            "max": 5105160000
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-433365",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "taxon_id": "433365",
+            "scientific_name": "Monodelphis dimidiata",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 1,
+            "taxon_id": "13615",
+            "scientific_name": "Monodelphis",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 2,
+            "taxon_id": "126287",
+            "scientific_name": "Didelphinae",
+            "taxon_rank": "subfamily"
+          },
+          {
+            "node_depth": 3,
+            "taxon_id": "9265",
+            "scientific_name": "Didelphidae",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 4,
+            "taxon_id": "38605",
+            "scientific_name": "Didelphimorphia",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 5,
+            "taxon_id": "9263",
+            "scientific_name": "Metatheria",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 6,
+            "taxon_id": "32525",
+            "scientific_name": "Theria",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 7,
+            "taxon_id": "40674",
+            "scientific_name": "Mammalia",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 8,
+            "taxon_id": "32524",
+            "scientific_name": "Amniota",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 9,
+            "taxon_id": "32523",
+            "scientific_name": "Tetrapoda",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "taxon_id": "1338369",
+            "scientific_name": "Dipnotetrapodomorpha",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "taxon_id": "8287",
+            "scientific_name": "Sarcopterygii",
+            "taxon_rank": "superclass"
+          },
+          {
+            "node_depth": 12,
+            "taxon_id": "117571",
+            "scientific_name": "Euteleostomi",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 13,
+            "taxon_id": "117570",
+            "scientific_name": "Teleostomi",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 14,
+            "taxon_id": "7776",
+            "scientific_name": "Gnathostomata",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 15,
+            "taxon_id": "7742",
+            "scientific_name": "Vertebrata",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 16,
+            "taxon_id": "89593",
+            "scientific_name": "Craniata",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 17,
+            "taxon_id": "7711",
+            "scientific_name": "Chordata",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 18,
+            "taxon_id": "33511",
+            "scientific_name": "Deuterostomia",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 19,
+            "taxon_id": "33213",
+            "scientific_name": "Bilateria",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 20,
+            "taxon_id": "6072",
+            "scientific_name": "Eumetazoa",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 21,
+            "taxon_id": "33208",
+            "scientific_name": "Metazoa",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 22,
+            "taxon_id": "33154",
+            "scientific_name": "Opisthokonta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 23,
+            "taxon_id": "2759",
+            "scientific_name": "Eukaryota",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 24,
+            "taxon_id": "131567",
+            "scientific_name": "cellular organisms",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 25,
+            "taxon_id": "1",
+            "scientific_name": "root",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "13615",
+        "scientific_name": "Monodelphis dimidiata",
+        "taxon_id": "433365",
+        "taxon_names": [
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Didelpys dimidiata",
+            "source": "NCBI Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Monodelphis dimidiata",
+            "source": "NCBI Taxonomy",
+            "class": "scientific name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Monodelphis sorex",
+            "source": "NCBI Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Southern red-sided opossum",
+            "source": "NCBI Taxonomy",
+            "class": "common name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Yellow-sided oppossum",
+            "source": "NCBI Taxonomy",
+            "class": "genbank common name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": null,
+            "name": "943245",
+            "source": null,
+            "class": "merged taxon id",
+            "source_url": null
+          },
+          {
+            "source_url_stub": null,
+            "name": "mMonDim",
+            "source": "Tree of Life ID",
+            "class": "tolid prefix",
+            "source_url": "https://id.tol.sanger.ac.uk"
+          },
+          {
+            "source_url_stub": null,
+            "name": "mMonSor",
+            "source": "Tree of Life ID",
+            "class": "tolid prefix",
+            "source_url": "https://id.tol.sanger.ac.uk"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "ncbi:433365",
+            "source": "NCBI Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "gbif:2439959",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.irmng.org/aphia.php?p=taxdetails&id=",
+            "name": "irmng:11305398",
+            "source": "IRMNG",
+            "class": "xref",
+            "source_url": "https://www.irmng.org/"
+          },
+          {
+            "name": "Short-tailed opossum",
+            "header": "common_name",
+            "index": 8,
+            "source": "Animal Genome Size Database",
+            "class": "common_name",
+            "source_url": "http://genomesize.com",
+            "source_date": "2026-04-20"
+          }
+        ],
+        "taxon_rank": "species",
+        "fields": {
+          "genome_size": {
+            "aggregation_source": "direct",
+            "sp_count": 0,
+            "min": 4078260000,
+            "value": 4078260000,
+            "aggregation_method": "primary",
+            "median": 4078260000,
+            "count": 1,
+            "max": 4078260000
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-13615",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "scientific_name": "Monodelphis",
+            "taxon_id": "13615",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 1,
+            "scientific_name": "Didelphinae",
+            "taxon_id": "126287",
+            "taxon_rank": "subfamily"
+          },
+          {
+            "node_depth": 2,
+            "scientific_name": "Didelphidae",
+            "taxon_id": "9265",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 3,
+            "scientific_name": "Didelphimorphia",
+            "taxon_id": "38605",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 4,
+            "scientific_name": "Metatheria",
+            "taxon_id": "9263",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 5,
+            "scientific_name": "Theria",
+            "taxon_id": "32525",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 6,
+            "scientific_name": "Mammalia",
+            "taxon_id": "40674",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 7,
+            "scientific_name": "Amniota",
+            "taxon_id": "32524",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 8,
+            "scientific_name": "Tetrapoda",
+            "taxon_id": "32523",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 9,
+            "scientific_name": "Dipnotetrapodomorpha",
+            "taxon_id": "1338369",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "scientific_name": "Sarcopterygii",
+            "taxon_id": "8287",
+            "taxon_rank": "superclass"
+          },
+          {
+            "node_depth": 11,
+            "scientific_name": "Euteleostomi",
+            "taxon_id": "117571",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 12,
+            "scientific_name": "Teleostomi",
+            "taxon_id": "117570",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 13,
+            "scientific_name": "Gnathostomata",
+            "taxon_id": "7776",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 14,
+            "scientific_name": "Vertebrata",
+            "taxon_id": "7742",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 15,
+            "scientific_name": "Craniata",
+            "taxon_id": "89593",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 16,
+            "scientific_name": "Chordata",
+            "taxon_id": "7711",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 17,
+            "scientific_name": "Deuterostomia",
+            "taxon_id": "33511",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 18,
+            "scientific_name": "Bilateria",
+            "taxon_id": "33213",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 19,
+            "scientific_name": "Eumetazoa",
+            "taxon_id": "6072",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 20,
+            "scientific_name": "Metazoa",
+            "taxon_id": "33208",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 21,
+            "scientific_name": "Opisthokonta",
+            "taxon_id": "33154",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 22,
+            "scientific_name": "Eukaryota",
+            "taxon_id": "2759",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 23,
+            "scientific_name": "cellular organisms",
+            "taxon_id": "131567",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 24,
+            "scientific_name": "root",
+            "taxon_id": "1",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "126287",
+        "scientific_name": "Monodelphis",
+        "taxon_id": "13615",
+        "taxon_names": [
+          {
+            "class": "scientific name",
+            "name": "Monodelphis",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "genbank common name",
+            "name": "short-tailed opossums",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "xref",
+            "name": "ncbi:13615",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "xref",
+            "name": "gbif:7967492",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "xref",
+            "name": "irmng:1325350",
+            "source": "IRMNG",
+            "source_url": "https://www.irmng.org/",
+            "source_url_stub": "https://www.irmng.org/aphia.php?p=taxdetails&id="
+          },
+          {
+            "class": "synonym",
+            "name": "Hemiurus",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Microdelphys",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Microdidelphys",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Minuania",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Monodelphia",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Monodelphiops",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Peramys",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          }
+        ],
+        "taxon_rank": "genus",
+        "fields": {
+          "genome_size": {
+            "aggregation_source": [
+              "descendant"
+            ],
+            "sp_count": 2,
+            "min": 4078260000,
+            "value": 4591710000,
+            "aggregation_method": "median",
+            "median": 4591710000,
+            "count": 2,
+            "max": 5105160000
+          }
+        }
+      }
+    }
+  ],
+  "aggs": {
+    "fields": {
+      "doc_count": 29269,
+      "by_key": {
+        "buckets": {
+          "genome_size": {
+            "doc_count": 1026,
+            "value_list": {
+              "doc_count_error_upper_bound": 0,
+              "sum_other_doc_count": 0,
+              "buckets": []
+            },
+            "value_count": {
+              "value": 1026
+            }
+          }
+        }
+      }
+    }
+  },
+  "fields": [
+    "genome_size"
+  ],
+  "query": {
+    "size": 20,
+    "from": 0,
+    "query": {
+      "bool": {
+        "must_not": [
+          {
+            "nested": {
+              "path": "attributes",
+              "query": {
+                "bool": {
+                  "filter": [
+                    {
+                      "match": {
+                        "attributes.key": "genome_size"
+                      }
+                    },
+                    {
+                      "match": {
+                        "attributes.aggregation_source": "ancestor"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        ],
+        "filter": [
+          {
+            "bool": {
+              "should": [
+                {
+                  "bool": {
+                    "filter": {
+                      "nested": {
+                        "path": "attributes",
+                        "query": {
+                          "bool": {
+                            "should": [
+                              {
+                                "bool": {
+                                  "filter": [
+                                    {
+                                      "match": {
+                                        "attributes.key": "genome_size"
+                                      }
+                                    },
+                                    {
+                                      "exists": {
+                                        "field": "attributes.long_value"
+                                      }
+                                    },
+                                    {
+                                      "exists": {
+                                        "field": "attributes.aggregation_source"
+                                      }
+                                    },
+                                    {
+                                      "exists": {
+                                        "field": "attributes.aggregation_method"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "bool": {
+                    "should": {
+                      "nested": {
+                        "path": "attributes",
+                        "query": {
+                          "bool": {
+                            "should": [
+                              {
+                                "bool": {
+                                  "filter": [
+                                    {
+                                      "match": {
+                                        "attributes.key": "genome_size"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        "inner_hits": {
+                          "_source": false,
+                          "name": "attributes",
+                          "docvalue_fields": [
+                            "attributes.key",
+                            "attributes.is_primary_value",
+                            "attributes.count",
+                            "attributes.sp_count",
+                            "attributes.max",
+                            "attributes.min",
+                            "attributes.mean",
+                            "attributes.median",
+                            "attributes.mode",
+                            "attributes.sum",
+                            "attributes.from",
+                            "attributes.to",
+                            "attributes.range",
+                            "attributes.length",
+                            "attributes.aggregation_method",
+                            "attributes.aggregation_source",
+                            "attributes.aggregation_rank",
+                            "attributes.aggregation_taxon_id",
+                            "attributes.long_value"
+                          ],
+                          "size": 100
+                        }
+                      }
+                    }
+                  }
+                }
+              ],
+              "minimum_should_match": 2
+            }
+          },
+          {
+            "bool": {
+              "should": [
+                {
+                  "bool": {
+                    "should": [
+                      {
+                        "bool": {
+                          "should": [
+                            {
+                              "nested": {
+                                "path": "taxon_names",
+                                "query": {
+                                  "bool": {
+                                    "filter": [
+                                      {
+                                        "match": {
+                                          "taxon_names.name": "mammalia"
+                                        }
+                                      }
+                                    ]
+                                  }
+                                }
+                              }
+                            },
+                            {
+                              "match": {
+                                "taxon_id": "mammalia"
+                              }
+                            },
+                            {
+                              "nested": {
+                                "path": "lineage",
+                                "query": {
+                                  "bool": {
+                                    "filter": [
+                                      {
+                                        "multi_match": {
+                                          "query": "mammalia",
+                                          "fields": [
+                                            "lineage.taxon_id",
+                                            "lineage.scientific_name"
+                                          ]
+                                        }
+                                      }
+                                    ]
+                                  }
+                                }
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        ],
+        "should": []
+      }
+    },
+    "_source": {
+      "include": [
+        "taxon_id",
+        "scientific_name",
+        "taxon_rank",
+        "parent",
+        "taxon_names.*",
+        "lineage.*"
+      ],
+      "exclude": []
+    },
+    "sort": [],
+    "aggs": {
+      "fields": {
+        "nested": {
+          "path": "attributes"
+        },
+        "aggs": {
+          "by_key": {
+            "filters": {
+              "filters": {
+                "genome_size": {
+                  "term": {
+                    "attributes.key": "genome_size"
+                  }
+                }
+              }
+            },
+            "aggs": {
+              "value_count": {
+                "value_count": {
+                  "field": "attributes.key"
+                }
+              },
+              "value_list": {
+                "terms": {
+                  "field": "attributes.keyword_value",
+                  "size": 64
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

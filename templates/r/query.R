@@ -17,6 +17,16 @@
 #'   \item{\code{set_fields(fields)}}{Replace the field selection at once.}
 #'   \item{\code{set_names(name_classes)}}{Set taxon name classes to include.}
 #'   \item{\code{set_ranks(ranks)}}{Set lineage rank columns to include.}
+#'   \item{\code{set_exclude_ancestral(fields)}}{Exclude ancestrally derived estimates.}
+#'   \item{\code{add_exclude_ancestral(field)}}{Add a field to exclude ancestrally derived values for.}
+#'   \item{\code{set_exclude_descendant(fields)}}{Exclude descendant-derived estimates.}
+#'   \item{\code{add_exclude_descendant(field)}}{Add a field to exclude descendant-derived values for.}
+#'   \item{\code{set_exclude_direct(fields)}}{Exclude directly estimated values.}
+#'   \item{\code{add_exclude_direct(field)}}{Add a field to exclude direct estimates for.}
+#'   \item{\code{set_exclude_missing(fields)}}{Exclude records with missing values.}
+#'   \item{\code{add_exclude_missing(field)}}{Add a field to exclude records with missing values for.}
+#'   \item{\code{set_exclude_derived(fields)}}{Exclude non-direct estimates (shorthand).}
+#'   \item{\code{set_exclude_estimated(fields)}}{Exclude ancestral and missing (shorthand).}
 #'   \item{\code{set_size(size)}}{Set the maximum number of results per page.}
 #'   \item{\code{set_page(page)}}{Set the 1-based page number.}
 #'   \item{\code{set_sort(name, direction = "asc")}}{Sort results by a field.}
@@ -56,29 +66,49 @@
 QueryBuilder <- R6::R6Class(
   "QueryBuilder",
   private = list(
-    index_name        = NA_character_,
-    taxa_names        = character(0),
-    taxa_filter_type  = "name",
-    rank_name         = NULL,
-    assemblies        = character(0),
-    samples           = character(0),
-    names_list        = character(0),
-    ranks_list        = character(0),
-    attributes        = list(),
-    fields            = list(),
-    sort_key          = NULL,
-    sort_order        = "asc",
-    size              = 10L,
-    page              = 1L,
+    index_name = NA_character_,
+    taxa_names = character(0),
+    taxa_filter_type = "name",
+    rank_name = NULL,
+    assemblies = character(0),
+    samples = character(0),
+    names_list = character(0),
+    ranks_list = character(0),
+    exclude_ancestral = character(0),
+    exclude_descendant = character(0),
+    exclude_direct = character(0),
+    exclude_missing = character(0),
+    attributes = list(),
+    fields = list(),
+    sort_key = NULL,
+    sort_order = "asc",
+    size = 10L,
+    page = 1L,
     include_estimates = TRUE,
-    tidy              = FALSE,
-    taxonomy          = "ncbi"
+    tidy = FALSE,
+    taxonomy = "ncbi",
+    validation_level = "full",
+    api_base_url = "{{ api_base }}",
+
+    # Return a copy of `fields` as a character vector, or character(0) if NULL.
+    normalise_fields = function(fields) {
+      if (is.null(fields)) character(0) else as.character(fields)
+    }
   ),
   public = list(
     #' @description Initialise a new query builder.
     #' @param index The index to query (e.g., "taxon", "assembly").
-    initialize = function(index) {
+    #' @param validation_level Validation mode for \code{validate()}: \code{"full"} (default)
+    #'   attempts v3 API metadata endpoints before falling back to local files;
+    #'   \code{"partial"} uses only embedded local files.
+    #' @param api_base Base URL for API metadata endpoints (v3+). Defaults to the
+    #'   site API base.
+    initialize = function(index,
+                          validation_level = "full",
+                          api_base = "{{ api_base }}") {
       private$index_name <- index
+      private$validation_level <- validation_level
+      private$api_base_url <- api_base
       private$taxa_names <- character(0)
       private$taxa_filter_type <- "name"
       private$rank_name <- NULL
@@ -86,6 +116,10 @@ QueryBuilder <- R6::R6Class(
       private$samples <- character(0)
       private$names_list <- character(0)
       private$ranks_list <- character(0)
+      private$exclude_ancestral <- character(0)
+      private$exclude_descendant <- character(0)
+      private$exclude_direct <- character(0)
+      private$exclude_missing <- character(0)
       private$attributes <- list()
       private$fields <- list()
       private$sort_key <- NULL
@@ -103,7 +137,7 @@ QueryBuilder <- R6::R6Class(
     #' @param operator Comparison operator (e.g., "eq", "ne", "gt", "ge", "lt", "le").
     #' @param value The value to compare against.
     #' @param modifiers Optional character vector of attribute modifiers.
-    add_attribute = function(name, operator, value, modifiers = NULL) {
+    add_attribute = function(name, operator, value = NULL, modifiers = NULL) {
       entry <- list(
         name     = name,
         operator = operator,
@@ -186,6 +220,90 @@ QueryBuilder <- R6::R6Class(
       invisible(self)
     },
 
+    #' @description Exclude records with ancestrally derived estimated values.
+    #' @param fields A character vector of field names, or NULL to clear.
+    set_exclude_ancestral = function(fields) {
+      private$exclude_ancestral <- private$normalise_fields(fields)
+      invisible(self)
+    },
+
+    #' @description Add a field to exclude ancestrally derived values for.
+    #' @param field A single field name.
+    add_exclude_ancestral = function(field) {
+      if (!(field %in% private$exclude_ancestral)) {
+        private$exclude_ancestral <- c(private$exclude_ancestral, field)
+      }
+      invisible(self)
+    },
+
+    #' @description Exclude records with descendant-derived estimated values.
+    #' @param fields A character vector of field names, or NULL to clear.
+    set_exclude_descendant = function(fields) {
+      private$exclude_descendant <- private$normalise_fields(fields)
+      invisible(self)
+    },
+
+    #' @description Add a field to exclude descendant-derived values for.
+    #' @param field A single field name.
+    add_exclude_descendant = function(field) {
+      if (!(field %in% private$exclude_descendant)) {
+        private$exclude_descendant <- c(private$exclude_descendant, field)
+      }
+      invisible(self)
+    },
+
+    #' @description Exclude records with directly estimated values.
+    #' @param fields A character vector of field names, or NULL to clear.
+    set_exclude_direct = function(fields) {
+      private$exclude_direct <- private$normalise_fields(fields)
+      invisible(self)
+    },
+
+    #' @description Add a field to exclude direct estimates for.
+    #' @param field A single field name.
+    add_exclude_direct = function(field) {
+      if (!(field %in% private$exclude_direct)) {
+        private$exclude_direct <- c(private$exclude_direct, field)
+      }
+      invisible(self)
+    },
+
+    #' @description Exclude records with missing values.
+    #' @param fields A character vector of field names, or NULL to clear.
+    set_exclude_missing = function(fields) {
+      private$exclude_missing <- private$normalise_fields(fields)
+      invisible(self)
+    },
+
+    #' @description Add a field to exclude records with missing values for.
+    #' @param field A single field name.
+    add_exclude_missing = function(field) {
+      if (!(field %in% private$exclude_missing)) {
+        private$exclude_missing <- c(private$exclude_missing, field)
+      }
+      invisible(self)
+    },
+
+    #' @description Exclude all non-direct estimates (ancestral and descendant).
+    #' Shorthand for set_exclude_ancestral() + set_exclude_descendant().
+    #' @param fields A character vector of field names, or NULL to clear.
+    set_exclude_derived = function(fields) {
+      normalised <- private$normalise_fields(fields)
+      private$exclude_ancestral <- normalised
+      private$exclude_descendant <- normalised
+      invisible(self)
+    },
+
+    #' @description Exclude ancestral estimates and missing values.
+    #' Shorthand for set_exclude_ancestral() + set_exclude_missing().
+    #' @param fields A character vector of field names, or NULL to clear.
+    set_exclude_estimated = function(fields) {
+      normalised <- private$normalise_fields(fields)
+      private$exclude_ancestral <- normalised
+      private$exclude_missing <- normalised
+      invisible(self)
+    },
+
     #' @description Set the maximum number of results per page.
     #' @param size A positive integer.
     set_size = function(size) {
@@ -251,6 +369,22 @@ QueryBuilder <- R6::R6Class(
 
       if (length(private$ranks_list) > 0) {
         doc$ranks <- as.list(private$ranks_list)
+      }
+
+      if (length(private$exclude_ancestral) > 0) {
+        doc$excludeAncestral <- as.list(private$exclude_ancestral)
+      }
+
+      if (length(private$exclude_descendant) > 0) {
+        doc$excludeDescendant <- as.list(private$exclude_descendant)
+      }
+
+      if (length(private$exclude_direct) > 0) {
+        doc$excludeDirect <- as.list(private$exclude_direct)
+      }
+
+      if (length(private$exclude_missing) > 0) {
+        doc$excludeMissing <- as.list(private$exclude_missing)
       }
 
       if (length(private$attributes) > 0) {
@@ -394,6 +528,37 @@ QueryBuilder <- R6::R6Class(
       lang_str <- paste(languages, collapse = ",")
       snippets_json <- render_snippet(snapshot_json, site_name, api_base, sdk_name, lang_str)
       jsonlite::fromJSON(snippets_json)
+    },
+
+    #' @description Validate the query against field metadata.
+    #' @param validation_level Override the instance setting for this call:
+    #'   \code{"full"} (default) attempts to fetch metadata from v3 API endpoints;
+    #'   \code{"partial"} uses only embedded local files.
+    #' @param field_metadata Named list of field metadata (from `FieldMeta` objects).
+    #'   Pass `NULL` to skip per-attribute checks.
+    #' @param validation_config Named list of validation configuration (prefixes, name
+    #'   classes, etc.). Pass `NULL` to use built-in defaults.
+    #' @param synonyms Named list mapping attribute synonyms to canonical names.
+    #'   Pass `NULL` for none.
+    #' @return A character vector of error strings; an empty vector means the query is valid.
+    validate = function(validation_level = NULL, field_metadata = NULL, validation_config = NULL, synonyms = NULL) {
+      level <- if (!is.null(validation_level)) validation_level else private$validation_level
+      meta_json <- if (is.null(field_metadata) || length(field_metadata) == 0) {
+        "{}"
+      } else {
+        jsonlite::toJSON(field_metadata, auto_unbox = TRUE)
+      }
+      config_json <- if (is.null(validation_config) || length(validation_config) == 0) {
+        "{}"
+      } else {
+        jsonlite::toJSON(validation_config, auto_unbox = TRUE)
+      }
+      synonyms_json <- if (is.null(synonyms) || length(synonyms) == 0) {
+        "{}"
+      } else {
+        jsonlite::toJSON(synonyms, auto_unbox = TRUE)
+      }
+      validate_query_json(self$to_query_yaml(), meta_json, config_json, synonyms_json)
     },
 
     #' @description Reset query filters, preserving index and execution parameters.

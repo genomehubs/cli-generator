@@ -1083,11 +1083,11 @@ Same logic as `validate_query`, but `HashMap` not `phf::Map`.
 ```javascript
 // JavaScript
 const qb = new QueryBuilder("taxon", {
-  validationLevel: "full",  // or "partial"
-  apiBase: "https://goat.genomehubs.org/api"
+  validationLevel: "full", // or "partial"
+  apiBase: "https://goat.genomehubs.org/api",
 });
-const errors = await qb.validate();  // Uses configured level
-const errors = await qb.validate("partial");  // Override for this call
+const errors = await qb.validate(); // Uses configured level
+const errors = await qb.validate("partial"); // Override for this call
 ```
 
 ```python
@@ -1098,17 +1098,20 @@ errors = qb.validate(validation_level="partial")  # Override for this call
 ```
 
 **Graceful Error Handling:**
+
 - Both SDKs silently handle 404s from API endpoints (no log spam)
 - Network timeouts caught and fallback to local metadata
 - Validation always succeeds; preflight metadata is enhancement, not requirement
 - Allows immediate production deployment with partial validation; seamless upgrade to full validation when v3 API ready
 
 **API Refactoring Plan Integration:**
+
 - See [api-aggregation-refactoring-plan.md](api-aggregation-refactoring-plan.md#phase-3-api-v3-endpoints-4-6-weeks) Phase 3 for `/api/v3/metadata/*` endpoint specifications
 - Validation metadata endpoints designed for deployment alongside other v3 routes
 - Pre-deployment: SDKs work fine in partial mode (embedded metadata only)
 
 **Verification:**
+
 - ✅ Python tests pass with both validation modes
 - ✅ JavaScript browser tests demonstrate partial and full mode fallback behavior
 - ✅ Dev site build succeeds with all smoke tests passing
@@ -1128,6 +1131,7 @@ canonical methods from the table above are present in all three. Runs on every P
 Catches method name drift before it reaches `main`.
 
 **Additional checks:**
+
 - Validation level parameters present in all SDKs (full, partial modes)
 - Constructor docstrings document validation_level and api_base options
 - API metadata endpoint URLs correctly templated (site-specific api_base)
@@ -1270,11 +1274,13 @@ jobs:
 ```
 
 **Network-dependent tests:**
+
 - Gated to `push` to `main` only (not PRs, to avoid rate limits)
 - Marked with `@pytest.mark.network` and `--skip-network` flag
 - CI runs with `--skip-network` on PRs, full suite on merge
 
 **Artifact handling:**
+
 - WASM packages built on each platform
 - Uploaded as CI artifacts for inspection
 - Defer npm publish until post-MVP (avoid version churn)

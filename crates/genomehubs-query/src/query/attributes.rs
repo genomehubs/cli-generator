@@ -29,6 +29,57 @@ fn normalize_operator(input: &str) -> String {
     }
 }
 
+// ── Numeric value normalization ───────────────────────────────────────────────
+
+/// Normalize numeric shorthand notation to a plain integer string.
+///
+/// Supports:
+/// - SI-style size suffixes: `"3G"` → `"3000000000"`, `"500M"` → `"500000000"`,
+///   `"2K"` → `"2000"`, `"1T"` → `"1000000000000"` (case-insensitive).
+/// - Scientific notation: `"1e9"` → `"1000000000"`, `"1.5e6"` → `"1500000"`.
+/// - Plain integers and floats are returned as-is.
+/// - Any non-numeric string is returned unchanged.
+fn normalize_value(input: &str) -> String {
+    let trimmed = input.trim();
+
+    // Attempt SI-suffix expansion first (e.g. "3G", "500M", "2.5K").
+    let (num_part, multiplier) = match trimmed.to_uppercase() {
+        s if s.ends_with("TB") && s.len() > 2 => {
+            (&trimmed[..trimmed.len() - 2], 1_000_000_000_000_u64)
+        }
+        s if s.ends_with('T') && s.len() > 1 => {
+            (&trimmed[..trimmed.len() - 1], 1_000_000_000_000_u64)
+        }
+        s if s.ends_with("GB") && s.len() > 2 => (&trimmed[..trimmed.len() - 2], 1_000_000_000_u64),
+        s if s.ends_with('G') && s.len() > 1 => (&trimmed[..trimmed.len() - 1], 1_000_000_000_u64),
+        s if s.ends_with("MB") && s.len() > 2 => (&trimmed[..trimmed.len() - 2], 1_000_000_u64),
+        s if s.ends_with('M') && s.len() > 1 => (&trimmed[..trimmed.len() - 1], 1_000_000_u64),
+        s if s.ends_with("KB") && s.len() > 2 => (&trimmed[..trimmed.len() - 2], 1_000_u64),
+        s if s.ends_with('K') && s.len() > 1 => (&trimmed[..trimmed.len() - 1], 1_000_u64),
+        _ => ("", 0),
+    };
+
+    if multiplier > 0 {
+        if let Ok(base) = num_part.parse::<f64>() {
+            let expanded = (base * multiplier as f64).round() as u64;
+            return expanded.to_string();
+        }
+    }
+
+    // Attempt scientific notation expansion (e.g. "1e9", "1.5E6").
+    let upper = trimmed.to_uppercase();
+    if upper.contains('E') && !upper.starts_with("E") {
+        if let Ok(val) = trimmed.parse::<f64>() {
+            if val.is_finite() && val >= 0.0 {
+                return (val.round() as u64).to_string();
+            }
+        }
+    }
+
+    // Return unchanged for plain numbers and non-numeric strings.
+    trimmed.to_string()
+}
+
 // ── AttributeSet ──────────────────────────────────────────────────────────────
 
 /// The full set of attribute-related query parameters.
@@ -56,6 +107,30 @@ pub struct AttributeSet {
     /// (gap-analysis item 4).
     #[serde(default)]
     pub ranks: Vec<String>,
+    /// Fields to exclude ancestrally derived estimates for (maps to `&excludeAncestral=`).
+    ///
+    /// Excludes records where all returned values for the named field(s) are
+    /// inferred from ancestor taxa.
+    #[serde(default)]
+    pub exclude_ancestral: Vec<String>,
+    /// Fields to exclude descendant-derived estimates for (maps to `&excludeDescendant=`).
+    ///
+    /// Excludes records where all returned values for the named field(s) are
+    /// inferred from descendant taxa.
+    #[serde(default)]
+    pub exclude_descendant: Vec<String>,
+    /// Fields to exclude directly estimated values for (maps to `&excludeDirect=`).
+    ///
+    /// Excludes records where the named field(s) have directly estimated values;
+    /// typically used to filter to inference-only estimates.
+    #[serde(default)]
+    pub exclude_direct: Vec<String>,
+    /// Fields to exclude missing values for (maps to `&excludeMissing=`).
+    ///
+    /// Excludes records where the named field(s) have no data (neither direct
+    /// nor inferred).
+    #[serde(default)]
+    pub exclude_missing: Vec<String>,
 }
 
 // ── Attribute ─────────────────────────────────────────────────────────────────
@@ -186,15 +261,54 @@ impl AttributeOperator {
 
 /// Attribute filter value: a single string or a list for set membership tests.
 ///
-/// Size suffix strings (e.g. `"3G"`, `"500M"`, `"1K"`) are expanded to byte
-/// counts during validation, before URL encoding.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// Size suffix strings (e.g. `"3G"`, `"500M"`, `"1K"`) are expanded to integer
+/// strings by the custom [`Deserialize`] impl (via [`normalize_value`]).
+/// Scientific notation (`"1e9"`, `"1.5E6"`) is also expanded.
+#[derive(Debug, Clone, Serialize, PartialEq)]
 #[serde(untagged)]
 pub enum AttributeValue {
     /// Single scalar value, e.g. `"chromosome"` or `"3G"`.
     Single(String),
     /// Multiple values for set membership (`in` / `not in`) tests.
     List(Vec<String>),
+}
+
+impl<'de> Deserialize<'de> for AttributeValue {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        use serde::de::{SeqAccess, Visitor};
+        use std::fmt;
+
+        struct AttributeValueVisitor;
+
+        impl<'de> Visitor<'de> for AttributeValueVisitor {
+            type Value = AttributeValue;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("a string or list of strings for an attribute value")
+            }
+
+            fn visit_str<E: serde::de::Error>(self, v: &str) -> Result<Self::Value, E> {
+                Ok(AttributeValue::Single(normalize_value(v)))
+            }
+
+            fn visit_string<E: serde::de::Error>(self, v: String) -> Result<Self::Value, E> {
+                Ok(AttributeValue::Single(normalize_value(&v)))
+            }
+
+            fn visit_seq<A: SeqAccess<'de>>(self, mut seq: A) -> Result<Self::Value, A::Error> {
+                let mut items = Vec::new();
+                while let Some(item) = seq.next_element::<String>()? {
+                    items.push(normalize_value(&item));
+                }
+                Ok(AttributeValue::List(items))
+            }
+        }
+
+        deserializer.deserialize_any(AttributeValueVisitor)
+    }
 }
 
 impl AttributeValue {
@@ -410,6 +524,10 @@ mod tests {
             }],
             names: vec!["scientific_name".to_string()],
             ranks: vec!["species".to_string()],
+            exclude_ancestral: vec![],
+            exclude_descendant: vec![],
+            exclude_direct: vec![],
+            exclude_missing: vec![],
         };
 
         assert_eq!(set.attributes.len(), 1);
@@ -667,5 +785,90 @@ mod tests {
     fn operator_invalid_alias_fails() {
         let result = serde_json::from_str::<AttributeOperator>(r#""invalid_op""#);
         assert!(result.is_err());
+    }
+
+    // ── normalize_value tests ─────────────────────────────────────────────────
+
+    #[test]
+    fn normalize_value_giga_suffix() {
+        assert_eq!(normalize_value("3G"), "3000000000");
+        assert_eq!(normalize_value("1G"), "1000000000");
+        assert_eq!(normalize_value("3g"), "3000000000");
+        assert_eq!(normalize_value("3GB"), "3000000000");
+    }
+
+    #[test]
+    fn normalize_value_mega_suffix() {
+        assert_eq!(normalize_value("500M"), "500000000");
+        assert_eq!(normalize_value("1M"), "1000000");
+        assert_eq!(normalize_value("1MB"), "1000000");
+    }
+
+    #[test]
+    fn normalize_value_kilo_suffix() {
+        assert_eq!(normalize_value("2K"), "2000");
+        assert_eq!(normalize_value("2KB"), "2000");
+        assert_eq!(normalize_value("2k"), "2000");
+    }
+
+    #[test]
+    fn normalize_value_tera_suffix() {
+        assert_eq!(normalize_value("1T"), "1000000000000");
+        assert_eq!(normalize_value("1TB"), "1000000000000");
+    }
+
+    #[test]
+    fn normalize_value_fractional_suffix() {
+        assert_eq!(normalize_value("2.5K"), "2500");
+        assert_eq!(normalize_value("1.5G"), "1500000000");
+        assert_eq!(normalize_value("500.5M"), "500500000");
+    }
+
+    #[test]
+    fn normalize_value_scientific_notation() {
+        assert_eq!(normalize_value("1e9"), "1000000000");
+        assert_eq!(normalize_value("1E9"), "1000000000");
+        assert_eq!(normalize_value("1.5e6"), "1500000");
+        assert_eq!(normalize_value("2.0e3"), "2000");
+    }
+
+    #[test]
+    fn normalize_value_plain_integer_unchanged() {
+        assert_eq!(normalize_value("12345"), "12345");
+        assert_eq!(normalize_value("0"), "0");
+    }
+
+    #[test]
+    fn normalize_value_non_numeric_unchanged() {
+        assert_eq!(normalize_value("chromosome"), "chromosome");
+        assert_eq!(normalize_value("DTOL"), "DTOL");
+        assert_eq!(normalize_value(""), "");
+    }
+
+    #[test]
+    fn attribute_value_deserialises_with_suffix() {
+        let val: AttributeValue = serde_json::from_str(r#""3G""#).unwrap();
+        assert_eq!(val, AttributeValue::Single("3000000000".to_string()));
+    }
+
+    #[test]
+    fn attribute_value_list_deserialises_with_suffix() {
+        let val: AttributeValue = serde_json::from_str(r#"["1G", "3G"]"#).unwrap();
+        assert_eq!(
+            val,
+            AttributeValue::List(vec!["1000000000".to_string(), "3000000000".to_string()])
+        );
+    }
+
+    #[test]
+    fn attribute_value_deserialises_plain_string_unchanged() {
+        let val: AttributeValue = serde_json::from_str(r#""chromosome""#).unwrap();
+        assert_eq!(val, AttributeValue::Single("chromosome".to_string()));
+    }
+
+    #[test]
+    fn attribute_value_deserialises_scientific_notation() {
+        let val: AttributeValue = serde_json::from_str(r#""1e9""#).unwrap();
+        assert_eq!(val, AttributeValue::Single("1000000000".to_string()));
     }
 }
