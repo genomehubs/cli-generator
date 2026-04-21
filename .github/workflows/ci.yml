@@ -360,10 +360,16 @@ jobs:
         working-directory: /tmp/generated/goat-cli/js/goat
 
       # ── R: Install dependencies and build package tarball ─────────────────
+      - name: Install system libraries for R packages
+        run: |
+          apt-get update
+          apt-get install -y libcurl4-openssl-dev libssl-dev
+        shell: bash
+
       - name: Install R package dependencies
         run: |
-          Rscript -e "install.packages(c('devtools', 'httr', 'jsonlite', 'data.table', 'yaml', 'R6'), repos='http://cran.r-project.org')" || exit 1
-          Rscript -e ".libPaths(); installed.packages()[c('httr', 'jsonlite', 'data.table'), c('Package', 'LibPath')]"
+          Rscript -e "install.packages(c('httr', 'jsonlite', 'data.table', 'yaml', 'R6'), repos='http://cran.r-project.org')" || exit 1
+          Rscript -e "installed.packages()[c('httr', 'jsonlite', 'data.table', 'yaml', 'R6'), c('Package', 'LibPath')]"
         shell: bash
 
       - name: Build R package
