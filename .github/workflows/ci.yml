@@ -371,7 +371,7 @@ jobs:
 
       - name: Install R package dependencies
         run: |
-          Rscript -e "install.packages(c('httr', 'jsonlite', 'data.table', 'yaml', 'R6'), repos='http://cran.r-project.org', type='source')" || exit 1
+          Rscript -e "install.packages(c('httr', 'jsonlite', 'data.table', 'yaml', 'R6'), repos='http://cran.r-project.org')" || exit 1
           Rscript -e "installed.packages()[c('httr', 'jsonlite', 'data.table', 'yaml', 'R6'), c('Package', 'LibPath')]"
         shell: bash
 
