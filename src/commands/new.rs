@@ -69,7 +69,7 @@ pub fn run(
     patch_python_init(&repo_dir, &sdk_name, &site.display_name)?;
     copy_config_files(site_name, sites_dir, &repo_dir)?;
     stamp_cargo_toml(&repo_dir, &site)?;
-    patch_pyproject_toml(&repo_dir)?;
+    patch_pyproject_toml(&repo_dir, &site.name, &sdk_name)?;
     create_r_package(&repo_dir, &site)?;
     create_js_package(&repo_dir, &site)?;
     create_quarto_docs(&repo_dir, &site)?;
@@ -458,12 +458,14 @@ pub mod validation;
 ///
 /// Idempotent — skips if the dep is already present.  Silent no-op if
 /// `pyproject.toml` does not exist in the template output.
-fn patch_pyproject_toml(repo_dir: &Path) -> Result<()> {
+fn patch_pyproject_toml(repo_dir: &Path, site_name: &str, sdk_name: &str) -> Result<()> {
     let path = repo_dir.join("pyproject.toml");
     if !path.exists() {
         return Ok(());
     }
     let mut text = std::fs::read_to_string(&path).context("reading generated pyproject.toml")?;
+
+    // Add pyyaml dependency if not present
     if !text.contains("pyyaml") {
         text = text.replacen(
             "maturin>=1.0\",",
@@ -471,6 +473,22 @@ fn patch_pyproject_toml(repo_dir: &Path) -> Result<()> {
             1,
         );
     }
+
+    // Fix package name: replace {site}_cli with sdk_name
+    let old_pkg_name = format!("{}_cli", site_name.replace('-', "_"));
+    if old_pkg_name != sdk_name {
+        // Update [project] name field (use sdk_name-sdk for the package name)
+        text = text.replace(
+            &format!("name = \"{old_pkg_name}\""),
+            &format!("name = \"{sdk_name}-sdk\""),
+        );
+        // Update [tool.maturin] module-name field (use sdk_name for the module)
+        text = text.replace(
+            &format!("module-name = \"{old_pkg_name}\""),
+            &format!("module-name = \"{sdk_name}\""),
+        );
+    }
+
     std::fs::write(&path, text).context("writing patched pyproject.toml")?;
     Ok(())
 }

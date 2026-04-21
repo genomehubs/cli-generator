@@ -477,11 +477,17 @@ bundled into the generated package by the generator. No separate build step is n
 ```bash
 # In the generated CLI repo (e.g. /tmp/my-cli/my-site-cli/js/my_site)
 cd js/my_site
+
+# The pre-built WASM module is already included; just start Node.js
 node
 ```
 
+**Option 1: Dynamic import (recommended for REPL)**
+
+In the Node.js REPL, use dynamic `import()` with `await`:
+
 ```javascript
-const { QueryBuilder } = require("./query");
+const { QueryBuilder } = await import("./query.js");
 
 // Build URL (synchronous, no network)
 const qb = new QueryBuilder("taxon")
@@ -496,9 +502,62 @@ console.log("Query URL:", qb.toUrl());
 qb.count().then((n) => console.log("Count:", n));
 ```
 
+**Option 2: CommonJS (if you prefer)**
+
+```javascript
+const { QueryBuilder } = require("./query.js");
+
+// Build URL (synchronous, no network)
+const qb = new QueryBuilder("taxon")
+  .setTaxa(["Mammalia"], "tree")
+  .addAttribute("genome_size", "ge", "1000000000")
+  .addField("assembly_span")
+  .setSize(10);
+
+console.log("Query URL:", qb.toUrl());
+
+// Count matching records (async)
+qb.count().then((n) => console.log("Count:", n));
+```
+
+**Option 3: In a script file (ES modules)**
+
+If running from a `.js` script file (not the REPL), use standard ES modules:
+
+```javascript
+import { QueryBuilder } from "./query.js";
+
+const qb = new QueryBuilder("taxon")
+  .setTaxa(["Mammalia"], "tree")
+  .addAttribute("genome_size", "ge", "1000000000")
+  .addField("assembly_span")
+  .setSize(10);
+
+console.log("Query URL:", qb.toUrl());
+```
+
+**In the REPL:** Use Option 1 (dynamic import with `await`) or Option 2 (CommonJS).
+
+**Troubleshooting: Module not found error**
+
+If you get `Error [ERR_MODULE_NOT_FOUND]: Cannot find module '.../pkg-nodejs/genomehubs_query.js'`:
+
+_For artifacts from CI:_
+
+- Make sure you extracted the artifact zip fully
+- Check that `pkg-nodejs/` exists in your `js/my_site/` directory
+- If missing, re-download the artifact from GitHub Actions
+
+_If you generated a custom CLI yourself:_
+
+- The `build-wasm.sh` script should be in the `js/` directory
+- Run: `bash build-wasm.sh`
+- This compiles the WASM module and creates the `pkg-nodejs/` directory
+- First build takes a few minutes; subsequent builds are faster
+
 **How it works:**
 
-1. `require("./query")` loads the WASM module synchronously via the bundled `pkg/`
+1. `import { QueryBuilder } from "./query.js"` loads the WASM module via the bundled `pkg/` (or use `require("./query.js")` for CommonJS)
 2. `QueryBuilder` methods set up the query state (taxa, filters, fields, etc.)
 3. `toUrl()` serialises the state to YAML and passes it to the WASM `build_url()` function
 4. WASM runs the same Rust URL-building logic used by the Python SDK and returns the API URL

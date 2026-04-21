@@ -228,6 +228,15 @@ jobs:
           path: /tmp/generated/goat-cli/target/wheels/*.whl
           retention-days: 14
 
+      - name: Install wasm-pack (for JavaScript SDK)
+        if: matrix.os == 'ubuntu-latest'
+        run: curl https://rustwasm.org/wasm-pack/installer/init.sh -sSf | sh
+
+      - name: Build JavaScript SDK WASM
+        if: matrix.os == 'ubuntu-latest'
+        run: REPO_ROOT=${{ github.workspace }} bash build-wasm.sh
+        working-directory: /tmp/generated/goat-cli/js/goat
+
       - name: Smoke-test Python SDK (URL builder — no network)
         run: |
           pip install /tmp/generated/goat-cli/target/wheels/*.whl pyyaml
@@ -271,13 +280,14 @@ jobs:
           check "habreg_2017"         taxon search --taxon "Homo sapiens" --field-groups legislation
           check "includeEstimates=false" taxon search --taxon Mammalia --field-groups busco --include-estimates=false
 
-      - name: Upload goat-cli binary
+      - name: Upload goat-cli binary + SDKs
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact-name }}
           path: |
             ${{ matrix.bin_path }}
             /tmp/generated/goat-cli/PREVIEW.md
+            /tmp/generated/goat-cli/js/goat/
           retention-days: 14
 
   # ── SDK artifacts: build, test, and upload (JavaScript npm, R, fixture validation)
