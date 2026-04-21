@@ -323,7 +323,7 @@ jobs:
 
       # Build both WASM targets (pkg-nodejs + pkg-web)
       - name: Build JS WASM packages
-        run: bash build-wasm.sh
+        run: REPO_ROOT=${{ github.workspace }} bash build-wasm.sh
         working-directory: /tmp/generated/goat-cli/js/goat
 
       # Install JS SDK dependencies

@@ -16,18 +16,20 @@ set -e
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-# Try to find cli-generator repo
-REPO_ROOT=""
-for path in \
-  "$SCRIPT_DIR/../../../../cli-generator" \
-  "$SCRIPT_DIR/../../../cli-generator" \
-  "$HOME/genomehubs/cli-generator" \
-  "$HOME/projects/genomehubs/cli-generator"; do
-  if [ -f "$path/crates/genomehubs-query/Cargo.toml" ]; then
-    REPO_ROOT="$path"
-    break
-  fi
-done
+# Try to find cli-generator repo (allow override via REPO_ROOT env var)
+if [ -z "$REPO_ROOT" ]; then
+  REPO_ROOT=""
+  for path in \
+    "$SCRIPT_DIR/../../../../cli-generator" \
+    "$SCRIPT_DIR/../../../cli-generator" \
+    "$HOME/genomehubs/cli-generator" \
+    "$HOME/projects/genomehubs/cli-generator"; do
+    if [ -f "$path/crates/genomehubs-query/Cargo.toml" ]; then
+      REPO_ROOT="$path"
+      break
+    fi
+  done
+fi
 
 if [ -z "$REPO_ROOT" ]; then
   echo "cli-generator source not found. Clone it and set REPO_ROOT manually."
