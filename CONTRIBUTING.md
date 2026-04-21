@@ -521,3 +521,31 @@ Agents are still fine for:
 
 Once you have a few merged contributions and are comfortable with the patterns
 here, AI assistance for implementation is fully encouraged.
+
+---
+
+## Releasing
+
+See [RELEASING.md](RELEASING.md) for the complete release process.
+
+**Quick summary for maintainers:**
+
+```bash
+# Bump version locally and tag
+bash scripts/bump_version.sh patch    # or major, minor
+
+# Push commits and tags (triggers GitHub Actions release workflow)
+git push origin main
+git push origin --tags
+```
+
+The release workflow automatically:
+- Builds binaries for Linux and macOS (multiple architectures)
+- Creates a GitHub Release with downloadable tarballs
+- Publishes to crates.io
+
+Tags use plain semver format (e.g., `1.0.0`, not `v1.0.0`).
+
+**Requirements for crates.io publishing:**
+- Set the `CARGO_REGISTRY_TOKEN` GitHub Actions secret (get token from [crates.io](https://crates.io/me))
+- Increment version (workflow will fail if version already published)
