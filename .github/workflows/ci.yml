@@ -230,7 +230,7 @@ jobs:
 
       - name: Install wasm-pack (for JavaScript SDK)
         if: matrix.os == 'ubuntu-latest'
-        run: curl https://rustwasm.org/wasm-pack/installer/init.sh -sSf | sh
+        run: cargo install wasm-pack
 
       - name: Build JavaScript SDK WASM
         if: matrix.os == 'ubuntu-latest'
@@ -316,7 +316,10 @@ jobs:
             ${{ runner.os }}-cargo-sdk-artifacts-
 
       - name: Install wasm-pack
-        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+        run: cargo install wasm-pack
+
+      - name: Add ~/.cargo/bin to PATH
+        run: echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -359,7 +362,8 @@ jobs:
       # ── R: Install dependencies and build package tarball ─────────────────
       - name: Install R package dependencies
         run: |
-          Rscript -e "install.packages(c('httr', 'jsonlite', 'data.table'), repos='http://cran.r-project.org')"
+          Rscript -e "install.packages(c('devtools', 'httr', 'jsonlite', 'data.table', 'yaml', 'R6'), repos='http://cran.r-project.org')" || exit 1
+          Rscript -e ".libPaths(); installed.packages()[c('httr', 'jsonlite', 'data.table'), c('Package', 'LibPath')]"
         shell: bash
 
       - name: Build R package
@@ -367,6 +371,8 @@ jobs:
           cd /tmp/generated/goat-cli/r/goat
           R CMD build --compact-vignettes=both .
         shell: bash
+        env:
+          R_LIBS_USER: ~/.R/library
 
       # ── Artifact Testing: Validate JavaScript against fixtures ──────────
       - name: Run JavaScript fixture tests
