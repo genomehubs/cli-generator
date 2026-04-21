@@ -1,0 +1,8 @@
+{{ site_name }}-cli {{ index }} search{% if taxa %} \
+  --taxon "{{ taxa[0] }}" --taxon-filter {{ taxon_filter }}{% endif %}{% if rank %} \
+  --rank {{ rank }}{% endif %}{% for filter in filters %} \
+  --filter {{ filter[0] }} {{ filter[1] }} "{{ filter[2] }}"{% endfor %}{% for sort in sorts %} \
+  --sort {{ sort[0] }}:{{ sort[1] }}{% endfor %}{% if flags %} \
+  --field-groups {{ flags | join(sep=",") }}{% endif %}{% if selections %} \
+  --fields {{ selections | join(sep=",") }}{% endif %} \
+  --size 10

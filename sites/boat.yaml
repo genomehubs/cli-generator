@@ -4,6 +4,11 @@ display_name: "BoaT"
 api_base: "https://boat.genomehubs.org/api"
 api_version: "v2"
 
+enabled_sdks:
+  - python
+  # - r (enable in Phase 2)
+  # - javascript (enable in Phase 3)
+
 indexes:
   - name: taxon
   - name: assembly

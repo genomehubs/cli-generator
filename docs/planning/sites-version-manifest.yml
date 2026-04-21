@@ -1,0 +1,58 @@
+# SDK Version Manifest
+
+This file tracks the independent semantic version of each generated site's SDKs.
+Each site can be released independently based on cli-generator changes or API drift.
+
+## Format
+
+Each site entry contains:
+- `version`: Semantic version (MAJOR.MINOR.PATCH)
+- `last_released`: ISO 8601 date of last release (null if never released)
+- `last_api_hash`: SHA256 hash of cached API schema at last release
+- `{language}_version`: Per-language version (mirrors `version` for consistency)
+
+## Sites
+
+sites:
+  # Example: Goat genomic database
+  # Generated from: cli-generator repo + goat API
+  goat-cli:
+    version: "2.1.3"
+    last_released: "2026-04-21"
+    last_api_hash: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    python_version: "2.1.3"
+    npm_version: "2.1.3"
+    r_version: "2.1.3"
+    conda_version: "2.1.3"
+    notes: "Initial MVP release"
+
+  # Example: Boat database (legacy goat-cli replacement)
+  # Generated from: cli-generator repo + boat API
+  # Status: Ready for first release after MVP testing
+  boat-cli:
+    version: "1.0.0-beta.1"
+    last_released: null
+    last_api_hash: null
+    python_version: "1.0.0-beta.1"
+    npm_version: "1.0.0-beta.1"
+    r_version: "1.0.0-beta.1"
+    conda_version: "1.0.0-beta.1"
+    notes: "Beta release pending API finalization"
+
+## Notes on Versioning
+
+### Release Triggers (in priority order)
+1. **API breaking change** (field removed, endpoint restructured) → MAJOR bump
+2. **API additive change** (new fields, new endpoints) → MINOR bump
+3. **cli-generator feature release** (new snippet languages, validators) → MINOR bump
+4. **cli-generator bugfix** (template logic, type translation) → PATCH bump
+5. **SDK-only bugfix** (generated code improvements) → PATCH bump
+
+### When to Update This File
+- **Before release**: Update version fields + set `last_released` date
+- **After release**: Update `last_api_hash` to current API schema hash
+- **On API change detection**: Create PR suggesting MAJOR/MINOR bump
+
+## Related Files
+- [release-strategy.md](./release-strategy.md) — Full release process and policies
+- [polling-config.yml](./polling-config.yml) — API schema polling configuration

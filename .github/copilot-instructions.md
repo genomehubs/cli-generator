@@ -57,6 +57,17 @@ Apply these rules to every edit:
 9. **Do not edit `src/generated/`.** This directory is managed by the CLI
    generator tool. Changes will be overwritten.
 
+10. **Language templates are wiring, not logic.** When extending all three SDK
+    languages (Python, R, JavaScript):
+    - Write logic once in Rust (src/core/)
+    - Expose via PyO3 in src/lib.rs (+ .pyi stub)
+    - Templates (R, JS) call the Rust function via bindings
+    - **Do not re-implement logic in templates.** This creates maintenance debt
+      and drift across languages.
+
+    See [docs/planning/extension-guide.md](../docs/planning/extension-guide.md)
+    for the full pattern (Rust → Python → R/JS → Docs) with worked examples.
+
 ---
 
 ## Verify changes

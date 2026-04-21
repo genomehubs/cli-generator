@@ -1,0 +1,104 @@
+# API Schema Polling Configuration
+
+This file configures the polling job that detects when target site APIs change,
+triggering new SDK releases independent of cli-generator changes.
+
+Each site specifies endpoints where the polling job should fetch live schemas
+and compare against cached versions in `docs/api-schemas/`.
+
+## Format
+
+Each site entry contains:
+- `discovery_endpoint`: URL to fetch live schema/metadata (usually GraphQL or REST schema endpoint)
+- `api_version_key`: Path in response to check for version string (optional, helps with API change detection)
+- `poll_interval`: How often to check (daily, weekly)
+- `enabled`: Whether to include in polling job (false = skip)
+- `notes`: Context for maintainers
+
+## Sites
+
+sites:
+  goat:
+    enabled: true
+    discovery_endpoint: "https://goat.genomehubs.org/api/v2/_search"
+    schema_endpoint: "https://goat.genomehubs.org/api/v2/schema"
+    api_version_key: "meta.api_version"
+    poll_interval: "daily"
+    timeout_seconds: 30
+    notes: |
+      Goat genomic database live API.
+      Schema includes field metadata, taxonomic ranks, and aggregation capabilities.
+      Changes to field structure or rank definitions trigger MINOR/MAJOR version bump.
+
+  boat:
+    enabled: false  # Not yet released; enable after initial deployment
+    discovery_endpoint: "https://boat.genomehubs.org/api/v1/metadata"
+    poll_interval: "weekly"
+    timeout_seconds: 30
+    notes: |
+      Boat database API (legacy goat-cli replacement).
+      Enable polling once SDK reaches v1.0.0 stable.
+
+## Polling Job Logic
+
+The polling job (scheduled daily + on manual trigger) should:
+
+1. **For each enabled site**:
+   - Fetch live schema from `discovery_endpoint`
+   - Hash the response (SHA256)
+   - Compare against cached hash in `docs/api-schemas/<site>-api-schema.json`
+
+2. **If hash differs**:
+   - Download and cache new schema
+   - Flag site for regeneration in `sites-version-manifest.yml`
+   - Suggest MAJOR or MINOR bump (heuristic: breaking if fields removed)
+   - Create issue/PR summarizing changes
+
+3. **If main branch changed** (check git diff `src/` + `templates/`):
+   - Regenerate all sites' SDKs
+   - Compare SHAs against previous builds
+   - If any SDK changed, flag for release
+
+4. **Output**: JSON list of sites needing new releases → triggers `.github/workflows/release.yml`
+
+## Example Polling Job Output
+
+```json
+{
+  "sites_needing_releases": ["goat-cli", "boat-cli"],
+  "changes": {
+    "goat-cli": {
+      "trigger": "api",
+      "summary": "Field 'description' added to taxon_name_statement",
+      "suggested_bump": "MINOR",
+      "last_api_hash": "abc123",
+      "new_api_hash": "xyz789"
+    },
+    "boat-cli": {
+      "trigger": "cli-generator",
+      "summary": "New snippet language (Go) added to templates",
+      "suggested_bump": "MINOR"
+    }
+  }
+}
+```
+
+## Cached API Schemas
+
+Location: `docs/api-schemas/`
+
+```
+docs/api-schemas/
+  goat-api-schema.json        # Last cached at release v2.1.3
+  boat-api-schema.json        # Last cached at release v1.0.0 (if released)
+  <site>-api-schema.json      # Pattern for future sites
+```
+
+Each cached file includes:
+- Timestamp of when it was fetched
+- API version (if available from response)
+- Schema structure (field defs, types, etc.)
+
+## Related Files
+- [release-strategy.md](./release-strategy.md) — Full release process
+- [sites-version-manifest.yml](./sites-version-manifest.yml) — Version tracking per site

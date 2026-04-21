@@ -1,0 +1,2 @@
+EXPORTS
+R_init_{{ r_package_name }}

@@ -1,0 +1,5371 @@
+{
+  "status": {
+    "hits": 3014,
+    "success": true,
+    "took": 26,
+    "size": 20,
+    "offset": 0
+  },
+  "results": [
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-2819898",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "taxon_id": "2819898",
+            "scientific_name": "Orosanga japonica",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 1,
+            "taxon_id": "2819897",
+            "scientific_name": "Orosanga",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 2,
+            "taxon_id": "130625",
+            "scientific_name": "Ricaniidae",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 3,
+            "taxon_id": "36151",
+            "scientific_name": "Fulgoroidea",
+            "taxon_rank": "superfamily"
+          },
+          {
+            "node_depth": 4,
+            "taxon_id": "33361",
+            "scientific_name": "Fulgoromorpha",
+            "taxon_rank": "infraorder"
+          },
+          {
+            "node_depth": 5,
+            "taxon_id": "1955247",
+            "scientific_name": "Auchenorrhyncha",
+            "taxon_rank": "suborder"
+          },
+          {
+            "node_depth": 6,
+            "taxon_id": "7524",
+            "scientific_name": "Hemiptera",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 7,
+            "taxon_id": "33342",
+            "scientific_name": "Paraneoptera",
+            "taxon_rank": "cohort"
+          },
+          {
+            "node_depth": 8,
+            "taxon_id": "3701061",
+            "scientific_name": "Eumetabola",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 9,
+            "taxon_id": "33340",
+            "scientific_name": "Neoptera",
+            "taxon_rank": "infraclass"
+          },
+          {
+            "node_depth": 10,
+            "taxon_id": "7496",
+            "scientific_name": "Pterygota",
+            "taxon_rank": "subclass"
+          },
+          {
+            "node_depth": 11,
+            "taxon_id": "85512",
+            "scientific_name": "Dicondylia",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 12,
+            "taxon_id": "50557",
+            "scientific_name": "Insecta",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 13,
+            "taxon_id": "6960",
+            "scientific_name": "Hexapoda",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 14,
+            "taxon_id": "3701030",
+            "scientific_name": "Allotriocarida",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 15,
+            "taxon_id": "3701028",
+            "scientific_name": "Altocrustacea",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 16,
+            "taxon_id": "197562",
+            "scientific_name": "Pancrustacea",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 17,
+            "taxon_id": "197563",
+            "scientific_name": "Mandibulata",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 18,
+            "taxon_id": "6656",
+            "scientific_name": "Arthropoda",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 19,
+            "taxon_id": "88770",
+            "scientific_name": "Panarthropoda",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 20,
+            "taxon_id": "1206794",
+            "scientific_name": "Ecdysozoa",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 21,
+            "taxon_id": "33317",
+            "scientific_name": "Protostomia",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 22,
+            "taxon_id": "33213",
+            "scientific_name": "Bilateria",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 23,
+            "taxon_id": "6072",
+            "scientific_name": "Eumetazoa",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 24,
+            "taxon_id": "33208",
+            "scientific_name": "Metazoa",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 25,
+            "taxon_id": "33154",
+            "scientific_name": "Opisthokonta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 26,
+            "taxon_id": "2759",
+            "scientific_name": "Eukaryota",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 27,
+            "taxon_id": "131567",
+            "scientific_name": "cellular organisms",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 28,
+            "taxon_id": "1",
+            "scientific_name": "root",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "2819897",
+        "scientific_name": "Orosanga japonica",
+        "taxon_id": "2819898",
+        "taxon_names": [
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Orosanga japonica",
+            "source": "NCBI Taxonomy",
+            "class": "scientific name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Orosanga japonicus",
+            "source": "NCBI Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Ricania japonica",
+            "source": "NCBI Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": null,
+            "name": "1897814",
+            "source": null,
+            "class": "merged taxon id",
+            "source_url": null
+          },
+          {
+            "source_url_stub": null,
+            "name": "ihOroJapo",
+            "source": "Tree of Life ID",
+            "class": "tolid prefix",
+            "source_url": "https://id.tol.sanger.ac.uk"
+          }
+        ],
+        "taxon_rank": "species",
+        "fields": {
+          "chromosome_count": {
+            "aggregation_source": "direct",
+            "sp_count": 0,
+            "min": 12,
+            "value": 12,
+            "aggregation_method": "primary",
+            "median": 12,
+            "count": 1,
+            "max": 12,
+            "mode": 12
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-533009",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "taxon_id": "533009",
+            "scientific_name": "Callitettix versicolor",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 1,
+            "taxon_id": "533007",
+            "scientific_name": "Callitettix",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 2,
+            "taxon_id": "1777645",
+            "scientific_name": "Callitettixinae",
+            "taxon_rank": "subfamily"
+          },
+          {
+            "node_depth": 3,
+            "taxon_id": "30086",
+            "scientific_name": "Cercopidae",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 4,
+            "taxon_id": "33366",
+            "scientific_name": "Cercopoidea",
+            "taxon_rank": "superfamily"
+          },
+          {
+            "node_depth": 5,
+            "taxon_id": "33365",
+            "scientific_name": "Cicadomorpha",
+            "taxon_rank": "infraorder"
+          },
+          {
+            "node_depth": 6,
+            "taxon_id": "1955247",
+            "scientific_name": "Auchenorrhyncha",
+            "taxon_rank": "suborder"
+          },
+          {
+            "node_depth": 7,
+            "taxon_id": "7524",
+            "scientific_name": "Hemiptera",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 8,
+            "taxon_id": "33342",
+            "scientific_name": "Paraneoptera",
+            "taxon_rank": "cohort"
+          },
+          {
+            "node_depth": 9,
+            "taxon_id": "3701061",
+            "scientific_name": "Eumetabola",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "taxon_id": "33340",
+            "scientific_name": "Neoptera",
+            "taxon_rank": "infraclass"
+          },
+          {
+            "node_depth": 11,
+            "taxon_id": "7496",
+            "scientific_name": "Pterygota",
+            "taxon_rank": "subclass"
+          },
+          {
+            "node_depth": 12,
+            "taxon_id": "85512",
+            "scientific_name": "Dicondylia",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 13,
+            "taxon_id": "50557",
+            "scientific_name": "Insecta",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 14,
+            "taxon_id": "6960",
+            "scientific_name": "Hexapoda",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 15,
+            "taxon_id": "3701030",
+            "scientific_name": "Allotriocarida",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 16,
+            "taxon_id": "3701028",
+            "scientific_name": "Altocrustacea",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 17,
+            "taxon_id": "197562",
+            "scientific_name": "Pancrustacea",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 18,
+            "taxon_id": "197563",
+            "scientific_name": "Mandibulata",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 19,
+            "taxon_id": "6656",
+            "scientific_name": "Arthropoda",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 20,
+            "taxon_id": "88770",
+            "scientific_name": "Panarthropoda",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 21,
+            "taxon_id": "1206794",
+            "scientific_name": "Ecdysozoa",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 22,
+            "taxon_id": "33317",
+            "scientific_name": "Protostomia",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 23,
+            "taxon_id": "33213",
+            "scientific_name": "Bilateria",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 24,
+            "taxon_id": "6072",
+            "scientific_name": "Eumetazoa",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 25,
+            "taxon_id": "33208",
+            "scientific_name": "Metazoa",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 26,
+            "taxon_id": "33154",
+            "scientific_name": "Opisthokonta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 27,
+            "taxon_id": "2759",
+            "scientific_name": "Eukaryota",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 28,
+            "taxon_id": "131567",
+            "scientific_name": "cellular organisms",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 29,
+            "taxon_id": "1",
+            "scientific_name": "root",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "533007",
+        "scientific_name": "Callitettix versicolor",
+        "taxon_id": "533009",
+        "taxon_names": [
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Callitettix versicolor",
+            "source": "NCBI Taxonomy",
+            "class": "scientific name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Cercopis versicolor",
+            "source": "NCBI Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": null,
+            "name": "ihCalVers",
+            "source": "Tree of Life ID",
+            "class": "tolid prefix",
+            "source_url": "https://id.tol.sanger.ac.uk"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "ncbi:533009",
+            "source": "NCBI Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "gbif:2018798",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Cicada versicolor",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          }
+        ],
+        "taxon_rank": "species",
+        "fields": {
+          "chromosome_count": {
+            "aggregation_source": "direct",
+            "sp_count": 0,
+            "min": 10,
+            "value": 10,
+            "aggregation_method": "primary",
+            "median": 10,
+            "count": 1,
+            "max": 10,
+            "mode": 10
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-2818049",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "taxon_id": "2818049",
+            "scientific_name": "Neophilaenus exclamationis",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 1,
+            "taxon_id": "295195",
+            "scientific_name": "Neophilaenus",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 2,
+            "taxon_id": "36666",
+            "scientific_name": "Aphrophoridae",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 3,
+            "taxon_id": "33366",
+            "scientific_name": "Cercopoidea",
+            "taxon_rank": "superfamily"
+          },
+          {
+            "node_depth": 4,
+            "taxon_id": "33365",
+            "scientific_name": "Cicadomorpha",
+            "taxon_rank": "infraorder"
+          },
+          {
+            "node_depth": 5,
+            "taxon_id": "1955247",
+            "scientific_name": "Auchenorrhyncha",
+            "taxon_rank": "suborder"
+          },
+          {
+            "node_depth": 6,
+            "taxon_id": "7524",
+            "scientific_name": "Hemiptera",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 7,
+            "taxon_id": "33342",
+            "scientific_name": "Paraneoptera",
+            "taxon_rank": "cohort"
+          },
+          {
+            "node_depth": 8,
+            "taxon_id": "3701061",
+            "scientific_name": "Eumetabola",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 9,
+            "taxon_id": "33340",
+            "scientific_name": "Neoptera",
+            "taxon_rank": "infraclass"
+          },
+          {
+            "node_depth": 10,
+            "taxon_id": "7496",
+            "scientific_name": "Pterygota",
+            "taxon_rank": "subclass"
+          },
+          {
+            "node_depth": 11,
+            "taxon_id": "85512",
+            "scientific_name": "Dicondylia",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 12,
+            "taxon_id": "50557",
+            "scientific_name": "Insecta",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 13,
+            "taxon_id": "6960",
+            "scientific_name": "Hexapoda",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 14,
+            "taxon_id": "3701030",
+            "scientific_name": "Allotriocarida",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 15,
+            "taxon_id": "3701028",
+            "scientific_name": "Altocrustacea",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 16,
+            "taxon_id": "197562",
+            "scientific_name": "Pancrustacea",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 17,
+            "taxon_id": "197563",
+            "scientific_name": "Mandibulata",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 18,
+            "taxon_id": "6656",
+            "scientific_name": "Arthropoda",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 19,
+            "taxon_id": "88770",
+            "scientific_name": "Panarthropoda",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 20,
+            "taxon_id": "1206794",
+            "scientific_name": "Ecdysozoa",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 21,
+            "taxon_id": "33317",
+            "scientific_name": "Protostomia",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 22,
+            "taxon_id": "33213",
+            "scientific_name": "Bilateria",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 23,
+            "taxon_id": "6072",
+            "scientific_name": "Eumetazoa",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 24,
+            "taxon_id": "33208",
+            "scientific_name": "Metazoa",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 25,
+            "taxon_id": "33154",
+            "scientific_name": "Opisthokonta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 26,
+            "taxon_id": "2759",
+            "scientific_name": "Eukaryota",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 27,
+            "taxon_id": "131567",
+            "scientific_name": "cellular organisms",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 28,
+            "taxon_id": "1",
+            "scientific_name": "root",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "295195",
+        "scientific_name": "Neophilaenus exclamationis",
+        "taxon_id": "2818049",
+        "taxon_names": [
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Neophilaenus exclamationis",
+            "source": "NCBI Taxonomy",
+            "class": "scientific name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": null,
+            "name": "ihNeoExcl",
+            "source": "Tree of Life ID",
+            "class": "tolid prefix",
+            "source_url": "https://id.tol.sanger.ac.uk"
+          }
+        ],
+        "taxon_rank": "species",
+        "fields": {
+          "chromosome_count": {
+            "aggregation_source": "direct",
+            "sp_count": 0,
+            "min": 11,
+            "value": 11,
+            "aggregation_method": "primary",
+            "median": 11,
+            "count": 1,
+            "max": 11,
+            "mode": 11
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-295201",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "taxon_id": "295201",
+            "scientific_name": "Aphrophora alni",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 1,
+            "taxon_id": "295200",
+            "scientific_name": "Aphrophora",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 2,
+            "taxon_id": "36666",
+            "scientific_name": "Aphrophoridae",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 3,
+            "taxon_id": "33366",
+            "scientific_name": "Cercopoidea",
+            "taxon_rank": "superfamily"
+          },
+          {
+            "node_depth": 4,
+            "taxon_id": "33365",
+            "scientific_name": "Cicadomorpha",
+            "taxon_rank": "infraorder"
+          },
+          {
+            "node_depth": 5,
+            "taxon_id": "1955247",
+            "scientific_name": "Auchenorrhyncha",
+            "taxon_rank": "suborder"
+          },
+          {
+            "node_depth": 6,
+            "taxon_id": "7524",
+            "scientific_name": "Hemiptera",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 7,
+            "taxon_id": "33342",
+            "scientific_name": "Paraneoptera",
+            "taxon_rank": "cohort"
+          },
+          {
+            "node_depth": 8,
+            "taxon_id": "3701061",
+            "scientific_name": "Eumetabola",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 9,
+            "taxon_id": "33340",
+            "scientific_name": "Neoptera",
+            "taxon_rank": "infraclass"
+          },
+          {
+            "node_depth": 10,
+            "taxon_id": "7496",
+            "scientific_name": "Pterygota",
+            "taxon_rank": "subclass"
+          },
+          {
+            "node_depth": 11,
+            "taxon_id": "85512",
+            "scientific_name": "Dicondylia",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 12,
+            "taxon_id": "50557",
+            "scientific_name": "Insecta",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 13,
+            "taxon_id": "6960",
+            "scientific_name": "Hexapoda",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 14,
+            "taxon_id": "3701030",
+            "scientific_name": "Allotriocarida",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 15,
+            "taxon_id": "3701028",
+            "scientific_name": "Altocrustacea",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 16,
+            "taxon_id": "197562",
+            "scientific_name": "Pancrustacea",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 17,
+            "taxon_id": "197563",
+            "scientific_name": "Mandibulata",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 18,
+            "taxon_id": "6656",
+            "scientific_name": "Arthropoda",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 19,
+            "taxon_id": "88770",
+            "scientific_name": "Panarthropoda",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 20,
+            "taxon_id": "1206794",
+            "scientific_name": "Ecdysozoa",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 21,
+            "taxon_id": "33317",
+            "scientific_name": "Protostomia",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 22,
+            "taxon_id": "33213",
+            "scientific_name": "Bilateria",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 23,
+            "taxon_id": "6072",
+            "scientific_name": "Eumetazoa",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 24,
+            "taxon_id": "33208",
+            "scientific_name": "Metazoa",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 25,
+            "taxon_id": "33154",
+            "scientific_name": "Opisthokonta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 26,
+            "taxon_id": "2759",
+            "scientific_name": "Eukaryota",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 27,
+            "taxon_id": "131567",
+            "scientific_name": "cellular organisms",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 28,
+            "taxon_id": "1",
+            "scientific_name": "root",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "295200",
+        "scientific_name": "Aphrophora alni",
+        "taxon_id": "295201",
+        "taxon_names": [
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "alder spittlebug",
+            "source": "NCBI Taxonomy",
+            "class": "genbank common name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Aphrophora alni",
+            "source": "NCBI Taxonomy",
+            "class": "scientific name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Cercopis alni",
+            "source": "NCBI Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": null,
+            "name": "ihAphAlni",
+            "source": "Tree of Life ID",
+            "class": "tolid prefix",
+            "source_url": "https://id.tol.sanger.ac.uk"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "ncbi:295201",
+            "source": "NCBI Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "gbif:2016266",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.gbif.org/"
+          }
+        ],
+        "taxon_rank": "species",
+        "fields": {
+          "chromosome_count": {
+            "aggregation_source": "direct",
+            "sp_count": 0,
+            "min": 15,
+            "value": 15,
+            "aggregation_method": "primary",
+            "median": 15,
+            "count": 1,
+            "max": 15,
+            "mode": 15
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-2898095",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "taxon_id": "2898095",
+            "scientific_name": "Aphrophora major",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 1,
+            "taxon_id": "295200",
+            "scientific_name": "Aphrophora",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 2,
+            "taxon_id": "36666",
+            "scientific_name": "Aphrophoridae",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 3,
+            "taxon_id": "33366",
+            "scientific_name": "Cercopoidea",
+            "taxon_rank": "superfamily"
+          },
+          {
+            "node_depth": 4,
+            "taxon_id": "33365",
+            "scientific_name": "Cicadomorpha",
+            "taxon_rank": "infraorder"
+          },
+          {
+            "node_depth": 5,
+            "taxon_id": "1955247",
+            "scientific_name": "Auchenorrhyncha",
+            "taxon_rank": "suborder"
+          },
+          {
+            "node_depth": 6,
+            "taxon_id": "7524",
+            "scientific_name": "Hemiptera",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 7,
+            "taxon_id": "33342",
+            "scientific_name": "Paraneoptera",
+            "taxon_rank": "cohort"
+          },
+          {
+            "node_depth": 8,
+            "taxon_id": "3701061",
+            "scientific_name": "Eumetabola",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 9,
+            "taxon_id": "33340",
+            "scientific_name": "Neoptera",
+            "taxon_rank": "infraclass"
+          },
+          {
+            "node_depth": 10,
+            "taxon_id": "7496",
+            "scientific_name": "Pterygota",
+            "taxon_rank": "subclass"
+          },
+          {
+            "node_depth": 11,
+            "taxon_id": "85512",
+            "scientific_name": "Dicondylia",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 12,
+            "taxon_id": "50557",
+            "scientific_name": "Insecta",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 13,
+            "taxon_id": "6960",
+            "scientific_name": "Hexapoda",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 14,
+            "taxon_id": "3701030",
+            "scientific_name": "Allotriocarida",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 15,
+            "taxon_id": "3701028",
+            "scientific_name": "Altocrustacea",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 16,
+            "taxon_id": "197562",
+            "scientific_name": "Pancrustacea",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 17,
+            "taxon_id": "197563",
+            "scientific_name": "Mandibulata",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 18,
+            "taxon_id": "6656",
+            "scientific_name": "Arthropoda",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 19,
+            "taxon_id": "88770",
+            "scientific_name": "Panarthropoda",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 20,
+            "taxon_id": "1206794",
+            "scientific_name": "Ecdysozoa",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 21,
+            "taxon_id": "33317",
+            "scientific_name": "Protostomia",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 22,
+            "taxon_id": "33213",
+            "scientific_name": "Bilateria",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 23,
+            "taxon_id": "6072",
+            "scientific_name": "Eumetazoa",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 24,
+            "taxon_id": "33208",
+            "scientific_name": "Metazoa",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 25,
+            "taxon_id": "33154",
+            "scientific_name": "Opisthokonta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 26,
+            "taxon_id": "2759",
+            "scientific_name": "Eukaryota",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 27,
+            "taxon_id": "131567",
+            "scientific_name": "cellular organisms",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 28,
+            "taxon_id": "1",
+            "scientific_name": "root",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "295200",
+        "scientific_name": "Aphrophora major",
+        "taxon_id": "2898095",
+        "taxon_names": [
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Aphrophora major",
+            "source": "NCBI Taxonomy",
+            "class": "scientific name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": null,
+            "name": "ihAphMajo",
+            "source": "Tree of Life ID",
+            "class": "tolid prefix",
+            "source_url": "https://id.tol.sanger.ac.uk"
+          }
+        ],
+        "taxon_rank": "species",
+        "fields": {
+          "chromosome_count": {
+            "aggregation_source": "direct",
+            "sp_count": 0,
+            "min": 14,
+            "value": 16,
+            "aggregation_method": "primary",
+            "median": 15,
+            "count": 2,
+            "max": 16,
+            "mode": 16
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-3384248",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "taxon_id": "3384248",
+            "scientific_name": "Aphrophora moscoviciae",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 1,
+            "taxon_id": "295200",
+            "scientific_name": "Aphrophora",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 2,
+            "taxon_id": "36666",
+            "scientific_name": "Aphrophoridae",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 3,
+            "taxon_id": "33366",
+            "scientific_name": "Cercopoidea",
+            "taxon_rank": "superfamily"
+          },
+          {
+            "node_depth": 4,
+            "taxon_id": "33365",
+            "scientific_name": "Cicadomorpha",
+            "taxon_rank": "infraorder"
+          },
+          {
+            "node_depth": 5,
+            "taxon_id": "1955247",
+            "scientific_name": "Auchenorrhyncha",
+            "taxon_rank": "suborder"
+          },
+          {
+            "node_depth": 6,
+            "taxon_id": "7524",
+            "scientific_name": "Hemiptera",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 7,
+            "taxon_id": "33342",
+            "scientific_name": "Paraneoptera",
+            "taxon_rank": "cohort"
+          },
+          {
+            "node_depth": 8,
+            "taxon_id": "3701061",
+            "scientific_name": "Eumetabola",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 9,
+            "taxon_id": "33340",
+            "scientific_name": "Neoptera",
+            "taxon_rank": "infraclass"
+          },
+          {
+            "node_depth": 10,
+            "taxon_id": "7496",
+            "scientific_name": "Pterygota",
+            "taxon_rank": "subclass"
+          },
+          {
+            "node_depth": 11,
+            "taxon_id": "85512",
+            "scientific_name": "Dicondylia",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 12,
+            "taxon_id": "50557",
+            "scientific_name": "Insecta",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 13,
+            "taxon_id": "6960",
+            "scientific_name": "Hexapoda",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 14,
+            "taxon_id": "3701030",
+            "scientific_name": "Allotriocarida",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 15,
+            "taxon_id": "3701028",
+            "scientific_name": "Altocrustacea",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 16,
+            "taxon_id": "197562",
+            "scientific_name": "Pancrustacea",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 17,
+            "taxon_id": "197563",
+            "scientific_name": "Mandibulata",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 18,
+            "taxon_id": "6656",
+            "scientific_name": "Arthropoda",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 19,
+            "taxon_id": "88770",
+            "scientific_name": "Panarthropoda",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 20,
+            "taxon_id": "1206794",
+            "scientific_name": "Ecdysozoa",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 21,
+            "taxon_id": "33317",
+            "scientific_name": "Protostomia",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 22,
+            "taxon_id": "33213",
+            "scientific_name": "Bilateria",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 23,
+            "taxon_id": "6072",
+            "scientific_name": "Eumetazoa",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 24,
+            "taxon_id": "33208",
+            "scientific_name": "Metazoa",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 25,
+            "taxon_id": "33154",
+            "scientific_name": "Opisthokonta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 26,
+            "taxon_id": "2759",
+            "scientific_name": "Eukaryota",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 27,
+            "taxon_id": "131567",
+            "scientific_name": "cellular organisms",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 28,
+            "taxon_id": "1",
+            "scientific_name": "root",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "295200",
+        "scientific_name": "Aphrophora moscoviciae",
+        "taxon_id": "3384248",
+        "taxon_names": [
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Aphrophora moscoviciae",
+            "source": "NCBI Taxonomy",
+            "class": "scientific name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": null,
+            "name": "ihAphMosc",
+            "source": "Tree of Life ID",
+            "class": "tolid prefix",
+            "source_url": "https://id.tol.sanger.ac.uk"
+          }
+        ],
+        "taxon_rank": "species",
+        "fields": {
+          "chromosome_count": {
+            "aggregation_source": "direct",
+            "sp_count": 0,
+            "min": 15,
+            "value": 15,
+            "aggregation_method": "primary",
+            "median": 15,
+            "count": 1,
+            "max": 15,
+            "mode": 15
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-134416",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "taxon_id": "134416",
+            "scientific_name": "Cicada orni",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 1,
+            "taxon_id": "134415",
+            "scientific_name": "Cicada",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 2,
+            "taxon_id": "145354",
+            "scientific_name": "Cicadini",
+            "taxon_rank": "tribe"
+          },
+          {
+            "node_depth": 3,
+            "taxon_id": "145353",
+            "scientific_name": "Cicadinae",
+            "taxon_rank": "subfamily"
+          },
+          {
+            "node_depth": 4,
+            "taxon_id": "7033",
+            "scientific_name": "Cicadidae",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 5,
+            "taxon_id": "33367",
+            "scientific_name": "Cicadoidea",
+            "taxon_rank": "superfamily"
+          },
+          {
+            "node_depth": 6,
+            "taxon_id": "33365",
+            "scientific_name": "Cicadomorpha",
+            "taxon_rank": "infraorder"
+          },
+          {
+            "node_depth": 7,
+            "taxon_id": "1955247",
+            "scientific_name": "Auchenorrhyncha",
+            "taxon_rank": "suborder"
+          },
+          {
+            "node_depth": 8,
+            "taxon_id": "7524",
+            "scientific_name": "Hemiptera",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 9,
+            "taxon_id": "33342",
+            "scientific_name": "Paraneoptera",
+            "taxon_rank": "cohort"
+          },
+          {
+            "node_depth": 10,
+            "taxon_id": "3701061",
+            "scientific_name": "Eumetabola",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "taxon_id": "33340",
+            "scientific_name": "Neoptera",
+            "taxon_rank": "infraclass"
+          },
+          {
+            "node_depth": 12,
+            "taxon_id": "7496",
+            "scientific_name": "Pterygota",
+            "taxon_rank": "subclass"
+          },
+          {
+            "node_depth": 13,
+            "taxon_id": "85512",
+            "scientific_name": "Dicondylia",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 14,
+            "taxon_id": "50557",
+            "scientific_name": "Insecta",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 15,
+            "taxon_id": "6960",
+            "scientific_name": "Hexapoda",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 16,
+            "taxon_id": "3701030",
+            "scientific_name": "Allotriocarida",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 17,
+            "taxon_id": "3701028",
+            "scientific_name": "Altocrustacea",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 18,
+            "taxon_id": "197562",
+            "scientific_name": "Pancrustacea",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 19,
+            "taxon_id": "197563",
+            "scientific_name": "Mandibulata",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 20,
+            "taxon_id": "6656",
+            "scientific_name": "Arthropoda",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 21,
+            "taxon_id": "88770",
+            "scientific_name": "Panarthropoda",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 22,
+            "taxon_id": "1206794",
+            "scientific_name": "Ecdysozoa",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 23,
+            "taxon_id": "33317",
+            "scientific_name": "Protostomia",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 24,
+            "taxon_id": "33213",
+            "scientific_name": "Bilateria",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 25,
+            "taxon_id": "6072",
+            "scientific_name": "Eumetazoa",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 26,
+            "taxon_id": "33208",
+            "scientific_name": "Metazoa",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 27,
+            "taxon_id": "33154",
+            "scientific_name": "Opisthokonta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 28,
+            "taxon_id": "2759",
+            "scientific_name": "Eukaryota",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 29,
+            "taxon_id": "131567",
+            "scientific_name": "cellular organisms",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 30,
+            "taxon_id": "1",
+            "scientific_name": "root",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "134415",
+        "scientific_name": "Cicada orni",
+        "taxon_id": "134416",
+        "taxon_names": [
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Cicada orni",
+            "source": "NCBI Taxonomy",
+            "class": "scientific name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": null,
+            "name": "ihCicOrni",
+            "source": "Tree of Life ID",
+            "class": "tolid prefix",
+            "source_url": "https://id.tol.sanger.ac.uk"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "ncbi:134416",
+            "source": "NCBI Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          }
+        ],
+        "taxon_rank": "species",
+        "fields": {
+          "chromosome_count": {
+            "aggregation_source": "direct",
+            "sp_count": 0,
+            "min": 10,
+            "value": 10,
+            "aggregation_method": "primary",
+            "median": 10,
+            "count": 1,
+            "max": 10,
+            "mode": 10
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-134419",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "taxon_id": "134419",
+            "scientific_name": "Lyristes plebejus",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 1,
+            "taxon_id": "134418",
+            "scientific_name": "Lyristes",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 2,
+            "taxon_id": "941679",
+            "scientific_name": "Cryptotympanini",
+            "taxon_rank": "tribe"
+          },
+          {
+            "node_depth": 3,
+            "taxon_id": "145353",
+            "scientific_name": "Cicadinae",
+            "taxon_rank": "subfamily"
+          },
+          {
+            "node_depth": 4,
+            "taxon_id": "7033",
+            "scientific_name": "Cicadidae",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 5,
+            "taxon_id": "33367",
+            "scientific_name": "Cicadoidea",
+            "taxon_rank": "superfamily"
+          },
+          {
+            "node_depth": 6,
+            "taxon_id": "33365",
+            "scientific_name": "Cicadomorpha",
+            "taxon_rank": "infraorder"
+          },
+          {
+            "node_depth": 7,
+            "taxon_id": "1955247",
+            "scientific_name": "Auchenorrhyncha",
+            "taxon_rank": "suborder"
+          },
+          {
+            "node_depth": 8,
+            "taxon_id": "7524",
+            "scientific_name": "Hemiptera",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 9,
+            "taxon_id": "33342",
+            "scientific_name": "Paraneoptera",
+            "taxon_rank": "cohort"
+          },
+          {
+            "node_depth": 10,
+            "taxon_id": "3701061",
+            "scientific_name": "Eumetabola",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "taxon_id": "33340",
+            "scientific_name": "Neoptera",
+            "taxon_rank": "infraclass"
+          },
+          {
+            "node_depth": 12,
+            "taxon_id": "7496",
+            "scientific_name": "Pterygota",
+            "taxon_rank": "subclass"
+          },
+          {
+            "node_depth": 13,
+            "taxon_id": "85512",
+            "scientific_name": "Dicondylia",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 14,
+            "taxon_id": "50557",
+            "scientific_name": "Insecta",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 15,
+            "taxon_id": "6960",
+            "scientific_name": "Hexapoda",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 16,
+            "taxon_id": "3701030",
+            "scientific_name": "Allotriocarida",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 17,
+            "taxon_id": "3701028",
+            "scientific_name": "Altocrustacea",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 18,
+            "taxon_id": "197562",
+            "scientific_name": "Pancrustacea",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 19,
+            "taxon_id": "197563",
+            "scientific_name": "Mandibulata",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 20,
+            "taxon_id": "6656",
+            "scientific_name": "Arthropoda",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 21,
+            "taxon_id": "88770",
+            "scientific_name": "Panarthropoda",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 22,
+            "taxon_id": "1206794",
+            "scientific_name": "Ecdysozoa",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 23,
+            "taxon_id": "33317",
+            "scientific_name": "Protostomia",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 24,
+            "taxon_id": "33213",
+            "scientific_name": "Bilateria",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 25,
+            "taxon_id": "6072",
+            "scientific_name": "Eumetazoa",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 26,
+            "taxon_id": "33208",
+            "scientific_name": "Metazoa",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 27,
+            "taxon_id": "33154",
+            "scientific_name": "Opisthokonta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 28,
+            "taxon_id": "2759",
+            "scientific_name": "Eukaryota",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 29,
+            "taxon_id": "131567",
+            "scientific_name": "cellular organisms",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 30,
+            "taxon_id": "1",
+            "scientific_name": "root",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "134418",
+        "scientific_name": "Lyristes plebejus",
+        "taxon_id": "134419",
+        "taxon_names": [
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Cicada plebeja Scopoli, 1763",
+            "source": "NCBI Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Lyristes plebejus",
+            "source": "NCBI Taxonomy",
+            "class": "scientific name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": null,
+            "name": "ihLyrPleb",
+            "source": "Tree of Life ID",
+            "class": "tolid prefix",
+            "source_url": "https://id.tol.sanger.ac.uk"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "ncbi:134419",
+            "source": "NCBI Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          }
+        ],
+        "taxon_rank": "species",
+        "fields": {
+          "chromosome_count": {
+            "aggregation_source": "direct",
+            "sp_count": 0,
+            "min": 10,
+            "value": 10,
+            "aggregation_method": "primary",
+            "median": 10,
+            "count": 1,
+            "max": 10,
+            "mode": 10
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-44680",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "taxon_id": "44680",
+            "scientific_name": "Magicicada septendecula",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 1,
+            "taxon_id": "254008",
+            "scientific_name": "decula group",
+            "taxon_rank": "species group"
+          },
+          {
+            "node_depth": 2,
+            "taxon_id": "38085",
+            "scientific_name": "Magicicada",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 3,
+            "taxon_id": "2218862",
+            "scientific_name": "Lamotialnini",
+            "taxon_rank": "tribe"
+          },
+          {
+            "node_depth": 4,
+            "taxon_id": "868270",
+            "scientific_name": "Cicadettinae",
+            "taxon_rank": "subfamily"
+          },
+          {
+            "node_depth": 5,
+            "taxon_id": "7033",
+            "scientific_name": "Cicadidae",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 6,
+            "taxon_id": "33367",
+            "scientific_name": "Cicadoidea",
+            "taxon_rank": "superfamily"
+          },
+          {
+            "node_depth": 7,
+            "taxon_id": "33365",
+            "scientific_name": "Cicadomorpha",
+            "taxon_rank": "infraorder"
+          },
+          {
+            "node_depth": 8,
+            "taxon_id": "1955247",
+            "scientific_name": "Auchenorrhyncha",
+            "taxon_rank": "suborder"
+          },
+          {
+            "node_depth": 9,
+            "taxon_id": "7524",
+            "scientific_name": "Hemiptera",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 10,
+            "taxon_id": "33342",
+            "scientific_name": "Paraneoptera",
+            "taxon_rank": "cohort"
+          },
+          {
+            "node_depth": 11,
+            "taxon_id": "3701061",
+            "scientific_name": "Eumetabola",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 12,
+            "taxon_id": "33340",
+            "scientific_name": "Neoptera",
+            "taxon_rank": "infraclass"
+          },
+          {
+            "node_depth": 13,
+            "taxon_id": "7496",
+            "scientific_name": "Pterygota",
+            "taxon_rank": "subclass"
+          },
+          {
+            "node_depth": 14,
+            "taxon_id": "85512",
+            "scientific_name": "Dicondylia",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 15,
+            "taxon_id": "50557",
+            "scientific_name": "Insecta",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 16,
+            "taxon_id": "6960",
+            "scientific_name": "Hexapoda",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 17,
+            "taxon_id": "3701030",
+            "scientific_name": "Allotriocarida",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 18,
+            "taxon_id": "3701028",
+            "scientific_name": "Altocrustacea",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 19,
+            "taxon_id": "197562",
+            "scientific_name": "Pancrustacea",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 20,
+            "taxon_id": "197563",
+            "scientific_name": "Mandibulata",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 21,
+            "taxon_id": "6656",
+            "scientific_name": "Arthropoda",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 22,
+            "taxon_id": "88770",
+            "scientific_name": "Panarthropoda",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 23,
+            "taxon_id": "1206794",
+            "scientific_name": "Ecdysozoa",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 24,
+            "taxon_id": "33317",
+            "scientific_name": "Protostomia",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 25,
+            "taxon_id": "33213",
+            "scientific_name": "Bilateria",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 26,
+            "taxon_id": "6072",
+            "scientific_name": "Eumetazoa",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 27,
+            "taxon_id": "33208",
+            "scientific_name": "Metazoa",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 28,
+            "taxon_id": "33154",
+            "scientific_name": "Opisthokonta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 29,
+            "taxon_id": "2759",
+            "scientific_name": "Eukaryota",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 30,
+            "taxon_id": "131567",
+            "scientific_name": "cellular organisms",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 31,
+            "taxon_id": "1",
+            "scientific_name": "root",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "254008",
+        "scientific_name": "Magicicada septendecula",
+        "taxon_id": "44680",
+        "taxon_names": [
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Magicicada septendecula",
+            "source": "NCBI Taxonomy",
+            "class": "scientific name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": null,
+            "name": "seventeen-year cicada",
+            "source": null,
+            "class": "genbank common name",
+            "source_url": null
+          },
+          {
+            "source_url_stub": null,
+            "name": "ihMagSepe",
+            "source": "Tree of Life ID",
+            "class": "tolid prefix",
+            "source_url": "https://id.tol.sanger.ac.uk"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "ncbi:44680",
+            "source": "NCBI Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "gbif:5792025",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Magicicada decula",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Magicicada septemdecula",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Magicicada septendicula",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          }
+        ],
+        "taxon_rank": "species",
+        "fields": {
+          "chromosome_count": {
+            "aggregation_source": "direct",
+            "sp_count": 0,
+            "min": 10,
+            "value": 10,
+            "aggregation_method": "primary",
+            "median": 10,
+            "count": 1,
+            "max": 10,
+            "mode": 10
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-36150",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "taxon_id": "36150",
+            "scientific_name": "Cicadella viridis",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 1,
+            "taxon_id": "36149",
+            "scientific_name": "Cicadella",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 2,
+            "taxon_id": "565680",
+            "scientific_name": "Cicadellini",
+            "taxon_rank": "tribe"
+          },
+          {
+            "node_depth": 3,
+            "taxon_id": "33370",
+            "scientific_name": "Cicadellinae",
+            "taxon_rank": "subfamily"
+          },
+          {
+            "node_depth": 4,
+            "taxon_id": "30102",
+            "scientific_name": "Cicadellidae",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 5,
+            "taxon_id": "33368",
+            "scientific_name": "Membracoidea",
+            "taxon_rank": "superfamily"
+          },
+          {
+            "node_depth": 6,
+            "taxon_id": "33365",
+            "scientific_name": "Cicadomorpha",
+            "taxon_rank": "infraorder"
+          },
+          {
+            "node_depth": 7,
+            "taxon_id": "1955247",
+            "scientific_name": "Auchenorrhyncha",
+            "taxon_rank": "suborder"
+          },
+          {
+            "node_depth": 8,
+            "taxon_id": "7524",
+            "scientific_name": "Hemiptera",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 9,
+            "taxon_id": "33342",
+            "scientific_name": "Paraneoptera",
+            "taxon_rank": "cohort"
+          },
+          {
+            "node_depth": 10,
+            "taxon_id": "3701061",
+            "scientific_name": "Eumetabola",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "taxon_id": "33340",
+            "scientific_name": "Neoptera",
+            "taxon_rank": "infraclass"
+          },
+          {
+            "node_depth": 12,
+            "taxon_id": "7496",
+            "scientific_name": "Pterygota",
+            "taxon_rank": "subclass"
+          },
+          {
+            "node_depth": 13,
+            "taxon_id": "85512",
+            "scientific_name": "Dicondylia",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 14,
+            "taxon_id": "50557",
+            "scientific_name": "Insecta",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 15,
+            "taxon_id": "6960",
+            "scientific_name": "Hexapoda",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 16,
+            "taxon_id": "3701030",
+            "scientific_name": "Allotriocarida",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 17,
+            "taxon_id": "3701028",
+            "scientific_name": "Altocrustacea",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 18,
+            "taxon_id": "197562",
+            "scientific_name": "Pancrustacea",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 19,
+            "taxon_id": "197563",
+            "scientific_name": "Mandibulata",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 20,
+            "taxon_id": "6656",
+            "scientific_name": "Arthropoda",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 21,
+            "taxon_id": "88770",
+            "scientific_name": "Panarthropoda",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 22,
+            "taxon_id": "1206794",
+            "scientific_name": "Ecdysozoa",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 23,
+            "taxon_id": "33317",
+            "scientific_name": "Protostomia",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 24,
+            "taxon_id": "33213",
+            "scientific_name": "Bilateria",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 25,
+            "taxon_id": "6072",
+            "scientific_name": "Eumetazoa",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 26,
+            "taxon_id": "33208",
+            "scientific_name": "Metazoa",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 27,
+            "taxon_id": "33154",
+            "scientific_name": "Opisthokonta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 28,
+            "taxon_id": "2759",
+            "scientific_name": "Eukaryota",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 29,
+            "taxon_id": "131567",
+            "scientific_name": "cellular organisms",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 30,
+            "taxon_id": "1",
+            "scientific_name": "root",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "36149",
+        "scientific_name": "Cicadella viridis",
+        "taxon_id": "36150",
+        "taxon_names": [
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Cicadella viridis",
+            "source": "NCBI Taxonomy",
+            "class": "scientific name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": null,
+            "name": "ihCicViri",
+            "source": "Tree of Life ID",
+            "class": "tolid prefix",
+            "source_url": "https://id.tol.sanger.ac.uk"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "ncbi:36150",
+            "source": "NCBI Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "gbif:6260393",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Acopsis viridis",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Amblycephalus viridis",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Amblycephalus viridis viridis",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Cercopis viridis",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Cicada viridis",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Iassus viridis",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Neokolla viridis",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Tettigella viridis",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Tettigella viridis suffusa",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Tettigonella concolor",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Tettigonia arundinis",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Tettigonia flavicatella",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Tettigonia flaviscutellata",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Tettigonia melanchloa",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Tettigonia virescens",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Tettigonia viridis arnudinis",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Tettigonia viridis concolor",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Tettigoniella virides",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Tettigoniella viridis",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          }
+        ],
+        "taxon_rank": "species",
+        "fields": {
+          "chromosome_count": {
+            "aggregation_source": "direct",
+            "sp_count": 0,
+            "min": 11,
+            "value": 11,
+            "aggregation_method": "primary",
+            "median": 11,
+            "count": 1,
+            "max": 11,
+            "mode": 11
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-197043",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "taxon_id": "197043",
+            "scientific_name": "Homalodisca vitripennis",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 1,
+            "taxon_id": "139475",
+            "scientific_name": "Homalodisca",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 2,
+            "taxon_id": "565685",
+            "scientific_name": "Proconiini",
+            "taxon_rank": "tribe"
+          },
+          {
+            "node_depth": 3,
+            "taxon_id": "33370",
+            "scientific_name": "Cicadellinae",
+            "taxon_rank": "subfamily"
+          },
+          {
+            "node_depth": 4,
+            "taxon_id": "30102",
+            "scientific_name": "Cicadellidae",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 5,
+            "taxon_id": "33368",
+            "scientific_name": "Membracoidea",
+            "taxon_rank": "superfamily"
+          },
+          {
+            "node_depth": 6,
+            "taxon_id": "33365",
+            "scientific_name": "Cicadomorpha",
+            "taxon_rank": "infraorder"
+          },
+          {
+            "node_depth": 7,
+            "taxon_id": "1955247",
+            "scientific_name": "Auchenorrhyncha",
+            "taxon_rank": "suborder"
+          },
+          {
+            "node_depth": 8,
+            "taxon_id": "7524",
+            "scientific_name": "Hemiptera",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 9,
+            "taxon_id": "33342",
+            "scientific_name": "Paraneoptera",
+            "taxon_rank": "cohort"
+          },
+          {
+            "node_depth": 10,
+            "taxon_id": "3701061",
+            "scientific_name": "Eumetabola",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "taxon_id": "33340",
+            "scientific_name": "Neoptera",
+            "taxon_rank": "infraclass"
+          },
+          {
+            "node_depth": 12,
+            "taxon_id": "7496",
+            "scientific_name": "Pterygota",
+            "taxon_rank": "subclass"
+          },
+          {
+            "node_depth": 13,
+            "taxon_id": "85512",
+            "scientific_name": "Dicondylia",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 14,
+            "taxon_id": "50557",
+            "scientific_name": "Insecta",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 15,
+            "taxon_id": "6960",
+            "scientific_name": "Hexapoda",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 16,
+            "taxon_id": "3701030",
+            "scientific_name": "Allotriocarida",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 17,
+            "taxon_id": "3701028",
+            "scientific_name": "Altocrustacea",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 18,
+            "taxon_id": "197562",
+            "scientific_name": "Pancrustacea",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 19,
+            "taxon_id": "197563",
+            "scientific_name": "Mandibulata",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 20,
+            "taxon_id": "6656",
+            "scientific_name": "Arthropoda",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 21,
+            "taxon_id": "88770",
+            "scientific_name": "Panarthropoda",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 22,
+            "taxon_id": "1206794",
+            "scientific_name": "Ecdysozoa",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 23,
+            "taxon_id": "33317",
+            "scientific_name": "Protostomia",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 24,
+            "taxon_id": "33213",
+            "scientific_name": "Bilateria",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 25,
+            "taxon_id": "6072",
+            "scientific_name": "Eumetazoa",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 26,
+            "taxon_id": "33208",
+            "scientific_name": "Metazoa",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 27,
+            "taxon_id": "33154",
+            "scientific_name": "Opisthokonta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 28,
+            "taxon_id": "2759",
+            "scientific_name": "Eukaryota",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 29,
+            "taxon_id": "131567",
+            "scientific_name": "cellular organisms",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 30,
+            "taxon_id": "1",
+            "scientific_name": "root",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "139475",
+        "scientific_name": "Homalodisca vitripennis",
+        "taxon_id": "197043",
+        "taxon_names": [
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "glassy-winged sharpshooter",
+            "source": "NCBI Taxonomy",
+            "class": "genbank common name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Homalodisca coagulata",
+            "source": "NCBI Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Homalodisca vitripennis",
+            "source": "NCBI Taxonomy",
+            "class": "scientific name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Tettigonia coagulata",
+            "source": "NCBI Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Tettigonia vitripennis",
+            "source": "NCBI Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": null,
+            "name": "565538",
+            "source": null,
+            "class": "merged taxon id",
+            "source_url": null
+          },
+          {
+            "source_url_stub": null,
+            "name": "ihHomVitr",
+            "source": "Tree of Life ID",
+            "class": "tolid prefix",
+            "source_url": "https://id.tol.sanger.ac.uk"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "ncbi:197043",
+            "source": "NCBI Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "gbif:2044814",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Ciccus vitripennis",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Phera vitripennis",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Proconia vitripennis",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Raphirhinus vitripennis",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          }
+        ],
+        "taxon_rank": "species",
+        "fields": {
+          "chromosome_count": {
+            "aggregation_source": "direct",
+            "sp_count": 0,
+            "min": 9,
+            "value": 9,
+            "aggregation_method": "primary",
+            "median": 9,
+            "count": 1,
+            "max": 9,
+            "mode": 9
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-2906288",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "taxon_id": "2906288",
+            "scientific_name": "Kybos smaragdulus",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 1,
+            "taxon_id": "562207",
+            "scientific_name": "Kybos",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 2,
+            "taxon_id": "562036",
+            "scientific_name": "Empoascini",
+            "taxon_rank": "tribe"
+          },
+          {
+            "node_depth": 3,
+            "taxon_id": "33371",
+            "scientific_name": "Typhlocybinae",
+            "taxon_rank": "subfamily"
+          },
+          {
+            "node_depth": 4,
+            "taxon_id": "30102",
+            "scientific_name": "Cicadellidae",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 5,
+            "taxon_id": "33368",
+            "scientific_name": "Membracoidea",
+            "taxon_rank": "superfamily"
+          },
+          {
+            "node_depth": 6,
+            "taxon_id": "33365",
+            "scientific_name": "Cicadomorpha",
+            "taxon_rank": "infraorder"
+          },
+          {
+            "node_depth": 7,
+            "taxon_id": "1955247",
+            "scientific_name": "Auchenorrhyncha",
+            "taxon_rank": "suborder"
+          },
+          {
+            "node_depth": 8,
+            "taxon_id": "7524",
+            "scientific_name": "Hemiptera",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 9,
+            "taxon_id": "33342",
+            "scientific_name": "Paraneoptera",
+            "taxon_rank": "cohort"
+          },
+          {
+            "node_depth": 10,
+            "taxon_id": "3701061",
+            "scientific_name": "Eumetabola",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "taxon_id": "33340",
+            "scientific_name": "Neoptera",
+            "taxon_rank": "infraclass"
+          },
+          {
+            "node_depth": 12,
+            "taxon_id": "7496",
+            "scientific_name": "Pterygota",
+            "taxon_rank": "subclass"
+          },
+          {
+            "node_depth": 13,
+            "taxon_id": "85512",
+            "scientific_name": "Dicondylia",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 14,
+            "taxon_id": "50557",
+            "scientific_name": "Insecta",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 15,
+            "taxon_id": "6960",
+            "scientific_name": "Hexapoda",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 16,
+            "taxon_id": "3701030",
+            "scientific_name": "Allotriocarida",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 17,
+            "taxon_id": "3701028",
+            "scientific_name": "Altocrustacea",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 18,
+            "taxon_id": "197562",
+            "scientific_name": "Pancrustacea",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 19,
+            "taxon_id": "197563",
+            "scientific_name": "Mandibulata",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 20,
+            "taxon_id": "6656",
+            "scientific_name": "Arthropoda",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 21,
+            "taxon_id": "88770",
+            "scientific_name": "Panarthropoda",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 22,
+            "taxon_id": "1206794",
+            "scientific_name": "Ecdysozoa",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 23,
+            "taxon_id": "33317",
+            "scientific_name": "Protostomia",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 24,
+            "taxon_id": "33213",
+            "scientific_name": "Bilateria",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 25,
+            "taxon_id": "6072",
+            "scientific_name": "Eumetazoa",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 26,
+            "taxon_id": "33208",
+            "scientific_name": "Metazoa",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 27,
+            "taxon_id": "33154",
+            "scientific_name": "Opisthokonta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 28,
+            "taxon_id": "2759",
+            "scientific_name": "Eukaryota",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 29,
+            "taxon_id": "131567",
+            "scientific_name": "cellular organisms",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 30,
+            "taxon_id": "1",
+            "scientific_name": "root",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "562207",
+        "scientific_name": "Kybos smaragdulus",
+        "taxon_id": "2906288",
+        "taxon_names": [
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Cicada smaragdula",
+            "source": "NCBI Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Empoasca smaragdula",
+            "source": "NCBI Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Kybos smaragdula",
+            "source": "NCBI Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Kybos smaragdulus",
+            "source": "NCBI Taxonomy",
+            "class": "scientific name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": null,
+            "name": "ihKybSmar",
+            "source": "Tree of Life ID",
+            "class": "tolid prefix",
+            "source_url": "https://id.tol.sanger.ac.uk"
+          }
+        ],
+        "taxon_rank": "species",
+        "fields": {
+          "chromosome_count": {
+            "aggregation_source": "direct",
+            "sp_count": 0,
+            "min": 10,
+            "value": 10,
+            "aggregation_method": "primary",
+            "median": 10,
+            "count": 1,
+            "max": 10,
+            "mode": 10
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-3433878",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "taxon_id": "3433878",
+            "scientific_name": "Hebata decipiens",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 1,
+            "taxon_id": "2906338",
+            "scientific_name": "Hebata",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 2,
+            "taxon_id": "562036",
+            "scientific_name": "Empoascini",
+            "taxon_rank": "tribe"
+          },
+          {
+            "node_depth": 3,
+            "taxon_id": "33371",
+            "scientific_name": "Typhlocybinae",
+            "taxon_rank": "subfamily"
+          },
+          {
+            "node_depth": 4,
+            "taxon_id": "30102",
+            "scientific_name": "Cicadellidae",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 5,
+            "taxon_id": "33368",
+            "scientific_name": "Membracoidea",
+            "taxon_rank": "superfamily"
+          },
+          {
+            "node_depth": 6,
+            "taxon_id": "33365",
+            "scientific_name": "Cicadomorpha",
+            "taxon_rank": "infraorder"
+          },
+          {
+            "node_depth": 7,
+            "taxon_id": "1955247",
+            "scientific_name": "Auchenorrhyncha",
+            "taxon_rank": "suborder"
+          },
+          {
+            "node_depth": 8,
+            "taxon_id": "7524",
+            "scientific_name": "Hemiptera",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 9,
+            "taxon_id": "33342",
+            "scientific_name": "Paraneoptera",
+            "taxon_rank": "cohort"
+          },
+          {
+            "node_depth": 10,
+            "taxon_id": "3701061",
+            "scientific_name": "Eumetabola",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "taxon_id": "33340",
+            "scientific_name": "Neoptera",
+            "taxon_rank": "infraclass"
+          },
+          {
+            "node_depth": 12,
+            "taxon_id": "7496",
+            "scientific_name": "Pterygota",
+            "taxon_rank": "subclass"
+          },
+          {
+            "node_depth": 13,
+            "taxon_id": "85512",
+            "scientific_name": "Dicondylia",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 14,
+            "taxon_id": "50557",
+            "scientific_name": "Insecta",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 15,
+            "taxon_id": "6960",
+            "scientific_name": "Hexapoda",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 16,
+            "taxon_id": "3701030",
+            "scientific_name": "Allotriocarida",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 17,
+            "taxon_id": "3701028",
+            "scientific_name": "Altocrustacea",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 18,
+            "taxon_id": "197562",
+            "scientific_name": "Pancrustacea",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 19,
+            "taxon_id": "197563",
+            "scientific_name": "Mandibulata",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 20,
+            "taxon_id": "6656",
+            "scientific_name": "Arthropoda",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 21,
+            "taxon_id": "88770",
+            "scientific_name": "Panarthropoda",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 22,
+            "taxon_id": "1206794",
+            "scientific_name": "Ecdysozoa",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 23,
+            "taxon_id": "33317",
+            "scientific_name": "Protostomia",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 24,
+            "taxon_id": "33213",
+            "scientific_name": "Bilateria",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 25,
+            "taxon_id": "6072",
+            "scientific_name": "Eumetazoa",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 26,
+            "taxon_id": "33208",
+            "scientific_name": "Metazoa",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 27,
+            "taxon_id": "33154",
+            "scientific_name": "Opisthokonta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 28,
+            "taxon_id": "2759",
+            "scientific_name": "Eukaryota",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 29,
+            "taxon_id": "131567",
+            "scientific_name": "cellular organisms",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 30,
+            "taxon_id": "1",
+            "scientific_name": "root",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "2906338",
+        "scientific_name": "Hebata decipiens",
+        "taxon_id": "3433878",
+        "taxon_names": [
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Empoasca decipiens",
+            "source": "NCBI Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": null,
+            "name": "green leafhopper",
+            "source": null,
+            "class": "common name",
+            "source_url": null
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Hebata decipiens",
+            "source": "NCBI Taxonomy",
+            "class": "scientific name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": null,
+            "name": "478132",
+            "source": null,
+            "class": "merged taxon id",
+            "source_url": null
+          },
+          {
+            "source_url_stub": null,
+            "name": "ihEmpDeci",
+            "source": "Tree of Life ID",
+            "class": "tolid prefix",
+            "source_url": "https://id.tol.sanger.ac.uk"
+          }
+        ],
+        "taxon_rank": "species",
+        "fields": {
+          "chromosome_count": {
+            "aggregation_source": "direct",
+            "sp_count": 0,
+            "min": 11,
+            "value": 11,
+            "aggregation_method": "primary",
+            "median": 11,
+            "count": 1,
+            "max": 11,
+            "mode": 11
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-2912585",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "taxon_id": "2912585",
+            "scientific_name": "Matsumurasca onukii",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 1,
+            "taxon_id": "2906425",
+            "scientific_name": "Matsumurasca",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 2,
+            "taxon_id": "562036",
+            "scientific_name": "Empoascini",
+            "taxon_rank": "tribe"
+          },
+          {
+            "node_depth": 3,
+            "taxon_id": "33371",
+            "scientific_name": "Typhlocybinae",
+            "taxon_rank": "subfamily"
+          },
+          {
+            "node_depth": 4,
+            "taxon_id": "30102",
+            "scientific_name": "Cicadellidae",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 5,
+            "taxon_id": "33368",
+            "scientific_name": "Membracoidea",
+            "taxon_rank": "superfamily"
+          },
+          {
+            "node_depth": 6,
+            "taxon_id": "33365",
+            "scientific_name": "Cicadomorpha",
+            "taxon_rank": "infraorder"
+          },
+          {
+            "node_depth": 7,
+            "taxon_id": "1955247",
+            "scientific_name": "Auchenorrhyncha",
+            "taxon_rank": "suborder"
+          },
+          {
+            "node_depth": 8,
+            "taxon_id": "7524",
+            "scientific_name": "Hemiptera",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 9,
+            "taxon_id": "33342",
+            "scientific_name": "Paraneoptera",
+            "taxon_rank": "cohort"
+          },
+          {
+            "node_depth": 10,
+            "taxon_id": "3701061",
+            "scientific_name": "Eumetabola",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "taxon_id": "33340",
+            "scientific_name": "Neoptera",
+            "taxon_rank": "infraclass"
+          },
+          {
+            "node_depth": 12,
+            "taxon_id": "7496",
+            "scientific_name": "Pterygota",
+            "taxon_rank": "subclass"
+          },
+          {
+            "node_depth": 13,
+            "taxon_id": "85512",
+            "scientific_name": "Dicondylia",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 14,
+            "taxon_id": "50557",
+            "scientific_name": "Insecta",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 15,
+            "taxon_id": "6960",
+            "scientific_name": "Hexapoda",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 16,
+            "taxon_id": "3701030",
+            "scientific_name": "Allotriocarida",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 17,
+            "taxon_id": "3701028",
+            "scientific_name": "Altocrustacea",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 18,
+            "taxon_id": "197562",
+            "scientific_name": "Pancrustacea",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 19,
+            "taxon_id": "197563",
+            "scientific_name": "Mandibulata",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 20,
+            "taxon_id": "6656",
+            "scientific_name": "Arthropoda",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 21,
+            "taxon_id": "88770",
+            "scientific_name": "Panarthropoda",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 22,
+            "taxon_id": "1206794",
+            "scientific_name": "Ecdysozoa",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 23,
+            "taxon_id": "33317",
+            "scientific_name": "Protostomia",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 24,
+            "taxon_id": "33213",
+            "scientific_name": "Bilateria",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 25,
+            "taxon_id": "6072",
+            "scientific_name": "Eumetazoa",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 26,
+            "taxon_id": "33208",
+            "scientific_name": "Metazoa",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 27,
+            "taxon_id": "33154",
+            "scientific_name": "Opisthokonta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 28,
+            "taxon_id": "2759",
+            "scientific_name": "Eukaryota",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 29,
+            "taxon_id": "131567",
+            "scientific_name": "cellular organisms",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 30,
+            "taxon_id": "1",
+            "scientific_name": "root",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "2906425",
+        "scientific_name": "Matsumurasca onukii",
+        "taxon_id": "2912585",
+        "taxon_names": [
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Empoasca onukii",
+            "source": "NCBI Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Matsumurasca onukii",
+            "source": "NCBI Taxonomy",
+            "class": "scientific name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": null,
+            "name": "1539855",
+            "source": null,
+            "class": "merged taxon id",
+            "source_url": null
+          }
+        ],
+        "taxon_rank": "species",
+        "fields": {
+          "chromosome_count": {
+            "aggregation_source": "direct",
+            "sp_count": 0,
+            "min": 10,
+            "value": 10,
+            "aggregation_method": "primary",
+            "median": 10,
+            "count": 1,
+            "max": 10,
+            "mode": 10
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-1889767",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "taxon_id": "1889767",
+            "scientific_name": "Ribautiana ulmi",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 1,
+            "taxon_id": "562494",
+            "scientific_name": "Ribautiana",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 2,
+            "taxon_id": "562040",
+            "scientific_name": "Typhlocybini",
+            "taxon_rank": "tribe"
+          },
+          {
+            "node_depth": 3,
+            "taxon_id": "33371",
+            "scientific_name": "Typhlocybinae",
+            "taxon_rank": "subfamily"
+          },
+          {
+            "node_depth": 4,
+            "taxon_id": "30102",
+            "scientific_name": "Cicadellidae",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 5,
+            "taxon_id": "33368",
+            "scientific_name": "Membracoidea",
+            "taxon_rank": "superfamily"
+          },
+          {
+            "node_depth": 6,
+            "taxon_id": "33365",
+            "scientific_name": "Cicadomorpha",
+            "taxon_rank": "infraorder"
+          },
+          {
+            "node_depth": 7,
+            "taxon_id": "1955247",
+            "scientific_name": "Auchenorrhyncha",
+            "taxon_rank": "suborder"
+          },
+          {
+            "node_depth": 8,
+            "taxon_id": "7524",
+            "scientific_name": "Hemiptera",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 9,
+            "taxon_id": "33342",
+            "scientific_name": "Paraneoptera",
+            "taxon_rank": "cohort"
+          },
+          {
+            "node_depth": 10,
+            "taxon_id": "3701061",
+            "scientific_name": "Eumetabola",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "taxon_id": "33340",
+            "scientific_name": "Neoptera",
+            "taxon_rank": "infraclass"
+          },
+          {
+            "node_depth": 12,
+            "taxon_id": "7496",
+            "scientific_name": "Pterygota",
+            "taxon_rank": "subclass"
+          },
+          {
+            "node_depth": 13,
+            "taxon_id": "85512",
+            "scientific_name": "Dicondylia",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 14,
+            "taxon_id": "50557",
+            "scientific_name": "Insecta",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 15,
+            "taxon_id": "6960",
+            "scientific_name": "Hexapoda",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 16,
+            "taxon_id": "3701030",
+            "scientific_name": "Allotriocarida",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 17,
+            "taxon_id": "3701028",
+            "scientific_name": "Altocrustacea",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 18,
+            "taxon_id": "197562",
+            "scientific_name": "Pancrustacea",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 19,
+            "taxon_id": "197563",
+            "scientific_name": "Mandibulata",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 20,
+            "taxon_id": "6656",
+            "scientific_name": "Arthropoda",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 21,
+            "taxon_id": "88770",
+            "scientific_name": "Panarthropoda",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 22,
+            "taxon_id": "1206794",
+            "scientific_name": "Ecdysozoa",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 23,
+            "taxon_id": "33317",
+            "scientific_name": "Protostomia",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 24,
+            "taxon_id": "33213",
+            "scientific_name": "Bilateria",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 25,
+            "taxon_id": "6072",
+            "scientific_name": "Eumetazoa",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 26,
+            "taxon_id": "33208",
+            "scientific_name": "Metazoa",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 27,
+            "taxon_id": "33154",
+            "scientific_name": "Opisthokonta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 28,
+            "taxon_id": "2759",
+            "scientific_name": "Eukaryota",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 29,
+            "taxon_id": "131567",
+            "scientific_name": "cellular organisms",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 30,
+            "taxon_id": "1",
+            "scientific_name": "root",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "562494",
+        "scientific_name": "Ribautiana ulmi",
+        "taxon_id": "1889767",
+        "taxon_names": [
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Ribautiana ulmi",
+            "source": "NCBI Taxonomy",
+            "class": "scientific name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": null,
+            "name": "ihRibUlmi",
+            "source": "Tree of Life ID",
+            "class": "tolid prefix",
+            "source_url": "https://id.tol.sanger.ac.uk"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "ncbi:1889767",
+            "source": "NCBI Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "gbif:2034731",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.irmng.org/aphia.php?p=taxdetails&id=",
+            "name": "irmng:10116021",
+            "source": "IRMNG",
+            "class": "xref",
+            "source_url": "https://www.irmng.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Anomia ulmi",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Cicada musciformis",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Cicada musciformis ulmi",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Cicada ulmi",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Cicada vlmi",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Cicadella ulmi",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Empoa ulmi",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Eupteryx ocellata",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Eupteryx ulmi",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Tettigonia ulmi",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Typhlocyba almi",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Typhlocyba thecla",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Typhlocyba ulmi",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Typhlocyba ulmi thecla",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          }
+        ],
+        "taxon_rank": "species",
+        "fields": {
+          "chromosome_count": {
+            "aggregation_source": "direct",
+            "sp_count": 0,
+            "min": 9,
+            "value": 9,
+            "aggregation_method": "primary",
+            "median": 9,
+            "count": 1,
+            "max": 9,
+            "mode": 9
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-74068",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "taxon_id": "74068",
+            "scientific_name": "Macrosteles quadrilineatus",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 1,
+            "taxon_id": "30137",
+            "scientific_name": "Macrosteles",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 2,
+            "taxon_id": "33372",
+            "scientific_name": "Deltocephalinae",
+            "taxon_rank": "subfamily"
+          },
+          {
+            "node_depth": 3,
+            "taxon_id": "30102",
+            "scientific_name": "Cicadellidae",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 4,
+            "taxon_id": "33368",
+            "scientific_name": "Membracoidea",
+            "taxon_rank": "superfamily"
+          },
+          {
+            "node_depth": 5,
+            "taxon_id": "33365",
+            "scientific_name": "Cicadomorpha",
+            "taxon_rank": "infraorder"
+          },
+          {
+            "node_depth": 6,
+            "taxon_id": "1955247",
+            "scientific_name": "Auchenorrhyncha",
+            "taxon_rank": "suborder"
+          },
+          {
+            "node_depth": 7,
+            "taxon_id": "7524",
+            "scientific_name": "Hemiptera",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 8,
+            "taxon_id": "33342",
+            "scientific_name": "Paraneoptera",
+            "taxon_rank": "cohort"
+          },
+          {
+            "node_depth": 9,
+            "taxon_id": "3701061",
+            "scientific_name": "Eumetabola",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "taxon_id": "33340",
+            "scientific_name": "Neoptera",
+            "taxon_rank": "infraclass"
+          },
+          {
+            "node_depth": 11,
+            "taxon_id": "7496",
+            "scientific_name": "Pterygota",
+            "taxon_rank": "subclass"
+          },
+          {
+            "node_depth": 12,
+            "taxon_id": "85512",
+            "scientific_name": "Dicondylia",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 13,
+            "taxon_id": "50557",
+            "scientific_name": "Insecta",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 14,
+            "taxon_id": "6960",
+            "scientific_name": "Hexapoda",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 15,
+            "taxon_id": "3701030",
+            "scientific_name": "Allotriocarida",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 16,
+            "taxon_id": "3701028",
+            "scientific_name": "Altocrustacea",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 17,
+            "taxon_id": "197562",
+            "scientific_name": "Pancrustacea",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 18,
+            "taxon_id": "197563",
+            "scientific_name": "Mandibulata",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 19,
+            "taxon_id": "6656",
+            "scientific_name": "Arthropoda",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 20,
+            "taxon_id": "88770",
+            "scientific_name": "Panarthropoda",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 21,
+            "taxon_id": "1206794",
+            "scientific_name": "Ecdysozoa",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 22,
+            "taxon_id": "33317",
+            "scientific_name": "Protostomia",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 23,
+            "taxon_id": "33213",
+            "scientific_name": "Bilateria",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 24,
+            "taxon_id": "6072",
+            "scientific_name": "Eumetazoa",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 25,
+            "taxon_id": "33208",
+            "scientific_name": "Metazoa",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 26,
+            "taxon_id": "33154",
+            "scientific_name": "Opisthokonta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 27,
+            "taxon_id": "2759",
+            "scientific_name": "Eukaryota",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 28,
+            "taxon_id": "131567",
+            "scientific_name": "cellular organisms",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 29,
+            "taxon_id": "1",
+            "scientific_name": "root",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "30137",
+        "scientific_name": "Macrosteles quadrilineatus",
+        "taxon_id": "74068",
+        "taxon_names": [
+          {
+            "source_url_stub": null,
+            "name": "aster leafhopper",
+            "source": null,
+            "class": "genbank common name",
+            "source_url": null
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Macrosteles (Macrosteles) quadrilineatus",
+            "source": "NCBI Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Macrosteles quadrilineatus",
+            "source": "NCBI Taxonomy",
+            "class": "scientific name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": null,
+            "name": "ihMacQuai",
+            "source": "Tree of Life ID",
+            "class": "tolid prefix",
+            "source_url": "https://id.tol.sanger.ac.uk"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "ncbi:74068",
+            "source": "NCBI Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "gbif:2039662",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.gbif.org/"
+          }
+        ],
+        "taxon_rank": "species",
+        "fields": {
+          "chromosome_count": {
+            "aggregation_source": "direct",
+            "sp_count": 0,
+            "min": 8,
+            "value": 8,
+            "aggregation_method": "primary",
+            "median": 8,
+            "count": 1,
+            "max": 8,
+            "mode": 8
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-74070",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "taxon_id": "74070",
+            "scientific_name": "Dalbulus elimatus",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 1,
+            "taxon_id": "74053",
+            "scientific_name": "Dalbulus",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 2,
+            "taxon_id": "33372",
+            "scientific_name": "Deltocephalinae",
+            "taxon_rank": "subfamily"
+          },
+          {
+            "node_depth": 3,
+            "taxon_id": "30102",
+            "scientific_name": "Cicadellidae",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 4,
+            "taxon_id": "33368",
+            "scientific_name": "Membracoidea",
+            "taxon_rank": "superfamily"
+          },
+          {
+            "node_depth": 5,
+            "taxon_id": "33365",
+            "scientific_name": "Cicadomorpha",
+            "taxon_rank": "infraorder"
+          },
+          {
+            "node_depth": 6,
+            "taxon_id": "1955247",
+            "scientific_name": "Auchenorrhyncha",
+            "taxon_rank": "suborder"
+          },
+          {
+            "node_depth": 7,
+            "taxon_id": "7524",
+            "scientific_name": "Hemiptera",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 8,
+            "taxon_id": "33342",
+            "scientific_name": "Paraneoptera",
+            "taxon_rank": "cohort"
+          },
+          {
+            "node_depth": 9,
+            "taxon_id": "3701061",
+            "scientific_name": "Eumetabola",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "taxon_id": "33340",
+            "scientific_name": "Neoptera",
+            "taxon_rank": "infraclass"
+          },
+          {
+            "node_depth": 11,
+            "taxon_id": "7496",
+            "scientific_name": "Pterygota",
+            "taxon_rank": "subclass"
+          },
+          {
+            "node_depth": 12,
+            "taxon_id": "85512",
+            "scientific_name": "Dicondylia",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 13,
+            "taxon_id": "50557",
+            "scientific_name": "Insecta",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 14,
+            "taxon_id": "6960",
+            "scientific_name": "Hexapoda",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 15,
+            "taxon_id": "3701030",
+            "scientific_name": "Allotriocarida",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 16,
+            "taxon_id": "3701028",
+            "scientific_name": "Altocrustacea",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 17,
+            "taxon_id": "197562",
+            "scientific_name": "Pancrustacea",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 18,
+            "taxon_id": "197563",
+            "scientific_name": "Mandibulata",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 19,
+            "taxon_id": "6656",
+            "scientific_name": "Arthropoda",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 20,
+            "taxon_id": "88770",
+            "scientific_name": "Panarthropoda",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 21,
+            "taxon_id": "1206794",
+            "scientific_name": "Ecdysozoa",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 22,
+            "taxon_id": "33317",
+            "scientific_name": "Protostomia",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 23,
+            "taxon_id": "33213",
+            "scientific_name": "Bilateria",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 24,
+            "taxon_id": "6072",
+            "scientific_name": "Eumetazoa",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 25,
+            "taxon_id": "33208",
+            "scientific_name": "Metazoa",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 26,
+            "taxon_id": "33154",
+            "scientific_name": "Opisthokonta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 27,
+            "taxon_id": "2759",
+            "scientific_name": "Eukaryota",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 28,
+            "taxon_id": "131567",
+            "scientific_name": "cellular organisms",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 29,
+            "taxon_id": "1",
+            "scientific_name": "root",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "74053",
+        "scientific_name": "Dalbulus elimatus",
+        "taxon_id": "74070",
+        "taxon_names": [
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Dalbulus elimatus",
+            "source": "NCBI Taxonomy",
+            "class": "scientific name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": null,
+            "name": "ihDalElim",
+            "source": "Tree of Life ID",
+            "class": "tolid prefix",
+            "source_url": "https://id.tol.sanger.ac.uk"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "ncbi:74070",
+            "source": "NCBI Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "gbif:2040960",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.gbif.org/"
+          }
+        ],
+        "taxon_rank": "species",
+        "fields": {
+          "chromosome_count": {
+            "aggregation_source": "direct",
+            "sp_count": 0,
+            "min": 10,
+            "value": 10,
+            "aggregation_method": "primary",
+            "median": 10,
+            "count": 1,
+            "max": 10,
+            "mode": 10
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-74065",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "taxon_id": "74065",
+            "scientific_name": "Dalbulus maidis",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 1,
+            "taxon_id": "74053",
+            "scientific_name": "Dalbulus",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 2,
+            "taxon_id": "33372",
+            "scientific_name": "Deltocephalinae",
+            "taxon_rank": "subfamily"
+          },
+          {
+            "node_depth": 3,
+            "taxon_id": "30102",
+            "scientific_name": "Cicadellidae",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 4,
+            "taxon_id": "33368",
+            "scientific_name": "Membracoidea",
+            "taxon_rank": "superfamily"
+          },
+          {
+            "node_depth": 5,
+            "taxon_id": "33365",
+            "scientific_name": "Cicadomorpha",
+            "taxon_rank": "infraorder"
+          },
+          {
+            "node_depth": 6,
+            "taxon_id": "1955247",
+            "scientific_name": "Auchenorrhyncha",
+            "taxon_rank": "suborder"
+          },
+          {
+            "node_depth": 7,
+            "taxon_id": "7524",
+            "scientific_name": "Hemiptera",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 8,
+            "taxon_id": "33342",
+            "scientific_name": "Paraneoptera",
+            "taxon_rank": "cohort"
+          },
+          {
+            "node_depth": 9,
+            "taxon_id": "3701061",
+            "scientific_name": "Eumetabola",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "taxon_id": "33340",
+            "scientific_name": "Neoptera",
+            "taxon_rank": "infraclass"
+          },
+          {
+            "node_depth": 11,
+            "taxon_id": "7496",
+            "scientific_name": "Pterygota",
+            "taxon_rank": "subclass"
+          },
+          {
+            "node_depth": 12,
+            "taxon_id": "85512",
+            "scientific_name": "Dicondylia",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 13,
+            "taxon_id": "50557",
+            "scientific_name": "Insecta",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 14,
+            "taxon_id": "6960",
+            "scientific_name": "Hexapoda",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 15,
+            "taxon_id": "3701030",
+            "scientific_name": "Allotriocarida",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 16,
+            "taxon_id": "3701028",
+            "scientific_name": "Altocrustacea",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 17,
+            "taxon_id": "197562",
+            "scientific_name": "Pancrustacea",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 18,
+            "taxon_id": "197563",
+            "scientific_name": "Mandibulata",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 19,
+            "taxon_id": "6656",
+            "scientific_name": "Arthropoda",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 20,
+            "taxon_id": "88770",
+            "scientific_name": "Panarthropoda",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 21,
+            "taxon_id": "1206794",
+            "scientific_name": "Ecdysozoa",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 22,
+            "taxon_id": "33317",
+            "scientific_name": "Protostomia",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 23,
+            "taxon_id": "33213",
+            "scientific_name": "Bilateria",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 24,
+            "taxon_id": "6072",
+            "scientific_name": "Eumetazoa",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 25,
+            "taxon_id": "33208",
+            "scientific_name": "Metazoa",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 26,
+            "taxon_id": "33154",
+            "scientific_name": "Opisthokonta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 27,
+            "taxon_id": "2759",
+            "scientific_name": "Eukaryota",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 28,
+            "taxon_id": "131567",
+            "scientific_name": "cellular organisms",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 29,
+            "taxon_id": "1",
+            "scientific_name": "root",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "74053",
+        "scientific_name": "Dalbulus maidis",
+        "taxon_id": "74065",
+        "taxon_names": [
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "corn leafhopper",
+            "source": "NCBI Taxonomy",
+            "class": "common name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Dalbulus maidis",
+            "source": "NCBI Taxonomy",
+            "class": "scientific name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "maize leafhopper",
+            "source": "NCBI Taxonomy",
+            "class": "genbank common name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": null,
+            "name": "ihDalMaid",
+            "source": "Tree of Life ID",
+            "class": "tolid prefix",
+            "source_url": "https://id.tol.sanger.ac.uk"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "ncbi:74065",
+            "source": "NCBI Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "gbif:2040969",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.gbif.org/"
+          }
+        ],
+        "taxon_rank": "species",
+        "fields": {
+          "chromosome_count": {
+            "aggregation_source": "direct",
+            "sp_count": 0,
+            "min": 10,
+            "value": 10,
+            "aggregation_method": "primary",
+            "median": 10,
+            "count": 1,
+            "max": 10,
+            "mode": 10
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-317742",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "taxon_id": "317742",
+            "scientific_name": "Hishimonus sellatus",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 1,
+            "taxon_id": "317741",
+            "scientific_name": "Hishimonus",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 2,
+            "taxon_id": "33372",
+            "scientific_name": "Deltocephalinae",
+            "taxon_rank": "subfamily"
+          },
+          {
+            "node_depth": 3,
+            "taxon_id": "30102",
+            "scientific_name": "Cicadellidae",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 4,
+            "taxon_id": "33368",
+            "scientific_name": "Membracoidea",
+            "taxon_rank": "superfamily"
+          },
+          {
+            "node_depth": 5,
+            "taxon_id": "33365",
+            "scientific_name": "Cicadomorpha",
+            "taxon_rank": "infraorder"
+          },
+          {
+            "node_depth": 6,
+            "taxon_id": "1955247",
+            "scientific_name": "Auchenorrhyncha",
+            "taxon_rank": "suborder"
+          },
+          {
+            "node_depth": 7,
+            "taxon_id": "7524",
+            "scientific_name": "Hemiptera",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 8,
+            "taxon_id": "33342",
+            "scientific_name": "Paraneoptera",
+            "taxon_rank": "cohort"
+          },
+          {
+            "node_depth": 9,
+            "taxon_id": "3701061",
+            "scientific_name": "Eumetabola",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "taxon_id": "33340",
+            "scientific_name": "Neoptera",
+            "taxon_rank": "infraclass"
+          },
+          {
+            "node_depth": 11,
+            "taxon_id": "7496",
+            "scientific_name": "Pterygota",
+            "taxon_rank": "subclass"
+          },
+          {
+            "node_depth": 12,
+            "taxon_id": "85512",
+            "scientific_name": "Dicondylia",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 13,
+            "taxon_id": "50557",
+            "scientific_name": "Insecta",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 14,
+            "taxon_id": "6960",
+            "scientific_name": "Hexapoda",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 15,
+            "taxon_id": "3701030",
+            "scientific_name": "Allotriocarida",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 16,
+            "taxon_id": "3701028",
+            "scientific_name": "Altocrustacea",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 17,
+            "taxon_id": "197562",
+            "scientific_name": "Pancrustacea",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 18,
+            "taxon_id": "197563",
+            "scientific_name": "Mandibulata",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 19,
+            "taxon_id": "6656",
+            "scientific_name": "Arthropoda",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 20,
+            "taxon_id": "88770",
+            "scientific_name": "Panarthropoda",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 21,
+            "taxon_id": "1206794",
+            "scientific_name": "Ecdysozoa",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 22,
+            "taxon_id": "33317",
+            "scientific_name": "Protostomia",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 23,
+            "taxon_id": "33213",
+            "scientific_name": "Bilateria",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 24,
+            "taxon_id": "6072",
+            "scientific_name": "Eumetazoa",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 25,
+            "taxon_id": "33208",
+            "scientific_name": "Metazoa",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 26,
+            "taxon_id": "33154",
+            "scientific_name": "Opisthokonta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 27,
+            "taxon_id": "2759",
+            "scientific_name": "Eukaryota",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 28,
+            "taxon_id": "131567",
+            "scientific_name": "cellular organisms",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 29,
+            "taxon_id": "1",
+            "scientific_name": "root",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "317741",
+        "scientific_name": "Hishimonus sellatus",
+        "taxon_id": "317742",
+        "taxon_names": [
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Hishimonus sellatus",
+            "source": "NCBI Taxonomy",
+            "class": "scientific name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Thamnotettix sellata",
+            "source": "NCBI Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": null,
+            "name": "ihHisSell",
+            "source": "Tree of Life ID",
+            "class": "tolid prefix",
+            "source_url": "https://id.tol.sanger.ac.uk"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "ncbi:317742",
+            "source": "NCBI Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "gbif:9216362",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "gbif:5867334",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.gbif.org/"
+          }
+        ],
+        "taxon_rank": "species",
+        "fields": {
+          "chromosome_count": {
+            "aggregation_source": "direct",
+            "sp_count": 0,
+            "min": 6,
+            "value": 6,
+            "aggregation_method": "primary",
+            "median": 6,
+            "count": 1,
+            "max": 6,
+            "mode": 6
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-2998517",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "taxon_id": "2998517",
+            "scientific_name": "Allygidius commutatus",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 1,
+            "taxon_id": "706705",
+            "scientific_name": "Allygidius",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 2,
+            "taxon_id": "565967",
+            "scientific_name": "Athysanini",
+            "taxon_rank": "tribe"
+          },
+          {
+            "node_depth": 3,
+            "taxon_id": "33372",
+            "scientific_name": "Deltocephalinae",
+            "taxon_rank": "subfamily"
+          },
+          {
+            "node_depth": 4,
+            "taxon_id": "30102",
+            "scientific_name": "Cicadellidae",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 5,
+            "taxon_id": "33368",
+            "scientific_name": "Membracoidea",
+            "taxon_rank": "superfamily"
+          },
+          {
+            "node_depth": 6,
+            "taxon_id": "33365",
+            "scientific_name": "Cicadomorpha",
+            "taxon_rank": "infraorder"
+          },
+          {
+            "node_depth": 7,
+            "taxon_id": "1955247",
+            "scientific_name": "Auchenorrhyncha",
+            "taxon_rank": "suborder"
+          },
+          {
+            "node_depth": 8,
+            "taxon_id": "7524",
+            "scientific_name": "Hemiptera",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 9,
+            "taxon_id": "33342",
+            "scientific_name": "Paraneoptera",
+            "taxon_rank": "cohort"
+          },
+          {
+            "node_depth": 10,
+            "taxon_id": "3701061",
+            "scientific_name": "Eumetabola",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "taxon_id": "33340",
+            "scientific_name": "Neoptera",
+            "taxon_rank": "infraclass"
+          },
+          {
+            "node_depth": 12,
+            "taxon_id": "7496",
+            "scientific_name": "Pterygota",
+            "taxon_rank": "subclass"
+          },
+          {
+            "node_depth": 13,
+            "taxon_id": "85512",
+            "scientific_name": "Dicondylia",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 14,
+            "taxon_id": "50557",
+            "scientific_name": "Insecta",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 15,
+            "taxon_id": "6960",
+            "scientific_name": "Hexapoda",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 16,
+            "taxon_id": "3701030",
+            "scientific_name": "Allotriocarida",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 17,
+            "taxon_id": "3701028",
+            "scientific_name": "Altocrustacea",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 18,
+            "taxon_id": "197562",
+            "scientific_name": "Pancrustacea",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 19,
+            "taxon_id": "197563",
+            "scientific_name": "Mandibulata",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 20,
+            "taxon_id": "6656",
+            "scientific_name": "Arthropoda",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 21,
+            "taxon_id": "88770",
+            "scientific_name": "Panarthropoda",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 22,
+            "taxon_id": "1206794",
+            "scientific_name": "Ecdysozoa",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 23,
+            "taxon_id": "33317",
+            "scientific_name": "Protostomia",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 24,
+            "taxon_id": "33213",
+            "scientific_name": "Bilateria",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 25,
+            "taxon_id": "6072",
+            "scientific_name": "Eumetazoa",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 26,
+            "taxon_id": "33208",
+            "scientific_name": "Metazoa",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 27,
+            "taxon_id": "33154",
+            "scientific_name": "Opisthokonta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 28,
+            "taxon_id": "2759",
+            "scientific_name": "Eukaryota",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 29,
+            "taxon_id": "131567",
+            "scientific_name": "cellular organisms",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 30,
+            "taxon_id": "1",
+            "scientific_name": "root",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "706705",
+        "scientific_name": "Allygidius commutatus",
+        "taxon_id": "2998517",
+        "taxon_names": [
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Allygidius commutatus",
+            "source": "NCBI Taxonomy",
+            "class": "scientific name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": null,
+            "name": "ihAllComm",
+            "source": "Tree of Life ID",
+            "class": "tolid prefix",
+            "source_url": "https://id.tol.sanger.ac.uk"
+          }
+        ],
+        "taxon_rank": "species",
+        "fields": {
+          "chromosome_count": {
+            "aggregation_source": "direct",
+            "sp_count": 0,
+            "min": 10,
+            "value": 10,
+            "aggregation_method": "primary",
+            "median": 10,
+            "count": 1,
+            "max": 10,
+            "mode": 10
+          }
+        }
+      }
+    }
+  ],
+  "aggs": {
+    "fields": {
+      "doc_count": 134527,
+      "by_key": {
+        "buckets": {
+          "chromosome_count": {
+            "doc_count": 3014,
+            "value_list": {
+              "doc_count_error_upper_bound": 0,
+              "sum_other_doc_count": 0,
+              "buckets": []
+            },
+            "value_count": {
+              "value": 3014
+            }
+          }
+        }
+      }
+    }
+  },
+  "fields": [
+    "chromosome_count"
+  ],
+  "query": {
+    "size": 20,
+    "from": 0,
+    "query": {
+      "bool": {
+        "must_not": [
+          {
+            "bool": {
+              "must_not": {
+                "nested": {
+                  "path": "attributes",
+                  "query": {
+                    "match": {
+                      "attributes.key": "chromosome_count"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ],
+        "filter": [
+          {
+            "bool": {
+              "should": [
+                {
+                  "bool": {
+                    "filter": {
+                      "nested": {
+                        "path": "attributes",
+                        "query": {
+                          "bool": {
+                            "should": [
+                              {
+                                "bool": {
+                                  "filter": [
+                                    {
+                                      "match": {
+                                        "attributes.key": "chromosome_count"
+                                      }
+                                    },
+                                    {
+                                      "exists": {
+                                        "field": "attributes.long_value"
+                                      }
+                                    },
+                                    {
+                                      "exists": {
+                                        "field": "attributes.aggregation_source"
+                                      }
+                                    },
+                                    {
+                                      "exists": {
+                                        "field": "attributes.aggregation_method"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "bool": {
+                    "should": {
+                      "nested": {
+                        "path": "attributes",
+                        "query": {
+                          "bool": {
+                            "should": [
+                              {
+                                "bool": {
+                                  "filter": [
+                                    {
+                                      "match": {
+                                        "attributes.key": "chromosome_count"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        "inner_hits": {
+                          "_source": false,
+                          "name": "attributes",
+                          "docvalue_fields": [
+                            "attributes.key",
+                            "attributes.is_primary_value",
+                            "attributes.count",
+                            "attributes.sp_count",
+                            "attributes.max",
+                            "attributes.min",
+                            "attributes.mean",
+                            "attributes.median",
+                            "attributes.mode",
+                            "attributes.sum",
+                            "attributes.from",
+                            "attributes.to",
+                            "attributes.range",
+                            "attributes.length",
+                            "attributes.aggregation_method",
+                            "attributes.aggregation_source",
+                            "attributes.aggregation_rank",
+                            "attributes.aggregation_taxon_id",
+                            "attributes.long_value"
+                          ],
+                          "size": 100
+                        }
+                      }
+                    }
+                  }
+                }
+              ],
+              "minimum_should_match": 2
+            }
+          },
+          {
+            "bool": {
+              "should": [
+                {
+                  "bool": {
+                    "should": [
+                      {
+                        "bool": {
+                          "should": [
+                            {
+                              "nested": {
+                                "path": "taxon_names",
+                                "query": {
+                                  "bool": {
+                                    "filter": [
+                                      {
+                                        "match": {
+                                          "taxon_names.name": "insecta"
+                                        }
+                                      }
+                                    ]
+                                  }
+                                }
+                              }
+                            },
+                            {
+                              "match": {
+                                "taxon_id": "insecta"
+                              }
+                            },
+                            {
+                              "nested": {
+                                "path": "lineage",
+                                "query": {
+                                  "bool": {
+                                    "filter": [
+                                      {
+                                        "multi_match": {
+                                          "query": "insecta",
+                                          "fields": [
+                                            "lineage.taxon_id",
+                                            "lineage.scientific_name"
+                                          ]
+                                        }
+                                      }
+                                    ]
+                                  }
+                                }
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        ],
+        "should": []
+      }
+    },
+    "_source": {
+      "include": [
+        "taxon_id",
+        "scientific_name",
+        "taxon_rank",
+        "parent",
+        "taxon_names.*",
+        "lineage.*"
+      ],
+      "exclude": []
+    },
+    "sort": [],
+    "aggs": {
+      "fields": {
+        "nested": {
+          "path": "attributes"
+        },
+        "aggs": {
+          "by_key": {
+            "filters": {
+              "filters": {
+                "chromosome_count": {
+                  "term": {
+                    "attributes.key": "chromosome_count"
+                  }
+                }
+              }
+            },
+            "aggs": {
+              "value_count": {
+                "value_count": {
+                  "field": "attributes.key"
+                }
+              },
+              "value_list": {
+                "terms": {
+                  "field": "attributes.keyword_value",
+                  "size": 64
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

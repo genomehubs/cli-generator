@@ -1,0 +1,4386 @@
+{
+  "status": {
+    "hits": 59764,
+    "success": true,
+    "took": 57,
+    "size": 20,
+    "offset": 0
+  },
+  "results": [
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-61976",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "taxon_id": "61976",
+            "scientific_name": "Psephurus gladius",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 1,
+            "taxon_id": "61975",
+            "scientific_name": "Psephurus",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 2,
+            "taxon_id": "186620",
+            "scientific_name": "Psephurini",
+            "taxon_rank": "tribe"
+          },
+          {
+            "node_depth": 3,
+            "taxon_id": "186619",
+            "scientific_name": "Polyodontinae",
+            "taxon_rank": "subfamily"
+          },
+          {
+            "node_depth": 4,
+            "taxon_id": "7911",
+            "scientific_name": "Polyodontidae",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 5,
+            "taxon_id": "186622",
+            "scientific_name": "Acipenseroidei",
+            "taxon_rank": "suborder"
+          },
+          {
+            "node_depth": 6,
+            "taxon_id": "7899",
+            "scientific_name": "Acipenseriformes",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 7,
+            "taxon_id": "32440",
+            "scientific_name": "Chondrostei",
+            "taxon_rank": "subclass"
+          },
+          {
+            "node_depth": 8,
+            "taxon_id": "186623",
+            "scientific_name": "Actinopteri",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 9,
+            "taxon_id": "7898",
+            "scientific_name": "Actinopterygii",
+            "taxon_rank": "superclass"
+          },
+          {
+            "node_depth": 10,
+            "taxon_id": "117571",
+            "scientific_name": "Euteleostomi",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "taxon_id": "117570",
+            "scientific_name": "Teleostomi",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 12,
+            "taxon_id": "7776",
+            "scientific_name": "Gnathostomata",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 13,
+            "taxon_id": "7742",
+            "scientific_name": "Vertebrata",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 14,
+            "taxon_id": "89593",
+            "scientific_name": "Craniata",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 15,
+            "taxon_id": "7711",
+            "scientific_name": "Chordata",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 16,
+            "taxon_id": "33511",
+            "scientific_name": "Deuterostomia",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 17,
+            "taxon_id": "33213",
+            "scientific_name": "Bilateria",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 18,
+            "taxon_id": "6072",
+            "scientific_name": "Eumetazoa",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 19,
+            "taxon_id": "33208",
+            "scientific_name": "Metazoa",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 20,
+            "taxon_id": "33154",
+            "scientific_name": "Opisthokonta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 21,
+            "taxon_id": "2759",
+            "scientific_name": "Eukaryota",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 22,
+            "taxon_id": "131567",
+            "scientific_name": "cellular organisms",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 23,
+            "taxon_id": "1",
+            "scientific_name": "root",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "61975",
+        "scientific_name": "Psephurus gladius",
+        "taxon_id": "61976",
+        "taxon_names": [
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Chinese swordfish",
+            "source": "NCBI Taxonomy",
+            "class": "genbank common name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Polyodon gladius",
+            "source": "NCBI Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Psephurus gladius",
+            "source": "NCBI Taxonomy",
+            "class": "scientific name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": null,
+            "name": "fPseGla",
+            "source": "Tree of Life ID",
+            "class": "tolid prefix",
+            "source_url": "https://id.tol.sanger.ac.uk"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "ncbi:61976",
+            "source": "NCBI Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "gbif:2402078",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.irmng.org/aphia.php?p=taxdetails&id=",
+            "name": "irmng:10154086",
+            "source": "IRMNG",
+            "class": "xref",
+            "source_url": "https://www.irmng.org/"
+          }
+        ],
+        "taxon_rank": "species",
+        "fields": {
+          "c_value": {
+            "aggregation_source": [
+              "ancestor"
+            ],
+            "value": 1.9501953125,
+            "min": 1.59,
+            "aggregation_method": "median",
+            "median": 1.95,
+            "count": 1,
+            "mean": 1.95,
+            "aggregation_rank": "subfamily",
+            "max": 2.45,
+            "aggregation_taxon_id": "186619"
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-61975",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "taxon_id": "61975",
+            "scientific_name": "Psephurus",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 1,
+            "taxon_id": "186620",
+            "scientific_name": "Psephurini",
+            "taxon_rank": "tribe"
+          },
+          {
+            "node_depth": 2,
+            "taxon_id": "186619",
+            "scientific_name": "Polyodontinae",
+            "taxon_rank": "subfamily"
+          },
+          {
+            "node_depth": 3,
+            "taxon_id": "7911",
+            "scientific_name": "Polyodontidae",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 4,
+            "taxon_id": "186622",
+            "scientific_name": "Acipenseroidei",
+            "taxon_rank": "suborder"
+          },
+          {
+            "node_depth": 5,
+            "taxon_id": "7899",
+            "scientific_name": "Acipenseriformes",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 6,
+            "taxon_id": "32440",
+            "scientific_name": "Chondrostei",
+            "taxon_rank": "subclass"
+          },
+          {
+            "node_depth": 7,
+            "taxon_id": "186623",
+            "scientific_name": "Actinopteri",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 8,
+            "taxon_id": "7898",
+            "scientific_name": "Actinopterygii",
+            "taxon_rank": "superclass"
+          },
+          {
+            "node_depth": 9,
+            "taxon_id": "117571",
+            "scientific_name": "Euteleostomi",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "taxon_id": "117570",
+            "scientific_name": "Teleostomi",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "taxon_id": "7776",
+            "scientific_name": "Gnathostomata",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 12,
+            "taxon_id": "7742",
+            "scientific_name": "Vertebrata",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 13,
+            "taxon_id": "89593",
+            "scientific_name": "Craniata",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 14,
+            "taxon_id": "7711",
+            "scientific_name": "Chordata",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 15,
+            "taxon_id": "33511",
+            "scientific_name": "Deuterostomia",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 16,
+            "taxon_id": "33213",
+            "scientific_name": "Bilateria",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 17,
+            "taxon_id": "6072",
+            "scientific_name": "Eumetazoa",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 18,
+            "taxon_id": "33208",
+            "scientific_name": "Metazoa",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 19,
+            "taxon_id": "33154",
+            "scientific_name": "Opisthokonta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 20,
+            "taxon_id": "2759",
+            "scientific_name": "Eukaryota",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 21,
+            "taxon_id": "131567",
+            "scientific_name": "cellular organisms",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 22,
+            "taxon_id": "1",
+            "scientific_name": "root",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "186620",
+        "scientific_name": "Psephurus",
+        "taxon_id": "61975",
+        "taxon_names": [
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Psephurus",
+            "source": "NCBI Taxonomy",
+            "class": "scientific name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "ncbi:61975",
+            "source": "NCBI Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.marinespecies.org/aphia.php?p=taxdetails&id=",
+            "name": "worms:270554",
+            "source": "WoRMS",
+            "class": "xref",
+            "source_url": "https://www.marinespecies.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "gbif:2402077",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.irmng.org/aphia.php?p=taxdetails&id=",
+            "name": "irmng:1326177",
+            "source": "IRMNG",
+            "class": "xref",
+            "source_url": "https://www.irmng.org/"
+          }
+        ],
+        "taxon_rank": "genus",
+        "fields": {
+          "c_value": {
+            "aggregation_source": [
+              "ancestor"
+            ],
+            "value": 1.9501953125,
+            "min": 1.59,
+            "aggregation_method": "median",
+            "median": 1.95,
+            "count": 1,
+            "mean": 1.95,
+            "aggregation_rank": "subfamily",
+            "max": 2.45,
+            "aggregation_taxon_id": "186619"
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-186620",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "scientific_name": "Psephurini",
+            "taxon_id": "186620",
+            "taxon_rank": "tribe"
+          },
+          {
+            "node_depth": 1,
+            "scientific_name": "Polyodontinae",
+            "taxon_id": "186619",
+            "taxon_rank": "subfamily"
+          },
+          {
+            "node_depth": 2,
+            "scientific_name": "Polyodontidae",
+            "taxon_id": "7911",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 3,
+            "scientific_name": "Acipenseroidei",
+            "taxon_id": "186622",
+            "taxon_rank": "suborder"
+          },
+          {
+            "node_depth": 4,
+            "scientific_name": "Acipenseriformes",
+            "taxon_id": "7899",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 5,
+            "scientific_name": "Chondrostei",
+            "taxon_id": "32440",
+            "taxon_rank": "subclass"
+          },
+          {
+            "node_depth": 6,
+            "scientific_name": "Actinopteri",
+            "taxon_id": "186623",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 7,
+            "scientific_name": "Actinopterygii",
+            "taxon_id": "7898",
+            "taxon_rank": "superclass"
+          },
+          {
+            "node_depth": 8,
+            "scientific_name": "Euteleostomi",
+            "taxon_id": "117571",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 9,
+            "scientific_name": "Teleostomi",
+            "taxon_id": "117570",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "scientific_name": "Gnathostomata",
+            "taxon_id": "7776",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "scientific_name": "Vertebrata",
+            "taxon_id": "7742",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 12,
+            "scientific_name": "Craniata",
+            "taxon_id": "89593",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 13,
+            "scientific_name": "Chordata",
+            "taxon_id": "7711",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 14,
+            "scientific_name": "Deuterostomia",
+            "taxon_id": "33511",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 15,
+            "scientific_name": "Bilateria",
+            "taxon_id": "33213",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 16,
+            "scientific_name": "Eumetazoa",
+            "taxon_id": "6072",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 17,
+            "scientific_name": "Metazoa",
+            "taxon_id": "33208",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 18,
+            "scientific_name": "Opisthokonta",
+            "taxon_id": "33154",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 19,
+            "scientific_name": "Eukaryota",
+            "taxon_id": "2759",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 20,
+            "scientific_name": "cellular organisms",
+            "taxon_id": "131567",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 21,
+            "scientific_name": "root",
+            "taxon_id": "1",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "186619",
+        "scientific_name": "Psephurini",
+        "taxon_id": "186620",
+        "taxon_names": [
+          {
+            "class": "scientific name",
+            "name": "Psephurini",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "xref",
+            "name": "ncbi:186620",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          }
+        ],
+        "taxon_rank": "tribe",
+        "fields": {
+          "c_value": {
+            "aggregation_source": [
+              "ancestor"
+            ],
+            "value": 1.9501953125,
+            "min": 1.59,
+            "aggregation_method": "median",
+            "median": 1.95,
+            "count": 1,
+            "mean": 1.95,
+            "aggregation_rank": "subfamily",
+            "max": 2.45,
+            "aggregation_taxon_id": "186619"
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-7913",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "taxon_id": "7913",
+            "scientific_name": "Polyodon spathula",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 1,
+            "taxon_id": "7912",
+            "scientific_name": "Polyodon",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 2,
+            "taxon_id": "186621",
+            "scientific_name": "Polyodontini",
+            "taxon_rank": "tribe"
+          },
+          {
+            "node_depth": 3,
+            "taxon_id": "186619",
+            "scientific_name": "Polyodontinae",
+            "taxon_rank": "subfamily"
+          },
+          {
+            "node_depth": 4,
+            "taxon_id": "7911",
+            "scientific_name": "Polyodontidae",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 5,
+            "taxon_id": "186622",
+            "scientific_name": "Acipenseroidei",
+            "taxon_rank": "suborder"
+          },
+          {
+            "node_depth": 6,
+            "taxon_id": "7899",
+            "scientific_name": "Acipenseriformes",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 7,
+            "taxon_id": "32440",
+            "scientific_name": "Chondrostei",
+            "taxon_rank": "subclass"
+          },
+          {
+            "node_depth": 8,
+            "taxon_id": "186623",
+            "scientific_name": "Actinopteri",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 9,
+            "taxon_id": "7898",
+            "scientific_name": "Actinopterygii",
+            "taxon_rank": "superclass"
+          },
+          {
+            "node_depth": 10,
+            "taxon_id": "117571",
+            "scientific_name": "Euteleostomi",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "taxon_id": "117570",
+            "scientific_name": "Teleostomi",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 12,
+            "taxon_id": "7776",
+            "scientific_name": "Gnathostomata",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 13,
+            "taxon_id": "7742",
+            "scientific_name": "Vertebrata",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 14,
+            "taxon_id": "89593",
+            "scientific_name": "Craniata",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 15,
+            "taxon_id": "7711",
+            "scientific_name": "Chordata",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 16,
+            "taxon_id": "33511",
+            "scientific_name": "Deuterostomia",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 17,
+            "taxon_id": "33213",
+            "scientific_name": "Bilateria",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 18,
+            "taxon_id": "6072",
+            "scientific_name": "Eumetazoa",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 19,
+            "taxon_id": "33208",
+            "scientific_name": "Metazoa",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 20,
+            "taxon_id": "33154",
+            "scientific_name": "Opisthokonta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 21,
+            "taxon_id": "2759",
+            "scientific_name": "Eukaryota",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 22,
+            "taxon_id": "131567",
+            "scientific_name": "cellular organisms",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 23,
+            "taxon_id": "1",
+            "scientific_name": "root",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "7912",
+        "scientific_name": "Polyodon spathula",
+        "taxon_id": "7913",
+        "taxon_names": [
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Mississippi paddlefish",
+            "source": "NCBI Taxonomy",
+            "class": "genbank common name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "North American paddlefish",
+            "source": "NCBI Taxonomy",
+            "class": "common name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Polyodon spathula",
+            "source": "NCBI Taxonomy",
+            "class": "scientific name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Squalus spathula",
+            "source": "NCBI Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": null,
+            "name": "fPolSpa",
+            "source": "Tree of Life ID",
+            "class": "tolid prefix",
+            "source_url": "https://id.tol.sanger.ac.uk"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "ncbi:7913",
+            "source": "NCBI Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "gbif:5212833",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.irmng.org/aphia.php?p=taxdetails&id=",
+            "name": "irmng:10145191",
+            "source": "IRMNG",
+            "class": "xref",
+            "source_url": "https://www.irmng.org/"
+          },
+          {
+            "name": "Mississippi paddlefish",
+            "header": "common_name",
+            "index": 8,
+            "source": "Animal Genome Size Database",
+            "class": "common_name",
+            "source_url": "http://genomesize.com",
+            "source_date": "2026-04-20"
+          },
+          {
+            "name": "North American paddlefish",
+            "header": "commonName",
+            "index": 2,
+            "source_slug": "CNA0013718",
+            "class": "common_name"
+          }
+        ],
+        "taxon_rank": "species",
+        "fields": {
+          "c_value": {
+            "aggregation_source": "direct",
+            "sp_count": 0,
+            "value": 1.9501953125,
+            "min": 1.59,
+            "aggregation_method": "primary",
+            "median": 1.95,
+            "count": 3,
+            "mean": 1.9966666666666668,
+            "max": 2.45
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-55293",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "taxon_id": "55293",
+            "scientific_name": "Huso dauricus",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 1,
+            "taxon_id": "55292",
+            "scientific_name": "Huso",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 2,
+            "taxon_id": "124128",
+            "scientific_name": "Husinae",
+            "taxon_rank": "subfamily"
+          },
+          {
+            "node_depth": 3,
+            "taxon_id": "7900",
+            "scientific_name": "Acipenseridae",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 4,
+            "taxon_id": "186622",
+            "scientific_name": "Acipenseroidei",
+            "taxon_rank": "suborder"
+          },
+          {
+            "node_depth": 5,
+            "taxon_id": "7899",
+            "scientific_name": "Acipenseriformes",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 6,
+            "taxon_id": "32440",
+            "scientific_name": "Chondrostei",
+            "taxon_rank": "subclass"
+          },
+          {
+            "node_depth": 7,
+            "taxon_id": "186623",
+            "scientific_name": "Actinopteri",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 8,
+            "taxon_id": "7898",
+            "scientific_name": "Actinopterygii",
+            "taxon_rank": "superclass"
+          },
+          {
+            "node_depth": 9,
+            "taxon_id": "117571",
+            "scientific_name": "Euteleostomi",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "taxon_id": "117570",
+            "scientific_name": "Teleostomi",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "taxon_id": "7776",
+            "scientific_name": "Gnathostomata",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 12,
+            "taxon_id": "7742",
+            "scientific_name": "Vertebrata",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 13,
+            "taxon_id": "89593",
+            "scientific_name": "Craniata",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 14,
+            "taxon_id": "7711",
+            "scientific_name": "Chordata",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 15,
+            "taxon_id": "33511",
+            "scientific_name": "Deuterostomia",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 16,
+            "taxon_id": "33213",
+            "scientific_name": "Bilateria",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 17,
+            "taxon_id": "6072",
+            "scientific_name": "Eumetazoa",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 18,
+            "taxon_id": "33208",
+            "scientific_name": "Metazoa",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 19,
+            "taxon_id": "33154",
+            "scientific_name": "Opisthokonta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 20,
+            "taxon_id": "2759",
+            "scientific_name": "Eukaryota",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 21,
+            "taxon_id": "131567",
+            "scientific_name": "cellular organisms",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 22,
+            "taxon_id": "1",
+            "scientific_name": "root",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "55292",
+        "scientific_name": "Huso dauricus",
+        "taxon_id": "55293",
+        "taxon_names": [
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Acipenser dauricus",
+            "source": "NCBI Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Huso dauricus",
+            "source": "NCBI Taxonomy",
+            "class": "scientific name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": null,
+            "name": "fHusDau",
+            "source": "Tree of Life ID",
+            "class": "tolid prefix",
+            "source_url": "https://id.tol.sanger.ac.uk"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "ncbi:55293",
+            "source": "NCBI Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.marinespecies.org/aphia.php?p=taxdetails&id=",
+            "name": "worms:271700",
+            "source": "WoRMS",
+            "class": "xref",
+            "source_url": "https://www.marinespecies.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "gbif:2402100",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.irmng.org/aphia.php?p=taxdetails&id=",
+            "name": "irmng:10937683",
+            "source": "IRMNG",
+            "class": "xref",
+            "source_url": "https://www.irmng.org/"
+          },
+          {
+            "source_url_stub": "https://www.marinespecies.org/aphia.php?p=taxdetails&id=",
+            "name": "Acipenser mantschuricus",
+            "source": "WoRMS",
+            "class": "synonym",
+            "source_url": "https://www.marinespecies.org/"
+          },
+          {
+            "source_url_stub": "https://www.marinespecies.org/aphia.php?p=taxdetails&id=",
+            "name": "Acipenser orientalis",
+            "source": "WoRMS",
+            "class": "synonym",
+            "source_url": "https://www.marinespecies.org/"
+          },
+          {
+            "source_url_stub": "https://www.marinespecies.org/aphia.php?p=taxdetails&id=",
+            "name": "Huso orientalis",
+            "source": "WoRMS",
+            "class": "synonym",
+            "source_url": "https://www.marinespecies.org/"
+          },
+          {
+            "name": "Kaluga",
+            "header": "common_name",
+            "index": 8,
+            "source": "Animal Genome Size Database",
+            "class": "common_name",
+            "source_url": "http://genomesize.com",
+            "source_date": "2026-04-20"
+          }
+        ],
+        "taxon_rank": "species",
+        "fields": {
+          "c_value": {
+            "aggregation_source": "direct",
+            "sp_count": 0,
+            "value": 1.8896484375,
+            "min": 1.89,
+            "aggregation_method": "primary",
+            "median": 1.89,
+            "count": 1,
+            "mean": 1.89,
+            "max": 1.89
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-311080",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "scientific_name": "Huso huso caspicus",
+            "taxon_id": "311080",
+            "taxon_rank": "subspecies"
+          },
+          {
+            "node_depth": 1,
+            "scientific_name": "Huso huso",
+            "taxon_id": "61971",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 2,
+            "scientific_name": "Huso",
+            "taxon_id": "55292",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 3,
+            "scientific_name": "Husinae",
+            "taxon_id": "124128",
+            "taxon_rank": "subfamily"
+          },
+          {
+            "node_depth": 4,
+            "scientific_name": "Acipenseridae",
+            "taxon_id": "7900",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 5,
+            "scientific_name": "Acipenseroidei",
+            "taxon_id": "186622",
+            "taxon_rank": "suborder"
+          },
+          {
+            "node_depth": 6,
+            "scientific_name": "Acipenseriformes",
+            "taxon_id": "7899",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 7,
+            "scientific_name": "Chondrostei",
+            "taxon_id": "32440",
+            "taxon_rank": "subclass"
+          },
+          {
+            "node_depth": 8,
+            "scientific_name": "Actinopteri",
+            "taxon_id": "186623",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 9,
+            "scientific_name": "Actinopterygii",
+            "taxon_id": "7898",
+            "taxon_rank": "superclass"
+          },
+          {
+            "node_depth": 10,
+            "scientific_name": "Euteleostomi",
+            "taxon_id": "117571",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "scientific_name": "Teleostomi",
+            "taxon_id": "117570",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 12,
+            "scientific_name": "Gnathostomata",
+            "taxon_id": "7776",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 13,
+            "scientific_name": "Vertebrata",
+            "taxon_id": "7742",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 14,
+            "scientific_name": "Craniata",
+            "taxon_id": "89593",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 15,
+            "scientific_name": "Chordata",
+            "taxon_id": "7711",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 16,
+            "scientific_name": "Deuterostomia",
+            "taxon_id": "33511",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 17,
+            "scientific_name": "Bilateria",
+            "taxon_id": "33213",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 18,
+            "scientific_name": "Eumetazoa",
+            "taxon_id": "6072",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 19,
+            "scientific_name": "Metazoa",
+            "taxon_id": "33208",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 20,
+            "scientific_name": "Opisthokonta",
+            "taxon_id": "33154",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 21,
+            "scientific_name": "Eukaryota",
+            "taxon_id": "2759",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 22,
+            "scientific_name": "cellular organisms",
+            "taxon_id": "131567",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 23,
+            "scientific_name": "root",
+            "taxon_id": "1",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "61971",
+        "scientific_name": "Huso huso caspicus",
+        "taxon_id": "311080",
+        "taxon_names": [
+          {
+            "class": "scientific name",
+            "name": "Huso huso caspicus",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "xref",
+            "name": "ncbi:311080",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          }
+        ],
+        "taxon_rank": "subspecies",
+        "fields": {
+          "c_value": {
+            "aggregation_source": [
+              "ancestor"
+            ],
+            "value": 1.509765625,
+            "min": 1.22,
+            "aggregation_method": "primary",
+            "median": 1.51,
+            "count": 2,
+            "mean": 1.51,
+            "aggregation_rank": "species",
+            "max": 1.8,
+            "aggregation_taxon_id": "61971"
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-311081",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "scientific_name": "Huso huso maeoticus",
+            "taxon_id": "311081",
+            "taxon_rank": "subspecies"
+          },
+          {
+            "node_depth": 1,
+            "scientific_name": "Huso huso",
+            "taxon_id": "61971",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 2,
+            "scientific_name": "Huso",
+            "taxon_id": "55292",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 3,
+            "scientific_name": "Husinae",
+            "taxon_id": "124128",
+            "taxon_rank": "subfamily"
+          },
+          {
+            "node_depth": 4,
+            "scientific_name": "Acipenseridae",
+            "taxon_id": "7900",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 5,
+            "scientific_name": "Acipenseroidei",
+            "taxon_id": "186622",
+            "taxon_rank": "suborder"
+          },
+          {
+            "node_depth": 6,
+            "scientific_name": "Acipenseriformes",
+            "taxon_id": "7899",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 7,
+            "scientific_name": "Chondrostei",
+            "taxon_id": "32440",
+            "taxon_rank": "subclass"
+          },
+          {
+            "node_depth": 8,
+            "scientific_name": "Actinopteri",
+            "taxon_id": "186623",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 9,
+            "scientific_name": "Actinopterygii",
+            "taxon_id": "7898",
+            "taxon_rank": "superclass"
+          },
+          {
+            "node_depth": 10,
+            "scientific_name": "Euteleostomi",
+            "taxon_id": "117571",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "scientific_name": "Teleostomi",
+            "taxon_id": "117570",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 12,
+            "scientific_name": "Gnathostomata",
+            "taxon_id": "7776",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 13,
+            "scientific_name": "Vertebrata",
+            "taxon_id": "7742",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 14,
+            "scientific_name": "Craniata",
+            "taxon_id": "89593",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 15,
+            "scientific_name": "Chordata",
+            "taxon_id": "7711",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 16,
+            "scientific_name": "Deuterostomia",
+            "taxon_id": "33511",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 17,
+            "scientific_name": "Bilateria",
+            "taxon_id": "33213",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 18,
+            "scientific_name": "Eumetazoa",
+            "taxon_id": "6072",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 19,
+            "scientific_name": "Metazoa",
+            "taxon_id": "33208",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 20,
+            "scientific_name": "Opisthokonta",
+            "taxon_id": "33154",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 21,
+            "scientific_name": "Eukaryota",
+            "taxon_id": "2759",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 22,
+            "scientific_name": "cellular organisms",
+            "taxon_id": "131567",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 23,
+            "scientific_name": "root",
+            "taxon_id": "1",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "61971",
+        "scientific_name": "Huso huso maeoticus",
+        "taxon_id": "311081",
+        "taxon_names": [
+          {
+            "class": "scientific name",
+            "name": "Huso huso maeoticus",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "xref",
+            "name": "ncbi:311081",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          }
+        ],
+        "taxon_rank": "subspecies",
+        "fields": {
+          "c_value": {
+            "aggregation_source": [
+              "ancestor"
+            ],
+            "value": 1.509765625,
+            "min": 1.22,
+            "aggregation_method": "primary",
+            "median": 1.51,
+            "count": 2,
+            "mean": 1.51,
+            "aggregation_rank": "species",
+            "max": 1.8,
+            "aggregation_taxon_id": "61971"
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-61971",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "taxon_id": "61971",
+            "scientific_name": "Huso huso",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 1,
+            "taxon_id": "55292",
+            "scientific_name": "Huso",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 2,
+            "taxon_id": "124128",
+            "scientific_name": "Husinae",
+            "taxon_rank": "subfamily"
+          },
+          {
+            "node_depth": 3,
+            "taxon_id": "7900",
+            "scientific_name": "Acipenseridae",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 4,
+            "taxon_id": "186622",
+            "scientific_name": "Acipenseroidei",
+            "taxon_rank": "suborder"
+          },
+          {
+            "node_depth": 5,
+            "taxon_id": "7899",
+            "scientific_name": "Acipenseriformes",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 6,
+            "taxon_id": "32440",
+            "scientific_name": "Chondrostei",
+            "taxon_rank": "subclass"
+          },
+          {
+            "node_depth": 7,
+            "taxon_id": "186623",
+            "scientific_name": "Actinopteri",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 8,
+            "taxon_id": "7898",
+            "scientific_name": "Actinopterygii",
+            "taxon_rank": "superclass"
+          },
+          {
+            "node_depth": 9,
+            "taxon_id": "117571",
+            "scientific_name": "Euteleostomi",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "taxon_id": "117570",
+            "scientific_name": "Teleostomi",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "taxon_id": "7776",
+            "scientific_name": "Gnathostomata",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 12,
+            "taxon_id": "7742",
+            "scientific_name": "Vertebrata",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 13,
+            "taxon_id": "89593",
+            "scientific_name": "Craniata",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 14,
+            "taxon_id": "7711",
+            "scientific_name": "Chordata",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 15,
+            "taxon_id": "33511",
+            "scientific_name": "Deuterostomia",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 16,
+            "taxon_id": "33213",
+            "scientific_name": "Bilateria",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 17,
+            "taxon_id": "6072",
+            "scientific_name": "Eumetazoa",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 18,
+            "taxon_id": "33208",
+            "scientific_name": "Metazoa",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 19,
+            "taxon_id": "33154",
+            "scientific_name": "Opisthokonta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 20,
+            "taxon_id": "2759",
+            "scientific_name": "Eukaryota",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 21,
+            "taxon_id": "131567",
+            "scientific_name": "cellular organisms",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 22,
+            "taxon_id": "1",
+            "scientific_name": "root",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "55292",
+        "scientific_name": "Huso huso",
+        "taxon_id": "61971",
+        "taxon_names": [
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Acipenser huso",
+            "source": "NCBI Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": null,
+            "name": "beluga",
+            "source": null,
+            "class": "genbank common name",
+            "source_url": null
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Huso huso ponticus",
+            "source": "NCBI Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Huso huso",
+            "source": "NCBI Taxonomy",
+            "class": "scientific name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": null,
+            "name": "171531",
+            "source": null,
+            "class": "merged taxon id",
+            "source_url": null
+          },
+          {
+            "source_url_stub": null,
+            "name": "fHusHus",
+            "source": "Tree of Life ID",
+            "class": "tolid prefix",
+            "source_url": "https://id.tol.sanger.ac.uk"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "ncbi:61971",
+            "source": "NCBI Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.marinespecies.org/aphia.php?p=taxdetails&id=",
+            "name": "worms:126280",
+            "source": "WoRMS",
+            "class": "xref",
+            "source_url": "https://www.marinespecies.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "gbif:2402105",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.irmng.org/aphia.php?p=taxdetails&id=",
+            "name": "irmng:10145452",
+            "source": "IRMNG",
+            "class": "xref",
+            "source_url": "https://www.irmng.org/"
+          },
+          {
+            "source_url_stub": "https://www.marinespecies.org/aphia.php?p=taxdetails&id=",
+            "name": "Acipenser albula",
+            "source": "WoRMS",
+            "class": "synonym",
+            "source_url": "https://www.marinespecies.org/"
+          },
+          {
+            "source_url_stub": "https://www.marinespecies.org/aphia.php?p=taxdetails&id=",
+            "name": "Acipenser beluga",
+            "source": "WoRMS",
+            "class": "synonym",
+            "source_url": "https://www.marinespecies.org/"
+          },
+          {
+            "source_url_stub": "https://www.marinespecies.org/aphia.php?p=taxdetails&id=",
+            "name": "Acipenser schypa",
+            "source": "WoRMS",
+            "class": "synonym",
+            "source_url": "https://www.marinespecies.org/"
+          },
+          {
+            "source_url_stub": "https://www.marinespecies.org/aphia.php?p=taxdetails&id=",
+            "name": "Acipenser shyp",
+            "source": "WoRMS",
+            "class": "synonym",
+            "source_url": "https://www.marinespecies.org/"
+          },
+          {
+            "source_url_stub": "https://www.marinespecies.org/aphia.php?p=taxdetails&id=",
+            "name": "Acipenser vallisnerii",
+            "source": "WoRMS",
+            "class": "synonym",
+            "source_url": "https://www.marinespecies.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Huso huso caspicus",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Huso huso maeoticus",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Huso huso orientalis",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.marinespecies.org/aphia.php?p=taxdetails&id=",
+            "name": "Huso ichthyocolla",
+            "source": "WoRMS",
+            "class": "synonym",
+            "source_url": "https://www.marinespecies.org/"
+          },
+          {
+            "name": "Beluga",
+            "header": "common_name",
+            "index": 8,
+            "source": "Animal Genome Size Database",
+            "class": "common_name",
+            "source_url": "http://genomesize.com",
+            "source_date": "2026-04-20"
+          }
+        ],
+        "taxon_rank": "species",
+        "fields": {
+          "c_value": {
+            "aggregation_source": "direct",
+            "sp_count": 0,
+            "value": 1.509765625,
+            "min": 1.22,
+            "aggregation_method": "primary",
+            "median": 1.51,
+            "count": 2,
+            "mean": 1.51,
+            "max": 1.8
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-194812",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "scientific_name": "Acipenser dabryanus x Acipenser sinensis",
+            "taxon_id": "194812",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 1,
+            "scientific_name": "Acipenser",
+            "taxon_id": "7901",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 2,
+            "scientific_name": "Acipenserini",
+            "taxon_id": "124130",
+            "taxon_rank": "tribe"
+          },
+          {
+            "node_depth": 3,
+            "scientific_name": "Acipenserinae",
+            "taxon_id": "124129",
+            "taxon_rank": "subfamily"
+          },
+          {
+            "node_depth": 4,
+            "scientific_name": "Acipenseridae",
+            "taxon_id": "7900",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 5,
+            "scientific_name": "Acipenseroidei",
+            "taxon_id": "186622",
+            "taxon_rank": "suborder"
+          },
+          {
+            "node_depth": 6,
+            "scientific_name": "Acipenseriformes",
+            "taxon_id": "7899",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 7,
+            "scientific_name": "Chondrostei",
+            "taxon_id": "32440",
+            "taxon_rank": "subclass"
+          },
+          {
+            "node_depth": 8,
+            "scientific_name": "Actinopteri",
+            "taxon_id": "186623",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 9,
+            "scientific_name": "Actinopterygii",
+            "taxon_id": "7898",
+            "taxon_rank": "superclass"
+          },
+          {
+            "node_depth": 10,
+            "scientific_name": "Euteleostomi",
+            "taxon_id": "117571",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "scientific_name": "Teleostomi",
+            "taxon_id": "117570",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 12,
+            "scientific_name": "Gnathostomata",
+            "taxon_id": "7776",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 13,
+            "scientific_name": "Vertebrata",
+            "taxon_id": "7742",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 14,
+            "scientific_name": "Craniata",
+            "taxon_id": "89593",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 15,
+            "scientific_name": "Chordata",
+            "taxon_id": "7711",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 16,
+            "scientific_name": "Deuterostomia",
+            "taxon_id": "33511",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 17,
+            "scientific_name": "Bilateria",
+            "taxon_id": "33213",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 18,
+            "scientific_name": "Eumetazoa",
+            "taxon_id": "6072",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 19,
+            "scientific_name": "Metazoa",
+            "taxon_id": "33208",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 20,
+            "scientific_name": "Opisthokonta",
+            "taxon_id": "33154",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 21,
+            "scientific_name": "Eukaryota",
+            "taxon_id": "2759",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 22,
+            "scientific_name": "cellular organisms",
+            "taxon_id": "131567",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 23,
+            "scientific_name": "root",
+            "taxon_id": "1",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "7901",
+        "scientific_name": "Acipenser dabryanus x Acipenser sinensis",
+        "taxon_id": "194812",
+        "taxon_names": [
+          {
+            "class": "scientific name",
+            "name": "Acipenser dabryanus x Acipenser sinensis",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "synonym",
+            "name": "Acipenser dabryanus x A. sinensis",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "xref",
+            "name": "ncbi:194812",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          }
+        ],
+        "taxon_rank": "species",
+        "fields": {
+          "c_value": {
+            "aggregation_source": [
+              "ancestor"
+            ],
+            "value": 3.7421875,
+            "min": 1.6,
+            "aggregation_method": "median",
+            "median": 3.7424999999999997,
+            "count": 14,
+            "mean": 3.608214285714286,
+            "aggregation_rank": "genus",
+            "max": 7.17,
+            "aggregation_taxon_id": "7901"
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-454360",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "scientific_name": "Acipenser medirostris/transmontanus",
+            "taxon_id": "454360",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 1,
+            "scientific_name": "Acipenser",
+            "taxon_id": "7901",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 2,
+            "scientific_name": "Acipenserini",
+            "taxon_id": "124130",
+            "taxon_rank": "tribe"
+          },
+          {
+            "node_depth": 3,
+            "scientific_name": "Acipenserinae",
+            "taxon_id": "124129",
+            "taxon_rank": "subfamily"
+          },
+          {
+            "node_depth": 4,
+            "scientific_name": "Acipenseridae",
+            "taxon_id": "7900",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 5,
+            "scientific_name": "Acipenseroidei",
+            "taxon_id": "186622",
+            "taxon_rank": "suborder"
+          },
+          {
+            "node_depth": 6,
+            "scientific_name": "Acipenseriformes",
+            "taxon_id": "7899",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 7,
+            "scientific_name": "Chondrostei",
+            "taxon_id": "32440",
+            "taxon_rank": "subclass"
+          },
+          {
+            "node_depth": 8,
+            "scientific_name": "Actinopteri",
+            "taxon_id": "186623",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 9,
+            "scientific_name": "Actinopterygii",
+            "taxon_id": "7898",
+            "taxon_rank": "superclass"
+          },
+          {
+            "node_depth": 10,
+            "scientific_name": "Euteleostomi",
+            "taxon_id": "117571",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "scientific_name": "Teleostomi",
+            "taxon_id": "117570",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 12,
+            "scientific_name": "Gnathostomata",
+            "taxon_id": "7776",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 13,
+            "scientific_name": "Vertebrata",
+            "taxon_id": "7742",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 14,
+            "scientific_name": "Craniata",
+            "taxon_id": "89593",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 15,
+            "scientific_name": "Chordata",
+            "taxon_id": "7711",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 16,
+            "scientific_name": "Deuterostomia",
+            "taxon_id": "33511",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 17,
+            "scientific_name": "Bilateria",
+            "taxon_id": "33213",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 18,
+            "scientific_name": "Eumetazoa",
+            "taxon_id": "6072",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 19,
+            "scientific_name": "Metazoa",
+            "taxon_id": "33208",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 20,
+            "scientific_name": "Opisthokonta",
+            "taxon_id": "33154",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 21,
+            "scientific_name": "Eukaryota",
+            "taxon_id": "2759",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 22,
+            "scientific_name": "cellular organisms",
+            "taxon_id": "131567",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 23,
+            "scientific_name": "root",
+            "taxon_id": "1",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "7901",
+        "scientific_name": "Acipenser medirostris/transmontanus",
+        "taxon_id": "454360",
+        "taxon_names": [
+          {
+            "class": "scientific name",
+            "name": "Acipenser medirostris/transmontanus",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "synonym",
+            "name": "Acipenser sp. medirostris/transmontanus",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "xref",
+            "name": "ncbi:454360",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          }
+        ],
+        "taxon_rank": "species",
+        "fields": {
+          "c_value": {
+            "aggregation_source": [
+              "ancestor"
+            ],
+            "value": 3.7421875,
+            "min": 1.6,
+            "aggregation_method": "median",
+            "median": 3.7424999999999997,
+            "count": 14,
+            "mean": 3.608214285714286,
+            "aggregation_rank": "genus",
+            "max": 7.17,
+            "aggregation_taxon_id": "7901"
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-1358430",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "scientific_name": "Acipenser baerii x Acipenser schrenckii",
+            "taxon_id": "1358430",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 1,
+            "scientific_name": "Acipenser",
+            "taxon_id": "7901",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 2,
+            "scientific_name": "Acipenserini",
+            "taxon_id": "124130",
+            "taxon_rank": "tribe"
+          },
+          {
+            "node_depth": 3,
+            "scientific_name": "Acipenserinae",
+            "taxon_id": "124129",
+            "taxon_rank": "subfamily"
+          },
+          {
+            "node_depth": 4,
+            "scientific_name": "Acipenseridae",
+            "taxon_id": "7900",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 5,
+            "scientific_name": "Acipenseroidei",
+            "taxon_id": "186622",
+            "taxon_rank": "suborder"
+          },
+          {
+            "node_depth": 6,
+            "scientific_name": "Acipenseriformes",
+            "taxon_id": "7899",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 7,
+            "scientific_name": "Chondrostei",
+            "taxon_id": "32440",
+            "taxon_rank": "subclass"
+          },
+          {
+            "node_depth": 8,
+            "scientific_name": "Actinopteri",
+            "taxon_id": "186623",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 9,
+            "scientific_name": "Actinopterygii",
+            "taxon_id": "7898",
+            "taxon_rank": "superclass"
+          },
+          {
+            "node_depth": 10,
+            "scientific_name": "Euteleostomi",
+            "taxon_id": "117571",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "scientific_name": "Teleostomi",
+            "taxon_id": "117570",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 12,
+            "scientific_name": "Gnathostomata",
+            "taxon_id": "7776",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 13,
+            "scientific_name": "Vertebrata",
+            "taxon_id": "7742",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 14,
+            "scientific_name": "Craniata",
+            "taxon_id": "89593",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 15,
+            "scientific_name": "Chordata",
+            "taxon_id": "7711",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 16,
+            "scientific_name": "Deuterostomia",
+            "taxon_id": "33511",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 17,
+            "scientific_name": "Bilateria",
+            "taxon_id": "33213",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 18,
+            "scientific_name": "Eumetazoa",
+            "taxon_id": "6072",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 19,
+            "scientific_name": "Metazoa",
+            "taxon_id": "33208",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 20,
+            "scientific_name": "Opisthokonta",
+            "taxon_id": "33154",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 21,
+            "scientific_name": "Eukaryota",
+            "taxon_id": "2759",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 22,
+            "scientific_name": "cellular organisms",
+            "taxon_id": "131567",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 23,
+            "scientific_name": "root",
+            "taxon_id": "1",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "7901",
+        "scientific_name": "Acipenser baerii x Acipenser schrenckii",
+        "taxon_id": "1358430",
+        "taxon_names": [
+          {
+            "class": "scientific name",
+            "name": "Acipenser baerii x Acipenser schrenckii",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "xref",
+            "name": "ncbi:1358430",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          }
+        ],
+        "taxon_rank": "species",
+        "fields": {
+          "c_value": {
+            "aggregation_source": [
+              "ancestor"
+            ],
+            "value": 3.7421875,
+            "min": 1.6,
+            "aggregation_method": "median",
+            "median": 3.7424999999999997,
+            "count": 14,
+            "mean": 3.608214285714286,
+            "aggregation_rank": "genus",
+            "max": 7.17,
+            "aggregation_taxon_id": "7901"
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-1358435",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "scientific_name": "Acipenser sinensis x Acipenser schrenckii",
+            "taxon_id": "1358435",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 1,
+            "scientific_name": "Acipenser",
+            "taxon_id": "7901",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 2,
+            "scientific_name": "Acipenserini",
+            "taxon_id": "124130",
+            "taxon_rank": "tribe"
+          },
+          {
+            "node_depth": 3,
+            "scientific_name": "Acipenserinae",
+            "taxon_id": "124129",
+            "taxon_rank": "subfamily"
+          },
+          {
+            "node_depth": 4,
+            "scientific_name": "Acipenseridae",
+            "taxon_id": "7900",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 5,
+            "scientific_name": "Acipenseroidei",
+            "taxon_id": "186622",
+            "taxon_rank": "suborder"
+          },
+          {
+            "node_depth": 6,
+            "scientific_name": "Acipenseriformes",
+            "taxon_id": "7899",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 7,
+            "scientific_name": "Chondrostei",
+            "taxon_id": "32440",
+            "taxon_rank": "subclass"
+          },
+          {
+            "node_depth": 8,
+            "scientific_name": "Actinopteri",
+            "taxon_id": "186623",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 9,
+            "scientific_name": "Actinopterygii",
+            "taxon_id": "7898",
+            "taxon_rank": "superclass"
+          },
+          {
+            "node_depth": 10,
+            "scientific_name": "Euteleostomi",
+            "taxon_id": "117571",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "scientific_name": "Teleostomi",
+            "taxon_id": "117570",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 12,
+            "scientific_name": "Gnathostomata",
+            "taxon_id": "7776",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 13,
+            "scientific_name": "Vertebrata",
+            "taxon_id": "7742",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 14,
+            "scientific_name": "Craniata",
+            "taxon_id": "89593",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 15,
+            "scientific_name": "Chordata",
+            "taxon_id": "7711",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 16,
+            "scientific_name": "Deuterostomia",
+            "taxon_id": "33511",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 17,
+            "scientific_name": "Bilateria",
+            "taxon_id": "33213",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 18,
+            "scientific_name": "Eumetazoa",
+            "taxon_id": "6072",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 19,
+            "scientific_name": "Metazoa",
+            "taxon_id": "33208",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 20,
+            "scientific_name": "Opisthokonta",
+            "taxon_id": "33154",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 21,
+            "scientific_name": "Eukaryota",
+            "taxon_id": "2759",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 22,
+            "scientific_name": "cellular organisms",
+            "taxon_id": "131567",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 23,
+            "scientific_name": "root",
+            "taxon_id": "1",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "7901",
+        "scientific_name": "Acipenser sinensis x Acipenser schrenckii",
+        "taxon_id": "1358435",
+        "taxon_names": [
+          {
+            "class": "scientific name",
+            "name": "Acipenser sinensis x Acipenser schrenckii",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "xref",
+            "name": "ncbi:1358435",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          }
+        ],
+        "taxon_rank": "species",
+        "fields": {
+          "c_value": {
+            "aggregation_source": [
+              "ancestor"
+            ],
+            "value": 3.7421875,
+            "min": 1.6,
+            "aggregation_method": "median",
+            "median": 3.7424999999999997,
+            "count": 14,
+            "mean": 3.608214285714286,
+            "aggregation_rank": "genus",
+            "max": 7.17,
+            "aggregation_taxon_id": "7901"
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-1712686",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "scientific_name": "Acipenser dabryanus x Acipenser baerii",
+            "taxon_id": "1712686",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 1,
+            "scientific_name": "Acipenser",
+            "taxon_id": "7901",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 2,
+            "scientific_name": "Acipenserini",
+            "taxon_id": "124130",
+            "taxon_rank": "tribe"
+          },
+          {
+            "node_depth": 3,
+            "scientific_name": "Acipenserinae",
+            "taxon_id": "124129",
+            "taxon_rank": "subfamily"
+          },
+          {
+            "node_depth": 4,
+            "scientific_name": "Acipenseridae",
+            "taxon_id": "7900",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 5,
+            "scientific_name": "Acipenseroidei",
+            "taxon_id": "186622",
+            "taxon_rank": "suborder"
+          },
+          {
+            "node_depth": 6,
+            "scientific_name": "Acipenseriformes",
+            "taxon_id": "7899",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 7,
+            "scientific_name": "Chondrostei",
+            "taxon_id": "32440",
+            "taxon_rank": "subclass"
+          },
+          {
+            "node_depth": 8,
+            "scientific_name": "Actinopteri",
+            "taxon_id": "186623",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 9,
+            "scientific_name": "Actinopterygii",
+            "taxon_id": "7898",
+            "taxon_rank": "superclass"
+          },
+          {
+            "node_depth": 10,
+            "scientific_name": "Euteleostomi",
+            "taxon_id": "117571",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "scientific_name": "Teleostomi",
+            "taxon_id": "117570",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 12,
+            "scientific_name": "Gnathostomata",
+            "taxon_id": "7776",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 13,
+            "scientific_name": "Vertebrata",
+            "taxon_id": "7742",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 14,
+            "scientific_name": "Craniata",
+            "taxon_id": "89593",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 15,
+            "scientific_name": "Chordata",
+            "taxon_id": "7711",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 16,
+            "scientific_name": "Deuterostomia",
+            "taxon_id": "33511",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 17,
+            "scientific_name": "Bilateria",
+            "taxon_id": "33213",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 18,
+            "scientific_name": "Eumetazoa",
+            "taxon_id": "6072",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 19,
+            "scientific_name": "Metazoa",
+            "taxon_id": "33208",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 20,
+            "scientific_name": "Opisthokonta",
+            "taxon_id": "33154",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 21,
+            "scientific_name": "Eukaryota",
+            "taxon_id": "2759",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 22,
+            "scientific_name": "cellular organisms",
+            "taxon_id": "131567",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 23,
+            "scientific_name": "root",
+            "taxon_id": "1",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "7901",
+        "scientific_name": "Acipenser dabryanus x Acipenser baerii",
+        "taxon_id": "1712686",
+        "taxon_names": [
+          {
+            "class": "scientific name",
+            "name": "Acipenser dabryanus x Acipenser baerii",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "xref",
+            "name": "ncbi:1712686",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          }
+        ],
+        "taxon_rank": "species",
+        "fields": {
+          "c_value": {
+            "aggregation_source": [
+              "ancestor"
+            ],
+            "value": 3.7421875,
+            "min": 1.6,
+            "aggregation_method": "median",
+            "median": 3.7424999999999997,
+            "count": 14,
+            "mean": 3.608214285714286,
+            "aggregation_rank": "genus",
+            "max": 7.17,
+            "aggregation_taxon_id": "7901"
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-2563604",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "scientific_name": "Acipenser ruthenus x Acipenser baerii",
+            "taxon_id": "2563604",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 1,
+            "scientific_name": "Acipenser",
+            "taxon_id": "7901",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 2,
+            "scientific_name": "Acipenserini",
+            "taxon_id": "124130",
+            "taxon_rank": "tribe"
+          },
+          {
+            "node_depth": 3,
+            "scientific_name": "Acipenserinae",
+            "taxon_id": "124129",
+            "taxon_rank": "subfamily"
+          },
+          {
+            "node_depth": 4,
+            "scientific_name": "Acipenseridae",
+            "taxon_id": "7900",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 5,
+            "scientific_name": "Acipenseroidei",
+            "taxon_id": "186622",
+            "taxon_rank": "suborder"
+          },
+          {
+            "node_depth": 6,
+            "scientific_name": "Acipenseriformes",
+            "taxon_id": "7899",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 7,
+            "scientific_name": "Chondrostei",
+            "taxon_id": "32440",
+            "taxon_rank": "subclass"
+          },
+          {
+            "node_depth": 8,
+            "scientific_name": "Actinopteri",
+            "taxon_id": "186623",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 9,
+            "scientific_name": "Actinopterygii",
+            "taxon_id": "7898",
+            "taxon_rank": "superclass"
+          },
+          {
+            "node_depth": 10,
+            "scientific_name": "Euteleostomi",
+            "taxon_id": "117571",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "scientific_name": "Teleostomi",
+            "taxon_id": "117570",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 12,
+            "scientific_name": "Gnathostomata",
+            "taxon_id": "7776",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 13,
+            "scientific_name": "Vertebrata",
+            "taxon_id": "7742",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 14,
+            "scientific_name": "Craniata",
+            "taxon_id": "89593",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 15,
+            "scientific_name": "Chordata",
+            "taxon_id": "7711",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 16,
+            "scientific_name": "Deuterostomia",
+            "taxon_id": "33511",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 17,
+            "scientific_name": "Bilateria",
+            "taxon_id": "33213",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 18,
+            "scientific_name": "Eumetazoa",
+            "taxon_id": "6072",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 19,
+            "scientific_name": "Metazoa",
+            "taxon_id": "33208",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 20,
+            "scientific_name": "Opisthokonta",
+            "taxon_id": "33154",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 21,
+            "scientific_name": "Eukaryota",
+            "taxon_id": "2759",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 22,
+            "scientific_name": "cellular organisms",
+            "taxon_id": "131567",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 23,
+            "scientific_name": "root",
+            "taxon_id": "1",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "7901",
+        "scientific_name": "Acipenser ruthenus x Acipenser baerii",
+        "taxon_id": "2563604",
+        "taxon_names": [
+          {
+            "class": "scientific name",
+            "name": "Acipenser ruthenus x Acipenser baerii",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "xref",
+            "name": "ncbi:2563604",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          }
+        ],
+        "taxon_rank": "species",
+        "fields": {
+          "c_value": {
+            "aggregation_source": [
+              "ancestor"
+            ],
+            "value": 3.7421875,
+            "min": 1.6,
+            "aggregation_method": "median",
+            "median": 3.7424999999999997,
+            "count": 14,
+            "mean": 3.608214285714286,
+            "aggregation_rank": "genus",
+            "max": 7.17,
+            "aggregation_taxon_id": "7901"
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-147101",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "scientific_name": "Acipenser sp. G102011U7",
+            "taxon_id": "147101",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 1,
+            "scientific_name": "unclassified Acipenser",
+            "taxon_id": "2649592",
+            "taxon_rank": "no rank"
+          },
+          {
+            "node_depth": 2,
+            "scientific_name": "Acipenser",
+            "taxon_id": "7901",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 3,
+            "scientific_name": "Acipenserini",
+            "taxon_id": "124130",
+            "taxon_rank": "tribe"
+          },
+          {
+            "node_depth": 4,
+            "scientific_name": "Acipenserinae",
+            "taxon_id": "124129",
+            "taxon_rank": "subfamily"
+          },
+          {
+            "node_depth": 5,
+            "scientific_name": "Acipenseridae",
+            "taxon_id": "7900",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 6,
+            "scientific_name": "Acipenseroidei",
+            "taxon_id": "186622",
+            "taxon_rank": "suborder"
+          },
+          {
+            "node_depth": 7,
+            "scientific_name": "Acipenseriformes",
+            "taxon_id": "7899",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 8,
+            "scientific_name": "Chondrostei",
+            "taxon_id": "32440",
+            "taxon_rank": "subclass"
+          },
+          {
+            "node_depth": 9,
+            "scientific_name": "Actinopteri",
+            "taxon_id": "186623",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 10,
+            "scientific_name": "Actinopterygii",
+            "taxon_id": "7898",
+            "taxon_rank": "superclass"
+          },
+          {
+            "node_depth": 11,
+            "scientific_name": "Euteleostomi",
+            "taxon_id": "117571",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 12,
+            "scientific_name": "Teleostomi",
+            "taxon_id": "117570",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 13,
+            "scientific_name": "Gnathostomata",
+            "taxon_id": "7776",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 14,
+            "scientific_name": "Vertebrata",
+            "taxon_id": "7742",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 15,
+            "scientific_name": "Craniata",
+            "taxon_id": "89593",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 16,
+            "scientific_name": "Chordata",
+            "taxon_id": "7711",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 17,
+            "scientific_name": "Deuterostomia",
+            "taxon_id": "33511",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 18,
+            "scientific_name": "Bilateria",
+            "taxon_id": "33213",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 19,
+            "scientific_name": "Eumetazoa",
+            "taxon_id": "6072",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 20,
+            "scientific_name": "Metazoa",
+            "taxon_id": "33208",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 21,
+            "scientific_name": "Opisthokonta",
+            "taxon_id": "33154",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 22,
+            "scientific_name": "Eukaryota",
+            "taxon_id": "2759",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 23,
+            "scientific_name": "cellular organisms",
+            "taxon_id": "131567",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 24,
+            "scientific_name": "root",
+            "taxon_id": "1",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "2649592",
+        "scientific_name": "Acipenser sp. G102011U7",
+        "taxon_id": "147101",
+        "taxon_names": [
+          {
+            "class": "scientific name",
+            "name": "Acipenser sp. G102011U7",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "xref",
+            "name": "ncbi:147101",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          }
+        ],
+        "taxon_rank": "species",
+        "fields": {
+          "c_value": {
+            "aggregation_source": [
+              "ancestor"
+            ],
+            "value": 3.7421875,
+            "min": 1.6,
+            "aggregation_method": "median",
+            "median": 3.7424999999999997,
+            "count": 14,
+            "mean": 3.608214285714286,
+            "aggregation_rank": "genus",
+            "max": 7.17,
+            "aggregation_taxon_id": "7901"
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-172544",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "scientific_name": "Acipenser sp. IMCB-2001",
+            "taxon_id": "172544",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 1,
+            "scientific_name": "unclassified Acipenser",
+            "taxon_id": "2649592",
+            "taxon_rank": "no rank"
+          },
+          {
+            "node_depth": 2,
+            "scientific_name": "Acipenser",
+            "taxon_id": "7901",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 3,
+            "scientific_name": "Acipenserini",
+            "taxon_id": "124130",
+            "taxon_rank": "tribe"
+          },
+          {
+            "node_depth": 4,
+            "scientific_name": "Acipenserinae",
+            "taxon_id": "124129",
+            "taxon_rank": "subfamily"
+          },
+          {
+            "node_depth": 5,
+            "scientific_name": "Acipenseridae",
+            "taxon_id": "7900",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 6,
+            "scientific_name": "Acipenseroidei",
+            "taxon_id": "186622",
+            "taxon_rank": "suborder"
+          },
+          {
+            "node_depth": 7,
+            "scientific_name": "Acipenseriformes",
+            "taxon_id": "7899",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 8,
+            "scientific_name": "Chondrostei",
+            "taxon_id": "32440",
+            "taxon_rank": "subclass"
+          },
+          {
+            "node_depth": 9,
+            "scientific_name": "Actinopteri",
+            "taxon_id": "186623",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 10,
+            "scientific_name": "Actinopterygii",
+            "taxon_id": "7898",
+            "taxon_rank": "superclass"
+          },
+          {
+            "node_depth": 11,
+            "scientific_name": "Euteleostomi",
+            "taxon_id": "117571",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 12,
+            "scientific_name": "Teleostomi",
+            "taxon_id": "117570",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 13,
+            "scientific_name": "Gnathostomata",
+            "taxon_id": "7776",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 14,
+            "scientific_name": "Vertebrata",
+            "taxon_id": "7742",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 15,
+            "scientific_name": "Craniata",
+            "taxon_id": "89593",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 16,
+            "scientific_name": "Chordata",
+            "taxon_id": "7711",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 17,
+            "scientific_name": "Deuterostomia",
+            "taxon_id": "33511",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 18,
+            "scientific_name": "Bilateria",
+            "taxon_id": "33213",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 19,
+            "scientific_name": "Eumetazoa",
+            "taxon_id": "6072",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 20,
+            "scientific_name": "Metazoa",
+            "taxon_id": "33208",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 21,
+            "scientific_name": "Opisthokonta",
+            "taxon_id": "33154",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 22,
+            "scientific_name": "Eukaryota",
+            "taxon_id": "2759",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 23,
+            "scientific_name": "cellular organisms",
+            "taxon_id": "131567",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 24,
+            "scientific_name": "root",
+            "taxon_id": "1",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "2649592",
+        "scientific_name": "Acipenser sp. IMCB-2001",
+        "taxon_id": "172544",
+        "taxon_names": [
+          {
+            "class": "scientific name",
+            "name": "Acipenser sp. IMCB-2001",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "merged taxon id",
+            "name": "188526",
+            "source": null,
+            "source_url": null,
+            "source_url_stub": null
+          },
+          {
+            "class": "xref",
+            "name": "ncbi:172544",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          }
+        ],
+        "taxon_rank": "species",
+        "fields": {
+          "c_value": {
+            "aggregation_source": [
+              "ancestor"
+            ],
+            "value": 3.7421875,
+            "min": 1.6,
+            "aggregation_method": "median",
+            "median": 3.7424999999999997,
+            "count": 14,
+            "mean": 3.608214285714286,
+            "aggregation_rank": "genus",
+            "max": 7.17,
+            "aggregation_taxon_id": "7901"
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-632694",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "scientific_name": "Acipenser sp. EBD8173",
+            "taxon_id": "632694",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 1,
+            "scientific_name": "unclassified Acipenser",
+            "taxon_id": "2649592",
+            "taxon_rank": "no rank"
+          },
+          {
+            "node_depth": 2,
+            "scientific_name": "Acipenser",
+            "taxon_id": "7901",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 3,
+            "scientific_name": "Acipenserini",
+            "taxon_id": "124130",
+            "taxon_rank": "tribe"
+          },
+          {
+            "node_depth": 4,
+            "scientific_name": "Acipenserinae",
+            "taxon_id": "124129",
+            "taxon_rank": "subfamily"
+          },
+          {
+            "node_depth": 5,
+            "scientific_name": "Acipenseridae",
+            "taxon_id": "7900",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 6,
+            "scientific_name": "Acipenseroidei",
+            "taxon_id": "186622",
+            "taxon_rank": "suborder"
+          },
+          {
+            "node_depth": 7,
+            "scientific_name": "Acipenseriformes",
+            "taxon_id": "7899",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 8,
+            "scientific_name": "Chondrostei",
+            "taxon_id": "32440",
+            "taxon_rank": "subclass"
+          },
+          {
+            "node_depth": 9,
+            "scientific_name": "Actinopteri",
+            "taxon_id": "186623",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 10,
+            "scientific_name": "Actinopterygii",
+            "taxon_id": "7898",
+            "taxon_rank": "superclass"
+          },
+          {
+            "node_depth": 11,
+            "scientific_name": "Euteleostomi",
+            "taxon_id": "117571",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 12,
+            "scientific_name": "Teleostomi",
+            "taxon_id": "117570",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 13,
+            "scientific_name": "Gnathostomata",
+            "taxon_id": "7776",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 14,
+            "scientific_name": "Vertebrata",
+            "taxon_id": "7742",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 15,
+            "scientific_name": "Craniata",
+            "taxon_id": "89593",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 16,
+            "scientific_name": "Chordata",
+            "taxon_id": "7711",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 17,
+            "scientific_name": "Deuterostomia",
+            "taxon_id": "33511",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 18,
+            "scientific_name": "Bilateria",
+            "taxon_id": "33213",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 19,
+            "scientific_name": "Eumetazoa",
+            "taxon_id": "6072",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 20,
+            "scientific_name": "Metazoa",
+            "taxon_id": "33208",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 21,
+            "scientific_name": "Opisthokonta",
+            "taxon_id": "33154",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 22,
+            "scientific_name": "Eukaryota",
+            "taxon_id": "2759",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 23,
+            "scientific_name": "cellular organisms",
+            "taxon_id": "131567",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 24,
+            "scientific_name": "root",
+            "taxon_id": "1",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "2649592",
+        "scientific_name": "Acipenser sp. EBD8173",
+        "taxon_id": "632694",
+        "taxon_names": [
+          {
+            "class": "scientific name",
+            "name": "Acipenser sp. EBD8173",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "xref",
+            "name": "ncbi:632694",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          }
+        ],
+        "taxon_rank": "species",
+        "fields": {
+          "c_value": {
+            "aggregation_source": [
+              "ancestor"
+            ],
+            "value": 3.7421875,
+            "min": 1.6,
+            "aggregation_method": "median",
+            "median": 3.7424999999999997,
+            "count": 14,
+            "mean": 3.608214285714286,
+            "aggregation_rank": "genus",
+            "max": 7.17,
+            "aggregation_taxon_id": "7901"
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-632695",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "scientific_name": "Acipenser sp. EBD8174",
+            "taxon_id": "632695",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 1,
+            "scientific_name": "unclassified Acipenser",
+            "taxon_id": "2649592",
+            "taxon_rank": "no rank"
+          },
+          {
+            "node_depth": 2,
+            "scientific_name": "Acipenser",
+            "taxon_id": "7901",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 3,
+            "scientific_name": "Acipenserini",
+            "taxon_id": "124130",
+            "taxon_rank": "tribe"
+          },
+          {
+            "node_depth": 4,
+            "scientific_name": "Acipenserinae",
+            "taxon_id": "124129",
+            "taxon_rank": "subfamily"
+          },
+          {
+            "node_depth": 5,
+            "scientific_name": "Acipenseridae",
+            "taxon_id": "7900",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 6,
+            "scientific_name": "Acipenseroidei",
+            "taxon_id": "186622",
+            "taxon_rank": "suborder"
+          },
+          {
+            "node_depth": 7,
+            "scientific_name": "Acipenseriformes",
+            "taxon_id": "7899",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 8,
+            "scientific_name": "Chondrostei",
+            "taxon_id": "32440",
+            "taxon_rank": "subclass"
+          },
+          {
+            "node_depth": 9,
+            "scientific_name": "Actinopteri",
+            "taxon_id": "186623",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 10,
+            "scientific_name": "Actinopterygii",
+            "taxon_id": "7898",
+            "taxon_rank": "superclass"
+          },
+          {
+            "node_depth": 11,
+            "scientific_name": "Euteleostomi",
+            "taxon_id": "117571",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 12,
+            "scientific_name": "Teleostomi",
+            "taxon_id": "117570",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 13,
+            "scientific_name": "Gnathostomata",
+            "taxon_id": "7776",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 14,
+            "scientific_name": "Vertebrata",
+            "taxon_id": "7742",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 15,
+            "scientific_name": "Craniata",
+            "taxon_id": "89593",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 16,
+            "scientific_name": "Chordata",
+            "taxon_id": "7711",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 17,
+            "scientific_name": "Deuterostomia",
+            "taxon_id": "33511",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 18,
+            "scientific_name": "Bilateria",
+            "taxon_id": "33213",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 19,
+            "scientific_name": "Eumetazoa",
+            "taxon_id": "6072",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 20,
+            "scientific_name": "Metazoa",
+            "taxon_id": "33208",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 21,
+            "scientific_name": "Opisthokonta",
+            "taxon_id": "33154",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 22,
+            "scientific_name": "Eukaryota",
+            "taxon_id": "2759",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 23,
+            "scientific_name": "cellular organisms",
+            "taxon_id": "131567",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 24,
+            "scientific_name": "root",
+            "taxon_id": "1",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "2649592",
+        "scientific_name": "Acipenser sp. EBD8174",
+        "taxon_id": "632695",
+        "taxon_names": [
+          {
+            "class": "scientific name",
+            "name": "Acipenser sp. EBD8174",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "xref",
+            "name": "ncbi:632695",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          }
+        ],
+        "taxon_rank": "species",
+        "fields": {
+          "c_value": {
+            "aggregation_source": [
+              "ancestor"
+            ],
+            "value": 3.7421875,
+            "min": 1.6,
+            "aggregation_method": "median",
+            "median": 3.7424999999999997,
+            "count": 14,
+            "mean": 3.608214285714286,
+            "aggregation_rank": "genus",
+            "max": 7.17,
+            "aggregation_taxon_id": "7901"
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-632696",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "scientific_name": "Acipenser sp. EBD8401",
+            "taxon_id": "632696",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 1,
+            "scientific_name": "unclassified Acipenser",
+            "taxon_id": "2649592",
+            "taxon_rank": "no rank"
+          },
+          {
+            "node_depth": 2,
+            "scientific_name": "Acipenser",
+            "taxon_id": "7901",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 3,
+            "scientific_name": "Acipenserini",
+            "taxon_id": "124130",
+            "taxon_rank": "tribe"
+          },
+          {
+            "node_depth": 4,
+            "scientific_name": "Acipenserinae",
+            "taxon_id": "124129",
+            "taxon_rank": "subfamily"
+          },
+          {
+            "node_depth": 5,
+            "scientific_name": "Acipenseridae",
+            "taxon_id": "7900",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 6,
+            "scientific_name": "Acipenseroidei",
+            "taxon_id": "186622",
+            "taxon_rank": "suborder"
+          },
+          {
+            "node_depth": 7,
+            "scientific_name": "Acipenseriformes",
+            "taxon_id": "7899",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 8,
+            "scientific_name": "Chondrostei",
+            "taxon_id": "32440",
+            "taxon_rank": "subclass"
+          },
+          {
+            "node_depth": 9,
+            "scientific_name": "Actinopteri",
+            "taxon_id": "186623",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 10,
+            "scientific_name": "Actinopterygii",
+            "taxon_id": "7898",
+            "taxon_rank": "superclass"
+          },
+          {
+            "node_depth": 11,
+            "scientific_name": "Euteleostomi",
+            "taxon_id": "117571",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 12,
+            "scientific_name": "Teleostomi",
+            "taxon_id": "117570",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 13,
+            "scientific_name": "Gnathostomata",
+            "taxon_id": "7776",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 14,
+            "scientific_name": "Vertebrata",
+            "taxon_id": "7742",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 15,
+            "scientific_name": "Craniata",
+            "taxon_id": "89593",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 16,
+            "scientific_name": "Chordata",
+            "taxon_id": "7711",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 17,
+            "scientific_name": "Deuterostomia",
+            "taxon_id": "33511",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 18,
+            "scientific_name": "Bilateria",
+            "taxon_id": "33213",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 19,
+            "scientific_name": "Eumetazoa",
+            "taxon_id": "6072",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 20,
+            "scientific_name": "Metazoa",
+            "taxon_id": "33208",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 21,
+            "scientific_name": "Opisthokonta",
+            "taxon_id": "33154",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 22,
+            "scientific_name": "Eukaryota",
+            "taxon_id": "2759",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 23,
+            "scientific_name": "cellular organisms",
+            "taxon_id": "131567",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 24,
+            "scientific_name": "root",
+            "taxon_id": "1",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "2649592",
+        "scientific_name": "Acipenser sp. EBD8401",
+        "taxon_id": "632696",
+        "taxon_names": [
+          {
+            "class": "scientific name",
+            "name": "Acipenser sp. EBD8401",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "xref",
+            "name": "ncbi:632696",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          }
+        ],
+        "taxon_rank": "species",
+        "fields": {
+          "c_value": {
+            "aggregation_source": [
+              "ancestor"
+            ],
+            "value": 3.7421875,
+            "min": 1.6,
+            "aggregation_method": "median",
+            "median": 3.7424999999999997,
+            "count": 14,
+            "mean": 3.608214285714286,
+            "aggregation_rank": "genus",
+            "max": 7.17,
+            "aggregation_taxon_id": "7901"
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-654604",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "scientific_name": "Acipenser sp. CAS-2009",
+            "taxon_id": "654604",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 1,
+            "scientific_name": "unclassified Acipenser",
+            "taxon_id": "2649592",
+            "taxon_rank": "no rank"
+          },
+          {
+            "node_depth": 2,
+            "scientific_name": "Acipenser",
+            "taxon_id": "7901",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 3,
+            "scientific_name": "Acipenserini",
+            "taxon_id": "124130",
+            "taxon_rank": "tribe"
+          },
+          {
+            "node_depth": 4,
+            "scientific_name": "Acipenserinae",
+            "taxon_id": "124129",
+            "taxon_rank": "subfamily"
+          },
+          {
+            "node_depth": 5,
+            "scientific_name": "Acipenseridae",
+            "taxon_id": "7900",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 6,
+            "scientific_name": "Acipenseroidei",
+            "taxon_id": "186622",
+            "taxon_rank": "suborder"
+          },
+          {
+            "node_depth": 7,
+            "scientific_name": "Acipenseriformes",
+            "taxon_id": "7899",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 8,
+            "scientific_name": "Chondrostei",
+            "taxon_id": "32440",
+            "taxon_rank": "subclass"
+          },
+          {
+            "node_depth": 9,
+            "scientific_name": "Actinopteri",
+            "taxon_id": "186623",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 10,
+            "scientific_name": "Actinopterygii",
+            "taxon_id": "7898",
+            "taxon_rank": "superclass"
+          },
+          {
+            "node_depth": 11,
+            "scientific_name": "Euteleostomi",
+            "taxon_id": "117571",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 12,
+            "scientific_name": "Teleostomi",
+            "taxon_id": "117570",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 13,
+            "scientific_name": "Gnathostomata",
+            "taxon_id": "7776",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 14,
+            "scientific_name": "Vertebrata",
+            "taxon_id": "7742",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 15,
+            "scientific_name": "Craniata",
+            "taxon_id": "89593",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 16,
+            "scientific_name": "Chordata",
+            "taxon_id": "7711",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 17,
+            "scientific_name": "Deuterostomia",
+            "taxon_id": "33511",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 18,
+            "scientific_name": "Bilateria",
+            "taxon_id": "33213",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 19,
+            "scientific_name": "Eumetazoa",
+            "taxon_id": "6072",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 20,
+            "scientific_name": "Metazoa",
+            "taxon_id": "33208",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 21,
+            "scientific_name": "Opisthokonta",
+            "taxon_id": "33154",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 22,
+            "scientific_name": "Eukaryota",
+            "taxon_id": "2759",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 23,
+            "scientific_name": "cellular organisms",
+            "taxon_id": "131567",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 24,
+            "scientific_name": "root",
+            "taxon_id": "1",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "2649592",
+        "scientific_name": "Acipenser sp. CAS-2009",
+        "taxon_id": "654604",
+        "taxon_names": [
+          {
+            "class": "scientific name",
+            "name": "Acipenser sp. CAS-2009",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "xref",
+            "name": "ncbi:654604",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          }
+        ],
+        "taxon_rank": "species",
+        "fields": {
+          "c_value": {
+            "aggregation_source": [
+              "ancestor"
+            ],
+            "value": 3.7421875,
+            "min": 1.6,
+            "aggregation_method": "median",
+            "median": 3.7424999999999997,
+            "count": 14,
+            "mean": 3.608214285714286,
+            "aggregation_rank": "genus",
+            "max": 7.17,
+            "aggregation_taxon_id": "7901"
+          }
+        }
+      }
+    }
+  ],
+  "aggs": {
+    "fields": {
+      "doc_count": 611990,
+      "by_key": {
+        "buckets": {
+          "c_value": {
+            "doc_count": 59764,
+            "value_list": {
+              "doc_count_error_upper_bound": 0,
+              "sum_other_doc_count": 0,
+              "buckets": []
+            },
+            "value_count": {
+              "value": 59764
+            }
+          }
+        }
+      }
+    }
+  },
+  "fields": [
+    "c_value"
+  ],
+  "query": {
+    "size": 20,
+    "from": 0,
+    "query": {
+      "bool": {
+        "must_not": [
+          {
+            "nested": {
+              "path": "attributes",
+              "query": {
+                "bool": {
+                  "filter": [
+                    {
+                      "match": {
+                        "attributes.key": "c_value"
+                      }
+                    },
+                    {
+                      "match": {
+                        "attributes.aggregation_source": "descendant"
+                      }
+                    },
+                    {
+                      "bool": {
+                        "must_not": {
+                          "match": {
+                            "attributes.aggregation_source": "direct"
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        ],
+        "filter": [
+          {
+            "bool": {
+              "should": [
+                {
+                  "bool": {
+                    "filter": {
+                      "nested": {
+                        "path": "attributes",
+                        "query": {
+                          "bool": {
+                            "should": [
+                              {
+                                "bool": {
+                                  "filter": [
+                                    {
+                                      "match": {
+                                        "attributes.key": "c_value"
+                                      }
+                                    },
+                                    {
+                                      "exists": {
+                                        "field": "attributes.half_float_value"
+                                      }
+                                    },
+                                    {
+                                      "exists": {
+                                        "field": "attributes.aggregation_source"
+                                      }
+                                    },
+                                    {
+                                      "exists": {
+                                        "field": "attributes.aggregation_method"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "bool": {
+                    "should": {
+                      "nested": {
+                        "path": "attributes",
+                        "query": {
+                          "bool": {
+                            "should": [
+                              {
+                                "bool": {
+                                  "filter": [
+                                    {
+                                      "match": {
+                                        "attributes.key": "c_value"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        "inner_hits": {
+                          "_source": false,
+                          "name": "attributes",
+                          "docvalue_fields": [
+                            "attributes.key",
+                            "attributes.is_primary_value",
+                            "attributes.count",
+                            "attributes.sp_count",
+                            "attributes.max",
+                            "attributes.min",
+                            "attributes.mean",
+                            "attributes.median",
+                            "attributes.mode",
+                            "attributes.sum",
+                            "attributes.from",
+                            "attributes.to",
+                            "attributes.range",
+                            "attributes.length",
+                            "attributes.aggregation_method",
+                            "attributes.aggregation_source",
+                            "attributes.aggregation_rank",
+                            "attributes.aggregation_taxon_id",
+                            "attributes.half_float_value"
+                          ],
+                          "size": 100
+                        }
+                      }
+                    }
+                  }
+                }
+              ],
+              "minimum_should_match": 2
+            }
+          },
+          {
+            "bool": {
+              "should": [
+                {
+                  "bool": {
+                    "should": [
+                      {
+                        "bool": {
+                          "should": [
+                            {
+                              "nested": {
+                                "path": "taxon_names",
+                                "query": {
+                                  "bool": {
+                                    "filter": [
+                                      {
+                                        "match": {
+                                          "taxon_names.name": "actinopterygii"
+                                        }
+                                      }
+                                    ]
+                                  }
+                                }
+                              }
+                            },
+                            {
+                              "match": {
+                                "taxon_id": "actinopterygii"
+                              }
+                            },
+                            {
+                              "nested": {
+                                "path": "lineage",
+                                "query": {
+                                  "bool": {
+                                    "filter": [
+                                      {
+                                        "multi_match": {
+                                          "query": "actinopterygii",
+                                          "fields": [
+                                            "lineage.taxon_id",
+                                            "lineage.scientific_name"
+                                          ]
+                                        }
+                                      }
+                                    ]
+                                  }
+                                }
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        ],
+        "should": []
+      }
+    },
+    "_source": {
+      "include": [
+        "taxon_id",
+        "scientific_name",
+        "taxon_rank",
+        "parent",
+        "taxon_names.*",
+        "lineage.*"
+      ],
+      "exclude": []
+    },
+    "sort": [],
+    "aggs": {
+      "fields": {
+        "nested": {
+          "path": "attributes"
+        },
+        "aggs": {
+          "by_key": {
+            "filters": {
+              "filters": {
+                "c_value": {
+                  "term": {
+                    "attributes.key": "c_value"
+                  }
+                }
+              }
+            },
+            "aggs": {
+              "value_count": {
+                "value_count": {
+                  "field": "attributes.key"
+                }
+              },
+              "value_list": {
+                "terms": {
+                  "field": "attributes.keyword_value",
+                  "size": 64
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

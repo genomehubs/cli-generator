@@ -1,0 +1,78 @@
+#!/bin/bash
+# Rebuild the WASM module for this JavaScript SDK (Node.js + Browser).
+#
+# This script produces dual WASM builds:
+#   - pkg-nodejs/ : optimized for Node.js
+#   - pkg-web/    : optimized for browsers
+#
+# The pre-built packages are included when this project is generated.
+# Only run this script if you need to rebuild from a modified cli-generator source.
+#
+# Prerequisites:
+#   - Rust toolchain with wasm32-unknown-unknown target
+#   - wasm-pack: cargo install wasm-pack
+
+set -e
+
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+# Try to find cli-generator repo (allow override via REPO_ROOT env var)
+if [ -z "$REPO_ROOT" ]; then
+  REPO_ROOT=""
+  for path in \
+    "$SCRIPT_DIR/../../../../cli-generator" \
+    "$SCRIPT_DIR/../../../cli-generator" \
+    "$HOME/genomehubs/cli-generator" \
+    "$HOME/projects/genomehubs/cli-generator"; do
+    if [ -f "$path/crates/genomehubs-query/Cargo.toml" ]; then
+      REPO_ROOT="$path"
+      break
+    fi
+  done
+fi
+
+if [ -z "$REPO_ROOT" ]; then
+  echo "cli-generator source not found. Clone it and set REPO_ROOT manually."
+  exit 1
+fi
+
+echo "Building dual WASM packages from $REPO_ROOT/crates/genomehubs-query ..."
+
+if ! command -v wasm-pack &> /dev/null; then
+  echo "wasm-pack not found. Install with: cargo install wasm-pack"
+  exit 1
+fi
+
+cd "$REPO_ROOT/crates/genomehubs-query"
+
+# Build for web
+echo "  → Building for browsers (--target web)"
+wasm-pack build --target web --features wasm
+rm -rf "$SCRIPT_DIR/pkg-web" && mv pkg "$SCRIPT_DIR/pkg-web"
+
+# Build for Node.js
+echo "  → Building for Node.js (--target nodejs)"
+wasm-pack build --target nodejs --features wasm
+rm -rf "$SCRIPT_DIR/pkg-nodejs" && mv pkg "$SCRIPT_DIR/pkg-nodejs"
+
+# Copy validation metadata files to make them available to both Node.js and browser SDKs
+echo "  → Copying validation metadata..."
+mkdir -p "$SCRIPT_DIR/generated"
+
+# Copy field metadata if it exists
+if [ -f "$SCRIPT_DIR/../../../src/generated/field_meta.json" ]; then
+  cp "$SCRIPT_DIR/../../../src/generated/field_meta.json" "$SCRIPT_DIR/generated/field_meta.json"
+  echo "    ✓ field_meta.json"
+fi
+
+# Copy validation config if it exists
+if [ -f "$SCRIPT_DIR/../../../src/generated/validation_config.json" ]; then
+  cp "$SCRIPT_DIR/../../../src/generated/validation_config.json" "$SCRIPT_DIR/generated/validation_config.json"
+  echo "    ✓ validation_config.json"
+fi
+
+echo "✓ Done. pkg-web/, pkg-nodejs/, and generated/ updated."
+
+
+
+

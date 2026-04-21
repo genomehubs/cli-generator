@@ -1,0 +1,13 @@
+#' {{ site_display_name }} R SDK
+#'
+#' Query builder and API client for {{ site_display_name }}.
+#'
+#' @docType package
+#' @name {{ r_package_name }}
+#' @useDynLib {{ r_package_name }}, .registration = TRUE
+"_PACKAGE"
+
+#' @importFrom R6 R6Class
+NULL
+
+`%||%` <- function(x, y) if (is.null(x)) y else x

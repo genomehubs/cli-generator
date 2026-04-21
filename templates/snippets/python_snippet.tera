@@ -1,0 +1,34 @@
+import {{ sdk_name }} as sdk
+
+# Create a query builder for {{ site_name }}
+qb = sdk.QueryBuilder("{{ index }}")
+
+{% if traversal -%}
+# Set traversal: {{ traversal[0] }} {{ traversal[1] }}
+qb.set_traversal("{{ traversal[0] }}", "{{ traversal[1] }}")
+{% endif %}
+
+{% for filter in filters -%}
+# Add filter: {{ filter[0] }} {{ filter[1] }} {{ filter[2] }}
+qb.add_attribute("{{ filter[0] }}", operator="{{ filter[1] }}", value="{{ filter[2] }}")
+{% endfor %}
+
+{% for sort in sorts -%}
+# Sort by {{ sort[0] }} {{ sort[1] }}
+qb.set_sort("{{ sort[0] }}", "{{ sort[1] }}")
+{% endfor %}
+
+{% if selections -%}
+# Select specific fields
+{% for field in selections -%}
+qb.add_field("{{ field }}")
+{% endfor -%}
+{% endif %}
+
+# Build the query URL
+url = qb.to_url()
+print(f"Query URL: {url}")
+
+# Optionally fetch data:
+# results = qb.search()
+# print(results)

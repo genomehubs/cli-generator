@@ -1,0 +1,5120 @@
+{
+  "status": {
+    "hits": 1785,
+    "success": true,
+    "took": 21,
+    "size": 20,
+    "offset": 0
+  },
+  "results": [
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-147368",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "scientific_name": "Pooideae",
+            "taxon_id": "147368",
+            "taxon_rank": "subfamily"
+          },
+          {
+            "node_depth": 1,
+            "scientific_name": "BOP clade",
+            "taxon_id": "359160",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 2,
+            "scientific_name": "Poaceae",
+            "taxon_id": "4479",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 3,
+            "scientific_name": "Poales",
+            "taxon_id": "38820",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 4,
+            "scientific_name": "commelinids",
+            "taxon_id": "4734",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 5,
+            "scientific_name": "Petrosaviidae",
+            "taxon_id": "1437197",
+            "taxon_rank": "subclass"
+          },
+          {
+            "node_depth": 6,
+            "scientific_name": "Liliopsida",
+            "taxon_id": "4447",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 7,
+            "scientific_name": "Mesangiospermae",
+            "taxon_id": "1437183",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 8,
+            "scientific_name": "Magnoliopsida",
+            "taxon_id": "3398",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 9,
+            "scientific_name": "Spermatophyta",
+            "taxon_id": "58024",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "scientific_name": "Euphyllophyta",
+            "taxon_id": "78536",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "scientific_name": "Tracheophyta",
+            "taxon_id": "58023",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 12,
+            "scientific_name": "Embryophyta",
+            "taxon_id": "3193",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 13,
+            "scientific_name": "Streptophytina",
+            "taxon_id": "131221",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 14,
+            "scientific_name": "Streptophyta",
+            "taxon_id": "35493",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 15,
+            "scientific_name": "Viridiplantae",
+            "taxon_id": "33090",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 16,
+            "scientific_name": "Eukaryota",
+            "taxon_id": "2759",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 17,
+            "scientific_name": "cellular organisms",
+            "taxon_id": "131567",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 18,
+            "scientific_name": "root",
+            "taxon_id": "1",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "359160",
+        "scientific_name": "Pooideae",
+        "taxon_id": "147368",
+        "taxon_names": [
+          {
+            "class": "scientific name",
+            "name": "Pooideae",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "xref",
+            "name": "ncbi:147368",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          }
+        ],
+        "taxon_rank": "subfamily",
+        "fields": {
+          "assembly_level": {
+            "aggregation_source": [
+              "descendant"
+            ],
+            "sp_count": 97,
+            "value": "Complete Genome",
+            "aggregation_method": "enum",
+            "count": 3
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-986143",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "scientific_name": "Eleocharideae",
+            "taxon_id": "986143",
+            "taxon_rank": "tribe"
+          },
+          {
+            "node_depth": 1,
+            "scientific_name": "Cyperoideae",
+            "taxon_id": "986140",
+            "taxon_rank": "subfamily"
+          },
+          {
+            "node_depth": 2,
+            "scientific_name": "Cyperaceae",
+            "taxon_id": "4609",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 3,
+            "scientific_name": "Poales",
+            "taxon_id": "38820",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 4,
+            "scientific_name": "commelinids",
+            "taxon_id": "4734",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 5,
+            "scientific_name": "Petrosaviidae",
+            "taxon_id": "1437197",
+            "taxon_rank": "subclass"
+          },
+          {
+            "node_depth": 6,
+            "scientific_name": "Liliopsida",
+            "taxon_id": "4447",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 7,
+            "scientific_name": "Mesangiospermae",
+            "taxon_id": "1437183",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 8,
+            "scientific_name": "Magnoliopsida",
+            "taxon_id": "3398",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 9,
+            "scientific_name": "Spermatophyta",
+            "taxon_id": "58024",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "scientific_name": "Euphyllophyta",
+            "taxon_id": "78536",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "scientific_name": "Tracheophyta",
+            "taxon_id": "58023",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 12,
+            "scientific_name": "Embryophyta",
+            "taxon_id": "3193",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 13,
+            "scientific_name": "Streptophytina",
+            "taxon_id": "131221",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 14,
+            "scientific_name": "Streptophyta",
+            "taxon_id": "35493",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 15,
+            "scientific_name": "Viridiplantae",
+            "taxon_id": "33090",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 16,
+            "scientific_name": "Eukaryota",
+            "taxon_id": "2759",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 17,
+            "scientific_name": "cellular organisms",
+            "taxon_id": "131567",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 18,
+            "scientific_name": "root",
+            "taxon_id": "1",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "986140",
+        "scientific_name": "Eleocharideae",
+        "taxon_id": "986143",
+        "taxon_names": [
+          {
+            "class": "scientific name",
+            "name": "Eleocharideae",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "xref",
+            "name": "ncbi:986143",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          }
+        ],
+        "taxon_rank": "tribe",
+        "fields": {
+          "assembly_level": {
+            "aggregation_source": [
+              "descendant"
+            ],
+            "sp_count": 3,
+            "value": "Complete Genome",
+            "aggregation_method": "enum",
+            "count": 1
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-364270",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "scientific_name": "Apiineae",
+            "taxon_id": "364270",
+            "taxon_rank": "suborder"
+          },
+          {
+            "node_depth": 1,
+            "scientific_name": "Apiales",
+            "taxon_id": "4036",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 2,
+            "scientific_name": "campanulids",
+            "taxon_id": "91882",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 3,
+            "scientific_name": "asterids",
+            "taxon_id": "71274",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 4,
+            "scientific_name": "Pentapetalae",
+            "taxon_id": "1437201",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 5,
+            "scientific_name": "Gunneridae",
+            "taxon_id": "91827",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 6,
+            "scientific_name": "eudicotyledons",
+            "taxon_id": "71240",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 7,
+            "scientific_name": "Mesangiospermae",
+            "taxon_id": "1437183",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 8,
+            "scientific_name": "Magnoliopsida",
+            "taxon_id": "3398",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 9,
+            "scientific_name": "Spermatophyta",
+            "taxon_id": "58024",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "scientific_name": "Euphyllophyta",
+            "taxon_id": "78536",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "scientific_name": "Tracheophyta",
+            "taxon_id": "58023",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 12,
+            "scientific_name": "Embryophyta",
+            "taxon_id": "3193",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 13,
+            "scientific_name": "Streptophytina",
+            "taxon_id": "131221",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 14,
+            "scientific_name": "Streptophyta",
+            "taxon_id": "35493",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 15,
+            "scientific_name": "Viridiplantae",
+            "taxon_id": "33090",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 16,
+            "scientific_name": "Eukaryota",
+            "taxon_id": "2759",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 17,
+            "scientific_name": "cellular organisms",
+            "taxon_id": "131567",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 18,
+            "scientific_name": "root",
+            "taxon_id": "1",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "4036",
+        "scientific_name": "Apiineae",
+        "taxon_id": "364270",
+        "taxon_names": [
+          {
+            "class": "scientific name",
+            "name": "Apiineae",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "xref",
+            "name": "ncbi:364270",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          }
+        ],
+        "taxon_rank": "suborder",
+        "fields": {
+          "assembly_level": {
+            "aggregation_source": [
+              "descendant"
+            ],
+            "sp_count": 45,
+            "value": "Complete Genome",
+            "aggregation_method": "enum",
+            "count": 3
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-4070",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "scientific_name": "Solanaceae",
+            "taxon_id": "4070",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 1,
+            "scientific_name": "Solanales",
+            "taxon_id": "4069",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 2,
+            "scientific_name": "lamiids",
+            "taxon_id": "91888",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 3,
+            "scientific_name": "asterids",
+            "taxon_id": "71274",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 4,
+            "scientific_name": "Pentapetalae",
+            "taxon_id": "1437201",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 5,
+            "scientific_name": "Gunneridae",
+            "taxon_id": "91827",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 6,
+            "scientific_name": "eudicotyledons",
+            "taxon_id": "71240",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 7,
+            "scientific_name": "Mesangiospermae",
+            "taxon_id": "1437183",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 8,
+            "scientific_name": "Magnoliopsida",
+            "taxon_id": "3398",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 9,
+            "scientific_name": "Spermatophyta",
+            "taxon_id": "58024",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "scientific_name": "Euphyllophyta",
+            "taxon_id": "78536",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "scientific_name": "Tracheophyta",
+            "taxon_id": "58023",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 12,
+            "scientific_name": "Embryophyta",
+            "taxon_id": "3193",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 13,
+            "scientific_name": "Streptophytina",
+            "taxon_id": "131221",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 14,
+            "scientific_name": "Streptophyta",
+            "taxon_id": "35493",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 15,
+            "scientific_name": "Viridiplantae",
+            "taxon_id": "33090",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 16,
+            "scientific_name": "Eukaryota",
+            "taxon_id": "2759",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 17,
+            "scientific_name": "cellular organisms",
+            "taxon_id": "131567",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 18,
+            "scientific_name": "root",
+            "taxon_id": "1",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "4069",
+        "scientific_name": "Solanaceae",
+        "taxon_id": "4070",
+        "taxon_names": [
+          {
+            "class": "common name",
+            "name": "nightshade family",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "scientific name",
+            "name": "Solanaceae",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "merged taxon id",
+            "name": "40319",
+            "source": null,
+            "source_url": null,
+            "source_url_stub": null
+          },
+          {
+            "class": "xref",
+            "name": "ncbi:4070",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "xref",
+            "name": "worms:414889",
+            "source": "WoRMS",
+            "source_url": "https://www.marinespecies.org/",
+            "source_url_stub": "https://www.marinespecies.org/aphia.php?p=taxdetails&id="
+          },
+          {
+            "class": "xref",
+            "name": "gbif:7717",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "xref",
+            "name": "gbif:4273114",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "xref",
+            "name": "irmng:114043",
+            "source": "IRMNG",
+            "source_url": "https://www.irmng.org/",
+            "source_url_stub": "https://www.irmng.org/aphia.php?p=taxdetails&id="
+          },
+          {
+            "class": "synonym",
+            "name": "Atropaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Browalliaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Cestraceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Daturaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Duckeodendraceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Goetzeaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Hyoscyamaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Lyciaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Nicotianaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Salpiglossidaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Sclerophylacaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "merged taxon id",
+            "name": "5326593",
+            "source": null,
+            "source_url": null,
+            "source_url_stub": null
+          },
+          {
+            "class": "merged taxon id",
+            "name": "5502788",
+            "source": null,
+            "source_url": null,
+            "source_url_stub": null
+          },
+          {
+            "class": "merged taxon id",
+            "name": "5502790",
+            "source": null,
+            "source_url": null,
+            "source_url_stub": null
+          }
+        ],
+        "taxon_rank": "family",
+        "fields": {
+          "assembly_level": {
+            "aggregation_source": [
+              "descendant"
+            ],
+            "sp_count": 112,
+            "value": "Complete Genome",
+            "aggregation_method": "enum",
+            "count": 3
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-4144",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "scientific_name": "Oleaceae",
+            "taxon_id": "4144",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 1,
+            "scientific_name": "Lamiales",
+            "taxon_id": "4143",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 2,
+            "scientific_name": "lamiids",
+            "taxon_id": "91888",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 3,
+            "scientific_name": "asterids",
+            "taxon_id": "71274",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 4,
+            "scientific_name": "Pentapetalae",
+            "taxon_id": "1437201",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 5,
+            "scientific_name": "Gunneridae",
+            "taxon_id": "91827",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 6,
+            "scientific_name": "eudicotyledons",
+            "taxon_id": "71240",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 7,
+            "scientific_name": "Mesangiospermae",
+            "taxon_id": "1437183",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 8,
+            "scientific_name": "Magnoliopsida",
+            "taxon_id": "3398",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 9,
+            "scientific_name": "Spermatophyta",
+            "taxon_id": "58024",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "scientific_name": "Euphyllophyta",
+            "taxon_id": "78536",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "scientific_name": "Tracheophyta",
+            "taxon_id": "58023",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 12,
+            "scientific_name": "Embryophyta",
+            "taxon_id": "3193",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 13,
+            "scientific_name": "Streptophytina",
+            "taxon_id": "131221",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 14,
+            "scientific_name": "Streptophyta",
+            "taxon_id": "35493",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 15,
+            "scientific_name": "Viridiplantae",
+            "taxon_id": "33090",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 16,
+            "scientific_name": "Eukaryota",
+            "taxon_id": "2759",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 17,
+            "scientific_name": "cellular organisms",
+            "taxon_id": "131567",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 18,
+            "scientific_name": "root",
+            "taxon_id": "1",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "4143",
+        "scientific_name": "Oleaceae",
+        "taxon_id": "4144",
+        "taxon_names": [
+          {
+            "class": "scientific name",
+            "name": "Oleaceae",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "common name",
+            "name": "olive famly",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "xref",
+            "name": "study713:6",
+            "source": null,
+            "source_url": null,
+            "source_url_stub": null
+          },
+          {
+            "class": "xref",
+            "name": "ncbi:4144",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "xref",
+            "name": "gbif:6652",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "xref",
+            "name": "irmng:114241",
+            "source": "IRMNG",
+            "source_url": "https://www.irmng.org/",
+            "source_url_stub": "https://www.irmng.org/aphia.php?p=taxdetails&id="
+          },
+          {
+            "class": "synonym",
+            "name": "Bolivariaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Forestieraceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Fraxinaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Jasminaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Lilacaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Nyctanthaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Syringaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          }
+        ],
+        "taxon_rank": "family",
+        "fields": {
+          "assembly_level": {
+            "aggregation_source": [
+              "descendant"
+            ],
+            "sp_count": 45,
+            "value": "Complete Genome",
+            "aggregation_method": "enum",
+            "count": 4
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-3688",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "scientific_name": "Salicaceae",
+            "taxon_id": "3688",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 1,
+            "scientific_name": "Malpighiales",
+            "taxon_id": "3646",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 2,
+            "scientific_name": "fabids",
+            "taxon_id": "91835",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 3,
+            "scientific_name": "rosids",
+            "taxon_id": "71275",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 4,
+            "scientific_name": "Pentapetalae",
+            "taxon_id": "1437201",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 5,
+            "scientific_name": "Gunneridae",
+            "taxon_id": "91827",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 6,
+            "scientific_name": "eudicotyledons",
+            "taxon_id": "71240",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 7,
+            "scientific_name": "Mesangiospermae",
+            "taxon_id": "1437183",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 8,
+            "scientific_name": "Magnoliopsida",
+            "taxon_id": "3398",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 9,
+            "scientific_name": "Spermatophyta",
+            "taxon_id": "58024",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "scientific_name": "Euphyllophyta",
+            "taxon_id": "78536",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "scientific_name": "Tracheophyta",
+            "taxon_id": "58023",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 12,
+            "scientific_name": "Embryophyta",
+            "taxon_id": "3193",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 13,
+            "scientific_name": "Streptophytina",
+            "taxon_id": "131221",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 14,
+            "scientific_name": "Streptophyta",
+            "taxon_id": "35493",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 15,
+            "scientific_name": "Viridiplantae",
+            "taxon_id": "33090",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 16,
+            "scientific_name": "Eukaryota",
+            "taxon_id": "2759",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 17,
+            "scientific_name": "cellular organisms",
+            "taxon_id": "131567",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 18,
+            "scientific_name": "root",
+            "taxon_id": "1",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "3646",
+        "scientific_name": "Salicaceae",
+        "taxon_id": "3688",
+        "taxon_names": [
+          {
+            "class": "scientific name",
+            "name": "Salicaceae",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "synonym",
+            "name": "Scyphostegiaceae",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "synonym",
+            "name": "Scyphostegieae",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "common name",
+            "name": "willow family",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "merged taxon id",
+            "name": "45162",
+            "source": null,
+            "source_url": null,
+            "source_url_stub": null
+          },
+          {
+            "class": "merged taxon id",
+            "name": "124995",
+            "source": null,
+            "source_url": null,
+            "source_url_stub": null
+          },
+          {
+            "class": "merged taxon id",
+            "name": "238077",
+            "source": null,
+            "source_url": null,
+            "source_url_stub": null
+          },
+          {
+            "class": "xref",
+            "name": "ncbi:3688",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "xref",
+            "name": "gbif:6664",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "xref",
+            "name": "irmng:113081",
+            "source": "IRMNG",
+            "source_url": "https://www.irmng.org/",
+            "source_url_stub": "https://www.irmng.org/aphia.php?p=taxdetails&id="
+          },
+          {
+            "class": "xref",
+            "name": "irmng:113986",
+            "source": "IRMNG",
+            "source_url": "https://www.irmng.org/",
+            "source_url_stub": "https://www.irmng.org/aphia.php?p=taxdetails&id="
+          },
+          {
+            "class": "synonym",
+            "name": "Bembiciaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Caseariaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Homaliaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Patrisaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Prockiaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "merged taxon id",
+            "name": "5920141",
+            "source": null,
+            "source_url": null,
+            "source_url_stub": null
+          },
+          {
+            "class": "merged taxon id",
+            "name": "4730572",
+            "source": null,
+            "source_url": null,
+            "source_url_stub": null
+          },
+          {
+            "class": "merged taxon id",
+            "name": "5503433",
+            "source": null,
+            "source_url": null,
+            "source_url_stub": null
+          }
+        ],
+        "taxon_rank": "family",
+        "fields": {
+          "assembly_level": {
+            "aggregation_source": [
+              "descendant"
+            ],
+            "sp_count": 45,
+            "value": "Complete Genome",
+            "aggregation_method": "enum",
+            "count": 2
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-4004",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "scientific_name": "Linaceae",
+            "taxon_id": "4004",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 1,
+            "scientific_name": "Malpighiales",
+            "taxon_id": "3646",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 2,
+            "scientific_name": "fabids",
+            "taxon_id": "91835",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 3,
+            "scientific_name": "rosids",
+            "taxon_id": "71275",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 4,
+            "scientific_name": "Pentapetalae",
+            "taxon_id": "1437201",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 5,
+            "scientific_name": "Gunneridae",
+            "taxon_id": "91827",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 6,
+            "scientific_name": "eudicotyledons",
+            "taxon_id": "71240",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 7,
+            "scientific_name": "Mesangiospermae",
+            "taxon_id": "1437183",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 8,
+            "scientific_name": "Magnoliopsida",
+            "taxon_id": "3398",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 9,
+            "scientific_name": "Spermatophyta",
+            "taxon_id": "58024",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "scientific_name": "Euphyllophyta",
+            "taxon_id": "78536",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "scientific_name": "Tracheophyta",
+            "taxon_id": "58023",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 12,
+            "scientific_name": "Embryophyta",
+            "taxon_id": "3193",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 13,
+            "scientific_name": "Streptophytina",
+            "taxon_id": "131221",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 14,
+            "scientific_name": "Streptophyta",
+            "taxon_id": "35493",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 15,
+            "scientific_name": "Viridiplantae",
+            "taxon_id": "33090",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 16,
+            "scientific_name": "Eukaryota",
+            "taxon_id": "2759",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 17,
+            "scientific_name": "cellular organisms",
+            "taxon_id": "131567",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 18,
+            "scientific_name": "root",
+            "taxon_id": "1",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "3646",
+        "scientific_name": "Linaceae",
+        "taxon_id": "4004",
+        "taxon_names": [
+          {
+            "class": "common name",
+            "name": "flax family",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "scientific name",
+            "name": "Linaceae",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "merged taxon id",
+            "name": "124918",
+            "source": null,
+            "source_url": null,
+            "source_url_stub": null
+          },
+          {
+            "class": "xref",
+            "name": "ncbi:4004",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "xref",
+            "name": "worms:414836",
+            "source": "WoRMS",
+            "source_url": "https://www.marinespecies.org/",
+            "source_url_stub": "https://www.marinespecies.org/aphia.php?p=taxdetails&id="
+          },
+          {
+            "class": "xref",
+            "name": "gbif:2493",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "xref",
+            "name": "irmng:119634",
+            "source": "IRMNG",
+            "source_url": "https://www.irmng.org/",
+            "source_url_stub": "https://www.irmng.org/aphia.php?p=taxdetails&id="
+          }
+        ],
+        "taxon_rank": "family",
+        "fields": {
+          "assembly_level": {
+            "aggregation_source": [
+              "descendant"
+            ],
+            "sp_count": 8,
+            "value": "Complete Genome",
+            "aggregation_method": "enum",
+            "count": 1
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-3481",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "scientific_name": "Cannabaceae",
+            "taxon_id": "3481",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 1,
+            "scientific_name": "Rosales",
+            "taxon_id": "3744",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 2,
+            "scientific_name": "fabids",
+            "taxon_id": "91835",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 3,
+            "scientific_name": "rosids",
+            "taxon_id": "71275",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 4,
+            "scientific_name": "Pentapetalae",
+            "taxon_id": "1437201",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 5,
+            "scientific_name": "Gunneridae",
+            "taxon_id": "91827",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 6,
+            "scientific_name": "eudicotyledons",
+            "taxon_id": "71240",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 7,
+            "scientific_name": "Mesangiospermae",
+            "taxon_id": "1437183",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 8,
+            "scientific_name": "Magnoliopsida",
+            "taxon_id": "3398",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 9,
+            "scientific_name": "Spermatophyta",
+            "taxon_id": "58024",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "scientific_name": "Euphyllophyta",
+            "taxon_id": "78536",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "scientific_name": "Tracheophyta",
+            "taxon_id": "58023",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 12,
+            "scientific_name": "Embryophyta",
+            "taxon_id": "3193",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 13,
+            "scientific_name": "Streptophytina",
+            "taxon_id": "131221",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 14,
+            "scientific_name": "Streptophyta",
+            "taxon_id": "35493",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 15,
+            "scientific_name": "Viridiplantae",
+            "taxon_id": "33090",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 16,
+            "scientific_name": "Eukaryota",
+            "taxon_id": "2759",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 17,
+            "scientific_name": "cellular organisms",
+            "taxon_id": "131567",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 18,
+            "scientific_name": "root",
+            "taxon_id": "1",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "3744",
+        "scientific_name": "Cannabaceae",
+        "taxon_id": "3481",
+        "taxon_names": [
+          {
+            "class": "scientific name",
+            "name": "Cannabaceae",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "genbank common name",
+            "name": "hemp family",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "common name",
+            "name": "hop family",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "xref",
+            "name": "ncbi:3481",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "xref",
+            "name": "gbif:2384",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "xref",
+            "name": "irmng:112585",
+            "source": "IRMNG",
+            "source_url": "https://www.irmng.org/",
+            "source_url_stub": "https://www.irmng.org/aphia.php?p=taxdetails&id="
+          },
+          {
+            "class": "synonym",
+            "name": "Celtidaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Humulaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Lupulaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          }
+        ],
+        "taxon_rank": "family",
+        "fields": {
+          "assembly_level": {
+            "aggregation_source": [
+              "descendant"
+            ],
+            "sp_count": 6,
+            "value": "Complete Genome",
+            "aggregation_method": "enum",
+            "count": 4
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-3608",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "scientific_name": "Rhamnaceae",
+            "taxon_id": "3608",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 1,
+            "scientific_name": "Rosales",
+            "taxon_id": "3744",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 2,
+            "scientific_name": "fabids",
+            "taxon_id": "91835",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 3,
+            "scientific_name": "rosids",
+            "taxon_id": "71275",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 4,
+            "scientific_name": "Pentapetalae",
+            "taxon_id": "1437201",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 5,
+            "scientific_name": "Gunneridae",
+            "taxon_id": "91827",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 6,
+            "scientific_name": "eudicotyledons",
+            "taxon_id": "71240",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 7,
+            "scientific_name": "Mesangiospermae",
+            "taxon_id": "1437183",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 8,
+            "scientific_name": "Magnoliopsida",
+            "taxon_id": "3398",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 9,
+            "scientific_name": "Spermatophyta",
+            "taxon_id": "58024",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "scientific_name": "Euphyllophyta",
+            "taxon_id": "78536",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "scientific_name": "Tracheophyta",
+            "taxon_id": "58023",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 12,
+            "scientific_name": "Embryophyta",
+            "taxon_id": "3193",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 13,
+            "scientific_name": "Streptophytina",
+            "taxon_id": "131221",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 14,
+            "scientific_name": "Streptophyta",
+            "taxon_id": "35493",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 15,
+            "scientific_name": "Viridiplantae",
+            "taxon_id": "33090",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 16,
+            "scientific_name": "Eukaryota",
+            "taxon_id": "2759",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 17,
+            "scientific_name": "cellular organisms",
+            "taxon_id": "131567",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 18,
+            "scientific_name": "root",
+            "taxon_id": "1",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "3744",
+        "scientific_name": "Rhamnaceae",
+        "taxon_id": "3608",
+        "taxon_names": [
+          {
+            "class": "common name",
+            "name": "buckthorn family",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "scientific name",
+            "name": "Rhamnaceae",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "xref",
+            "name": "ncbi:3608",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "xref",
+            "name": "worms:426042",
+            "source": "WoRMS",
+            "source_url": "https://www.marinespecies.org/",
+            "source_url_stub": "https://www.marinespecies.org/aphia.php?p=taxdetails&id="
+          },
+          {
+            "class": "xref",
+            "name": "gbif:2407",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "xref",
+            "name": "irmng:114624",
+            "source": "IRMNG",
+            "source_url": "https://www.irmng.org/",
+            "source_url_stub": "https://www.irmng.org/aphia.php?p=taxdetails&id="
+          },
+          {
+            "class": "synonym",
+            "name": "Frangulaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Phylicaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Ziziphaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          }
+        ],
+        "taxon_rank": "family",
+        "fields": {
+          "assembly_level": {
+            "aggregation_source": [
+              "descendant"
+            ],
+            "sp_count": 12,
+            "value": "Complete Genome",
+            "aggregation_method": "enum",
+            "count": 4
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-3745",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "scientific_name": "Rosaceae",
+            "taxon_id": "3745",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 1,
+            "scientific_name": "Rosales",
+            "taxon_id": "3744",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 2,
+            "scientific_name": "fabids",
+            "taxon_id": "91835",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 3,
+            "scientific_name": "rosids",
+            "taxon_id": "71275",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 4,
+            "scientific_name": "Pentapetalae",
+            "taxon_id": "1437201",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 5,
+            "scientific_name": "Gunneridae",
+            "taxon_id": "91827",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 6,
+            "scientific_name": "eudicotyledons",
+            "taxon_id": "71240",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 7,
+            "scientific_name": "Mesangiospermae",
+            "taxon_id": "1437183",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 8,
+            "scientific_name": "Magnoliopsida",
+            "taxon_id": "3398",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 9,
+            "scientific_name": "Spermatophyta",
+            "taxon_id": "58024",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "scientific_name": "Euphyllophyta",
+            "taxon_id": "78536",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "scientific_name": "Tracheophyta",
+            "taxon_id": "58023",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 12,
+            "scientific_name": "Embryophyta",
+            "taxon_id": "3193",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 13,
+            "scientific_name": "Streptophytina",
+            "taxon_id": "131221",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 14,
+            "scientific_name": "Streptophyta",
+            "taxon_id": "35493",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 15,
+            "scientific_name": "Viridiplantae",
+            "taxon_id": "33090",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 16,
+            "scientific_name": "Eukaryota",
+            "taxon_id": "2759",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 17,
+            "scientific_name": "cellular organisms",
+            "taxon_id": "131567",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 18,
+            "scientific_name": "root",
+            "taxon_id": "1",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "3744",
+        "scientific_name": "Rosaceae",
+        "taxon_id": "3745",
+        "taxon_names": [
+          {
+            "class": "synonym",
+            "name": "Malaceae",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "scientific name",
+            "name": "Rosaceae",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "common name",
+            "name": "rose family",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "xref",
+            "name": "ncbi:3745",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "xref",
+            "name": "worms:414881",
+            "source": "WoRMS",
+            "source_url": "https://www.marinespecies.org/",
+            "source_url_stub": "https://www.marinespecies.org/aphia.php?p=taxdetails&id="
+          },
+          {
+            "class": "xref",
+            "name": "gbif:5015",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "xref",
+            "name": "irmng:114625",
+            "source": "IRMNG",
+            "source_url": "https://www.irmng.org/",
+            "source_url_stub": "https://www.irmng.org/aphia.php?p=taxdetails&id="
+          },
+          {
+            "class": "synonym",
+            "name": "Agrimoniaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Alchemillaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Amygdalaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Cercocarpaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Coleogynaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Dryadaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Fragariaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Lindleyaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Neilliaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Potentillaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Prunaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Rhodotypaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Sanguisorbaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Spiraeaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Ulmariaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          }
+        ],
+        "taxon_rank": "family",
+        "fields": {
+          "assembly_level": {
+            "aggregation_source": [
+              "descendant"
+            ],
+            "sp_count": 144,
+            "value": "Complete Genome",
+            "aggregation_method": "enum",
+            "count": 4
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-3803",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "scientific_name": "Fabaceae",
+            "taxon_id": "3803",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 1,
+            "scientific_name": "Fabales",
+            "taxon_id": "72025",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 2,
+            "scientific_name": "fabids",
+            "taxon_id": "91835",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 3,
+            "scientific_name": "rosids",
+            "taxon_id": "71275",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 4,
+            "scientific_name": "Pentapetalae",
+            "taxon_id": "1437201",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 5,
+            "scientific_name": "Gunneridae",
+            "taxon_id": "91827",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 6,
+            "scientific_name": "eudicotyledons",
+            "taxon_id": "71240",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 7,
+            "scientific_name": "Mesangiospermae",
+            "taxon_id": "1437183",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 8,
+            "scientific_name": "Magnoliopsida",
+            "taxon_id": "3398",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 9,
+            "scientific_name": "Spermatophyta",
+            "taxon_id": "58024",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "scientific_name": "Euphyllophyta",
+            "taxon_id": "78536",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "scientific_name": "Tracheophyta",
+            "taxon_id": "58023",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 12,
+            "scientific_name": "Embryophyta",
+            "taxon_id": "3193",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 13,
+            "scientific_name": "Streptophytina",
+            "taxon_id": "131221",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 14,
+            "scientific_name": "Streptophyta",
+            "taxon_id": "35493",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 15,
+            "scientific_name": "Viridiplantae",
+            "taxon_id": "33090",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 16,
+            "scientific_name": "Eukaryota",
+            "taxon_id": "2759",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 17,
+            "scientific_name": "cellular organisms",
+            "taxon_id": "131567",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 18,
+            "scientific_name": "root",
+            "taxon_id": "1",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "72025",
+        "scientific_name": "Fabaceae",
+        "taxon_id": "3803",
+        "taxon_names": [
+          {
+            "class": "scientific name",
+            "name": "Fabaceae",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "synonym",
+            "name": "Leguminosae",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "common name",
+            "name": "pea family",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "xref",
+            "name": "ncbi:3803",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "xref",
+            "name": "worms:414814",
+            "source": "WoRMS",
+            "source_url": "https://www.marinespecies.org/",
+            "source_url_stub": "https://www.marinespecies.org/aphia.php?p=taxdetails&id="
+          },
+          {
+            "class": "xref",
+            "name": "gbif:5386",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "xref",
+            "name": "irmng:115372",
+            "source": "IRMNG",
+            "source_url": "https://www.irmng.org/",
+            "source_url_stub": "https://www.irmng.org/aphia.php?p=taxdetails&id="
+          },
+          {
+            "class": "synonym",
+            "name": "Acaciaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Aspalathaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Astragalaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Bauhiniaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Caesalpiniaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Cassiaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Ceratoniaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Ciceraceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Coronillaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Dalbergiaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Daleaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Detariaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Galedupaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Geoffroeaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Hedysaraceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Inocarpaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Lotaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Mimosaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Papilionaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Phaseolaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Swartziaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Tamarindaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Trifoliaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Viciaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "merged taxon id",
+            "name": "5503431",
+            "source": null,
+            "source_url": null,
+            "source_url_stub": null
+          },
+          {
+            "class": "merged taxon id",
+            "name": "5503432",
+            "source": null,
+            "source_url": null,
+            "source_url_stub": null
+          }
+        ],
+        "taxon_rank": "family",
+        "fields": {
+          "assembly_level": {
+            "aggregation_source": [
+              "descendant"
+            ],
+            "sp_count": 200,
+            "value": "Complete Genome",
+            "aggregation_method": "enum",
+            "count": 6
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-23672",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "scientific_name": "Sapindaceae",
+            "taxon_id": "23672",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 1,
+            "scientific_name": "Sapindales",
+            "taxon_id": "41937",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 2,
+            "scientific_name": "malvids",
+            "taxon_id": "91836",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 3,
+            "scientific_name": "rosids",
+            "taxon_id": "71275",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 4,
+            "scientific_name": "Pentapetalae",
+            "taxon_id": "1437201",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 5,
+            "scientific_name": "Gunneridae",
+            "taxon_id": "91827",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 6,
+            "scientific_name": "eudicotyledons",
+            "taxon_id": "71240",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 7,
+            "scientific_name": "Mesangiospermae",
+            "taxon_id": "1437183",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 8,
+            "scientific_name": "Magnoliopsida",
+            "taxon_id": "3398",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 9,
+            "scientific_name": "Spermatophyta",
+            "taxon_id": "58024",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "scientific_name": "Euphyllophyta",
+            "taxon_id": "78536",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "scientific_name": "Tracheophyta",
+            "taxon_id": "58023",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 12,
+            "scientific_name": "Embryophyta",
+            "taxon_id": "3193",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 13,
+            "scientific_name": "Streptophytina",
+            "taxon_id": "131221",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 14,
+            "scientific_name": "Streptophyta",
+            "taxon_id": "35493",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 15,
+            "scientific_name": "Viridiplantae",
+            "taxon_id": "33090",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 16,
+            "scientific_name": "Eukaryota",
+            "taxon_id": "2759",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 17,
+            "scientific_name": "cellular organisms",
+            "taxon_id": "131567",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 18,
+            "scientific_name": "root",
+            "taxon_id": "1",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "41937",
+        "scientific_name": "Sapindaceae",
+        "taxon_id": "23672",
+        "taxon_names": [
+          {
+            "class": "synonym",
+            "name": "Aceraceae",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "synonym",
+            "name": "Hippocastanaceae",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "scientific name",
+            "name": "Sapindaceae",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "common name",
+            "name": "soapberry family",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "synonym",
+            "name": "Xanthoceraceae",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "merged taxon id",
+            "name": "4021",
+            "source": null,
+            "source_url": null,
+            "source_url_stub": null
+          },
+          {
+            "class": "merged taxon id",
+            "name": "43362",
+            "source": null,
+            "source_url": null,
+            "source_url_stub": null
+          },
+          {
+            "class": "merged taxon id",
+            "name": "910344",
+            "source": null,
+            "source_url": null,
+            "source_url_stub": null
+          },
+          {
+            "class": "merged taxon id",
+            "name": "910345",
+            "source": null,
+            "source_url": null,
+            "source_url_stub": null
+          },
+          {
+            "class": "merged taxon id",
+            "name": "910346",
+            "source": null,
+            "source_url": null,
+            "source_url_stub": null
+          },
+          {
+            "class": "xref",
+            "name": "ncbi:23672",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "xref",
+            "name": "gbif:6657",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "xref",
+            "name": "irmng:113084",
+            "source": "IRMNG",
+            "source_url": "https://www.irmng.org/",
+            "source_url_stub": "https://www.irmng.org/aphia.php?p=taxdetails&id="
+          },
+          {
+            "class": "synonym",
+            "name": "Aesculaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Allophylaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Dodonaeaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Koelreuteriaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Paulliniaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Paviaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "merged taxon id",
+            "name": "531039",
+            "source": null,
+            "source_url": null,
+            "source_url_stub": null
+          },
+          {
+            "class": "merged taxon id",
+            "name": "531040",
+            "source": null,
+            "source_url": null,
+            "source_url_stub": null
+          },
+          {
+            "class": "merged taxon id",
+            "name": "531037",
+            "source": null,
+            "source_url": null,
+            "source_url_stub": null
+          }
+        ],
+        "taxon_rank": "family",
+        "fields": {
+          "assembly_level": {
+            "aggregation_source": [
+              "descendant"
+            ],
+            "sp_count": 13,
+            "value": "Complete Genome",
+            "aggregation_method": "enum",
+            "count": 6
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-3629",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "scientific_name": "Malvaceae",
+            "taxon_id": "3629",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 1,
+            "scientific_name": "Malvales",
+            "taxon_id": "41938",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 2,
+            "scientific_name": "malvids",
+            "taxon_id": "91836",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 3,
+            "scientific_name": "rosids",
+            "taxon_id": "71275",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 4,
+            "scientific_name": "Pentapetalae",
+            "taxon_id": "1437201",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 5,
+            "scientific_name": "Gunneridae",
+            "taxon_id": "91827",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 6,
+            "scientific_name": "eudicotyledons",
+            "taxon_id": "71240",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 7,
+            "scientific_name": "Mesangiospermae",
+            "taxon_id": "1437183",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 8,
+            "scientific_name": "Magnoliopsida",
+            "taxon_id": "3398",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 9,
+            "scientific_name": "Spermatophyta",
+            "taxon_id": "58024",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "scientific_name": "Euphyllophyta",
+            "taxon_id": "78536",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "scientific_name": "Tracheophyta",
+            "taxon_id": "58023",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 12,
+            "scientific_name": "Embryophyta",
+            "taxon_id": "3193",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 13,
+            "scientific_name": "Streptophytina",
+            "taxon_id": "131221",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 14,
+            "scientific_name": "Streptophyta",
+            "taxon_id": "35493",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 15,
+            "scientific_name": "Viridiplantae",
+            "taxon_id": "33090",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 16,
+            "scientific_name": "Eukaryota",
+            "taxon_id": "2759",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 17,
+            "scientific_name": "cellular organisms",
+            "taxon_id": "131567",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 18,
+            "scientific_name": "root",
+            "taxon_id": "1",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "41938",
+        "scientific_name": "Malvaceae",
+        "taxon_id": "3629",
+        "taxon_names": [
+          {
+            "class": "common name",
+            "name": "mallow family",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "scientific name",
+            "name": "Malvaceae",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "merged taxon id",
+            "name": "3639",
+            "source": null,
+            "source_url": null,
+            "source_url_stub": null
+          },
+          {
+            "class": "merged taxon id",
+            "name": "45192",
+            "source": null,
+            "source_url": null,
+            "source_url_stub": null
+          },
+          {
+            "class": "merged taxon id",
+            "name": "45323",
+            "source": null,
+            "source_url": null,
+            "source_url_stub": null
+          },
+          {
+            "class": "xref",
+            "name": "ncbi:3629",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "xref",
+            "name": "worms:413963",
+            "source": "WoRMS",
+            "source_url": "https://www.marinespecies.org/",
+            "source_url_stub": "https://www.marinespecies.org/aphia.php?p=taxdetails&id="
+          },
+          {
+            "class": "xref",
+            "name": "gbif:2433",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "xref",
+            "name": "gbif:6685",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "xref",
+            "name": "irmng:121620",
+            "source": "IRMNG",
+            "source_url": "https://www.irmng.org/",
+            "source_url_stub": "https://www.irmng.org/aphia.php?p=taxdetails&id="
+          },
+          {
+            "class": "xref",
+            "name": "irmng:114704",
+            "source": "IRMNG",
+            "source_url": "https://www.irmng.org/",
+            "source_url_stub": "https://www.irmng.org/aphia.php?p=taxdetails&id="
+          },
+          {
+            "class": "synonym",
+            "name": "Berryaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Brownlowiaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Buettneriaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Byttneriaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Cacaoaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Chiranthodendraceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Dombeyaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Durionaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Fremontiaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Grewiaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Helicteraceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Hermanniaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Hibiscaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Lasiopetalaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Melochiaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Pentapetaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Philippodendraceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Plagianthaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Sidaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Sparmanniaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Sterculariaceae",
+            "source": "WoRMS",
+            "source_url": "https://www.marinespecies.org/",
+            "source_url_stub": "https://www.marinespecies.org/aphia.php?p=taxdetails&id="
+          },
+          {
+            "class": "synonym",
+            "name": "Theobromataceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Triplobaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "synonym",
+            "name": "Triplochitonaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "merged taxon id",
+            "name": "5503437",
+            "source": null,
+            "source_url": null,
+            "source_url_stub": null
+          },
+          {
+            "class": "merged taxon id",
+            "name": "4728562",
+            "source": null,
+            "source_url": null,
+            "source_url_stub": null
+          },
+          {
+            "class": "merged taxon id",
+            "name": "5503435",
+            "source": null,
+            "source_url": null,
+            "source_url_stub": null
+          },
+          {
+            "class": "merged taxon id",
+            "name": "4728565",
+            "source": null,
+            "source_url": null,
+            "source_url_stub": null
+          },
+          {
+            "class": "merged taxon id",
+            "name": "6000732",
+            "source": null,
+            "source_url": null,
+            "source_url_stub": null
+          },
+          {
+            "class": "merged taxon id",
+            "name": "4728570",
+            "source": null,
+            "source_url": null,
+            "source_url_stub": null
+          },
+          {
+            "class": "merged taxon id",
+            "name": "4728555",
+            "source": null,
+            "source_url": null,
+            "source_url_stub": null
+          }
+        ],
+        "taxon_rank": "family",
+        "fields": {
+          "assembly_level": {
+            "aggregation_source": [
+              "descendant"
+            ],
+            "sp_count": 76,
+            "value": "Complete Genome",
+            "aggregation_method": "enum",
+            "count": 9
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-24966",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "taxon_id": "24966",
+            "scientific_name": "Rubiaceae",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 1,
+            "taxon_id": "4055",
+            "scientific_name": "Gentianales",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 2,
+            "taxon_id": "91888",
+            "scientific_name": "lamiids",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 3,
+            "taxon_id": "71274",
+            "scientific_name": "asterids",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 4,
+            "taxon_id": "1437201",
+            "scientific_name": "Pentapetalae",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 5,
+            "taxon_id": "91827",
+            "scientific_name": "Gunneridae",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 6,
+            "taxon_id": "71240",
+            "scientific_name": "eudicotyledons",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 7,
+            "taxon_id": "1437183",
+            "scientific_name": "Mesangiospermae",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 8,
+            "taxon_id": "3398",
+            "scientific_name": "Magnoliopsida",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 9,
+            "taxon_id": "58024",
+            "scientific_name": "Spermatophyta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "taxon_id": "78536",
+            "scientific_name": "Euphyllophyta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "taxon_id": "58023",
+            "scientific_name": "Tracheophyta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 12,
+            "taxon_id": "3193",
+            "scientific_name": "Embryophyta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 13,
+            "taxon_id": "131221",
+            "scientific_name": "Streptophytina",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 14,
+            "taxon_id": "35493",
+            "scientific_name": "Streptophyta",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 15,
+            "taxon_id": "33090",
+            "scientific_name": "Viridiplantae",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 16,
+            "taxon_id": "2759",
+            "scientific_name": "Eukaryota",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 17,
+            "taxon_id": "131567",
+            "scientific_name": "cellular organisms",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 18,
+            "taxon_id": "1",
+            "scientific_name": "root",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "4055",
+        "scientific_name": "Rubiaceae",
+        "taxon_id": "24966",
+        "taxon_names": [
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "madder family",
+            "source": "NCBI Taxonomy",
+            "class": "common name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Rubiaceae",
+            "source": "NCBI Taxonomy",
+            "class": "scientific name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "ncbi:24966",
+            "source": "NCBI Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.marinespecies.org/aphia.php?p=taxdetails&id=",
+            "name": "worms:235102",
+            "source": "WoRMS",
+            "class": "xref",
+            "source_url": "https://www.marinespecies.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "gbif:8798",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.irmng.org/aphia.php?p=taxdetails&id=",
+            "name": "irmng:113078",
+            "source": "IRMNG",
+            "class": "xref",
+            "source_url": "https://www.irmng.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Aparinaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Asperulaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Cinchonaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Coffeaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Cynocrambaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Galiaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Gardeniaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Henriqueziaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Lippayaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Lygodisodeaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Naucleaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Operculariaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Theligonaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": null,
+            "name": "4730728",
+            "source": null,
+            "class": "merged taxon id",
+            "source_url": null
+          },
+          {
+            "source_url_stub": null,
+            "name": "5326989",
+            "source": null,
+            "class": "merged taxon id",
+            "source_url": null
+          }
+        ],
+        "taxon_rank": "family",
+        "fields": {
+          "assembly_level": {
+            "aggregation_source": [
+              "descendant"
+            ],
+            "sp_count": 36,
+            "value": "Complete Genome",
+            "aggregation_method": "enum",
+            "count": 3
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-4210",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "taxon_id": "4210",
+            "scientific_name": "Asteraceae",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 1,
+            "taxon_id": "4209",
+            "scientific_name": "Asterales",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 2,
+            "taxon_id": "91882",
+            "scientific_name": "campanulids",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 3,
+            "taxon_id": "71274",
+            "scientific_name": "asterids",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 4,
+            "taxon_id": "1437201",
+            "scientific_name": "Pentapetalae",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 5,
+            "taxon_id": "91827",
+            "scientific_name": "Gunneridae",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 6,
+            "taxon_id": "71240",
+            "scientific_name": "eudicotyledons",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 7,
+            "taxon_id": "1437183",
+            "scientific_name": "Mesangiospermae",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 8,
+            "taxon_id": "3398",
+            "scientific_name": "Magnoliopsida",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 9,
+            "taxon_id": "58024",
+            "scientific_name": "Spermatophyta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "taxon_id": "78536",
+            "scientific_name": "Euphyllophyta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "taxon_id": "58023",
+            "scientific_name": "Tracheophyta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 12,
+            "taxon_id": "3193",
+            "scientific_name": "Embryophyta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 13,
+            "taxon_id": "131221",
+            "scientific_name": "Streptophytina",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 14,
+            "taxon_id": "35493",
+            "scientific_name": "Streptophyta",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 15,
+            "taxon_id": "33090",
+            "scientific_name": "Viridiplantae",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 16,
+            "taxon_id": "2759",
+            "scientific_name": "Eukaryota",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 17,
+            "taxon_id": "131567",
+            "scientific_name": "cellular organisms",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 18,
+            "taxon_id": "1",
+            "scientific_name": "root",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "4209",
+        "scientific_name": "Asteraceae",
+        "taxon_id": "4210",
+        "taxon_names": [
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Asteraceae",
+            "source": "NCBI Taxonomy",
+            "class": "scientific name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "daisy family",
+            "source": "NCBI Taxonomy",
+            "class": "common name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "ncbi:4210",
+            "source": "NCBI Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.marinespecies.org/aphia.php?p=taxdetails&id=",
+            "name": "worms:867905",
+            "source": "WoRMS",
+            "class": "xref",
+            "source_url": "https://www.marinespecies.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "gbif:3065",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.irmng.org/aphia.php?p=taxdetails&id=",
+            "name": "irmng:114753",
+            "source": "IRMNG",
+            "class": "xref",
+            "source_url": "https://www.irmng.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Acarnaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Ambrosiaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Anthemidaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Aposeridaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Arctotidaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Artemisiaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Athanasiaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Calendulaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Carduaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Carlinaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Cassiniaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Centaureaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Cichoriaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Cnicaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Coreopsidaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Cynaraceae",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Echinopaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Eupatoriaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Gnaphaliaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Grindeliaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Heleniaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Helianthaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Helichrysaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Inulaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Ivaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Lactucaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Lampsanaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Madiaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Matricariaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Mutisiaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Nassauviaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Partheniaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Perdiciaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Picridaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Santolinaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Senecionaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Serrulataceae",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Tanacetaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Tussilagaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Vernoniaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Xanthiaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Xeranthemaceae",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": null,
+            "name": "6135933",
+            "source": null,
+            "class": "merged taxon id",
+            "source_url": null
+          }
+        ],
+        "taxon_rank": "family",
+        "fields": {
+          "assembly_level": {
+            "aggregation_source": [
+              "descendant"
+            ],
+            "sp_count": 138,
+            "value": "Complete Genome",
+            "aggregation_method": "enum",
+            "count": 4
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-359160",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "scientific_name": "BOP clade",
+            "taxon_id": "359160",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 1,
+            "scientific_name": "Poaceae",
+            "taxon_id": "4479",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 2,
+            "scientific_name": "Poales",
+            "taxon_id": "38820",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 3,
+            "scientific_name": "commelinids",
+            "taxon_id": "4734",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 4,
+            "scientific_name": "Petrosaviidae",
+            "taxon_id": "1437197",
+            "taxon_rank": "subclass"
+          },
+          {
+            "node_depth": 5,
+            "scientific_name": "Liliopsida",
+            "taxon_id": "4447",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 6,
+            "scientific_name": "Mesangiospermae",
+            "taxon_id": "1437183",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 7,
+            "scientific_name": "Magnoliopsida",
+            "taxon_id": "3398",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 8,
+            "scientific_name": "Spermatophyta",
+            "taxon_id": "58024",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 9,
+            "scientific_name": "Euphyllophyta",
+            "taxon_id": "78536",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "scientific_name": "Tracheophyta",
+            "taxon_id": "58023",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "scientific_name": "Embryophyta",
+            "taxon_id": "3193",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 12,
+            "scientific_name": "Streptophytina",
+            "taxon_id": "131221",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 13,
+            "scientific_name": "Streptophyta",
+            "taxon_id": "35493",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 14,
+            "scientific_name": "Viridiplantae",
+            "taxon_id": "33090",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 15,
+            "scientific_name": "Eukaryota",
+            "taxon_id": "2759",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 16,
+            "scientific_name": "cellular organisms",
+            "taxon_id": "131567",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 17,
+            "scientific_name": "root",
+            "taxon_id": "1",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "4479",
+        "scientific_name": "BOP clade",
+        "taxon_id": "359160",
+        "taxon_names": [
+          {
+            "class": "scientific name",
+            "name": "BOP clade",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "xref",
+            "name": "ncbi:359160",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          }
+        ],
+        "taxon_rank": "clade",
+        "fields": {
+          "assembly_level": {
+            "aggregation_source": [
+              "descendant"
+            ],
+            "sp_count": 143,
+            "value": "Complete Genome",
+            "aggregation_method": "enum",
+            "count": 3
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-4732",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "scientific_name": "Typha",
+            "taxon_id": "4732",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 1,
+            "scientific_name": "Typhaceae",
+            "taxon_id": "4731",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 2,
+            "scientific_name": "Poales",
+            "taxon_id": "38820",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 3,
+            "scientific_name": "commelinids",
+            "taxon_id": "4734",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 4,
+            "scientific_name": "Petrosaviidae",
+            "taxon_id": "1437197",
+            "taxon_rank": "subclass"
+          },
+          {
+            "node_depth": 5,
+            "scientific_name": "Liliopsida",
+            "taxon_id": "4447",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 6,
+            "scientific_name": "Mesangiospermae",
+            "taxon_id": "1437183",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 7,
+            "scientific_name": "Magnoliopsida",
+            "taxon_id": "3398",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 8,
+            "scientific_name": "Spermatophyta",
+            "taxon_id": "58024",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 9,
+            "scientific_name": "Euphyllophyta",
+            "taxon_id": "78536",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "scientific_name": "Tracheophyta",
+            "taxon_id": "58023",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "scientific_name": "Embryophyta",
+            "taxon_id": "3193",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 12,
+            "scientific_name": "Streptophytina",
+            "taxon_id": "131221",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 13,
+            "scientific_name": "Streptophyta",
+            "taxon_id": "35493",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 14,
+            "scientific_name": "Viridiplantae",
+            "taxon_id": "33090",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 15,
+            "scientific_name": "Eukaryota",
+            "taxon_id": "2759",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 16,
+            "scientific_name": "cellular organisms",
+            "taxon_id": "131567",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 17,
+            "scientific_name": "root",
+            "taxon_id": "1",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "4731",
+        "scientific_name": "Typha",
+        "taxon_id": "4732",
+        "taxon_names": [
+          {
+            "class": "scientific name",
+            "name": "Typha",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "xref",
+            "name": "ncbi:4732",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "xref",
+            "name": "gbif:2702102",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "xref",
+            "name": "irmng:1302023",
+            "source": "IRMNG",
+            "source_url": "https://www.irmng.org/",
+            "source_url_stub": "https://www.irmng.org/aphia.php?p=taxdetails&id="
+          },
+          {
+            "class": "synonym",
+            "name": "Rohrbachia",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          }
+        ],
+        "taxon_rank": "genus",
+        "fields": {
+          "assembly_level": {
+            "aggregation_source": [
+              "descendant"
+            ],
+            "sp_count": 3,
+            "value": "Complete Genome",
+            "aggregation_method": "enum",
+            "count": 3
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-147370",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "scientific_name": "PACMAD clade",
+            "taxon_id": "147370",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 1,
+            "scientific_name": "Poaceae",
+            "taxon_id": "4479",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 2,
+            "scientific_name": "Poales",
+            "taxon_id": "38820",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 3,
+            "scientific_name": "commelinids",
+            "taxon_id": "4734",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 4,
+            "scientific_name": "Petrosaviidae",
+            "taxon_id": "1437197",
+            "taxon_rank": "subclass"
+          },
+          {
+            "node_depth": 5,
+            "scientific_name": "Liliopsida",
+            "taxon_id": "4447",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 6,
+            "scientific_name": "Mesangiospermae",
+            "taxon_id": "1437183",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 7,
+            "scientific_name": "Magnoliopsida",
+            "taxon_id": "3398",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 8,
+            "scientific_name": "Spermatophyta",
+            "taxon_id": "58024",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 9,
+            "scientific_name": "Euphyllophyta",
+            "taxon_id": "78536",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "scientific_name": "Tracheophyta",
+            "taxon_id": "58023",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "scientific_name": "Embryophyta",
+            "taxon_id": "3193",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 12,
+            "scientific_name": "Streptophytina",
+            "taxon_id": "131221",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 13,
+            "scientific_name": "Streptophyta",
+            "taxon_id": "35493",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 14,
+            "scientific_name": "Viridiplantae",
+            "taxon_id": "33090",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 15,
+            "scientific_name": "Eukaryota",
+            "taxon_id": "2759",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 16,
+            "scientific_name": "cellular organisms",
+            "taxon_id": "131567",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 17,
+            "scientific_name": "root",
+            "taxon_id": "1",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "4479",
+        "scientific_name": "PACMAD clade",
+        "taxon_id": "147370",
+        "taxon_names": [
+          {
+            "class": "scientific name",
+            "name": "PACMAD clade",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "xref",
+            "name": "ncbi:147370",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          }
+        ],
+        "taxon_rank": "clade",
+        "fields": {
+          "assembly_level": {
+            "aggregation_source": [
+              "descendant"
+            ],
+            "sp_count": 74,
+            "value": "Complete Genome",
+            "aggregation_method": "enum",
+            "count": 4
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-986140",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "scientific_name": "Cyperoideae",
+            "taxon_id": "986140",
+            "taxon_rank": "subfamily"
+          },
+          {
+            "node_depth": 1,
+            "scientific_name": "Cyperaceae",
+            "taxon_id": "4609",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 2,
+            "scientific_name": "Poales",
+            "taxon_id": "38820",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 3,
+            "scientific_name": "commelinids",
+            "taxon_id": "4734",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 4,
+            "scientific_name": "Petrosaviidae",
+            "taxon_id": "1437197",
+            "taxon_rank": "subclass"
+          },
+          {
+            "node_depth": 5,
+            "scientific_name": "Liliopsida",
+            "taxon_id": "4447",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 6,
+            "scientific_name": "Mesangiospermae",
+            "taxon_id": "1437183",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 7,
+            "scientific_name": "Magnoliopsida",
+            "taxon_id": "3398",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 8,
+            "scientific_name": "Spermatophyta",
+            "taxon_id": "58024",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 9,
+            "scientific_name": "Euphyllophyta",
+            "taxon_id": "78536",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "scientific_name": "Tracheophyta",
+            "taxon_id": "58023",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "scientific_name": "Embryophyta",
+            "taxon_id": "3193",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 12,
+            "scientific_name": "Streptophytina",
+            "taxon_id": "131221",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 13,
+            "scientific_name": "Streptophyta",
+            "taxon_id": "35493",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 14,
+            "scientific_name": "Viridiplantae",
+            "taxon_id": "33090",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 15,
+            "scientific_name": "Eukaryota",
+            "taxon_id": "2759",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 16,
+            "scientific_name": "cellular organisms",
+            "taxon_id": "131567",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 17,
+            "scientific_name": "root",
+            "taxon_id": "1",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "4609",
+        "scientific_name": "Cyperoideae",
+        "taxon_id": "986140",
+        "taxon_names": [
+          {
+            "class": "scientific name",
+            "name": "Cyperoideae",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "xref",
+            "name": "ncbi:986140",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          }
+        ],
+        "taxon_rank": "subfamily",
+        "fields": {
+          "assembly_level": {
+            "aggregation_source": [
+              "descendant"
+            ],
+            "sp_count": 48,
+            "value": "Complete Genome",
+            "aggregation_method": "enum",
+            "count": 7
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-4209",
+      "score": 0,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "scientific_name": "Asterales",
+            "taxon_id": "4209",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 1,
+            "scientific_name": "campanulids",
+            "taxon_id": "91882",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 2,
+            "scientific_name": "asterids",
+            "taxon_id": "71274",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 3,
+            "scientific_name": "Pentapetalae",
+            "taxon_id": "1437201",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 4,
+            "scientific_name": "Gunneridae",
+            "taxon_id": "91827",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 5,
+            "scientific_name": "eudicotyledons",
+            "taxon_id": "71240",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 6,
+            "scientific_name": "Mesangiospermae",
+            "taxon_id": "1437183",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 7,
+            "scientific_name": "Magnoliopsida",
+            "taxon_id": "3398",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 8,
+            "scientific_name": "Spermatophyta",
+            "taxon_id": "58024",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 9,
+            "scientific_name": "Euphyllophyta",
+            "taxon_id": "78536",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "scientific_name": "Tracheophyta",
+            "taxon_id": "58023",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "scientific_name": "Embryophyta",
+            "taxon_id": "3193",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 12,
+            "scientific_name": "Streptophytina",
+            "taxon_id": "131221",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 13,
+            "scientific_name": "Streptophyta",
+            "taxon_id": "35493",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 14,
+            "scientific_name": "Viridiplantae",
+            "taxon_id": "33090",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 15,
+            "scientific_name": "Eukaryota",
+            "taxon_id": "2759",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 16,
+            "scientific_name": "cellular organisms",
+            "taxon_id": "131567",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 17,
+            "scientific_name": "root",
+            "taxon_id": "1",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "91882",
+        "scientific_name": "Asterales",
+        "taxon_id": "4209",
+        "taxon_names": [
+          {
+            "class": "scientific name",
+            "name": "Asterales",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "merged taxon id",
+            "name": "4380",
+            "source": null,
+            "source_url": null,
+            "source_url_stub": null
+          },
+          {
+            "class": "xref",
+            "name": "ncbi:4209",
+            "source": "NCBI Taxonomy",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy",
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/"
+          },
+          {
+            "class": "xref",
+            "name": "worms:234044",
+            "source": "WoRMS",
+            "source_url": "https://www.marinespecies.org/",
+            "source_url_stub": "https://www.marinespecies.org/aphia.php?p=taxdetails&id="
+          },
+          {
+            "class": "xref",
+            "name": "gbif:414",
+            "source": "GBIF Backbone Taxonomy",
+            "source_url": "https://www.gbif.org/",
+            "source_url_stub": "https://www.gbif.org/species/"
+          },
+          {
+            "class": "xref",
+            "name": "irmng:12186",
+            "source": "IRMNG",
+            "source_url": "https://www.irmng.org/",
+            "source_url_stub": "https://www.irmng.org/aphia.php?p=taxdetails&id="
+          },
+          {
+            "class": "xref",
+            "name": "irmng:10011",
+            "source": "IRMNG",
+            "source_url": "https://www.irmng.org/",
+            "source_url_stub": "https://www.irmng.org/aphia.php?p=taxdetails&id="
+          },
+          {
+            "class": "merged taxon id",
+            "name": "5302179",
+            "source": null,
+            "source_url": null,
+            "source_url_stub": null
+          }
+        ],
+        "taxon_rank": "order",
+        "fields": {
+          "assembly_level": {
+            "aggregation_source": [
+              "descendant"
+            ],
+            "sp_count": 152,
+            "value": "Complete Genome",
+            "aggregation_method": "enum",
+            "count": 3
+          }
+        }
+      }
+    }
+  ],
+  "aggs": {
+    "fields": {
+      "doc_count": 63422,
+      "by_key": {
+        "buckets": {
+          "assembly_level": {
+            "doc_count": 1785,
+            "value_list": {
+              "doc_count_error_upper_bound": 0,
+              "sum_other_doc_count": 0,
+              "buckets": [
+                {
+                  "key": "complete genome",
+                  "doc_count": 1785
+                }
+              ]
+            },
+            "value_count": {
+              "value": 1785
+            }
+          }
+        }
+      }
+    }
+  },
+  "fields": [
+    "assembly_level"
+  ],
+  "query": {
+    "size": 20,
+    "from": 0,
+    "query": {
+      "bool": {
+        "must_not": [],
+        "filter": [
+          {
+            "bool": {
+              "should": [
+                {
+                  "bool": {
+                    "filter": {
+                      "nested": {
+                        "path": "attributes",
+                        "query": {
+                          "bool": {
+                            "should": [
+                              {
+                                "bool": {
+                                  "filter": [
+                                    {
+                                      "match": {
+                                        "attributes.key": "assembly_level"
+                                      }
+                                    },
+                                    {
+                                      "exists": {
+                                        "field": "attributes.keyword_value"
+                                      }
+                                    },
+                                    {
+                                      "exists": {
+                                        "field": "attributes.aggregation_source"
+                                      }
+                                    },
+                                    {
+                                      "exists": {
+                                        "field": "attributes.aggregation_method"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "bool": {
+                    "should": {
+                      "nested": {
+                        "path": "attributes",
+                        "query": {
+                          "bool": {
+                            "should": [
+                              {
+                                "bool": {
+                                  "filter": [
+                                    {
+                                      "match": {
+                                        "attributes.key": "assembly_level"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        "inner_hits": {
+                          "_source": false,
+                          "name": "attributes",
+                          "docvalue_fields": [
+                            "attributes.key",
+                            "attributes.is_primary_value",
+                            "attributes.count",
+                            "attributes.sp_count",
+                            "attributes.max",
+                            "attributes.min",
+                            "attributes.mean",
+                            "attributes.median",
+                            "attributes.mode",
+                            "attributes.sum",
+                            "attributes.from",
+                            "attributes.to",
+                            "attributes.range",
+                            "attributes.length",
+                            "attributes.aggregation_method",
+                            "attributes.aggregation_source",
+                            "attributes.aggregation_rank",
+                            "attributes.aggregation_taxon_id",
+                            "attributes.keyword_value.raw"
+                          ],
+                          "size": 100
+                        }
+                      }
+                    }
+                  }
+                }
+              ],
+              "minimum_should_match": 2
+            }
+          },
+          {
+            "nested": {
+              "path": "attributes",
+              "query": {
+                "bool": {
+                  "filter": [
+                    {
+                      "match": {
+                        "attributes.key": "assembly_level"
+                      }
+                    },
+                    {
+                      "exists": {
+                        "field": "attributes.aggregation_source"
+                      }
+                    },
+                    {
+                      "exists": {
+                        "field": "attributes.aggregation_method"
+                      }
+                    },
+                    {
+                      "bool": {
+                        "filter": [
+                          {
+                            "bool": {
+                              "should": [
+                                {
+                                  "match": {
+                                    "attributes.keyword_value": "complete genome"
+                                  }
+                                }
+                              ],
+                              "must_not": []
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "bool": {
+              "should": [
+                {
+                  "bool": {
+                    "should": [
+                      {
+                        "bool": {
+                          "should": [
+                            {
+                              "nested": {
+                                "path": "taxon_names",
+                                "query": {
+                                  "bool": {
+                                    "filter": [
+                                      {
+                                        "match": {
+                                          "taxon_names.name": "2759"
+                                        }
+                                      }
+                                    ]
+                                  }
+                                }
+                              }
+                            },
+                            {
+                              "match": {
+                                "taxon_id": "2759"
+                              }
+                            },
+                            {
+                              "nested": {
+                                "path": "lineage",
+                                "query": {
+                                  "bool": {
+                                    "filter": [
+                                      {
+                                        "multi_match": {
+                                          "query": "2759",
+                                          "fields": [
+                                            "lineage.taxon_id",
+                                            "lineage.scientific_name"
+                                          ]
+                                        }
+                                      }
+                                    ]
+                                  }
+                                }
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        ],
+        "should": []
+      }
+    },
+    "_source": {
+      "include": [
+        "taxon_id",
+        "scientific_name",
+        "taxon_rank",
+        "parent",
+        "taxon_names.*",
+        "lineage.*"
+      ],
+      "exclude": []
+    },
+    "sort": [],
+    "aggs": {
+      "fields": {
+        "nested": {
+          "path": "attributes"
+        },
+        "aggs": {
+          "by_key": {
+            "filters": {
+              "filters": {
+                "assembly_level": {
+                  "term": {
+                    "attributes.key": "assembly_level"
+                  }
+                }
+              }
+            },
+            "aggs": {
+              "value_count": {
+                "value_count": {
+                  "field": "attributes.key"
+                }
+              },
+              "value_list": {
+                "terms": {
+                  "field": "attributes.keyword_value",
+                  "size": 64
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

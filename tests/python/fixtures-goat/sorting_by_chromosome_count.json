@@ -1,0 +1,4533 @@
+{
+  "status": {
+    "hits": 6581,
+    "success": true,
+    "took": 51,
+    "size": 20,
+    "offset": 0
+  },
+  "results": [
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-175104",
+      "score": null,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "taxon_id": "175104",
+            "scientific_name": "Primula vulgaris",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 1,
+            "taxon_id": "49647",
+            "scientific_name": "Primula",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 2,
+            "taxon_id": "4335",
+            "scientific_name": "Primulaceae",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 3,
+            "taxon_id": "41945",
+            "scientific_name": "Ericales",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 4,
+            "taxon_id": "71274",
+            "scientific_name": "asterids",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 5,
+            "taxon_id": "1437201",
+            "scientific_name": "Pentapetalae",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 6,
+            "taxon_id": "91827",
+            "scientific_name": "Gunneridae",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 7,
+            "taxon_id": "71240",
+            "scientific_name": "eudicotyledons",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 8,
+            "taxon_id": "1437183",
+            "scientific_name": "Mesangiospermae",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 9,
+            "taxon_id": "3398",
+            "scientific_name": "Magnoliopsida",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 10,
+            "taxon_id": "58024",
+            "scientific_name": "Spermatophyta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "taxon_id": "78536",
+            "scientific_name": "Euphyllophyta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 12,
+            "taxon_id": "58023",
+            "scientific_name": "Tracheophyta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 13,
+            "taxon_id": "3193",
+            "scientific_name": "Embryophyta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 14,
+            "taxon_id": "131221",
+            "scientific_name": "Streptophytina",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 15,
+            "taxon_id": "35493",
+            "scientific_name": "Streptophyta",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 16,
+            "taxon_id": "33090",
+            "scientific_name": "Viridiplantae",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 17,
+            "taxon_id": "2759",
+            "scientific_name": "Eukaryota",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 18,
+            "taxon_id": "131567",
+            "scientific_name": "cellular organisms",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 19,
+            "taxon_id": "1",
+            "scientific_name": "root",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "49647",
+        "scientific_name": "Primula vulgaris",
+        "taxon_id": "175104",
+        "taxon_names": [
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Primula acaulis",
+            "source": "NCBI Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Primula vulgaris",
+            "source": "NCBI Taxonomy",
+            "class": "scientific name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": null,
+            "name": "87537",
+            "source": null,
+            "class": "merged taxon id",
+            "source_url": null
+          },
+          {
+            "source_url_stub": null,
+            "name": "ddPriVulg",
+            "source": "Tree of Life ID",
+            "class": "tolid prefix",
+            "source_url": "https://id.tol.sanger.ac.uk"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "ncbi:175104",
+            "source": "NCBI Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "gbif:9500949",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.irmng.org/aphia.php?p=taxdetails&id=",
+            "name": "irmng:11337465",
+            "source": "IRMNG",
+            "class": "xref",
+            "source_url": "https://www.irmng.org/"
+          },
+          {
+            "name": "Primrose",
+            "header": "Vernacular",
+            "index": 4,
+            "source": "DTOL Flowering Plants Estimates Kew",
+            "class": "common_name",
+            "source_description": "Subset of chromosome data for DToL targets - ploidy inferred",
+            "source_date": "2026-04-20"
+          }
+        ],
+        "taxon_rank": "species",
+        "fields": {
+          "chromosome_count": {
+            "aggregation_source": "direct",
+            "sp_count": 0,
+            "min": 11,
+            "value": 11,
+            "aggregation_method": "primary",
+            "median": 11,
+            "count": 1,
+            "max": 11,
+            "mode": 11
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-1574107",
+      "score": null,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "taxon_id": "1574107",
+            "scientific_name": "Cereus jamacaru",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 1,
+            "taxon_id": "153845",
+            "scientific_name": "Cereus",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 2,
+            "taxon_id": "186272",
+            "scientific_name": "Cereeae",
+            "taxon_rank": "tribe"
+          },
+          {
+            "node_depth": 3,
+            "taxon_id": "186265",
+            "scientific_name": "Cactoideae",
+            "taxon_rank": "subfamily"
+          },
+          {
+            "node_depth": 4,
+            "taxon_id": "3593",
+            "scientific_name": "Cactaceae",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 5,
+            "taxon_id": "866800",
+            "scientific_name": "Cactineae",
+            "taxon_rank": "suborder"
+          },
+          {
+            "node_depth": 6,
+            "taxon_id": "3524",
+            "scientific_name": "Caryophyllales",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 7,
+            "taxon_id": "1437201",
+            "scientific_name": "Pentapetalae",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 8,
+            "taxon_id": "91827",
+            "scientific_name": "Gunneridae",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 9,
+            "taxon_id": "71240",
+            "scientific_name": "eudicotyledons",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "taxon_id": "1437183",
+            "scientific_name": "Mesangiospermae",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "taxon_id": "3398",
+            "scientific_name": "Magnoliopsida",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 12,
+            "taxon_id": "58024",
+            "scientific_name": "Spermatophyta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 13,
+            "taxon_id": "78536",
+            "scientific_name": "Euphyllophyta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 14,
+            "taxon_id": "58023",
+            "scientific_name": "Tracheophyta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 15,
+            "taxon_id": "3193",
+            "scientific_name": "Embryophyta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 16,
+            "taxon_id": "131221",
+            "scientific_name": "Streptophytina",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 17,
+            "taxon_id": "35493",
+            "scientific_name": "Streptophyta",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 18,
+            "taxon_id": "33090",
+            "scientific_name": "Viridiplantae",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 19,
+            "taxon_id": "2759",
+            "scientific_name": "Eukaryota",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 20,
+            "taxon_id": "131567",
+            "scientific_name": "cellular organisms",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 21,
+            "taxon_id": "1",
+            "scientific_name": "root",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "153845",
+        "scientific_name": "Cereus jamacaru",
+        "taxon_id": "1574107",
+        "taxon_names": [
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Cereus jamacaru",
+            "source": "NCBI Taxonomy",
+            "class": "scientific name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": null,
+            "name": "dcCerJama",
+            "source": "Tree of Life ID",
+            "class": "tolid prefix",
+            "source_url": "https://id.tol.sanger.ac.uk"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "ncbi:1574107",
+            "source": "NCBI Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "gbif:7282182",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Cereus uruguayensis",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          }
+        ],
+        "taxon_rank": "species",
+        "fields": {
+          "chromosome_count": {
+            "aggregation_source": "direct",
+            "sp_count": 0,
+            "min": 11,
+            "value": 11,
+            "aggregation_method": "primary",
+            "median": 11,
+            "count": 1,
+            "max": 11,
+            "mode": 11
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-1195128",
+      "score": null,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "taxon_id": "1195128",
+            "scientific_name": "Selenicereus monacanthus",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 1,
+            "taxon_id": "83431",
+            "scientific_name": "Selenicereus",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 2,
+            "taxon_id": "186273",
+            "scientific_name": "Hylocereeae",
+            "taxon_rank": "tribe"
+          },
+          {
+            "node_depth": 3,
+            "taxon_id": "186265",
+            "scientific_name": "Cactoideae",
+            "taxon_rank": "subfamily"
+          },
+          {
+            "node_depth": 4,
+            "taxon_id": "3593",
+            "scientific_name": "Cactaceae",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 5,
+            "taxon_id": "866800",
+            "scientific_name": "Cactineae",
+            "taxon_rank": "suborder"
+          },
+          {
+            "node_depth": 6,
+            "taxon_id": "3524",
+            "scientific_name": "Caryophyllales",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 7,
+            "taxon_id": "1437201",
+            "scientific_name": "Pentapetalae",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 8,
+            "taxon_id": "91827",
+            "scientific_name": "Gunneridae",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 9,
+            "taxon_id": "71240",
+            "scientific_name": "eudicotyledons",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "taxon_id": "1437183",
+            "scientific_name": "Mesangiospermae",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "taxon_id": "3398",
+            "scientific_name": "Magnoliopsida",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 12,
+            "taxon_id": "58024",
+            "scientific_name": "Spermatophyta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 13,
+            "taxon_id": "78536",
+            "scientific_name": "Euphyllophyta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 14,
+            "taxon_id": "58023",
+            "scientific_name": "Tracheophyta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 15,
+            "taxon_id": "3193",
+            "scientific_name": "Embryophyta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 16,
+            "taxon_id": "131221",
+            "scientific_name": "Streptophytina",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 17,
+            "taxon_id": "35493",
+            "scientific_name": "Streptophyta",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 18,
+            "taxon_id": "33090",
+            "scientific_name": "Viridiplantae",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 19,
+            "taxon_id": "2759",
+            "scientific_name": "Eukaryota",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 20,
+            "taxon_id": "131567",
+            "scientific_name": "cellular organisms",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 21,
+            "taxon_id": "1",
+            "scientific_name": "root",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "83431",
+        "scientific_name": "Selenicereus monacanthus",
+        "taxon_id": "1195128",
+        "taxon_names": [
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Cereus monacanthus",
+            "source": "NCBI Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Cereus polyrhizus",
+            "source": "NCBI Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Hylocereus monacanthus",
+            "source": "NCBI Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Hylocereus peruvianus",
+            "source": "NCBI Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Hylocereus polyrhizus",
+            "source": "NCBI Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Selenicereus monacanthus",
+            "source": "NCBI Taxonomy",
+            "class": "scientific name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": null,
+            "name": "154423",
+            "source": null,
+            "class": "merged taxon id",
+            "source_url": null
+          },
+          {
+            "source_url_stub": null,
+            "name": "1195597",
+            "source": null,
+            "class": "merged taxon id",
+            "source_url": null
+          },
+          {
+            "source_url_stub": null,
+            "name": "dcHylMona",
+            "source": "Tree of Life ID",
+            "class": "tolid prefix",
+            "source_url": "https://id.tol.sanger.ac.uk"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "ncbi:1195128",
+            "source": "NCBI Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "gbif:3944741",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.irmng.org/aphia.php?p=taxdetails&id=",
+            "name": "irmng:11416142",
+            "source": "IRMNG",
+            "class": "xref",
+            "source_url": "https://www.irmng.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Cereus lamairei",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Cereus lemairei",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Cereus scandens",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Cereus scandens minor",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Hyalocereus lemairei",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Hylocereus estebanensis",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Hylocereus lemairei",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Hylocereus scandens",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Hylocereus venezuelensis",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Wilmattea venezuelensis",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": null,
+            "name": "6034642",
+            "source": null,
+            "class": "merged taxon id",
+            "source_url": null
+          },
+          {
+            "source_url_stub": null,
+            "name": "5232193",
+            "source": null,
+            "class": "merged taxon id",
+            "source_url": null
+          }
+        ],
+        "taxon_rank": "species",
+        "fields": {
+          "chromosome_count": {
+            "aggregation_source": "direct",
+            "sp_count": 0,
+            "min": 11,
+            "value": 11,
+            "aggregation_method": "primary",
+            "median": 11,
+            "count": 2,
+            "max": 11,
+            "mode": 11
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-52586",
+      "score": null,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "taxon_id": "52586",
+            "scientific_name": "Erysiphe necator",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 1,
+            "taxon_id": "5121",
+            "scientific_name": "Erysiphe",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 2,
+            "taxon_id": "34371",
+            "scientific_name": "Erysiphaceae",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 3,
+            "taxon_id": "5120",
+            "scientific_name": "Erysiphales",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 4,
+            "taxon_id": "147548",
+            "scientific_name": "Leotiomycetes",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 5,
+            "taxon_id": "715989",
+            "scientific_name": "sordariomyceta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 6,
+            "taxon_id": "716546",
+            "scientific_name": "leotiomyceta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 7,
+            "taxon_id": "147538",
+            "scientific_name": "Pezizomycotina",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 8,
+            "taxon_id": "716545",
+            "scientific_name": "saccharomyceta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 9,
+            "taxon_id": "4890",
+            "scientific_name": "Ascomycota",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 10,
+            "taxon_id": "451864",
+            "scientific_name": "Dikarya",
+            "taxon_rank": "subkingdom"
+          },
+          {
+            "node_depth": 11,
+            "taxon_id": "4751",
+            "scientific_name": "Fungi",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 12,
+            "taxon_id": "33154",
+            "scientific_name": "Opisthokonta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 13,
+            "taxon_id": "2759",
+            "scientific_name": "Eukaryota",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 14,
+            "taxon_id": "131567",
+            "scientific_name": "cellular organisms",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 15,
+            "taxon_id": "1",
+            "scientific_name": "root",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "5121",
+        "scientific_name": "Erysiphe necator",
+        "taxon_id": "52586",
+        "taxon_names": [
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Erysiphe necator",
+            "source": "NCBI Taxonomy",
+            "class": "scientific name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "grape powdery mildew",
+            "source": "NCBI Taxonomy",
+            "class": "genbank common name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Uncinula necator",
+            "source": "NCBI Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": null,
+            "name": "gyEryNeca",
+            "source": "Tree of Life ID",
+            "class": "tolid prefix",
+            "source_url": "https://id.tol.sanger.ac.uk"
+          },
+          {
+            "source_url_stub": null,
+            "name": "if:149735",
+            "source": null,
+            "class": "xref",
+            "source_url": null
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "ncbi:52586",
+            "source": "NCBI Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "gbif:2578415",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.irmng.org/aphia.php?p=taxdetails&id=",
+            "name": "irmng:10385209",
+            "source": "IRMNG",
+            "class": "xref",
+            "source_url": "https://www.irmng.org/"
+          },
+          {
+            "source_url_stub": null,
+            "name": "Acrosporium tuckeri",
+            "source": null,
+            "class": "synonym",
+            "source_url": null
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Erysiphe necator ampelopsidis",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.irmng.org/aphia.php?p=taxdetails&id=",
+            "name": "Oidium necator",
+            "source": "IRMNG",
+            "class": "synonym",
+            "source_url": "https://www.irmng.org/"
+          },
+          {
+            "source_url_stub": null,
+            "name": "Oidium tuckeri",
+            "source": null,
+            "class": "synonym",
+            "source_url": null
+          },
+          {
+            "source_url_stub": null,
+            "name": "Pseudoidium tuckeri",
+            "source": null,
+            "class": "synonym",
+            "source_url": null
+          },
+          {
+            "source_url_stub": null,
+            "name": "Uncinula americana",
+            "source": null,
+            "class": "synonym",
+            "source_url": null
+          },
+          {
+            "source_url_stub": null,
+            "name": "Uncinula ampelopsidis",
+            "source": null,
+            "class": "synonym",
+            "source_url": null
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Uncinula necator ampelopsidis",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Uncinula necator necator",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": null,
+            "name": "Uncinula necator var. ampelopsidis",
+            "source": null,
+            "class": "synonym",
+            "source_url": null
+          },
+          {
+            "source_url_stub": null,
+            "name": "890270",
+            "source": null,
+            "class": "merged taxon id",
+            "source_url": null
+          },
+          {
+            "source_url_stub": null,
+            "name": "3715568",
+            "source": null,
+            "class": "merged taxon id",
+            "source_url": null
+          },
+          {
+            "source_url_stub": null,
+            "name": "3716286",
+            "source": null,
+            "class": "merged taxon id",
+            "source_url": null
+          }
+        ],
+        "taxon_rank": "species",
+        "fields": {
+          "chromosome_count": {
+            "aggregation_source": "direct",
+            "sp_count": 0,
+            "min": 11,
+            "value": 11,
+            "aggregation_method": "primary",
+            "median": 11,
+            "count": 1,
+            "max": 11,
+            "mode": 11
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-1689686",
+      "score": null,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "taxon_id": "1689686",
+            "scientific_name": "Blumeria graminis f. sp. triticale",
+            "taxon_rank": "forma specialis"
+          },
+          {
+            "node_depth": 1,
+            "taxon_id": "34373",
+            "scientific_name": "Blumeria graminis",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 2,
+            "taxon_id": "34372",
+            "scientific_name": "Blumeria",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 3,
+            "taxon_id": "34371",
+            "scientific_name": "Erysiphaceae",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 4,
+            "taxon_id": "5120",
+            "scientific_name": "Erysiphales",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 5,
+            "taxon_id": "147548",
+            "scientific_name": "Leotiomycetes",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 6,
+            "taxon_id": "715989",
+            "scientific_name": "sordariomyceta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 7,
+            "taxon_id": "716546",
+            "scientific_name": "leotiomyceta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 8,
+            "taxon_id": "147538",
+            "scientific_name": "Pezizomycotina",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 9,
+            "taxon_id": "716545",
+            "scientific_name": "saccharomyceta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "taxon_id": "4890",
+            "scientific_name": "Ascomycota",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 11,
+            "taxon_id": "451864",
+            "scientific_name": "Dikarya",
+            "taxon_rank": "subkingdom"
+          },
+          {
+            "node_depth": 12,
+            "taxon_id": "4751",
+            "scientific_name": "Fungi",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 13,
+            "taxon_id": "33154",
+            "scientific_name": "Opisthokonta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 14,
+            "taxon_id": "2759",
+            "scientific_name": "Eukaryota",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 15,
+            "taxon_id": "131567",
+            "scientific_name": "cellular organisms",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 16,
+            "taxon_id": "1",
+            "scientific_name": "root",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "34373",
+        "scientific_name": "Blumeria graminis f. sp. triticale",
+        "taxon_id": "1689686",
+        "taxon_names": [
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Blumeria graminis f. sp. triticale",
+            "source": "NCBI Taxonomy",
+            "class": "scientific name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "ncbi:1689686",
+            "source": "NCBI Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          }
+        ],
+        "taxon_rank": "forma specialis",
+        "fields": {
+          "chromosome_count": {
+            "aggregation_source": "direct",
+            "sp_count": 0,
+            "min": 11,
+            "value": 11,
+            "aggregation_method": "primary",
+            "median": 11,
+            "count": 1,
+            "max": 11,
+            "mode": 11
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-108571",
+      "score": null,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "taxon_id": "108571",
+            "scientific_name": "Phlyctema vagabunda",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 1,
+            "taxon_id": "1351819",
+            "scientific_name": "Phlyctema",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 2,
+            "taxon_id": "76657",
+            "scientific_name": "Dermateaceae",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 3,
+            "taxon_id": "5178",
+            "scientific_name": "Helotiales",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 4,
+            "taxon_id": "147548",
+            "scientific_name": "Leotiomycetes",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 5,
+            "taxon_id": "715989",
+            "scientific_name": "sordariomyceta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 6,
+            "taxon_id": "716546",
+            "scientific_name": "leotiomyceta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 7,
+            "taxon_id": "147538",
+            "scientific_name": "Pezizomycotina",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 8,
+            "taxon_id": "716545",
+            "scientific_name": "saccharomyceta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 9,
+            "taxon_id": "4890",
+            "scientific_name": "Ascomycota",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 10,
+            "taxon_id": "451864",
+            "scientific_name": "Dikarya",
+            "taxon_rank": "subkingdom"
+          },
+          {
+            "node_depth": 11,
+            "taxon_id": "4751",
+            "scientific_name": "Fungi",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 12,
+            "taxon_id": "33154",
+            "scientific_name": "Opisthokonta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 13,
+            "taxon_id": "2759",
+            "scientific_name": "Eukaryota",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 14,
+            "taxon_id": "131567",
+            "scientific_name": "cellular organisms",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 15,
+            "taxon_id": "1",
+            "scientific_name": "root",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "1351819",
+        "scientific_name": "Phlyctema vagabunda",
+        "taxon_id": "108571",
+        "taxon_names": [
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Gloeosporium album",
+            "source": "NCBI Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Neofabraea alba",
+            "source": "NCBI Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Neofabraea vagabunda",
+            "source": "NCBI Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Pezicula alba",
+            "source": "NCBI Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Phlyctema vagabunda",
+            "source": "NCBI Taxonomy",
+            "class": "scientific name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": null,
+            "name": "gyNeoAlba",
+            "source": "Tree of Life ID",
+            "class": "tolid prefix",
+            "source_url": "https://id.tol.sanger.ac.uk"
+          },
+          {
+            "source_url_stub": null,
+            "name": "gyPhlVaga",
+            "source": "Tree of Life ID",
+            "class": "tolid prefix",
+            "source_url": "https://id.tol.sanger.ac.uk"
+          },
+          {
+            "source_url_stub": null,
+            "name": "if:482723",
+            "source": null,
+            "class": "xref",
+            "source_url": null
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "ncbi:108571",
+            "source": "NCBI Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "ncbi:2082642",
+            "source": "NCBI Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.irmng.org/aphia.php?p=taxdetails&id=",
+            "name": "irmng:10784238",
+            "source": "IRMNG",
+            "class": "xref",
+            "source_url": "https://www.irmng.org/"
+          },
+          {
+            "source_url_stub": "https://www.irmng.org/aphia.php?p=taxdetails&id=",
+            "name": "irmng:11238886",
+            "source": "IRMNG",
+            "class": "xref",
+            "source_url": "https://www.irmng.org/"
+          },
+          {
+            "source_url_stub": null,
+            "name": "Allantozythia alutacea",
+            "source": null,
+            "class": "synonym",
+            "source_url": null
+          },
+          {
+            "source_url_stub": null,
+            "name": "Cylindrosporium frigidum",
+            "source": null,
+            "class": "synonym",
+            "source_url": null
+          },
+          {
+            "source_url_stub": null,
+            "name": "Cylindrosporium olivae",
+            "source": null,
+            "class": "synonym",
+            "source_url": null
+          },
+          {
+            "source_url_stub": null,
+            "name": "Fusarium tortuosum",
+            "source": null,
+            "class": "synonym",
+            "source_url": null
+          },
+          {
+            "source_url_stub": null,
+            "name": "Gloeosporium allantosporum",
+            "source": null,
+            "class": "synonym",
+            "source_url": null
+          },
+          {
+            "source_url_stub": null,
+            "name": "Gloeosporium alutaceum",
+            "source": null,
+            "class": "synonym",
+            "source_url": null
+          },
+          {
+            "source_url_stub": null,
+            "name": "Gloeosporium beguinotii",
+            "source": null,
+            "class": "synonym",
+            "source_url": null
+          },
+          {
+            "source_url_stub": null,
+            "name": "Gloeosporium diervillae",
+            "source": null,
+            "class": "synonym",
+            "source_url": null
+          },
+          {
+            "source_url_stub": null,
+            "name": "Gloeosporium frigidum",
+            "source": null,
+            "class": "synonym",
+            "source_url": null
+          },
+          {
+            "source_url_stub": null,
+            "name": "Gloeosporium olivae",
+            "source": null,
+            "class": "synonym",
+            "source_url": null
+          },
+          {
+            "source_url_stub": null,
+            "name": "Gloeosporium phillyreae",
+            "source": null,
+            "class": "synonym",
+            "source_url": null
+          },
+          {
+            "source_url_stub": null,
+            "name": "Gloeosporium pyrenoides",
+            "source": null,
+            "class": "synonym",
+            "source_url": null
+          },
+          {
+            "source_url_stub": null,
+            "name": "Gloeosporium riessii",
+            "source": null,
+            "class": "synonym",
+            "source_url": null
+          },
+          {
+            "source_url_stub": null,
+            "name": "Gloeosporium tineum",
+            "source": null,
+            "class": "synonym",
+            "source_url": null
+          },
+          {
+            "source_url_stub": null,
+            "name": "Gloeosporium tortuosum",
+            "source": null,
+            "class": "synonym",
+            "source_url": null
+          },
+          {
+            "source_url_stub": null,
+            "name": "Gloeosporium unedonis",
+            "source": null,
+            "class": "synonym",
+            "source_url": null
+          },
+          {
+            "source_url_stub": null,
+            "name": "Lituaria riessii",
+            "source": null,
+            "class": "synonym",
+            "source_url": null
+          },
+          {
+            "source_url_stub": null,
+            "name": "Phlyctema alutacea",
+            "source": null,
+            "class": "synonym",
+            "source_url": null
+          },
+          {
+            "source_url_stub": null,
+            "name": "Rhabdospora vagabunda",
+            "source": null,
+            "class": "synonym",
+            "source_url": null
+          },
+          {
+            "source_url_stub": null,
+            "name": "Trichoseptoria fructigena",
+            "source": null,
+            "class": "synonym",
+            "source_url": null
+          }
+        ],
+        "taxon_rank": "species",
+        "fields": {
+          "chromosome_count": {
+            "aggregation_source": "direct",
+            "sp_count": 0,
+            "min": 11,
+            "value": 11,
+            "aggregation_method": "primary",
+            "median": 11,
+            "count": 1,
+            "max": 11,
+            "mode": 11
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-145971",
+      "score": null,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "taxon_id": "145971",
+            "scientific_name": "Colletotrichum lupini",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 1,
+            "taxon_id": "2707335",
+            "scientific_name": "Colletotrichum acutatum species complex",
+            "taxon_rank": "no rank"
+          },
+          {
+            "node_depth": 2,
+            "taxon_id": "5455",
+            "scientific_name": "Colletotrichum",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 3,
+            "taxon_id": "681950",
+            "scientific_name": "Glomerellaceae",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 4,
+            "taxon_id": "1028384",
+            "scientific_name": "Glomerellales",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 5,
+            "taxon_id": "222543",
+            "scientific_name": "Hypocreomycetidae",
+            "taxon_rank": "subclass"
+          },
+          {
+            "node_depth": 6,
+            "taxon_id": "147550",
+            "scientific_name": "Sordariomycetes",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 7,
+            "taxon_id": "715989",
+            "scientific_name": "sordariomyceta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 8,
+            "taxon_id": "716546",
+            "scientific_name": "leotiomyceta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 9,
+            "taxon_id": "147538",
+            "scientific_name": "Pezizomycotina",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 10,
+            "taxon_id": "716545",
+            "scientific_name": "saccharomyceta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "taxon_id": "4890",
+            "scientific_name": "Ascomycota",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 12,
+            "taxon_id": "451864",
+            "scientific_name": "Dikarya",
+            "taxon_rank": "subkingdom"
+          },
+          {
+            "node_depth": 13,
+            "taxon_id": "4751",
+            "scientific_name": "Fungi",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 14,
+            "taxon_id": "33154",
+            "scientific_name": "Opisthokonta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 15,
+            "taxon_id": "2759",
+            "scientific_name": "Eukaryota",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 16,
+            "taxon_id": "131567",
+            "scientific_name": "cellular organisms",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 17,
+            "taxon_id": "1",
+            "scientific_name": "root",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "2707335",
+        "scientific_name": "Colletotrichum lupini",
+        "taxon_id": "145971",
+        "taxon_names": [
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Colletotrichum lupini",
+            "source": "NCBI Taxonomy",
+            "class": "scientific name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Gloeosporium lupini",
+            "source": "NCBI Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": null,
+            "name": "grColLupi",
+            "source": "Tree of Life ID",
+            "class": "tolid prefix",
+            "source_url": "https://id.tol.sanger.ac.uk"
+          },
+          {
+            "source_url_stub": null,
+            "name": "if:800519",
+            "source": null,
+            "class": "xref",
+            "source_url": null
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "ncbi:145971",
+            "source": "NCBI Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "ncbi:344007",
+            "source": "NCBI Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "gbif:7976357",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Colletotrichum lupini lupini",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Colletotrichum lupini setosum",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": null,
+            "name": "Colletotrichum lupini var. setosum",
+            "source": null,
+            "class": "synonym",
+            "source_url": null
+          },
+          {
+            "source_url_stub": null,
+            "name": "914221",
+            "source": null,
+            "class": "merged taxon id",
+            "source_url": null
+          },
+          {
+            "source_url_stub": null,
+            "name": "914227",
+            "source": null,
+            "class": "merged taxon id",
+            "source_url": null
+          }
+        ],
+        "taxon_rank": "species",
+        "fields": {
+          "chromosome_count": {
+            "aggregation_source": "direct",
+            "sp_count": 0,
+            "min": 11,
+            "value": 11,
+            "aggregation_method": "primary",
+            "median": 11,
+            "count": 1,
+            "max": 11,
+            "mode": 11
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-690256",
+      "score": null,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "taxon_id": "690256",
+            "scientific_name": "Colletotrichum fructicola",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 1,
+            "taxon_id": "2707338",
+            "scientific_name": "Colletotrichum gloeosporioides species complex",
+            "taxon_rank": "no rank"
+          },
+          {
+            "node_depth": 2,
+            "taxon_id": "5455",
+            "scientific_name": "Colletotrichum",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 3,
+            "taxon_id": "681950",
+            "scientific_name": "Glomerellaceae",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 4,
+            "taxon_id": "1028384",
+            "scientific_name": "Glomerellales",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 5,
+            "taxon_id": "222543",
+            "scientific_name": "Hypocreomycetidae",
+            "taxon_rank": "subclass"
+          },
+          {
+            "node_depth": 6,
+            "taxon_id": "147550",
+            "scientific_name": "Sordariomycetes",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 7,
+            "taxon_id": "715989",
+            "scientific_name": "sordariomyceta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 8,
+            "taxon_id": "716546",
+            "scientific_name": "leotiomyceta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 9,
+            "taxon_id": "147538",
+            "scientific_name": "Pezizomycotina",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 10,
+            "taxon_id": "716545",
+            "scientific_name": "saccharomyceta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "taxon_id": "4890",
+            "scientific_name": "Ascomycota",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 12,
+            "taxon_id": "451864",
+            "scientific_name": "Dikarya",
+            "taxon_rank": "subkingdom"
+          },
+          {
+            "node_depth": 13,
+            "taxon_id": "4751",
+            "scientific_name": "Fungi",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 14,
+            "taxon_id": "33154",
+            "scientific_name": "Opisthokonta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 15,
+            "taxon_id": "2759",
+            "scientific_name": "Eukaryota",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 16,
+            "taxon_id": "131567",
+            "scientific_name": "cellular organisms",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 17,
+            "taxon_id": "1",
+            "scientific_name": "root",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "2707338",
+        "scientific_name": "Colletotrichum fructicola",
+        "taxon_id": "690256",
+        "taxon_names": [
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Colletotrichum fructicola",
+            "source": "NCBI Taxonomy",
+            "class": "scientific name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Colletotrichum ignotum",
+            "source": "NCBI Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": null,
+            "name": "638931",
+            "source": null,
+            "class": "merged taxon id",
+            "source_url": null
+          },
+          {
+            "source_url_stub": null,
+            "name": "702520",
+            "source": null,
+            "class": "merged taxon id",
+            "source_url": null
+          },
+          {
+            "source_url_stub": null,
+            "name": "912114",
+            "source": null,
+            "class": "merged taxon id",
+            "source_url": null
+          },
+          {
+            "source_url_stub": null,
+            "name": "grColFrui",
+            "source": "Tree of Life ID",
+            "class": "tolid prefix",
+            "source_url": "https://id.tol.sanger.ac.uk"
+          },
+          {
+            "source_url_stub": null,
+            "name": "if:515409",
+            "source": null,
+            "class": "xref",
+            "source_url": null
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "ncbi:690256",
+            "source": "NCBI Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "gbif:7600711",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.gbif.org/"
+          }
+        ],
+        "taxon_rank": "species",
+        "fields": {
+          "chromosome_count": {
+            "aggregation_source": "direct",
+            "sp_count": 0,
+            "min": 11,
+            "value": 11,
+            "aggregation_method": "primary",
+            "median": 11.5,
+            "count": 2,
+            "max": 12,
+            "mode": 11
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-334819",
+      "score": null,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "taxon_id": "334819",
+            "scientific_name": "Fusarium verticillioides 7600",
+            "taxon_rank": "strain"
+          },
+          {
+            "node_depth": 1,
+            "taxon_id": "117187",
+            "scientific_name": "Fusarium verticillioides",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 2,
+            "taxon_id": "171627",
+            "scientific_name": "Fusarium fujikuroi species complex",
+            "taxon_rank": "species group"
+          },
+          {
+            "node_depth": 3,
+            "taxon_id": "5506",
+            "scientific_name": "Fusarium",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 4,
+            "taxon_id": "110618",
+            "scientific_name": "Nectriaceae",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 5,
+            "taxon_id": "5125",
+            "scientific_name": "Hypocreales",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 6,
+            "taxon_id": "222543",
+            "scientific_name": "Hypocreomycetidae",
+            "taxon_rank": "subclass"
+          },
+          {
+            "node_depth": 7,
+            "taxon_id": "147550",
+            "scientific_name": "Sordariomycetes",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 8,
+            "taxon_id": "715989",
+            "scientific_name": "sordariomyceta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 9,
+            "taxon_id": "716546",
+            "scientific_name": "leotiomyceta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "taxon_id": "147538",
+            "scientific_name": "Pezizomycotina",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 11,
+            "taxon_id": "716545",
+            "scientific_name": "saccharomyceta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 12,
+            "taxon_id": "4890",
+            "scientific_name": "Ascomycota",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 13,
+            "taxon_id": "451864",
+            "scientific_name": "Dikarya",
+            "taxon_rank": "subkingdom"
+          },
+          {
+            "node_depth": 14,
+            "taxon_id": "4751",
+            "scientific_name": "Fungi",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 15,
+            "taxon_id": "33154",
+            "scientific_name": "Opisthokonta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 16,
+            "taxon_id": "2759",
+            "scientific_name": "Eukaryota",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 17,
+            "taxon_id": "131567",
+            "scientific_name": "cellular organisms",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 18,
+            "taxon_id": "1",
+            "scientific_name": "root",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "117187",
+        "scientific_name": "Fusarium verticillioides 7600",
+        "taxon_id": "334819",
+        "taxon_names": [
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Fusarium verticillioides 7600",
+            "source": "NCBI Taxonomy",
+            "class": "scientific name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "ncbi:334819",
+            "source": "NCBI Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          }
+        ],
+        "taxon_rank": "strain",
+        "fields": {
+          "chromosome_count": {
+            "aggregation_source": "direct",
+            "sp_count": 0,
+            "min": 11,
+            "value": 11,
+            "aggregation_method": "primary",
+            "median": 11,
+            "count": 1,
+            "max": 11,
+            "mode": 11
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-117187",
+      "score": null,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "taxon_id": "117187",
+            "scientific_name": "Fusarium verticillioides",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 1,
+            "taxon_id": "171627",
+            "scientific_name": "Fusarium fujikuroi species complex",
+            "taxon_rank": "species group"
+          },
+          {
+            "node_depth": 2,
+            "taxon_id": "5506",
+            "scientific_name": "Fusarium",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 3,
+            "taxon_id": "110618",
+            "scientific_name": "Nectriaceae",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 4,
+            "taxon_id": "5125",
+            "scientific_name": "Hypocreales",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 5,
+            "taxon_id": "222543",
+            "scientific_name": "Hypocreomycetidae",
+            "taxon_rank": "subclass"
+          },
+          {
+            "node_depth": 6,
+            "taxon_id": "147550",
+            "scientific_name": "Sordariomycetes",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 7,
+            "taxon_id": "715989",
+            "scientific_name": "sordariomyceta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 8,
+            "taxon_id": "716546",
+            "scientific_name": "leotiomyceta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 9,
+            "taxon_id": "147538",
+            "scientific_name": "Pezizomycotina",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 10,
+            "taxon_id": "716545",
+            "scientific_name": "saccharomyceta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "taxon_id": "4890",
+            "scientific_name": "Ascomycota",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 12,
+            "taxon_id": "451864",
+            "scientific_name": "Dikarya",
+            "taxon_rank": "subkingdom"
+          },
+          {
+            "node_depth": 13,
+            "taxon_id": "4751",
+            "scientific_name": "Fungi",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 14,
+            "taxon_id": "33154",
+            "scientific_name": "Opisthokonta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 15,
+            "taxon_id": "2759",
+            "scientific_name": "Eukaryota",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 16,
+            "taxon_id": "131567",
+            "scientific_name": "cellular organisms",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 17,
+            "taxon_id": "1",
+            "scientific_name": "root",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "171627",
+        "scientific_name": "Fusarium verticillioides",
+        "taxon_id": "117187",
+        "taxon_names": [
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Fusarium moniliforme J. Sheld., 1904",
+            "source": "NCBI Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Fusarium moniliforme",
+            "source": "NCBI Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Fusarium verticillioides",
+            "source": "NCBI Taxonomy",
+            "class": "scientific name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Oospora verticillioides",
+            "source": "NCBI Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": null,
+            "name": "42664",
+            "source": null,
+            "class": "merged taxon id",
+            "source_url": null
+          },
+          {
+            "source_url_stub": null,
+            "name": "1335946",
+            "source": null,
+            "class": "merged taxon id",
+            "source_url": null
+          },
+          {
+            "source_url_stub": null,
+            "name": "2773093",
+            "source": null,
+            "class": "merged taxon id",
+            "source_url": null
+          },
+          {
+            "source_url_stub": null,
+            "name": "grFusVert",
+            "source": "Tree of Life ID",
+            "class": "tolid prefix",
+            "source_url": "https://id.tol.sanger.ac.uk"
+          }
+        ],
+        "taxon_rank": "species",
+        "fields": {
+          "chromosome_count": {
+            "aggregation_source": "direct",
+            "sp_count": 0,
+            "min": 11,
+            "value": 11,
+            "aggregation_method": "primary",
+            "median": 11,
+            "count": 8,
+            "max": 13,
+            "mode": 11
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-2502994",
+      "score": null,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "taxon_id": "2502994",
+            "scientific_name": "Fusarium odoratissimum",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 1,
+            "taxon_id": "171631",
+            "scientific_name": "Fusarium oxysporum species complex",
+            "taxon_rank": "species group"
+          },
+          {
+            "node_depth": 2,
+            "taxon_id": "5506",
+            "scientific_name": "Fusarium",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 3,
+            "taxon_id": "110618",
+            "scientific_name": "Nectriaceae",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 4,
+            "taxon_id": "5125",
+            "scientific_name": "Hypocreales",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 5,
+            "taxon_id": "222543",
+            "scientific_name": "Hypocreomycetidae",
+            "taxon_rank": "subclass"
+          },
+          {
+            "node_depth": 6,
+            "taxon_id": "147550",
+            "scientific_name": "Sordariomycetes",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 7,
+            "taxon_id": "715989",
+            "scientific_name": "sordariomyceta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 8,
+            "taxon_id": "716546",
+            "scientific_name": "leotiomyceta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 9,
+            "taxon_id": "147538",
+            "scientific_name": "Pezizomycotina",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 10,
+            "taxon_id": "716545",
+            "scientific_name": "saccharomyceta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "taxon_id": "4890",
+            "scientific_name": "Ascomycota",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 12,
+            "taxon_id": "451864",
+            "scientific_name": "Dikarya",
+            "taxon_rank": "subkingdom"
+          },
+          {
+            "node_depth": 13,
+            "taxon_id": "4751",
+            "scientific_name": "Fungi",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 14,
+            "taxon_id": "33154",
+            "scientific_name": "Opisthokonta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 15,
+            "taxon_id": "2759",
+            "scientific_name": "Eukaryota",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 16,
+            "taxon_id": "131567",
+            "scientific_name": "cellular organisms",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 17,
+            "taxon_id": "1",
+            "scientific_name": "root",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "171631",
+        "scientific_name": "Fusarium odoratissimum",
+        "taxon_id": "2502994",
+        "taxon_names": [
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Foc TR4",
+            "source": "NCBI Taxonomy",
+            "class": "common name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Fusarium odoratissimum",
+            "source": "NCBI Taxonomy",
+            "class": "scientific name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Fusarium oxysporum f. sp. cubense tropical race 4",
+            "source": "NCBI Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": null,
+            "name": "1229665",
+            "source": null,
+            "class": "merged taxon id",
+            "source_url": null
+          },
+          {
+            "source_url_stub": null,
+            "name": "2749759",
+            "source": null,
+            "class": "merged taxon id",
+            "source_url": null
+          },
+          {
+            "source_url_stub": null,
+            "name": "grFusOdor",
+            "source": "Tree of Life ID",
+            "class": "tolid prefix",
+            "source_url": "https://id.tol.sanger.ac.uk"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "ncbi:2502994",
+            "source": "NCBI Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          }
+        ],
+        "taxon_rank": "species",
+        "fields": {
+          "chromosome_count": {
+            "aggregation_source": "direct",
+            "sp_count": 0,
+            "min": 11,
+            "value": 11,
+            "aggregation_method": "primary",
+            "median": 11.5,
+            "count": 2,
+            "max": 12,
+            "mode": 11
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-72712",
+      "score": null,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "taxon_id": "72712",
+            "scientific_name": "Fusarium oxysporum f. sp. albedinis",
+            "taxon_rank": "forma specialis"
+          },
+          {
+            "node_depth": 1,
+            "taxon_id": "5507",
+            "scientific_name": "Fusarium oxysporum",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 2,
+            "taxon_id": "171631",
+            "scientific_name": "Fusarium oxysporum species complex",
+            "taxon_rank": "species group"
+          },
+          {
+            "node_depth": 3,
+            "taxon_id": "5506",
+            "scientific_name": "Fusarium",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 4,
+            "taxon_id": "110618",
+            "scientific_name": "Nectriaceae",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 5,
+            "taxon_id": "5125",
+            "scientific_name": "Hypocreales",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 6,
+            "taxon_id": "222543",
+            "scientific_name": "Hypocreomycetidae",
+            "taxon_rank": "subclass"
+          },
+          {
+            "node_depth": 7,
+            "taxon_id": "147550",
+            "scientific_name": "Sordariomycetes",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 8,
+            "taxon_id": "715989",
+            "scientific_name": "sordariomyceta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 9,
+            "taxon_id": "716546",
+            "scientific_name": "leotiomyceta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "taxon_id": "147538",
+            "scientific_name": "Pezizomycotina",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 11,
+            "taxon_id": "716545",
+            "scientific_name": "saccharomyceta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 12,
+            "taxon_id": "4890",
+            "scientific_name": "Ascomycota",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 13,
+            "taxon_id": "451864",
+            "scientific_name": "Dikarya",
+            "taxon_rank": "subkingdom"
+          },
+          {
+            "node_depth": 14,
+            "taxon_id": "4751",
+            "scientific_name": "Fungi",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 15,
+            "taxon_id": "33154",
+            "scientific_name": "Opisthokonta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 16,
+            "taxon_id": "2759",
+            "scientific_name": "Eukaryota",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 17,
+            "taxon_id": "131567",
+            "scientific_name": "cellular organisms",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 18,
+            "taxon_id": "1",
+            "scientific_name": "root",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "5507",
+        "scientific_name": "Fusarium oxysporum f. sp. albedinis",
+        "taxon_id": "72712",
+        "taxon_names": [
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Fusarium oxysporum f. sp. albedinis",
+            "source": "NCBI Taxonomy",
+            "class": "scientific name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "ncbi:72712",
+            "source": "NCBI Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          }
+        ],
+        "taxon_rank": "forma specialis",
+        "fields": {
+          "chromosome_count": {
+            "aggregation_source": "direct",
+            "sp_count": 0,
+            "min": 11,
+            "value": 11,
+            "aggregation_method": "primary",
+            "median": 11,
+            "count": 1,
+            "max": 11,
+            "mode": 11
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-396571",
+      "score": null,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "taxon_id": "396571",
+            "scientific_name": "Fusarium oxysporum f. sp. cepae",
+            "taxon_rank": "forma specialis"
+          },
+          {
+            "node_depth": 1,
+            "taxon_id": "5507",
+            "scientific_name": "Fusarium oxysporum",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 2,
+            "taxon_id": "171631",
+            "scientific_name": "Fusarium oxysporum species complex",
+            "taxon_rank": "species group"
+          },
+          {
+            "node_depth": 3,
+            "taxon_id": "5506",
+            "scientific_name": "Fusarium",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 4,
+            "taxon_id": "110618",
+            "scientific_name": "Nectriaceae",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 5,
+            "taxon_id": "5125",
+            "scientific_name": "Hypocreales",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 6,
+            "taxon_id": "222543",
+            "scientific_name": "Hypocreomycetidae",
+            "taxon_rank": "subclass"
+          },
+          {
+            "node_depth": 7,
+            "taxon_id": "147550",
+            "scientific_name": "Sordariomycetes",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 8,
+            "taxon_id": "715989",
+            "scientific_name": "sordariomyceta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 9,
+            "taxon_id": "716546",
+            "scientific_name": "leotiomyceta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "taxon_id": "147538",
+            "scientific_name": "Pezizomycotina",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 11,
+            "taxon_id": "716545",
+            "scientific_name": "saccharomyceta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 12,
+            "taxon_id": "4890",
+            "scientific_name": "Ascomycota",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 13,
+            "taxon_id": "451864",
+            "scientific_name": "Dikarya",
+            "taxon_rank": "subkingdom"
+          },
+          {
+            "node_depth": 14,
+            "taxon_id": "4751",
+            "scientific_name": "Fungi",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 15,
+            "taxon_id": "33154",
+            "scientific_name": "Opisthokonta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 16,
+            "taxon_id": "2759",
+            "scientific_name": "Eukaryota",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 17,
+            "taxon_id": "131567",
+            "scientific_name": "cellular organisms",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 18,
+            "taxon_id": "1",
+            "scientific_name": "root",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "5507",
+        "scientific_name": "Fusarium oxysporum f. sp. cepae",
+        "taxon_id": "396571",
+        "taxon_names": [
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Fusarium oxysporum f. sp. cepae",
+            "source": "NCBI Taxonomy",
+            "class": "scientific name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "ncbi:396571",
+            "source": "NCBI Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          }
+        ],
+        "taxon_rank": "forma specialis",
+        "fields": {
+          "chromosome_count": {
+            "aggregation_source": "direct",
+            "sp_count": 0,
+            "min": 11,
+            "value": 11,
+            "aggregation_method": "primary",
+            "median": 11,
+            "count": 1,
+            "max": 11,
+            "mode": 11
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-100903",
+      "score": null,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "taxon_id": "100903",
+            "scientific_name": "Fusarium oxysporum f. sp. fragariae",
+            "taxon_rank": "forma specialis"
+          },
+          {
+            "node_depth": 1,
+            "taxon_id": "5507",
+            "scientific_name": "Fusarium oxysporum",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 2,
+            "taxon_id": "171631",
+            "scientific_name": "Fusarium oxysporum species complex",
+            "taxon_rank": "species group"
+          },
+          {
+            "node_depth": 3,
+            "taxon_id": "5506",
+            "scientific_name": "Fusarium",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 4,
+            "taxon_id": "110618",
+            "scientific_name": "Nectriaceae",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 5,
+            "taxon_id": "5125",
+            "scientific_name": "Hypocreales",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 6,
+            "taxon_id": "222543",
+            "scientific_name": "Hypocreomycetidae",
+            "taxon_rank": "subclass"
+          },
+          {
+            "node_depth": 7,
+            "taxon_id": "147550",
+            "scientific_name": "Sordariomycetes",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 8,
+            "taxon_id": "715989",
+            "scientific_name": "sordariomyceta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 9,
+            "taxon_id": "716546",
+            "scientific_name": "leotiomyceta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "taxon_id": "147538",
+            "scientific_name": "Pezizomycotina",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 11,
+            "taxon_id": "716545",
+            "scientific_name": "saccharomyceta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 12,
+            "taxon_id": "4890",
+            "scientific_name": "Ascomycota",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 13,
+            "taxon_id": "451864",
+            "scientific_name": "Dikarya",
+            "taxon_rank": "subkingdom"
+          },
+          {
+            "node_depth": 14,
+            "taxon_id": "4751",
+            "scientific_name": "Fungi",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 15,
+            "taxon_id": "33154",
+            "scientific_name": "Opisthokonta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 16,
+            "taxon_id": "2759",
+            "scientific_name": "Eukaryota",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 17,
+            "taxon_id": "131567",
+            "scientific_name": "cellular organisms",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 18,
+            "taxon_id": "1",
+            "scientific_name": "root",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "5507",
+        "scientific_name": "Fusarium oxysporum f. sp. fragariae",
+        "taxon_id": "100903",
+        "taxon_names": [
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Fusarium oxysporum f. sp. fragariae",
+            "source": "NCBI Taxonomy",
+            "class": "scientific name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "ncbi:100903",
+            "source": "NCBI Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          }
+        ],
+        "taxon_rank": "forma specialis",
+        "fields": {
+          "chromosome_count": {
+            "aggregation_source": "direct",
+            "sp_count": 0,
+            "min": 11,
+            "value": 11,
+            "aggregation_method": "primary",
+            "median": 12,
+            "count": 5,
+            "max": 14,
+            "mode": 11
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-251360",
+      "score": null,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "taxon_id": "251360",
+            "scientific_name": "Fusarium oxysporum f. sp. phaseoli",
+            "taxon_rank": "forma specialis"
+          },
+          {
+            "node_depth": 1,
+            "taxon_id": "5507",
+            "scientific_name": "Fusarium oxysporum",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 2,
+            "taxon_id": "171631",
+            "scientific_name": "Fusarium oxysporum species complex",
+            "taxon_rank": "species group"
+          },
+          {
+            "node_depth": 3,
+            "taxon_id": "5506",
+            "scientific_name": "Fusarium",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 4,
+            "taxon_id": "110618",
+            "scientific_name": "Nectriaceae",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 5,
+            "taxon_id": "5125",
+            "scientific_name": "Hypocreales",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 6,
+            "taxon_id": "222543",
+            "scientific_name": "Hypocreomycetidae",
+            "taxon_rank": "subclass"
+          },
+          {
+            "node_depth": 7,
+            "taxon_id": "147550",
+            "scientific_name": "Sordariomycetes",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 8,
+            "taxon_id": "715989",
+            "scientific_name": "sordariomyceta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 9,
+            "taxon_id": "716546",
+            "scientific_name": "leotiomyceta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "taxon_id": "147538",
+            "scientific_name": "Pezizomycotina",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 11,
+            "taxon_id": "716545",
+            "scientific_name": "saccharomyceta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 12,
+            "taxon_id": "4890",
+            "scientific_name": "Ascomycota",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 13,
+            "taxon_id": "451864",
+            "scientific_name": "Dikarya",
+            "taxon_rank": "subkingdom"
+          },
+          {
+            "node_depth": 14,
+            "taxon_id": "4751",
+            "scientific_name": "Fungi",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 15,
+            "taxon_id": "33154",
+            "scientific_name": "Opisthokonta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 16,
+            "taxon_id": "2759",
+            "scientific_name": "Eukaryota",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 17,
+            "taxon_id": "131567",
+            "scientific_name": "cellular organisms",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 18,
+            "taxon_id": "1",
+            "scientific_name": "root",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "5507",
+        "scientific_name": "Fusarium oxysporum f. sp. phaseoli",
+        "taxon_id": "251360",
+        "taxon_names": [
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Fusarium oxysporum f. sp. phaseoli",
+            "source": "NCBI Taxonomy",
+            "class": "scientific name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "ncbi:251360",
+            "source": "NCBI Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          }
+        ],
+        "taxon_rank": "forma specialis",
+        "fields": {
+          "chromosome_count": {
+            "aggregation_source": "direct",
+            "sp_count": 0,
+            "min": 11,
+            "value": 11,
+            "aggregation_method": "primary",
+            "median": 12.5,
+            "count": 2,
+            "max": 14,
+            "mode": 11
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-120042",
+      "score": null,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "taxon_id": "120042",
+            "scientific_name": "Fusarium oxysporum f. sp. spinaciae",
+            "taxon_rank": "forma specialis"
+          },
+          {
+            "node_depth": 1,
+            "taxon_id": "5507",
+            "scientific_name": "Fusarium oxysporum",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 2,
+            "taxon_id": "171631",
+            "scientific_name": "Fusarium oxysporum species complex",
+            "taxon_rank": "species group"
+          },
+          {
+            "node_depth": 3,
+            "taxon_id": "5506",
+            "scientific_name": "Fusarium",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 4,
+            "taxon_id": "110618",
+            "scientific_name": "Nectriaceae",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 5,
+            "taxon_id": "5125",
+            "scientific_name": "Hypocreales",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 6,
+            "taxon_id": "222543",
+            "scientific_name": "Hypocreomycetidae",
+            "taxon_rank": "subclass"
+          },
+          {
+            "node_depth": 7,
+            "taxon_id": "147550",
+            "scientific_name": "Sordariomycetes",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 8,
+            "taxon_id": "715989",
+            "scientific_name": "sordariomyceta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 9,
+            "taxon_id": "716546",
+            "scientific_name": "leotiomyceta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "taxon_id": "147538",
+            "scientific_name": "Pezizomycotina",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 11,
+            "taxon_id": "716545",
+            "scientific_name": "saccharomyceta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 12,
+            "taxon_id": "4890",
+            "scientific_name": "Ascomycota",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 13,
+            "taxon_id": "451864",
+            "scientific_name": "Dikarya",
+            "taxon_rank": "subkingdom"
+          },
+          {
+            "node_depth": 14,
+            "taxon_id": "4751",
+            "scientific_name": "Fungi",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 15,
+            "taxon_id": "33154",
+            "scientific_name": "Opisthokonta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 16,
+            "taxon_id": "2759",
+            "scientific_name": "Eukaryota",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 17,
+            "taxon_id": "131567",
+            "scientific_name": "cellular organisms",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 18,
+            "taxon_id": "1",
+            "scientific_name": "root",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "5507",
+        "scientific_name": "Fusarium oxysporum f. sp. spinaciae",
+        "taxon_id": "120042",
+        "taxon_names": [
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Fusarium oxysporum f. spinaciae",
+            "source": "NCBI Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Fusarium oxysporum f. sp. spinaciae",
+            "source": "NCBI Taxonomy",
+            "class": "scientific name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          }
+        ],
+        "taxon_rank": "forma specialis",
+        "fields": {
+          "chromosome_count": {
+            "aggregation_source": "direct",
+            "sp_count": 0,
+            "min": 11,
+            "value": 11,
+            "aggregation_method": "primary",
+            "median": 11,
+            "count": 2,
+            "max": 11,
+            "mode": 11
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-660034",
+      "score": null,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "taxon_id": "660034",
+            "scientific_name": "Fusarium oxysporum II5",
+            "taxon_rank": "strain"
+          },
+          {
+            "node_depth": 1,
+            "taxon_id": "5507",
+            "scientific_name": "Fusarium oxysporum",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 2,
+            "taxon_id": "171631",
+            "scientific_name": "Fusarium oxysporum species complex",
+            "taxon_rank": "species group"
+          },
+          {
+            "node_depth": 3,
+            "taxon_id": "5506",
+            "scientific_name": "Fusarium",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 4,
+            "taxon_id": "110618",
+            "scientific_name": "Nectriaceae",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 5,
+            "taxon_id": "5125",
+            "scientific_name": "Hypocreales",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 6,
+            "taxon_id": "222543",
+            "scientific_name": "Hypocreomycetidae",
+            "taxon_rank": "subclass"
+          },
+          {
+            "node_depth": 7,
+            "taxon_id": "147550",
+            "scientific_name": "Sordariomycetes",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 8,
+            "taxon_id": "715989",
+            "scientific_name": "sordariomyceta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 9,
+            "taxon_id": "716546",
+            "scientific_name": "leotiomyceta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "taxon_id": "147538",
+            "scientific_name": "Pezizomycotina",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 11,
+            "taxon_id": "716545",
+            "scientific_name": "saccharomyceta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 12,
+            "taxon_id": "4890",
+            "scientific_name": "Ascomycota",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 13,
+            "taxon_id": "451864",
+            "scientific_name": "Dikarya",
+            "taxon_rank": "subkingdom"
+          },
+          {
+            "node_depth": 14,
+            "taxon_id": "4751",
+            "scientific_name": "Fungi",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 15,
+            "taxon_id": "33154",
+            "scientific_name": "Opisthokonta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 16,
+            "taxon_id": "2759",
+            "scientific_name": "Eukaryota",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 17,
+            "taxon_id": "131567",
+            "scientific_name": "cellular organisms",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 18,
+            "taxon_id": "1",
+            "scientific_name": "root",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "5507",
+        "scientific_name": "Fusarium oxysporum II5",
+        "taxon_id": "660034",
+        "taxon_names": [
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Fusarium oxysporum II5",
+            "source": "NCBI Taxonomy",
+            "class": "scientific name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "ncbi:660034",
+            "source": "NCBI Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          }
+        ],
+        "taxon_rank": "strain",
+        "fields": {
+          "chromosome_count": {
+            "aggregation_source": "direct",
+            "sp_count": 0,
+            "min": 11,
+            "value": 11,
+            "aggregation_method": "primary",
+            "median": 11,
+            "count": 1,
+            "max": 11,
+            "mode": 11
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-5515",
+      "score": null,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "taxon_id": "5515",
+            "scientific_name": "Fusarium acuminatum",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 1,
+            "taxon_id": "679429",
+            "scientific_name": "Fusarium tricinctum species complex",
+            "taxon_rank": "species group"
+          },
+          {
+            "node_depth": 2,
+            "taxon_id": "5506",
+            "scientific_name": "Fusarium",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 3,
+            "taxon_id": "110618",
+            "scientific_name": "Nectriaceae",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 4,
+            "taxon_id": "5125",
+            "scientific_name": "Hypocreales",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 5,
+            "taxon_id": "222543",
+            "scientific_name": "Hypocreomycetidae",
+            "taxon_rank": "subclass"
+          },
+          {
+            "node_depth": 6,
+            "taxon_id": "147550",
+            "scientific_name": "Sordariomycetes",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 7,
+            "taxon_id": "715989",
+            "scientific_name": "sordariomyceta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 8,
+            "taxon_id": "716546",
+            "scientific_name": "leotiomyceta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 9,
+            "taxon_id": "147538",
+            "scientific_name": "Pezizomycotina",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 10,
+            "taxon_id": "716545",
+            "scientific_name": "saccharomyceta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 11,
+            "taxon_id": "4890",
+            "scientific_name": "Ascomycota",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 12,
+            "taxon_id": "451864",
+            "scientific_name": "Dikarya",
+            "taxon_rank": "subkingdom"
+          },
+          {
+            "node_depth": 13,
+            "taxon_id": "4751",
+            "scientific_name": "Fungi",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 14,
+            "taxon_id": "33154",
+            "scientific_name": "Opisthokonta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 15,
+            "taxon_id": "2759",
+            "scientific_name": "Eukaryota",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 16,
+            "taxon_id": "131567",
+            "scientific_name": "cellular organisms",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 17,
+            "taxon_id": "1",
+            "scientific_name": "root",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "679429",
+        "scientific_name": "Fusarium acuminatum",
+        "taxon_id": "5515",
+        "taxon_names": [
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Fusarium acuminatum",
+            "source": "NCBI Taxonomy",
+            "class": "scientific name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Gibberella acuminata",
+            "source": "NCBI Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": null,
+            "name": "56687",
+            "source": null,
+            "class": "merged taxon id",
+            "source_url": null
+          },
+          {
+            "source_url_stub": null,
+            "name": "502705",
+            "source": null,
+            "class": "merged taxon id",
+            "source_url": null
+          },
+          {
+            "source_url_stub": null,
+            "name": "1501443",
+            "source": null,
+            "class": "merged taxon id",
+            "source_url": null
+          },
+          {
+            "source_url_stub": null,
+            "name": "1501444",
+            "source": null,
+            "class": "merged taxon id",
+            "source_url": null
+          },
+          {
+            "source_url_stub": null,
+            "name": "1769966",
+            "source": null,
+            "class": "merged taxon id",
+            "source_url": null
+          },
+          {
+            "source_url_stub": null,
+            "name": "2056093",
+            "source": null,
+            "class": "merged taxon id",
+            "source_url": null
+          },
+          {
+            "source_url_stub": null,
+            "name": "grGibAcum",
+            "source": "Tree of Life ID",
+            "class": "tolid prefix",
+            "source_url": "https://id.tol.sanger.ac.uk"
+          },
+          {
+            "source_url_stub": null,
+            "name": "grFusAcum",
+            "source": "Tree of Life ID",
+            "class": "tolid prefix",
+            "source_url": "https://id.tol.sanger.ac.uk"
+          },
+          {
+            "source_url_stub": null,
+            "name": "if:502388",
+            "source": null,
+            "class": "xref",
+            "source_url": null
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "ncbi:5515",
+            "source": "NCBI Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "gbif:5251600",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Fusarium acuminatum acuminatum",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Fusarium caudatum",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Fusarium equiseti caudatum",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Fusarium gibbosum acuminatum",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Fusarium scirpi",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Fusarium scirpi acuminatum",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Fusarium scirpi caudatum",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Fusarium scirpi comma",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Fusarium scirpi nigrantum",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Fusarium scirpi pallens",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Fusarium scirpi scirpi",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Microcera acuminata",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": null,
+            "name": "5981858",
+            "source": null,
+            "class": "merged taxon id",
+            "source_url": null
+          }
+        ],
+        "taxon_rank": "species",
+        "fields": {
+          "chromosome_count": {
+            "aggregation_source": "direct",
+            "sp_count": 0,
+            "min": 11,
+            "value": 11,
+            "aggregation_method": "primary",
+            "median": 11,
+            "count": 1,
+            "max": 11,
+            "mode": 11
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-47278",
+      "score": null,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "taxon_id": "47278",
+            "scientific_name": "Trichothecium roseum",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 1,
+            "taxon_id": "231006",
+            "scientific_name": "Trichothecium",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 2,
+            "taxon_id": "162454",
+            "scientific_name": "Hypocreales incertae sedis",
+            "taxon_rank": "no rank"
+          },
+          {
+            "node_depth": 3,
+            "taxon_id": "5125",
+            "scientific_name": "Hypocreales",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 4,
+            "taxon_id": "222543",
+            "scientific_name": "Hypocreomycetidae",
+            "taxon_rank": "subclass"
+          },
+          {
+            "node_depth": 5,
+            "taxon_id": "147550",
+            "scientific_name": "Sordariomycetes",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 6,
+            "taxon_id": "715989",
+            "scientific_name": "sordariomyceta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 7,
+            "taxon_id": "716546",
+            "scientific_name": "leotiomyceta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 8,
+            "taxon_id": "147538",
+            "scientific_name": "Pezizomycotina",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 9,
+            "taxon_id": "716545",
+            "scientific_name": "saccharomyceta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "taxon_id": "4890",
+            "scientific_name": "Ascomycota",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 11,
+            "taxon_id": "451864",
+            "scientific_name": "Dikarya",
+            "taxon_rank": "subkingdom"
+          },
+          {
+            "node_depth": 12,
+            "taxon_id": "4751",
+            "scientific_name": "Fungi",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 13,
+            "taxon_id": "33154",
+            "scientific_name": "Opisthokonta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 14,
+            "taxon_id": "2759",
+            "scientific_name": "Eukaryota",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 15,
+            "taxon_id": "131567",
+            "scientific_name": "cellular organisms",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 16,
+            "taxon_id": "1",
+            "scientific_name": "root",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "231006",
+        "scientific_name": "Trichothecium roseum",
+        "taxon_id": "47278",
+        "taxon_names": [
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Trichoderma roseum",
+            "source": "NCBI Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Trichothecium roseum",
+            "source": "NCBI Taxonomy",
+            "class": "scientific name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": null,
+            "name": "grTriRose",
+            "source": "Tree of Life ID",
+            "class": "tolid prefix",
+            "source_url": "https://id.tol.sanger.ac.uk"
+          },
+          {
+            "source_url_stub": null,
+            "name": "if:152448",
+            "source": null,
+            "class": "xref",
+            "source_url": null
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "ncbi:47278",
+            "source": "NCBI Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.marinespecies.org/aphia.php?p=taxdetails&id=",
+            "name": "worms:100562",
+            "source": "WoRMS",
+            "class": "xref",
+            "source_url": "https://www.marinespecies.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "gbif:2561979",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.irmng.org/aphia.php?p=taxdetails&id=",
+            "name": "irmng:10648819",
+            "source": "IRMNG",
+            "class": "xref",
+            "source_url": "https://www.irmng.org/"
+          },
+          {
+            "source_url_stub": "https://www.marinespecies.org/aphia.php?p=taxdetails&id=",
+            "name": "Cephalothecium roseum",
+            "source": "WoRMS",
+            "class": "synonym",
+            "source_url": "https://www.marinespecies.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Cephalothecium roseum roseum",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": null,
+            "name": "Cephalothecium roseum var. roseum",
+            "source": null,
+            "class": "synonym",
+            "source_url": null
+          },
+          {
+            "source_url_stub": null,
+            "name": "Hyphelia rosea",
+            "source": null,
+            "class": "synonym",
+            "source_url": null
+          },
+          {
+            "source_url_stub": null,
+            "name": "Hyphoderma roseum",
+            "source": null,
+            "class": "synonym",
+            "source_url": null
+          },
+          {
+            "source_url_stub": null,
+            "name": "Hypolyssus roseus",
+            "source": null,
+            "class": "synonym",
+            "source_url": null
+          },
+          {
+            "source_url_stub": null,
+            "name": "Hypomyces roseus",
+            "source": null,
+            "class": "synonym",
+            "source_url": null
+          },
+          {
+            "source_url_stub": null,
+            "name": "Puccinia rosea",
+            "source": null,
+            "class": "synonym",
+            "source_url": null
+          },
+          {
+            "source_url_stub": null,
+            "name": "Sphaeria rosea",
+            "source": null,
+            "class": "synonym",
+            "source_url": null
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Trichothecium roseum granulosum",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Trichothecium roseum roseum",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": null,
+            "name": "Trichothecium roseum var. granulosum",
+            "source": null,
+            "class": "synonym",
+            "source_url": null
+          },
+          {
+            "source_url_stub": null,
+            "name": "Trichothecium roseum var. roseum",
+            "source": null,
+            "class": "synonym",
+            "source_url": null
+          }
+        ],
+        "taxon_rank": "species",
+        "fields": {
+          "chromosome_count": {
+            "aggregation_source": "direct",
+            "sp_count": 0,
+            "min": 9,
+            "value": 11,
+            "aggregation_method": "primary",
+            "median": 10,
+            "count": 2,
+            "max": 11,
+            "mode": 11
+          }
+        }
+      }
+    },
+    {
+      "index": "taxon--ncbi--goat--2026.04.20",
+      "id": "taxon-99897",
+      "score": null,
+      "result": {
+        "lineage": [
+          {
+            "node_depth": 0,
+            "taxon_id": "99897",
+            "scientific_name": "Cordyceps gunnii",
+            "taxon_rank": "species"
+          },
+          {
+            "node_depth": 1,
+            "taxon_id": "45234",
+            "scientific_name": "Cordyceps",
+            "taxon_rank": "genus"
+          },
+          {
+            "node_depth": 2,
+            "taxon_id": "474943",
+            "scientific_name": "Cordycipitaceae",
+            "taxon_rank": "family"
+          },
+          {
+            "node_depth": 3,
+            "taxon_id": "5125",
+            "scientific_name": "Hypocreales",
+            "taxon_rank": "order"
+          },
+          {
+            "node_depth": 4,
+            "taxon_id": "222543",
+            "scientific_name": "Hypocreomycetidae",
+            "taxon_rank": "subclass"
+          },
+          {
+            "node_depth": 5,
+            "taxon_id": "147550",
+            "scientific_name": "Sordariomycetes",
+            "taxon_rank": "class"
+          },
+          {
+            "node_depth": 6,
+            "taxon_id": "715989",
+            "scientific_name": "sordariomyceta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 7,
+            "taxon_id": "716546",
+            "scientific_name": "leotiomyceta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 8,
+            "taxon_id": "147538",
+            "scientific_name": "Pezizomycotina",
+            "taxon_rank": "subphylum"
+          },
+          {
+            "node_depth": 9,
+            "taxon_id": "716545",
+            "scientific_name": "saccharomyceta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 10,
+            "taxon_id": "4890",
+            "scientific_name": "Ascomycota",
+            "taxon_rank": "phylum"
+          },
+          {
+            "node_depth": 11,
+            "taxon_id": "451864",
+            "scientific_name": "Dikarya",
+            "taxon_rank": "subkingdom"
+          },
+          {
+            "node_depth": 12,
+            "taxon_id": "4751",
+            "scientific_name": "Fungi",
+            "taxon_rank": "kingdom"
+          },
+          {
+            "node_depth": 13,
+            "taxon_id": "33154",
+            "scientific_name": "Opisthokonta",
+            "taxon_rank": "clade"
+          },
+          {
+            "node_depth": 14,
+            "taxon_id": "2759",
+            "scientific_name": "Eukaryota",
+            "taxon_rank": "domain"
+          },
+          {
+            "node_depth": 15,
+            "taxon_id": "131567",
+            "scientific_name": "cellular organisms",
+            "taxon_rank": "cellular root"
+          },
+          {
+            "node_depth": 16,
+            "taxon_id": "1",
+            "scientific_name": "root",
+            "taxon_rank": "no rank"
+          }
+        ],
+        "parent": "45234",
+        "scientific_name": "Cordyceps gunnii",
+        "taxon_id": "99897",
+        "taxon_names": [
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Cordyceps gunnii",
+            "source": "NCBI Taxonomy",
+            "class": "scientific name",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Cordyceps hawkesii",
+            "source": "NCBI Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Paecilomyces gunnii",
+            "source": "NCBI Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Paecilomyces hawkesii",
+            "source": "NCBI Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Sphaeria gunnii",
+            "source": "NCBI Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": null,
+            "name": "169039",
+            "source": null,
+            "class": "merged taxon id",
+            "source_url": null
+          },
+          {
+            "source_url_stub": null,
+            "name": "169040",
+            "source": null,
+            "class": "merged taxon id",
+            "source_url": null
+          },
+          {
+            "source_url_stub": null,
+            "name": "grCorGunn",
+            "source": "Tree of Life ID",
+            "class": "tolid prefix",
+            "source_url": "https://id.tol.sanger.ac.uk"
+          },
+          {
+            "source_url_stub": null,
+            "name": "if:143740",
+            "source": null,
+            "class": "xref",
+            "source_url": null
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "ncbi:99897",
+            "source": "NCBI Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "ncbi:181072",
+            "source": "NCBI Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "gbif:9791983",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "xref",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Cordyceps gunnii gunnii",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Cordyceps gunnii minor",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": null,
+            "name": "Cordyceps gunnii var. minor",
+            "source": null,
+            "class": "synonym",
+            "source_url": null
+          },
+          {
+            "source_url_stub": "https://www.gbif.org/species/",
+            "name": "Drechmeria gunnii",
+            "source": "GBIF Backbone Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.gbif.org/"
+          },
+          {
+            "source_url_stub": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy/",
+            "name": "Paecilomyces gunnii var. minor",
+            "source": "NCBI Taxonomy",
+            "class": "synonym",
+            "source_url": "https://www.ncbi.nlm.nih.gov/datasets/taxonomy"
+          },
+          {
+            "source_url_stub": null,
+            "name": "601953",
+            "source": null,
+            "class": "merged taxon id",
+            "source_url": null
+          }
+        ],
+        "taxon_rank": "species",
+        "fields": {
+          "chromosome_count": {
+            "aggregation_source": "direct",
+            "sp_count": 0,
+            "min": 11,
+            "value": 11,
+            "aggregation_method": "primary",
+            "median": 11,
+            "count": 1,
+            "max": 11,
+            "mode": 11
+          }
+        }
+      }
+    }
+  ],
+  "aggs": {
+    "fields": {
+      "doc_count": 273593,
+      "by_key": {
+        "buckets": {
+          "chromosome_count": {
+            "doc_count": 6581,
+            "value_list": {
+              "doc_count_error_upper_bound": 0,
+              "sum_other_doc_count": 0,
+              "buckets": []
+            },
+            "value_count": {
+              "value": 6581
+            }
+          }
+        }
+      }
+    }
+  },
+  "fields": [
+    "chromosome_count"
+  ],
+  "query": {
+    "size": 20,
+    "from": 0,
+    "query": {
+      "bool": {
+        "must_not": [],
+        "filter": [
+          {
+            "bool": {
+              "should": [
+                {
+                  "bool": {
+                    "filter": {
+                      "nested": {
+                        "path": "attributes",
+                        "query": {
+                          "bool": {
+                            "should": [
+                              {
+                                "bool": {
+                                  "filter": [
+                                    {
+                                      "match": {
+                                        "attributes.key": "chromosome_count"
+                                      }
+                                    },
+                                    {
+                                      "exists": {
+                                        "field": "attributes.long_value"
+                                      }
+                                    },
+                                    {
+                                      "exists": {
+                                        "field": "attributes.aggregation_source"
+                                      }
+                                    },
+                                    {
+                                      "exists": {
+                                        "field": "attributes.aggregation_method"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "bool": {
+                    "should": {
+                      "nested": {
+                        "path": "attributes",
+                        "query": {
+                          "bool": {
+                            "should": [
+                              {
+                                "bool": {
+                                  "filter": [
+                                    {
+                                      "match": {
+                                        "attributes.key": "chromosome_count"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        "inner_hits": {
+                          "_source": false,
+                          "name": "attributes",
+                          "docvalue_fields": [
+                            "attributes.key",
+                            "attributes.is_primary_value",
+                            "attributes.count",
+                            "attributes.sp_count",
+                            "attributes.max",
+                            "attributes.min",
+                            "attributes.mean",
+                            "attributes.median",
+                            "attributes.mode",
+                            "attributes.sum",
+                            "attributes.from",
+                            "attributes.to",
+                            "attributes.range",
+                            "attributes.length",
+                            "attributes.aggregation_method",
+                            "attributes.aggregation_source",
+                            "attributes.aggregation_rank",
+                            "attributes.aggregation_taxon_id",
+                            "attributes.long_value"
+                          ],
+                          "size": 100
+                        }
+                      }
+                    }
+                  }
+                }
+              ],
+              "minimum_should_match": 2
+            }
+          },
+          {
+            "nested": {
+              "path": "attributes",
+              "query": {
+                "bool": {
+                  "filter": [
+                    {
+                      "match": {
+                        "attributes.key": "chromosome_count"
+                      }
+                    },
+                    {
+                      "exists": {
+                        "field": "attributes.aggregation_source"
+                      }
+                    },
+                    {
+                      "exists": {
+                        "field": "attributes.aggregation_method"
+                      }
+                    },
+                    {
+                      "bool": {
+                        "should": {
+                          "range": {
+                            "attributes.long_value": {
+                              "gt": "10"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "bool": {
+              "should": [
+                {
+                  "bool": {
+                    "should": [
+                      {
+                        "bool": {
+                          "should": [
+                            {
+                              "nested": {
+                                "path": "taxon_names",
+                                "query": {
+                                  "bool": {
+                                    "filter": [
+                                      {
+                                        "match": {
+                                          "taxon_names.name": "2759"
+                                        }
+                                      }
+                                    ]
+                                  }
+                                }
+                              }
+                            },
+                            {
+                              "match": {
+                                "taxon_id": "2759"
+                              }
+                            },
+                            {
+                              "nested": {
+                                "path": "lineage",
+                                "query": {
+                                  "bool": {
+                                    "filter": [
+                                      {
+                                        "multi_match": {
+                                          "query": "2759",
+                                          "fields": [
+                                            "lineage.taxon_id",
+                                            "lineage.scientific_name"
+                                          ]
+                                        }
+                                      }
+                                    ]
+                                  }
+                                }
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        ],
+        "should": []
+      }
+    },
+    "_source": {
+      "include": [
+        "taxon_id",
+        "scientific_name",
+        "taxon_rank",
+        "parent",
+        "taxon_names.*",
+        "lineage.*"
+      ],
+      "exclude": []
+    },
+    "sort": [
+      {
+        "attributes.long_value": {
+          "mode": "max",
+          "order": "asc",
+          "nested": {
+            "path": "attributes",
+            "filter": {
+              "term": {
+                "attributes.key": "chromosome_count"
+              }
+            }
+          }
+        }
+      }
+    ],
+    "aggs": {
+      "fields": {
+        "nested": {
+          "path": "attributes"
+        },
+        "aggs": {
+          "by_key": {
+            "filters": {
+              "filters": {
+                "chromosome_count": {
+                  "term": {
+                    "attributes.key": "chromosome_count"
+                  }
+                }
+              }
+            },
+            "aggs": {
+              "value_count": {
+                "value_count": {
+                  "field": "attributes.key"
+                }
+              },
+              "value_list": {
+                "terms": {
+                  "field": "attributes.keyword_value",
+                  "size": 64
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

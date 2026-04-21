@@ -37,3 +37,6 @@ coverage/
 # IDE
 .idea/
 *.iml
+
+# Local working directory for R SDK / extendr experimentation
+workdir/

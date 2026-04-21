@@ -279,3 +279,107 @@ jobs:
             ${{ matrix.bin_path }}
             /tmp/generated/goat-cli/PREVIEW.md
           retention-days: 14
+
+  # ── SDK artifacts: build, test, and upload (JavaScript npm, R, fixture validation)
+  # Note: R setup takes ~12 mins. Only run on main branch + manual trigger to keep PR checks fast.
+  sdk-artifacts:
+    name: Build and test SDK artifacts
+    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust stable with wasm-pack targets
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Cache Cargo registry and build artefacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target/
+          key: ${{ runner.os }}-cargo-sdk-artifacts-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-sdk-artifacts-
+
+      - name: Install wasm-pack
+        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Set up R
+        uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: "4.3"
+
+      - name: Install R build dependencies
+        run: |
+          install.packages(c("devtools", "roxygen2"))
+        shell: Rscript {0}
+
+      - name: Install cargo-generate
+        run: cargo install cargo-generate
+
+      - name: Add ~/.cargo/bin to PATH
+        run: echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+      # Generate the goat SDK project (once)
+      - name: Generate goat-cli SDKs
+        run: cargo run -- new goat --output-dir /tmp/generated --config sites/
+
+      # ── JavaScript: Build WASM + npm package ─────────────────────────────
+      - name: Build JavaScript WASM packages
+        run: REPO_ROOT=${{ github.workspace }} bash build-wasm.sh
+        working-directory: /tmp/generated/goat-cli/js/goat
+
+      - name: Install JavaScript dependencies
+        run: npm install
+        working-directory: /tmp/generated/goat-cli/js/goat
+
+      - name: Build JavaScript package (npm)
+        run: npm run build 2>/dev/null || npm pack
+        working-directory: /tmp/generated/goat-cli/js/goat
+
+      # ── R: Build package tarball ─────────────────────────────────────────
+      - name: Build R package
+        run: |
+          cd /tmp/generated/goat-cli/r/goat
+          R CMD build --compact-vignettes=both .
+        shell: bash
+
+      # ── Artifact Testing: Validate JavaScript against fixtures ──────────
+      - name: Run JavaScript fixture tests
+        run: |
+          SITE=goat \
+          JS_SDK_PATH=/tmp/generated/goat-cli/js/goat/query.js \
+          FIXTURES_DIR=$GITHUB_WORKSPACE/tests/python/fixtures-goat \
+            node --test tests/javascript/test_sdk_fixtures.mjs
+
+      # ── Artifact Testing: Check R package ────────────────────────────────
+      - name: Check R package
+        run: |
+          cd /tmp/generated/goat-cli/r/goat
+          R CMD check *.tar.gz --no-manual --no-build-vignettes || true
+        shell: bash
+        continue-on-error: true
+
+      # ── Upload Artifacts (only after tests pass) ─────────────────────────
+      - name: Upload JavaScript package (npm)
+        uses: actions/upload-artifact@v4
+        with:
+          name: goat-sdk-npm
+          path: /tmp/generated/goat-cli/js/goat/*.tgz
+          retention-days: 14
+
+      - name: Upload R package
+        uses: actions/upload-artifact@v4
+        with:
+          name: goat-sdk-r
+          path: /tmp/generated/goat-cli/r/goat/*.tar.gz
+          retention-days: 14

@@ -46,3 +46,312 @@ def build_url(
         ValueError: If either YAML string cannot be parsed.
     """
     ...
+
+def render_snippet(
+    snapshot_json: str,
+    site_name: str,
+    api_base: str,
+    sdk_name: str,
+    languages: str = "python",
+) -> str:
+    """Render code snippets for a query in one or more languages.
+
+    Args:
+        snapshot_json: JSON-serialised ``QuerySnapshot`` containing filters, sorts,
+            selections, and other query components.
+        site_name: Short identifier for the target site, e.g. ``"goat"``.
+        api_base: Base URL of the API, e.g. ``"https://goat.genomehubs.org/api"``.
+        sdk_name: Import name of the generated SDK package, e.g. ``"goat_sdk"``.
+        languages: Comma-separated list of language codes to render, e.g.
+            ``"python"`` or ``"python,r"`` (default: ``"python"``).  Each code
+            must match a loaded snippet template.
+
+    Returns:
+        JSON object string mapping language name to rendered code snippet, e.g.
+        ``'{"python": "import goat_sdk as sdk\\n..."}'``.
+
+    Raises:
+        ValueError: If the snapshot JSON cannot be parsed.
+        RuntimeError: If template rendering fails.
+    """
+    ...
+
+def describe_query(
+    query_yaml: str,
+    params_yaml: str,
+    field_metadata_json: str,
+    mode: str = "concise",
+) -> str:
+    """Describe a query in human-readable form.
+
+    Args:
+        query_yaml: YAML-serialised ``SearchQuery``.
+        params_yaml: YAML-serialised ``QueryParams``.
+        field_metadata_json: JSON-serialised field metadata dictionary mapping field names
+            to metadata objects. Pass ``"{}"`` for no metadata (uses canonical names).
+        mode: Output format — ``"concise"`` for a one-line summary, ``"verbose"`` for
+            a detailed breakdown with bullet points (default: ``"concise"``).
+
+    Returns:
+        English prose description of the query.
+
+    Raises:
+        ValueError: If any YAML or JSON string cannot be parsed.
+    """
+    ...
+
+def parse_response_status(raw: str) -> str:
+    """Parse the ``status`` block from a raw genomehubs API JSON response.
+
+    Args:
+        raw: Raw JSON response body from the genomehubs API.
+
+    Returns:
+        Compact JSON string of the form
+        ``'{"hits":N,"ok":true|false,"error":null|"msg"}'``.
+        On completely invalid input returns an error-flagged object rather
+        than raising.
+    """
+    ...
+
+def parse_search_json(raw: str) -> str:
+    """Parse a raw genomehubs ``/search`` JSON response into a flat record array.
+
+    Each element of the returned array corresponds to one result record with:
+
+    - Identity columns: ``taxon_id``, ``assembly_id``, or ``sample_id``;
+      ``scientific_name``; ``taxon_rank``.
+    - ``{field}`` — representative value (``null`` for stub fields with no value).
+    - ``{field}__source`` — ``"direct"``, ``"ancestor"``, or ``"descendant"``
+      (taxon index only; ``null`` for assembly/sample).
+    - Stat sub-keys present on the raw object: ``{field}__min``, ``{field}__max``,
+      ``{field}__median``, ``{field}__mode``, ``{field}__mean``, ``{field}__count``,
+      ``{field}__sp_count``, ``{field}__from``, ``{field}__to``, ``{field}__length``.
+
+    Args:
+        raw: Raw JSON response body from the genomehubs ``/search`` endpoint.
+
+    Returns:
+        Compact JSON array string.  Parse with ``json.loads()`` or pass directly
+        to ``polars.read_json()`` / ``pandas.read_json()``.
+    """
+    ...
+
+def annotate_source_labels(records_json: str, mode: str = "non_direct") -> str:
+    """Add ``{field}__label`` columns to already-flat parsed records.
+
+    Operates on the output of :func:`parse_search_json` without re-parsing the
+    raw HTTP response.
+
+    Label format examples:
+
+    - Direct value ``3.4`` → ``"3.4"`` (all modes)
+    - Descendant value ``57`` → ``"57 (Descendant)"`` (non_direct, all modes)
+    - Ancestral value ``2`` → ``"2 (Ancestral)"`` (all three modes)
+    - List value ``["A", "B"]`` → ``"A, B"`` (joined with comma)
+
+    Args:
+        records_json: JSON array string from :func:`parse_search_json`.
+        mode: One of:
+
+            - ``"non_direct"`` (default) — annotate descendant and ancestral only.
+            - ``"ancestral_only"`` — annotate ancestral values only.
+            - ``"all"`` — annotate every value including direct.
+
+    Returns:
+        Compact JSON array string with ``{field}__label`` columns added.
+    """
+    ...
+
+def split_source_columns(records_json: str) -> str:
+    """Reshape flat parsed records into split-source columns.
+
+    Operates on the output of :func:`parse_search_json` without re-parsing the
+    raw HTTP response.  Each ``{field}`` / ``{field}__source`` pair is replaced
+    by three columns:
+
+    - ``{field}__direct`` — value when source is ``"direct"``, else ``null``.
+    - ``{field}__descendant`` — value when source is ``"descendant"``, else ``null``.
+    - ``{field}__ancestral`` — value when source is ``"ancestor"``, else ``null``.
+
+    All other columns (stat sub-keys, ``__length``, identity fields) are kept
+    unchanged.
+
+    Args:
+        records_json: JSON array string from :func:`parse_search_json`.
+
+    Returns:
+        Compact JSON array string with split-source columns.
+    """
+    ...
+
+def values_only(records_json: str, keep_columns_json: str = "") -> str:
+    """Strip all ``__*`` sub-key columns from flat records.
+
+    Operates on the output of :func:`parse_search_json`.  All metadata columns
+    whose names contain ``__`` (``{field}__source``, ``{field}__min``,
+    ``{field}__label``, ``{field}__direct``, etc.) are removed.  Identity columns
+    (``taxon_id``, ``scientific_name``, ``taxon_rank``, …) and bare ``{field}``
+    value columns are preserved.
+
+    ``keep_columns_json`` is a JSON array of ``__*`` column names to **preserve**
+    despite containing ``__``.  Use this when the caller requested a specific
+    summary statistic via ``field:modifier`` syntax, e.g.::
+
+        keep = json.dumps(qb.field_modifiers())
+        rows = json.loads(values_only(flat_json, keep))
+
+    Pass ``""`` or ``"[]"`` to strip all ``__*`` columns (default behaviour).
+
+    Args:
+        records_json: JSON array string from :func:`parse_search_json`.
+        keep_columns_json: JSON array of column names to preserve, e.g.
+            ``'["assembly_span__min"]'``.  Default ``""`` strips all.
+
+    Returns:
+        Compact JSON array string containing only identity and value columns.
+    """
+    ...
+
+def annotated_values(records_json: str, mode: str = "non_direct", keep_columns_json: str = "") -> str:
+    """Return records with non-direct values replaced by their annotated label.
+
+    Chains :func:`annotate_source_labels` then promotes each ``{field}__label``
+    into ``{field}``, then strips all remaining ``__*`` metadata columns.
+
+    ``keep_columns_json`` works identically to :func:`values_only` — pass a
+    JSON array of column names to preserve specific stat sub-keys after label
+    promotion, e.g. ``'["assembly_span__min"]'``.
+
+    Fields that have no label (e.g. ``"direct"`` source in ``"non_direct"`` mode)
+    keep their original numeric/string value.
+
+    Example output column for an ancestral genome_size::
+
+        genome_size = "8215200000 (Ancestral)"
+
+    Args:
+        records_json: JSON array string from :func:`parse_search_json`.
+        mode: One of ``"non_direct"`` (default), ``"ancestral_only"``, or ``"all"``.
+        keep_columns_json: JSON array of column names to preserve, e.g.
+            ``'["assembly_span__min"]'``.  Default ``""`` strips all.
+
+    Returns:
+        Compact JSON array string with labelled values and no ``__*`` columns.
+    """
+    ...
+
+def to_tidy_records(records_json: str) -> str:
+    """Reshape flat records into long/tidy format.
+
+    Accepts the JSON array produced by :func:`parse_search_json` and returns a
+    JSON array with one row *per field per source record*.  Each output row
+    contains:
+
+    - Identity columns present in the source record (``taxon_id``,
+      ``scientific_name``, ``taxon_rank``, ``assembly_id``, ``sample_id``).
+    - ``"field"`` — the bare field name (e.g. ``"genome_size"``).
+    - ``"value"`` — the representative value for that field.
+    - ``"source"`` — aggregation source (``"direct"``, ``"ancestor"``,
+      ``"descendant"``, or ``null``).
+
+    Explicitly-requested modifier columns (from ``field:modifier`` requests,
+    e.g. ``assembly_span__min``) are emitted as separate rows with ``"field"``
+    set to ``"{bare}:{modifier}"`` and ``"source"`` as ``null``.
+
+    This matches the shape of the GoaT API's ``tidydata`` TSV format and is
+    the natural input for ``pandas.melt`` or R's ``tidyr::pivot_longer``.
+
+    Args:
+        records_json: JSON array string from :func:`parse_search_json`.
+
+    Returns:
+        Compact JSON array string in tidy (long) format.
+    """
+    ...
+
+def parse_paginated_json(raw: str) -> str:
+    """Parse one page from a ``/searchPaginated`` API response.
+
+    Returns a JSON object:
+
+    .. code-block:: json
+
+        {
+          "records": [...],
+          "hasMore": true,
+          "searchAfter": [...],
+          "totalHits": 5000
+        }
+
+    ``records`` contains flat records in the same format as
+    :func:`parse_search_json`.  Pass ``searchAfter`` as the cursor for the
+    next request.  ``hasMore`` is ``false`` on the final page.
+
+    Args:
+        raw: Raw JSON string from the ``/searchPaginated`` endpoint.
+
+    Returns:
+        JSON object string with ``records``, ``hasMore``, ``searchAfter``,
+        and ``totalHits``.
+    """
+    ...
+
+def parse_batch_json(raw: str) -> str:
+    """Parse a raw batch search (``/msearch``) response into per-query flat record lists.
+
+    The genomehubs ``/msearch`` endpoint accepts multiple queries in a single POST
+    and returns results grouped by query.  This function parses that envelope.
+
+    Returns a JSON object:
+
+    .. code-block:: json
+
+        {
+          "results": [
+            {"records": [...], "total": 5200, "error": null},
+            {"records": [...], "total": 7300, "error": null}
+          ],
+          "totalHits": 12500
+        }
+
+    Each ``records`` array is in the same flat format as :func:`parse_search_json`
+    output.  Results are in the same order as the request's ``searches`` array.
+
+    Args:
+        raw: Raw JSON string from the ``/msearch`` endpoint.
+
+    Returns:
+        JSON object string with ``results`` (array of per-query objects each
+        containing ``records``, ``total``, and ``error``) and ``totalHits``.
+    """
+    ...
+
+def validate_query_json(
+    query_yaml: str,
+    field_metadata_json: str,
+    validation_config_json: str,
+    synonyms_json: str,
+) -> str:
+    """Validate a query against field metadata and site configuration.
+
+    Accepts YAML for the query and JSON for the field metadata, validation
+    config, and synonym map.  Returns a JSON array of error strings — an empty
+    array (``"[]"``) means the query is valid.
+
+    Args:
+        query_yaml: YAML-serialised ``SearchQuery``.
+        field_metadata_json: JSON object mapping field names to metadata
+            (same shape as the API ``resultFields`` response).  Pass ``"{}"``
+            when no metadata is available.
+        validation_config_json: JSON-serialised ``ValidationConfig`` (prefix
+            rules, allowed name classes, etc.).  Pass ``"{}"`` for defaults.
+        synonyms_json: JSON object mapping synonym names to canonical field
+            names.  Pass ``"{}"`` for no synonym expansion.
+
+    Returns:
+        JSON array of error strings, e.g. ``"[]"`` for a valid query or
+        ``'["unknown field: foo"]'`` for an invalid one.  Returns
+        ``'["error: ..."]'`` if parsing fails.
+    """
+    ...

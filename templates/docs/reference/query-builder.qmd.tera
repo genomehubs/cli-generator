@@ -1,0 +1,452 @@
+---
+title: "QueryBuilder reference"
+---
+
+`QueryBuilder` accumulates query state incrementally and serialises it for the
+{{ site_display_name }} search API.  Every method returns `self`, so calls may
+be chained or spread across multiple statements.
+
+---
+
+## Constructor
+
+::: {.panel-tabset group="language"}
+
+## Python
+
+```python
+from {{ sdk_name }}.query import QueryBuilder
+
+qb = QueryBuilder("taxon")   # one of: {% for index in indexes %}"{{ index.name }}"{% if not loop.last %}, {% endif %}{% endfor %}
+
+```
+
+## R
+
+```r
+library({{ r_package_name }})
+
+qb <- query_builder("taxon")
+```
+
+## JavaScript
+
+```javascript
+import { QueryBuilder } from '{{ site_name }}-sdk';
+
+const qb = new QueryBuilder('taxon');
+```
+
+:::
+
+**`index`** — The index to query.  Available indexes on this site:
+{% for index in indexes %}
+- `{{ index.name }}`
+{% endfor %}
+
+---
+
+## Taxon filters
+
+### `set_taxa(taxa, filter_type="name")`
+
+Restrict results to taxa matching the provided names or IDs.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `taxa` | list of str | Taxon names or IDs. Prefix with `!` to exclude, e.g. `"!Felis"`. |
+| `filter_type` | str | One of `"name"`, `"tree"` (whole subtree), `"lineage"` (ancestor lineage). |
+
+::: {.panel-tabset group="language"}
+
+## Python
+
+```python
+# All species-rank taxa in the mammal subtree, excluding rodents
+qb = QueryBuilder("taxon") \
+    .set_taxa(["Mammalia", "!Rodentia"], filter_type="tree") \
+    .set_rank("species")
+```
+
+## R
+
+```r
+qb <- query_builder("taxon") |>
+  set_taxa(c("Mammalia", "!Rodentia"), filter_type = "tree") |>
+  set_rank("species")
+```
+
+## JavaScript
+
+```javascript
+const qb = new QueryBuilder('taxon')
+  .setTaxa(['Mammalia', '!Rodentia'], 'tree')
+  .setRank('species');
+```
+
+:::
+
+### `set_rank(rank)`
+
+Restrict results to a single taxonomic rank (e.g. `"species"`, `"genus"`,
+`"family"`).
+
+### `set_assemblies(accessions)`
+
+Filter by assembly accession IDs (e.g. `["GCA_000001405"]`).
+
+### `set_samples(accessions)`
+
+Filter by sample accession IDs (e.g. `["SRS000001"]`).
+
+---
+
+## Attribute filters
+
+### `add_attribute(name, operator=None, value=None, modifiers=None)`
+
+Add a filter on a field value.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `name` | str | Field name or synonym, e.g. `"genome_size"`. |
+| `operator` | str | One of `"eq"`, `"ne"`, `"lt"`, `"le"`, `"gt"`, `"ge"`, `"exists"`, `"missing"`. |
+| `value` | str or list | Comparison target. Accepts `"1G"` / `"500M"` size suffixes. |
+| `modifiers` | list of str | Summary sub-keys (`"min"`, `"max"`, `"median"`, `"mean"`) and source filters (`"direct"`, `"ancestral"`, `"descendant"`, `"estimated"`, `"missing"`). |
+
+::: {.panel-tabset group="language"}
+
+## Python
+
+```python
+# Genome size >= 1 Gb, direct measurement only
+qb.add_attribute("genome_size", operator="ge", value="1G", modifiers=["direct"])
+
+# Taxa that have a chromosome-level assembly
+qb.add_attribute("assembly_level", operator="eq", value="chromosome")
+
+# Field must exist
+qb.add_attribute("busco_completeness", operator="exists")
+```
+
+## R
+
+```r
+qb <- qb |>
+  add_attribute("genome_size", operator = "ge", value = "1G",
+                modifiers = c("direct")) |>
+  add_attribute("assembly_level", operator = "eq", value = "chromosome")
+```
+
+## JavaScript
+
+```javascript
+qb.addAttribute('genome_size', 'ge', '1G', ['direct'])
+  .addAttribute('assembly_level', 'eq', 'chromosome');
+```
+
+:::
+
+### `set_attributes(attributes)`
+
+Replace all attribute filters at once with a list of dicts.
+
+---
+
+## Field selection
+
+### `add_field(name, modifiers=None)`
+
+Request a field to be returned in each result row.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `name` | str | Field name. |
+| `modifiers` | list of str | Summary sub-keys to include as extra columns, e.g. `["min", "max"]`. |
+
+::: {.panel-tabset group="language"}
+
+## Python
+
+```python
+qb.add_field("genome_size") \
+  .add_field("chromosome_number", modifiers=["min", "max"]) \
+  .add_field("assembly_level")
+```
+
+## R
+
+```r
+qb <- qb |>
+  add_field("genome_size") |>
+  add_field("chromosome_number", modifiers = c("min", "max"))
+```
+
+## JavaScript
+
+```javascript
+qb.addField('genome_size')
+  .addField('chromosome_number', ['min', 'max'])
+  .addField('assembly_level');
+```
+
+:::
+
+### `set_fields(fields)`
+
+Replace the field selection at once.  Each element may be a plain string or a
+dict with `"name"` and optional `"modifier"` keys.
+
+### `set_names(name_classes)`
+
+Include additional name columns such as `["scientific_name", "common_name"]`.
+
+### `set_ranks(ranks)`
+
+Include lineage rank columns (e.g. `["genus", "family", "order"]`).
+
+---
+
+## Exclusion filters
+
+Exclusion filters suppress records where a field value was derived via a
+particular inference pathway.  Each method accepts a list of field names.
+
+- `set_exclude_ancestral(fields)` — Ancestrally derived estimates
+- `set_exclude_descendant(fields)` — Descendant-derived estimates
+- `set_exclude_direct(fields)` — Directly measured values
+- `set_exclude_missing(fields)` — Records with missing values
+- `set_exclude_derived(fields)` — Shorthand: ancestral + descendant
+- `set_exclude_estimated(fields)` — Shorthand: ancestral + missing
+
+Each `set_exclude_*` method replaces the list for that type.  Pass `None` (Python/R)
+or `null` (JavaScript) to clear.  Use the corresponding `add_exclude_*` method to
+append a single field name without replacing the existing list.
+
+- `add_exclude_ancestral(field)` — Append to ancestral exclusion list
+- `add_exclude_descendant(field)` — Append to descendant exclusion list
+- `add_exclude_direct(field)` — Append to direct exclusion list
+- `add_exclude_missing(field)` — Append to missing-value exclusion list
+
+::: {.panel-tabset group="language"}
+
+## Python
+
+```python
+# Keep only directly measured genome sizes
+qb.add_field("genome_size").set_exclude_ancestral(["genome_size"])
+
+# Shorthand: exclude any non-direct estimate
+qb.add_field("genome_size").set_exclude_derived(["genome_size"])
+
+# Extend existing exclusion list one field at a time
+qb.add_exclude_ancestral("c_value").add_exclude_ancestral("genome_size")
+```
+
+## R
+
+```r
+# Keep only directly measured genome sizes
+qb <- qb |>
+  add_field("genome_size") |>
+  set_exclude_ancestral(c("genome_size"))
+
+# Extend exclusion list
+qb <- qb |> add_exclude_ancestral("c_value")
+```
+
+## JavaScript
+
+```javascript
+// Keep only directly measured genome sizes
+qb.addField('genome_size').setExcludeAncestral(['genome_size']);
+
+// Extend exclusion list
+qb.addExcludeAncestral('c_value');
+```
+
+:::
+
+---
+
+## Query parameters
+
+### `set_size(n)` — page size (default `10`)
+
+### `set_page(n)` — page number, 1-based (default `1`)
+
+### `set_sort(field, order="asc")`
+
+Sort results.  `order` is `"asc"` or `"desc"`.
+
+### `set_include_estimates(value)` — include estimated values (default `True`)
+
+### `set_taxonomy(name)` — taxonomy name, e.g. `"ncbi"` or `"ott"` (default `"ncbi"`)
+
+---
+
+## Execution
+
+### `to_url(api_base, api_version, endpoint="search") -> str`
+
+Build the URL without making a network request.
+
+### `count(api_base, api_version) -> int`
+
+Return the number of matching records.
+
+### `search(api_base, api_version) -> list[dict]`
+
+Return a list of flat record dicts (parsed by `parse_search_json`).
+
+### `search_df(api_base, api_version) -> pandas.DataFrame`
+
+Return results as a pandas DataFrame.
+
+### `search_polars(api_base, api_version) -> polars.DataFrame`
+
+Return results as a Polars DataFrame (lazy-evaluated).
+
+### `search_all(max_records=None, api_base, api_version) -> list[dict]`
+
+Fetch **every** matching record using cursor-based pagination.  Calls the
+`/searchPaginated` endpoint in chunks of 1 000 records and continues until all
+pages are retrieved (or `max_records` is reached).
+
+Returns a flat list of record dicts in the same format as `search()`.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `max_records` | int \| None | Cap the total records returned. `None` (default) means no limit. |
+| `api_base` | str | Base URL of the API. |
+| `api_version` | str | API version string (Python only). |
+
+::: {.panel-tabset group="language"}
+
+## Python
+
+```python
+qb = (
+    QueryBuilder("taxon")
+    .set_taxa(["Mammalia"], filter_type="tree")
+    .set_rank("species")
+    .add_field("genome_size")
+)
+
+# Fetch up to 5 000 records
+records = qb.search_all(
+    max_records=5000,
+    api_base="{{ api_base }}",
+    api_version="{{ api_version }}",
+)
+print(len(records))  # up to 5000
+```
+
+## JavaScript
+
+```javascript
+const qb = new QueryBuilder('taxon')
+  .setTaxa(['Mammalia'], 'tree')
+  .setRank('species')
+  .addField('genome_size');
+
+const records = await qb.searchAll(5000);
+console.log(records.length);
+```
+
+:::
+
+---
+
+## Snippet generation
+
+### `snippet(languages, site_name, sdk_name, api_base) -> dict`
+
+Generate runnable code snippets for the current query in one or more languages.
+Returns a dict mapping language codes (`"python"`, `"r"`, `"javascript"`) to
+formatted source strings.
+
+```python
+snips = qb.snippet()
+print(snips["python"])
+```
+
+---
+
+## Validation
+
+### `validate(field_metadata=None, validation_config=None, synonyms=None) -> list[str]`
+
+Validate the current query against field metadata.  Returns a list of error
+strings; an empty list means the query is valid.
+
+Pass `field_metadata` as a dict mapping field names to their metadata objects
+(as returned by the API).  If omitted, only structural checks are performed.
+
+```python
+errors = qb.validate()
+if errors:
+    print("\n".join(errors))
+```
+
+---
+
+## Utility
+
+### `reset() -> self`
+
+Clear all query filters (taxa, attributes, fields, exclusions) while preserving
+the index and execution parameters (`size`, `page`, `sort`, etc.).
+
+```python
+qb.set_taxa(["Mammalia"]).add_attribute("genome_size", "exists")
+qb.reset()  # back to a bare QueryBuilder("taxon")
+```
+
+---
+
+## Combining builders
+
+### `merge(other) -> self`
+
+Merge another `QueryBuilder` into this one.  Lists are extended; scalars are
+overwritten only when `other` differs from its default.
+
+### `QueryBuilder.combine(*builders) -> QueryBuilder`
+
+Class method: create a new builder by merging all inputs.
+
+::: {.panel-tabset group="language"}
+
+## Python
+
+```python
+# Useful when different MCP tools each provide part of the query
+id_qb   = QueryBuilder("taxon").set_taxa(["Mammalia"], filter_type="tree")
+attr_qb = QueryBuilder("taxon").add_attribute("genome_size", "exists")
+size_qb = QueryBuilder("taxon").set_size(50).set_rank("species")
+
+final = QueryBuilder.combine(id_qb, attr_qb, size_qb)
+url = final.to_url(api_base="{{ api_base }}", api_version="{{ api_version }}")
+```
+
+## R
+
+```r
+id_qb   <- query_builder("taxon") |> set_taxa(c("Mammalia"), filter_type = "tree")
+attr_qb <- query_builder("taxon") |> add_attribute("genome_size", operator = "exists")
+
+final <- combine_builders(id_qb, attr_qb)
+```
+
+:::
+
+---
+
+## Serialisation helpers
+
+`to_query_yaml() -> str` — serialise the query state to YAML.
+
+`to_params_yaml() -> str` — serialise execution parameters to YAML.
+
+`describe(mode="concise") -> str` — English prose summary of the current query.

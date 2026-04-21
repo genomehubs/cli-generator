@@ -1,0 +1,36 @@
+---
+title: "{{ site_display_name }} SDK"
+---
+
+The **{{ site_display_name }}** SDK provides programmatic access to
+[{{ site_display_name }}]({{ api_base }}) across Python, R, JavaScript, and a
+command-line interface — all generated from the same API schema.
+
+## What you can do
+
+| Task | Python | R | JS | CLI |
+|---|---|---|---|---|
+| Count matching records | `count()` | `count()` | `count()` | `taxon count` |
+| Search and parse results | `search()` | `search()` | `search()` | `taxon search` |
+| Load into a DataFrame | `search_df()` / `search_polars()` | `search_df()` | — | — |
+| Annotate value sources | `annotate_source_labels()` | `annotate_source_labels()` | same | — |
+| Split by source | `split_source_columns()` | `split_source_columns()` | same | — |
+| Generate code snippets | `snippet()` | `snippet()` | `snippet()` | `taxon snippet` |
+| Validate a query | `validate()` | `validate()` | `validate()` | — |
+| Describe a query | `describe()` | `describe()` | `describe()` | — |
+
+Available indexes:
+{% for index in indexes %}
+- **`{{ index.name }}`**
+{% endfor %}
+
+## Getting started
+
+→ [Quick start](quickstart.qmd) — install and run your first query in under
+five minutes.
+
+→ [QueryBuilder reference](reference/query-builder.qmd) — full method
+documentation with examples in all languages.
+
+→ [Parsing results](reference/parse.qmd) — understanding and reshaping API
+response data.

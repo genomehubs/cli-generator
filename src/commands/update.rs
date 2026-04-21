@@ -35,9 +35,14 @@ pub fn run(repo_path: &Path, config_dir: Option<&Path>, force_fresh: bool) -> Re
         .with_context(|| format!("fetching field definitions for site '{}'", site.name))?;
 
     let gen = CodeGenerator::new()?;
-    let rendered = gen.render_all(&site, &options, &fields_by_index)?;
+    let rendered_by_lang = gen.render_all(&site, &options, &fields_by_index)?;
 
-    write_generated_files(repo_path, &rendered).context("writing generated files")?;
+    // Flatten all language outputs and write to repo
+    let mut all_files = std::collections::HashMap::new();
+    for (_language, rendered) in rendered_by_lang {
+        all_files.extend(rendered);
+    }
+    write_generated_files(repo_path, &all_files).context("writing generated files")?;
 
     println!("✓  Updated generated files in {}", repo_path.display());
     Ok(())
