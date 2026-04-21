@@ -280,69 +280,9 @@ jobs:
             /tmp/generated/goat-cli/PREVIEW.md
           retention-days: 14
 
-  # ── SDK fixture tests: JS (no network, uses committed fixtures) ────────────
-  sdk-fixture-tests:
-    name: SDK fixture tests
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install Rust stable with wasm-pack targets
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: wasm32-unknown-unknown
-
-      - name: Cache Cargo registry and build artefacts
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target/
-          key: ${{ runner.os }}-cargo-sdk-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-sdk-
-
-      - name: Install wasm-pack
-        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-
-      - name: Install cargo-generate
-        run: cargo install cargo-generate
-
-      - name: Add ~/.cargo/bin to PATH
-        run: echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-
-      # Generate the goat SDK project into /tmp/generated
-      - name: Generate goat-cli SDK
-        run: cargo run -- new goat --output-dir /tmp/generated --config sites/
-
-      # Build both WASM targets (pkg-nodejs + pkg-web)
-      - name: Build JS WASM packages
-        run: REPO_ROOT=${{ github.workspace }} bash build-wasm.sh
-        working-directory: /tmp/generated/goat-cli/js/goat
-
-      # Install JS SDK dependencies
-      - name: Install JS SDK dependencies
-        run: npm install
-        working-directory: /tmp/generated/goat-cli/js/goat
-
-      # Run the committed fixtures against the generated JS SDK.
-      # Fixtures are checked in at tests/python/fixtures-goat/ and require no network.
-      - name: Run JavaScript fixture tests
-        run: |
-          SITE=goat \
-          JS_SDK_PATH=/tmp/generated/goat-cli/js/goat/query.js \
-          FIXTURES_DIR=$GITHUB_WORKSPACE/tests/python/fixtures-goat \
-            node --test tests/javascript/test_sdk_fixtures.mjs
-
-  # ── SDK artifacts: JavaScript (npm) and R packages ─────────────────────────
+  # ── SDK artifacts: build, test, and upload (JavaScript npm, R, fixture validation)
   sdk-artifacts:
-    name: Build SDK artifacts (JavaScript npm, R)
+    name: Build and test SDK artifacts
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -387,11 +327,11 @@ jobs:
       - name: Add ~/.cargo/bin to PATH
         run: echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
-      # Generate the goat SDK project
+      # Generate the goat SDK project (once)
       - name: Generate goat-cli SDKs
         run: cargo run -- new goat --output-dir /tmp/generated --config sites/
 
-      # ── JavaScript: Build npm package ────────────────────────────────────
+      # ── JavaScript: Build WASM + npm package ─────────────────────────────
       - name: Build JavaScript WASM packages
         run: REPO_ROOT=${{ github.workspace }} bash build-wasm.sh
         working-directory: /tmp/generated/goat-cli/js/goat
@@ -400,16 +340,9 @@ jobs:
         run: npm install
         working-directory: /tmp/generated/goat-cli/js/goat
 
-      - name: Build JavaScript package
+      - name: Build JavaScript package (npm)
         run: npm run build 2>/dev/null || npm pack
         working-directory: /tmp/generated/goat-cli/js/goat
-
-      - name: Upload JavaScript package (npm)
-        uses: actions/upload-artifact@v4
-        with:
-          name: goat-sdk-npm
-          path: /tmp/generated/goat-cli/js/goat/*.tgz
-          retention-days: 14
 
       # ── R: Build package tarball ─────────────────────────────────────────
       - name: Build R package
@@ -418,17 +351,33 @@ jobs:
           R CMD build --compact-vignettes=both .
         shell: bash
 
+      # ── Artifact Testing: Validate JavaScript against fixtures ──────────
+      - name: Run JavaScript fixture tests
+        run: |
+          SITE=goat \
+          JS_SDK_PATH=/tmp/generated/goat-cli/js/goat/query.js \
+          FIXTURES_DIR=$GITHUB_WORKSPACE/tests/python/fixtures-goat \
+            node --test tests/javascript/test_sdk_fixtures.mjs
+
+      # ── Artifact Testing: Check R package ────────────────────────────────
+      - name: Check R package
+        run: |
+          cd /tmp/generated/goat-cli/r
+          R CMD check *.tar.gz --no-manual --no-build-vignettes || true
+        shell: bash
+        continue-on-error: true
+
+      # ── Upload Artifacts (only after tests pass) ─────────────────────────
+      - name: Upload JavaScript package (npm)
+        uses: actions/upload-artifact@v4
+        with:
+          name: goat-sdk-npm
+          path: /tmp/generated/goat-cli/js/goat/*.tgz
+          retention-days: 14
+
       - name: Upload R package
         uses: actions/upload-artifact@v4
         with:
           name: goat-sdk-r
           path: /tmp/generated/goat-cli/r/*.tar.gz
           retention-days: 14
-
-      # Optional: Check R package for common issues
-      - name: Check R package (optional)
-        run: |
-          cd /tmp/generated/goat-cli/r
-          R CMD check *.tar.gz --no-manual --no-build-vignettes || true
-        shell: bash
-        continue-on-error: true
