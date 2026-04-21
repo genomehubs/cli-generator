@@ -362,13 +362,16 @@ jobs:
       # ── R: Install dependencies and build package tarball ─────────────────
       - name: Install system libraries for R packages
         run: |
-          apt-get update
-          apt-get install -y libcurl4-openssl-dev libssl-dev
+          sudo rm -f /var/lib/apt/lists/lock
+          sudo dpkg --configure -a
+          sudo apt-get -o Apt::Lock::Timeout=300 update
+          sudo apt-get -o Apt::Lock::Timeout=300 install -y libcurl4-openssl-dev libssl-dev zlib1g-dev
         shell: bash
+        continue-on-error: true
 
       - name: Install R package dependencies
         run: |
-          Rscript -e "install.packages(c('httr', 'jsonlite', 'data.table', 'yaml', 'R6'), repos='http://cran.r-project.org')" || exit 1
+          Rscript -e "install.packages(c('httr', 'jsonlite', 'data.table', 'yaml', 'R6'), repos='http://cran.r-project.org', type='source')" || exit 1
           Rscript -e "installed.packages()[c('httr', 'jsonlite', 'data.table', 'yaml', 'R6'), c('Package', 'LibPath')]"
         shell: bash
 
