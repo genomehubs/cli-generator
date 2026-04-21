@@ -346,7 +346,12 @@ jobs:
         run: npm run build 2>/dev/null || npm pack
         working-directory: /tmp/generated/goat-cli/js/goat
 
-      # ── R: Build package tarball ─────────────────────────────────────────
+      # ── R: Install dependencies and build package tarball ─────────────────
+      - name: Install R package dependencies
+        run: |
+          Rscript -e "install.packages(c('httr', 'jsonlite', 'data.table'), repos='http://cran.r-project.org')"
+        shell: bash
+
       - name: Build R package
         run: |
           cd /tmp/generated/goat-cli/r/goat
