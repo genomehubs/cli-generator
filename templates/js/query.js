@@ -542,19 +542,19 @@ class QueryBuilder {
       for (const r of this._ranks) lines.push(`  - ${r}`);
     }
     if (this._excludeAncestral.length > 0) {
-      lines.push("excludeAncestral:");
+      lines.push("exclude_ancestral:");
       for (const f of this._excludeAncestral) lines.push(`  - ${f}`);
     }
     if (this._excludeDescendant.length > 0) {
-      lines.push("excludeDescendant:");
+      lines.push("exclude_descendant:");
       for (const f of this._excludeDescendant) lines.push(`  - ${f}`);
     }
     if (this._excludeDirect.length > 0) {
-      lines.push("excludeDirect:");
+      lines.push("exclude_direct:");
       for (const f of this._excludeDirect) lines.push(`  - ${f}`);
     }
     if (this._excludeMissing.length > 0) {
-      lines.push("excludeMissing:");
+      lines.push("exclude_missing:");
       for (const f of this._excludeMissing) lines.push(`  - ${f}`);
     }
     return lines.join("\n") + "\n";
