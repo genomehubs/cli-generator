@@ -950,9 +950,27 @@ class QueryBuilder {
     const validationConfigJson = JSON.stringify(validationConfig || {});
     const synonymsJson = JSON.stringify(synonyms);
 
+    // field_meta.json is per-index: {"taxon": {...}, "assembly": {...}}
+    // Extract the slice for this query's index so the validator sees only
+    // the fields valid for this index rather than a flat cross-index union.
+    let indexFieldMetadataJson = fieldMetadataJson;
+    try {
+      const parsed = JSON.parse(fieldMetadataJson);
+      const firstVal = parsed && Object.values(parsed)[0];
+      if (
+        firstVal &&
+        typeof firstVal === "object" &&
+        !Array.isArray(firstVal)
+      ) {
+        indexFieldMetadataJson = JSON.stringify(parsed[this._index] || {});
+      }
+    } catch {
+      // keep original if parse fails
+    }
+
     const result = _validateQueryJson(
       this.toQueryYaml(),
-      fieldMetadataJson,
+      indexFieldMetadataJson,
       validationConfigJson,
       synonymsJson,
     );

@@ -241,10 +241,12 @@ from .{} import (
     describe_query,
     parse_response_status,
     parse_search_json,
+    parse_paginated_json,
     render_snippet,
     search,
     split_source_columns,
     to_tidy_records,
+    validate_query_json,
     values_only,
 )
 from .query import QueryBuilder
@@ -256,6 +258,7 @@ __all__ = [
     "build_url",
     "count",
     "describe_query",
+    "parse_paginated_json",
     "parse_response_status",
     "parse_search_json",
     "QueryBuilder",
@@ -263,6 +266,7 @@ __all__ = [
     "search",
     "split_source_columns",
     "to_tidy_records",
+    "validate_query_json",
     "values_only",
 ]
 "#,
@@ -524,6 +528,7 @@ fn create_r_package(repo_dir: &Path, site: &SiteConfig) -> Result<()> {
         "src/rust/src/generated",
         "src/rust/src/templates/snippets",
         "tools",
+        "inst/generated",
     ] {
         std::fs::create_dir_all(r_pkg_dir.join(sub))
             .with_context(|| format!("creating r/{}/{}", r_package_name, sub))?;

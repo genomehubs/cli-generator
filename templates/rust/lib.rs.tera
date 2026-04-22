@@ -203,6 +203,40 @@ fn to_tidy_records(records_json: &str) -> String {
     }
 }
 
+/// Parse one page from a `/searchPaginated` response.
+///
+/// Returns a JSON object with `"records"` (flat), `"hasMore"` (bool),
+/// `"searchAfter"` (array or null), and `"totalHits"` (int).
+#[cfg(feature = "extension-module")]
+#[pyfunction]
+fn parse_paginated_json(raw: &str) -> String {
+    use crate::embedded::core::parse;
+    match parse::parse_paginated_json(raw) {
+        Ok(page) => parse::paginated_page_to_json(&page),
+        Err(e) => {% raw %}format!(r#"{{"error":{e:?}}}"#){% endraw %},
+    }
+}
+
+/// Validate a query against field metadata and configuration.
+///
+/// Returns a JSON array of error strings. An empty array means the query is valid.
+#[cfg(feature = "extension-module")]
+#[pyfunction]
+fn validate_query_json(
+    query_yaml: &str,
+    field_metadata_json: &str,
+    validation_config_json: &str,
+    synonyms_json: &str,
+) -> String {
+    use crate::embedded::core::validation;
+    validation::validate_query_json(
+        query_yaml,
+        field_metadata_json,
+        validation_config_json,
+        synonyms_json,
+    )
+}
+
 /// Python module for {{ site_display_name }}.
 #[cfg(feature = "extension-module")]
 #[pymodule]
@@ -223,5 +257,7 @@ fn {{ sdk_name }}(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(values_only, m)?)?;
     m.add_function(wrap_pyfunction!(annotated_values, m)?)?;
     m.add_function(wrap_pyfunction!(to_tidy_records, m)?)?;
+    m.add_function(wrap_pyfunction!(parse_paginated_json, m)?)?;
+    m.add_function(wrap_pyfunction!(validate_query_json, m)?)?;
     Ok(())
 }

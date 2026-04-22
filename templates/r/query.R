@@ -87,7 +87,6 @@ QueryBuilder <- R6::R6Class(
     include_estimates = TRUE,
     tidy = FALSE,
     taxonomy = "ncbi",
-    validation_level = "full",
     api_base_url = "{{ api_base }}",
     ui_base_url = "{{ ui_base }}",
 
@@ -99,17 +98,8 @@ QueryBuilder <- R6::R6Class(
   public = list(
     #' @description Initialise a new query builder.
     #' @param index The index to query (e.g., "taxon", "assembly").
-    #' @param validation_level Validation mode for \code{validate()}: \code{"full"} (default)
-    #'   attempts v3 API metadata endpoints before falling back to local files;
-    #'   \code{"partial"} uses only embedded local files.
-    #' @param api_base Base URL for API metadata endpoints (v3+). Defaults to the
-    #'   site API base.
-    initialize = function(index,
-                          validation_level = "full",
-                          api_base = "{{ api_base }}") {
+    initialize = function(index) {
       private$index_name <- index
-      private$validation_level <- validation_level
-      private$api_base_url <- api_base
       private$taxa_names <- character(0)
       private$taxa_filter_type <- "name"
       private$rank_name <- NULL
@@ -139,13 +129,12 @@ QueryBuilder <- R6::R6Class(
     #' @param value The value to compare against.
     #' @param modifiers Optional character vector of attribute modifiers.
     add_attribute = function(name, operator, value = NULL, modifiers = NULL) {
-      entry <- list(
-        name     = name,
-        operator = operator,
-        value    = as.character(value)
-      )
+      entry <- list(name = name, operator = operator)
+      if (!is.null(value) && length(value) > 0) {
+        entry$value <- as.character(value)
+      }
       if (!is.null(modifiers) && length(modifiers) > 0) {
-        entry$modifiers <- modifiers
+        entry$modifiers <- as.list(modifiers)
       }
       private$attributes[[length(private$attributes) + 1]] <- entry
       invisible(self)
@@ -194,7 +183,7 @@ QueryBuilder <- R6::R6Class(
     add_field = function(name, modifiers = NULL) {
       entry <- list(name = name)
       if (!is.null(modifiers) && length(modifiers) > 0) {
-        entry$modifiers <- modifiers
+        entry$modifiers <- as.list(modifiers)
       }
       private$fields[[length(private$fields) + 1]] <- entry
       invisible(self)
@@ -538,34 +527,65 @@ QueryBuilder <- R6::R6Class(
       jsonlite::fromJSON(snippets_json)
     },
 
-    #' @description Validate the query against field metadata.
-    #' @param validation_level Override the instance setting for this call:
-    #'   \code{"full"} (default) attempts to fetch metadata from v3 API endpoints;
-    #'   \code{"partial"} uses only embedded local files.
-    #' @param field_metadata Named list of field metadata (from `FieldMeta` objects).
-    #'   Pass `NULL` to skip per-attribute checks.
-    #' @param validation_config Named list of validation configuration (prefixes, name
-    #'   classes, etc.). Pass `NULL` to use built-in defaults.
+    #' @description Validate the query against the bundled field metadata.
+    #' @param field_metadata Named list of field metadata.  Pass `NULL` (default)
+    #'   to load from the bundled `inst/generated/field_meta.json`.
+    #' @param validation_config Named list of validation configuration.  Pass `NULL`
+    #'   (default) to load from the bundled `inst/generated/validation_config.json`.
     #' @param synonyms Named list mapping attribute synonyms to canonical names.
-    #'   Pass `NULL` for none.
+    #'   Pass `NULL` (default) for none.
     #' @return A character vector of error strings; an empty vector means the query is valid.
-    validate = function(validation_level = NULL, field_metadata = NULL, validation_config = NULL, synonyms = NULL) {
-      level <- if (!is.null(validation_level)) validation_level else private$validation_level
+    validate = function(field_metadata = NULL, validation_config = NULL, synonyms = NULL) {
+      # Load field metadata from the generated JSON file if not supplied by the caller.
+      # field_meta.json is per-index: list(taxon = list(...), assembly = list(...))
+      if (is.null(field_metadata) || length(field_metadata) == 0) {
+        meta_path <- system.file("generated/field_meta.json", package = .packageName)
+        if (nchar(meta_path) == 0) {
+          pkg_dir <- tryCatch(dirname(attr(utils::packageDescription(.packageName), "file")), error = function(e) NULL)
+          if (!is.null(pkg_dir)) {
+            meta_path <- file.path(pkg_dir, "generated", "field_meta.json")
+          }
+        }
+        all_meta <- if (nchar(meta_path) > 0 && file.exists(meta_path)) {
+          tryCatch(
+            jsonlite::fromJSON(meta_path, simplifyVector = FALSE, simplifyDataFrame = FALSE, simplifyMatrix = FALSE),
+            error = function(e) list()
+          )
+        } else {
+          list()
+        }
+        field_metadata <- all_meta[[private$index_name]]
+      }
+
       meta_json <- if (is.null(field_metadata) || length(field_metadata) == 0) {
         "{}"
       } else {
-        jsonlite::toJSON(field_metadata, auto_unbox = TRUE)
+        jsonlite::toJSON(field_metadata, auto_unbox = TRUE, null = "null")
       }
+
+      # Load validation config from the generated JSON file if not supplied.
+      if (is.null(validation_config) || length(validation_config) == 0) {
+        cfg_path <- system.file("generated/validation_config.json", package = .packageName)
+        if (nchar(cfg_path) > 0 && file.exists(cfg_path)) {
+          validation_config <- tryCatch(
+            jsonlite::fromJSON(cfg_path, simplifyVector = FALSE, simplifyDataFrame = FALSE, simplifyMatrix = FALSE),
+            error = function(e) NULL
+          )
+        }
+      }
+
       config_json <- if (is.null(validation_config) || length(validation_config) == 0) {
         "{}"
       } else {
-        jsonlite::toJSON(validation_config, auto_unbox = TRUE)
+        jsonlite::toJSON(validation_config, auto_unbox = TRUE, null = "null")
       }
+
       synonyms_json <- if (is.null(synonyms) || length(synonyms) == 0) {
         "{}"
       } else {
-        jsonlite::toJSON(synonyms, auto_unbox = TRUE)
+        jsonlite::toJSON(synonyms, auto_unbox = TRUE, null = "null")
       }
+
       validate_query_json(self$to_query_yaml(), meta_json, config_json, synonyms_json)
     },
 

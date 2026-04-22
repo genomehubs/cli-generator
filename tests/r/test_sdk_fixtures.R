@@ -196,9 +196,43 @@ FIXTURE_TO_BUILDER <- list(
     assembly_index_with_filter = function() {
         QueryBuilder$new("assembly")$
             add_attribute("assembly_level", "eq", "complete genome")$
-            add_field("assembly_name")$
+            add_field("assembly_span")$
             add_field("assembly_level")
     }
+)
+
+# ── Expected URL substrings per fixture ────────────────────────────────────────
+# Each entry maps a fixture name to substrings that MUST appear in the built URL.
+# Uses raw (percent-encoded) URL strings so assertions pass without decoding.
+# This catches builder methods that silently ignore their arguments.
+
+FIXTURE_EXPECTED_URL_PARTS <- list(
+    basic_taxon_search              = c("result=taxon"),
+    numeric_field_integer_filter    = c("result=taxon", "chromosome_count"),
+    numeric_field_range             = c("result=taxon", "genome_size"),
+    enum_field_filter               = c("result=taxon", "assembly_level"),
+    taxa_filter_tree                = c("result=taxon", "tax_tree", "Mammalia", "tax_rank", "species"),
+    taxa_with_negative_filter       = c("result=taxon", "Mammalia", "Rodentia"),
+    multiple_fields_single_filter   = c("result=taxon", "genome_size", "chromosome_count", "assembly_level"),
+    fields_with_modifiers           = c("result=taxon", "genome_size%3Amin", "chromosome_count%3Amedian"),
+    pagination_size_variation       = c("result=taxon", "size=50"),
+    pagination_second_page          = c("result=taxon", "offset=10"),
+    complex_multi_constraint        = c("result=taxon", "tax_tree", "Primates", "assembly_span"),
+    complex_multi_filter_same_field = c("result=taxon", "c_value", "genome_size"),
+    assembly_index_basic            = c("result=assembly"),
+    sample_index_basic              = c("result=sample"),
+    exclude_ancestral_single        = c("result=taxon", "genome_size", "excludeAncestral"),
+    exclude_descendant_single       = c("result=taxon", "c_value", "excludeDescendant"),
+    exclude_direct_single           = c("result=taxon", "assembly_level", "excludeDirect"),
+    exclude_missing_single          = c("result=taxon", "chromosome_count", "excludeMissing"),
+    exclude_multiple_types_combined = c("result=taxon", "excludeAncestral", "excludeMissing", "excludeDirect"),
+    exclude_with_taxa_filter        = c("result=taxon", "tax_tree", "Mammalia", "excludeAncestral"),
+    sorting_by_chromosome_count     = c("result=taxon", "sortBy=chromosome_count", "sortOrder=asc"),
+    sorting_descending_order        = c("result=taxon", "sortBy=c_value", "sortOrder=desc"),
+    with_taxonomy_param             = c("result=taxon", "taxonomy=ncbi", "assembly_level"),
+    with_names_param                = c("result=taxon", "names=scientific_name"),
+    with_ranks_param                = c("result=taxon", "ranks=", "genus"),
+    assembly_index_with_filter      = c("result=assembly", "assembly_level", "assembly_span")
 )
 
 # ── Tests ──────────────────────────────────────────────────────────────────────
@@ -234,6 +268,18 @@ test_that("QueryBuilder$to_url() contains the correct endpoint for all mapped fi
     }
 })
 
+test_that("QueryBuilder$to_url() encodes builder state for all fixtures", {
+    for (name in names(FIXTURE_EXPECTED_URL_PARTS)) {
+        url <- FIXTURE_TO_BUILDER[[name]]()$to_url()
+        for (expected in FIXTURE_EXPECTED_URL_PARTS[[name]]) {
+            expect_true(
+                grepl(expected, url, fixed = TRUE),
+                info = sprintf("%s: expected '%s' in URL — got: %s", name, expected, url)
+            )
+        }
+    }
+})
+
 test_that("QueryBuilder$to_ui_url() starts with UI base for all mapped fixtures", {
     for (name in names(FIXTURE_TO_BUILDER)) {
         url <- FIXTURE_TO_BUILDER[[name]]()$to_ui_url()
@@ -263,9 +309,24 @@ test_that("all cached fixtures are mapped to a QueryBuilder", {
 })
 
 # ── Additional method tests ────────────────────────────────────────────────────
-# Note: validate(), describe(), snippet() methods require template updates to expose
-# validate_query_json and describe_query functions to R. These tests are pending
-# template updates in templates/rust/lib.rs.tera.
+
+for (name in names(FIXTURE_TO_BUILDER)) {
+  local({
+    fixture_name <- name
+    test_that(sprintf("validate() returns empty errors for fixture: %s", fixture_name), {
+      qb <- FIXTURE_TO_BUILDER[[fixture_name]]()
+      errors <- qb$validate()
+      expect_true(
+        is.character(errors),
+        info = sprintf("%s: validate() should return a character vector", fixture_name)
+      )
+      expect_equal(
+        length(errors), 0L,
+        info = sprintf("%s: validate() returned unexpected errors: %s", fixture_name, paste(errors, collapse = "; "))
+      )
+    })
+  })
+}
 
 test_that("QueryBuilder$reset() clears state while preserving index", {
     qb <- QueryBuilder$new("taxon")$

@@ -74,6 +74,17 @@ points for agents:
 - **Conventional commit messages** — `feat:`, `fix:`, `refactor:`, `test:`,
   `docs:`, `chore:`.
 - **No dead code** — if code is no longer called, delete it.
+- **SDK fixture tests require matching URL-state assertions** — whenever a new
+  entry is added to `FIXTURE_TO_BUILDER` in any of the three fixture test files
+  (`tests/python/test_sdk_fixtures.py`, `tests/javascript/test_sdk_fixtures.mjs`,
+  `tests/r/test_sdk_fixtures.R`), a matching entry **must** be added to
+  `FIXTURE_EXPECTED_URL_PARTS` in the same file. The entry must assert:
+  1. `result=<index>` — confirms the correct index was set.
+  2. One substring per non-default builder method called — each method that
+     changes query state must have at least one observable effect in the URL.
+  Use raw (percent-encoded) substrings as they appear in the URL (e.g.
+  `genome_size%3Amin` for `add_field("genome_size", modifiers=["min"])`).
+  All three files must stay structurally identical.
 
 ---
 

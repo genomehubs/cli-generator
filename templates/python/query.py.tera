@@ -31,19 +31,11 @@ class QueryBuilder:
     Args:
         index: Index to search — one of
             {% for index in indexes %}``"{{ index.name }}"``{% if not loop.last %}, {% endif %}{% endfor %}.
-        validation_level: Validation mode for ``validate()``:
-            - ``"full"`` (default): Attempts to fetch metadata from v3 API endpoints
-              (gracefully handles 404s if not yet deployed). Falls back to local files.
-            - ``"partial"``: Uses only local embedded files (no API fetch). Recommended
-              until v3 API is available.
-        api_base: Base URL for API metadata endpoints (v3+). Defaults to ``API_BASE``.
     """
 
     def __init__(
         self,
         index: str,
-        validation_level: str = "full",
-        api_base: str = API_BASE,
     ) -> None:
         self._index = index
         self._taxa: list[str] = []
@@ -68,9 +60,6 @@ class QueryBuilder:
         self._include_estimates: bool = True
         self._tidy: bool = False
         self._taxonomy: str = "ncbi"
-        # Validation options
-        self._validation_level: str = validation_level
-        self._api_base: str = api_base
 
     # ── Identifiers ──────────────────────────────────────────────────────────
 
@@ -555,104 +544,53 @@ class QueryBuilder:
         """Execute a count query and return the hit count."""
         return int(_ext.count(self.to_query_yaml()))
 
-    def validate(self, validation_level: str | None = None) -> list[str]:
-        """Validate the current query state.
+    def validate(self) -> list[str]:
+        """Validate the current query state against the bundled field metadata.
 
-        Args:
-            validation_level: Override instance setting for this call. Options:
-                - ``"full"``: Attempt to fetch metadata from v3 API endpoints
-                  (graceful 404 handling). Falls back to local files if unavailable.
-                - ``"partial"``: Use only embedded local files (no API fetch).
+        Loads ``generated/field_meta.json`` (per-index field metadata) and
+        ``generated/validation_config.json`` from the package directory, then
+        runs structural and field-name checks via the Rust validator.
 
         Returns:
-            List of error strings. Empty list means the query is valid.
-
-        **Integration with api-refactoring-plan.md (v3):**
-        Currently defaults to "full" for forward compatibility. When v3 API is
-        deployed with metadata endpoints available, validation will automatically
-        use them. Until then, set ``validation_level="partial"`` to avoid 404
-        attempts and logs.
+            List of error strings.  Empty list means the query is valid.
         """
         import json
         import os
-        from typing import Any
 
-        # Use override or instance setting
-        level = validation_level or self._validation_level
+        module_dir = os.path.dirname(__file__)
 
-        # Load field metadata and validation config from generated files
+        # Load per-index field metadata bundled with the SDK.
         field_metadata: dict[str, dict] = {}
-        validation_config: dict[str, Any] = {}
-        synonyms: dict[str, str] = {}
-
-        # If full mode, attempt API fetch first (graceful fallback if unavailable)
-        if level == "full":
-            try:
-                import urllib.request
-                import urllib.error
-
-                api_fields_url = f"{self._api_base}/api/v3/metadata/fields"
-                api_config_url = f"{self._api_base}/api/v3/metadata/validation-config"
-
-                # Try to fetch field metadata from API
-                try:
-                    response = urllib.request.urlopen(api_fields_url, timeout=5)
-                    if response.status == 200:
-                        field_metadata = json.loads(response.read().decode("utf-8"))
-                except (urllib.error.HTTPError, urllib.error.URLError, OSError, TimeoutError):
-                    # Silently skip on 404 or other errors (API not ready yet)
-                    pass
-
-                # Try to fetch validation config from API
-                try:
-                    response = urllib.request.urlopen(api_config_url, timeout=5)
-                    if response.status == 200:
-                        validation_config = json.loads(response.read().decode("utf-8"))
-                except (urllib.error.HTTPError, urllib.error.URLError, OSError, TimeoutError):
-                    # Silently skip on 404 or other errors (API not ready yet)
-                    pass
-            except Exception:
-                # Fallback to local/empty metadata below
-                pass
-
-        # Try to load field metadata JSON from the same directory as this module
-        # This is the fallback for full mode and the only source for partial mode
         try:
-            module_dir = os.path.dirname(__file__)
             field_meta_path = os.path.join(module_dir, "generated", "field_meta.json")
             if os.path.exists(field_meta_path):
-                with open(field_meta_path, "r") as f:
-                    field_metadata = json.load(f)
+                with open(field_meta_path, "r") as fh:
+                    raw_meta: dict = json.load(fh)
+                # Extract the slice for this query's index.
+                field_metadata = raw_meta.get(self._index, {})
         except (OSError, json.JSONDecodeError):
-            # Silently continue if not available
             pass
 
-        # Try to load validation config JSON
+        # Load validation config bundled with the SDK.
+        validation_config: dict = {}
         try:
-            module_dir = os.path.dirname(__file__)
             config_path = os.path.join(module_dir, "generated", "validation_config.json")
             if os.path.exists(config_path):
-                with open(config_path, "r") as f:
-                    validation_config = json.load(f)
+                with open(config_path, "r") as fh:
+                    validation_config = json.load(fh)
         except (OSError, json.JSONDecodeError):
-            # Silently continue if not available
             pass
-
-        field_metadata_json = json.dumps(field_metadata or {})
-        validation_config_json = json.dumps(validation_config or {})
-        synonyms_json = json.dumps(synonyms)
 
         result = _ext.validate_query_json(
             self.to_query_yaml(),
-            field_metadata_json,
-            validation_config_json,
-            synonyms_json,
+            json.dumps(field_metadata),
+            json.dumps(validation_config),
+            "{}",
         )
 
         try:
             return json.loads(result)
         except json.JSONDecodeError:
-            # If parsing fails, return the result as a single error
             return [result]
 
 

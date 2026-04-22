@@ -172,6 +172,13 @@ if [[ $BUILD_BROWSER -eq 1 || $REBUILD_WASM -eq 1 ]]; then
         cp -r "$PROJECT_ROOT/crates/genomehubs-query/pkg" "$JS_OUT_DIR/pkg"
         ok "Copied pkg/ → ${JS_PACKAGE}/pkg/"
     fi
+
+    # Copy field metadata JSON files so validate() works without running build-wasm.sh
+    if [[ -f "${SITE_CLI_DIR}/src/generated/field_meta.json" ]]; then
+        mkdir -p "${JS_OUT_DIR}/generated"
+        cp "${SITE_CLI_DIR}/src/generated/field_meta.json" "${JS_OUT_DIR}/generated/field_meta.json"
+        cp "${SITE_CLI_DIR}/src/generated/validation_config.json" "${JS_OUT_DIR}/generated/validation_config.json"
+    fi
 fi
 
 # ── Step 3: Quick Rust smoke-test (URL flag, no network) ──────────────────────

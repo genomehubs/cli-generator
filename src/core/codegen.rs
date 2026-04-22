@@ -288,9 +288,11 @@ impl CodeGenerator {
 
         // Generate field_meta.json and validation_config.json for JavaScript/Python/R SDKs (shared)
         if language == "shared" {
-            // Generate field_meta.json: flatten all field metadata across all indexes
-            let mut field_meta_json = serde_json::Map::new();
-            for fields in fields_by_index.values() {
+            // Generate field_meta.json: per-index structure {"taxon": {...}, "assembly": {...}}
+            // This allows validate() in all SDKs to extract the correct subset by index.
+            let mut field_meta_by_index = serde_json::Map::new();
+            for (index, fields) in fields_by_index {
+                let mut index_meta = serde_json::Map::new();
                 for field in fields {
                     let processed_type = field
                         .processed_type
@@ -310,13 +312,27 @@ impl CodeGenerator {
                         "constraint_enum": constraint_enum
                     });
 
-                    field_meta_json.insert(field.name.clone(), meta);
+                    index_meta.insert(field.name.clone(), meta);
                 }
+                field_meta_by_index.insert(index.clone(), serde_json::Value::Object(index_meta));
             }
-            let field_meta_content =
-                serde_json::to_string_pretty(&field_meta_json).unwrap_or_else(|_| "{}".to_string());
+            let field_meta_content = serde_json::to_string_pretty(&field_meta_by_index)
+                .unwrap_or_else(|_| "{}".to_string());
+            // Written to src/generated/ for the Rust build
             out.insert(
                 "src/generated/field_meta.json".to_string(),
+                field_meta_content.clone(),
+            );
+            // Also written into the Python package so validate() can find it at runtime
+            let sdk_name = site.resolved_sdk_name();
+            out.insert(
+                format!("python/{sdk_name}/generated/field_meta.json"),
+                field_meta_content.clone(),
+            );
+            // Also written into the R package inst/ dir so system.file() can find it
+            let r_package_name = site.name.replace('-', "_").to_lowercase();
+            out.insert(
+                format!("r/{r_package_name}/inst/generated/field_meta.json"),
                 field_meta_content,
             );
 
@@ -331,6 +347,14 @@ impl CodeGenerator {
                 .unwrap_or_else(|_| "{}".to_string());
             out.insert(
                 "src/generated/validation_config.json".to_string(),
+                validation_config_content.clone(),
+            );
+            out.insert(
+                format!("python/{sdk_name}/generated/validation_config.json"),
+                validation_config_content.clone(),
+            );
+            out.insert(
+                format!("r/{r_package_name}/inst/generated/validation_config.json"),
                 validation_config_content,
             );
         }

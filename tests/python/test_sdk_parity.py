@@ -201,7 +201,7 @@ CANONICAL_METHODS = {
         "r_name": "search",
     },
     "validate": {
-        "params": ["validation_level"],
+        "params": [],
         "python_name": "validate",
         "js_name": "validate",
         "r_name": "validate",
@@ -232,16 +232,7 @@ CANONICAL_METHODS = {
     },
 }
 
-CONSTRUCTOR_PARAMS = {
-    "validation_level": {
-        "description": "Validation mode: 'full' or 'partial'",
-        "default": "full",
-    },
-    "api_base": {
-        "description": "Base URL for API metadata endpoints",
-        "default": "site-specific",
-    },
-}
+CONSTRUCTOR_PARAMS: dict[str, dict[str, str]] = {}
 
 # ── Introspection functions ──────────────────────────────────────────────────
 
@@ -432,56 +423,6 @@ class TestSDKParity:
             method_name = spec["r_name"]
             assert method_name in r_methods, f"R missing method: {method_name}"
 
-    def test_constructor_has_validation_level_param(self):
-        """Constructor must accept validation_level parameter in all SDKs."""
-        python_params = get_python_constructor_params()
-        assert "validation_level" in python_params, "Python constructor missing validation_level"
-
-        js_params = get_js_constructor_params()
-        assert any("option" in p.lower() for p in js_params), "JavaScript constructor missing options parameter"
-
-        r_params = get_r_constructor_params()
-        assert "validation_level" in r_params, "R constructor missing validation_level"
-
-    def test_constructor_has_api_base_param(self):
-        """Constructor must accept api_base parameter in all SDKs."""
-        python_params = get_python_constructor_params()
-        assert "api_base" in python_params, "Python constructor missing api_base"
-
-        js_params = get_js_constructor_params()
-        assert any("option" in p.lower() for p in js_params), "JavaScript constructor missing options parameter"
-
-        r_params = get_r_constructor_params()
-        assert "api_base" in r_params, "R constructor missing api_base"
-
-    def test_validate_method_accepts_override(self):
-        """validate() method must accept validation_level override in all SDKs."""
-        python_methods = get_python_methods()
-        assert "validation_level" in python_methods.get(
-            "validate", []
-        ), "Python validate() missing validation_level param"
-
-        js_methods = get_js_methods()
-        assert "validationLevel" in js_methods.get(
-            "validate", []
-        ), "JavaScript validate() missing validationLevel param"
-
-        r_methods = get_r_methods()
-        assert "validation_level" in r_methods.get("validate", []), "R validate() missing validation_level param"
-
-    def test_python_constructor_docstring_documents_validation_level(self):
-        """Python constructor docstring should document validation_level."""
-        docstring = get_python_docstring("__init__")
-        assert "validation_level" in docstring, "Python __init__ docstring missing validation_level documentation"
-        assert "full" in docstring.lower(), "Python __init__ docstring should mention 'full' mode"
-        assert "partial" in docstring.lower(), "Python __init__ docstring should mention 'partial' mode"
-
-    def test_python_validate_method_docstring_documents_modes(self):
-        """Python validate() docstring should document validation modes."""
-        docstring = get_python_docstring("validate")
-        assert "full" in docstring.lower(), "Python validate() docstring missing 'full' mode documentation"
-        assert "partial" in docstring.lower(), "Python validate() docstring missing 'partial' mode documentation"
-
     def test_no_extra_methods_in_python(self):
         """Python should not have extra methods beyond canonical set."""
         python_methods = get_python_methods()
@@ -506,46 +447,17 @@ class TestSDKParity:
 
 
 class TestValidationConfiguration:
-    """Test that validation level configuration is properly implemented in templates."""
-
-    def test_python_template_has_validation_level_param(self):
-        """Python template should have validation_level in constructor."""
-        python_params = get_python_constructor_params()
-        assert "validation_level" in python_params, "Python template constructor missing validation_level"
-
-    def test_python_template_has_api_base_param(self):
-        """Python template should have api_base in constructor."""
-        python_params = get_python_constructor_params()
-        assert "api_base" in python_params, "Python template constructor missing api_base"
+    """Test that validation is properly implemented in templates."""
 
     def test_python_validate_method_exists(self):
         """Python template should have validate() method."""
         python_methods = get_python_methods()
         assert "validate" in python_methods, "Python template missing validate() method"
 
-    def test_python_validate_has_override_param(self):
-        """Python template validate() should accept validation_level override."""
-        python_methods = get_python_methods()
-        assert "validation_level" in python_methods.get(
-            "validate", []
-        ), "Python validate() missing validation_level param"
-
-    def test_python_constructor_docstring_documents_validation_level(self):
-        """Python template constructor docstring should document validation_level."""
-        docstring = get_python_docstring("__init__")
-        assert len(docstring) > 0, "Python template __init__ has no docstring"
-        assert (
-            "validation_level" in docstring
-        ), "Python template __init__ docstring missing validation_level documentation"
-
-    def test_python_validate_docstring_documents_modes(self):
-        """Python template validate() docstring should document validation modes."""
-        docstring = get_python_docstring("validate")
-        assert len(docstring) > 0, "Python template validate() has no docstring"
-        assert "full" in docstring.lower(), "Python template validate() docstring missing 'full' mode documentation"
-        assert (
-            "partial" in docstring.lower()
-        ), "Python template validate() docstring missing 'partial' mode documentation"
+    def test_r_validate_method_exists(self):
+        """R template should have validate() method."""
+        r_methods = get_r_methods()
+        assert "validate" in r_methods, "R template missing validate() method"
 
 
 class TestDocumentationParity:

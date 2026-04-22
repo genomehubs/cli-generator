@@ -168,8 +168,42 @@ FIXTURE_TO_BUILDER = {
     .set_ranks(["genus", "family", "order"]),
     "assembly_index_with_filter": lambda: QueryBuilder("assembly")
     .add_attribute("assembly_level", "eq", "complete genome")
-    .add_field("assembly_name")
+    .add_field("assembly_span")
     .add_field("assembly_level"),
+}
+
+# ── Expected URL substrings per fixture ──────────────────────────────────────
+# Each entry maps a fixture name to substrings that MUST appear in the built URL.
+# Uses raw (percent-encoded) URL strings so assertions pass without decoding.
+# This catches builder methods that silently ignore their arguments.
+
+FIXTURE_EXPECTED_URL_PARTS: dict[str, list[str]] = {
+    "basic_taxon_search": ["result=taxon"],
+    "numeric_field_integer_filter": ["result=taxon", "chromosome_count"],
+    "numeric_field_range": ["result=taxon", "genome_size"],
+    "enum_field_filter": ["result=taxon", "assembly_level"],
+    "taxa_filter_tree": ["result=taxon", "tax_tree", "Mammalia", "tax_rank", "species"],
+    "taxa_with_negative_filter": ["result=taxon", "Mammalia", "Rodentia"],
+    "multiple_fields_single_filter": ["result=taxon", "genome_size", "chromosome_count", "assembly_level"],
+    "fields_with_modifiers": ["result=taxon", "genome_size%3Amin", "chromosome_count%3Amedian"],
+    "pagination_size_variation": ["result=taxon", "size=50"],
+    "pagination_second_page": ["result=taxon", "offset=10"],
+    "complex_multi_constraint": ["result=taxon", "tax_tree", "Primates", "assembly_span"],
+    "complex_multi_filter_same_field": ["result=taxon", "c_value", "genome_size"],
+    "assembly_index_basic": ["result=assembly"],
+    "sample_index_basic": ["result=sample"],
+    "exclude_ancestral_single": ["result=taxon", "genome_size", "excludeAncestral"],
+    "exclude_descendant_single": ["result=taxon", "c_value", "excludeDescendant"],
+    "exclude_direct_single": ["result=taxon", "assembly_level", "excludeDirect"],
+    "exclude_missing_single": ["result=taxon", "chromosome_count", "excludeMissing"],
+    "exclude_multiple_types_combined": ["result=taxon", "excludeAncestral", "excludeMissing", "excludeDirect"],
+    "exclude_with_taxa_filter": ["result=taxon", "tax_tree", "Mammalia", "excludeAncestral"],
+    "sorting_by_chromosome_count": ["result=taxon", "sortBy=chromosome_count", "sortOrder=asc"],
+    "sorting_descending_order": ["result=taxon", "sortBy=c_value", "sortOrder=desc"],
+    "with_taxonomy_param": ["result=taxon", "taxonomy=ncbi", "assembly_level"],
+    "with_names_param": ["result=taxon", "names=scientific_name"],
+    "with_ranks_param": ["result=taxon", "ranks=", "genus"],
+    "assembly_index_with_filter": ["result=assembly", "assembly_level", "assembly_span"],
 }
 
 
@@ -242,6 +276,24 @@ class TestFixtureValidation:
 
         assert url.startswith("https://goat.genomehubs.org/api"), f"URL for {fixture_name} doesn't start with API base"
         assert "search" in url or "count" in url, f"URL for {fixture_name} doesn't contain endpoint"
+
+    @pytest.mark.parametrize("fixture_name", FIXTURE_EXPECTED_URL_PARTS.keys())
+    def test_builder_url_encodes_state(self, fixture_name: str):
+        """Verify builder state is encoded in the built URL for each fixture.
+
+        Catches methods that silently ignore their arguments by asserting specific
+        substrings from FIXTURE_EXPECTED_URL_PARTS appear in the generated URL.
+
+        Args:
+            fixture_name: Name of the fixture.
+        """
+        qb = self.get_builder(fixture_name)
+        url = qb.to_url(
+            api_base="https://goat.genomehubs.org/api",
+            api_version="v2",
+        )
+        for expected in FIXTURE_EXPECTED_URL_PARTS[fixture_name]:
+            assert expected in url, f"Fixture {fixture_name}: expected '{expected}' in URL — got: {url}"
 
     @pytest.mark.parametrize("fixture_name", FIXTURE_TO_BUILDER.keys())
     def test_builder_creates_valid_ui_url(self, fixture_name: str):
@@ -407,7 +459,7 @@ class TestFixtureValidation:
 
     @pytest.mark.parametrize("fixture_name", FIXTURE_TO_BUILDER.keys())
     def test_fixture_can_validate(self, fixture_name: str):
-        """Verify builder can validate a query.
+        """Verify builder can validate a query and that known-good fixtures have no errors.
 
         Args:
             fixture_name: Name of the fixture.
@@ -415,10 +467,11 @@ class TestFixtureValidation:
         qb = self.get_builder(fixture_name)
         errors = qb.validate()
 
-        # validate() should always return a list (even if empty)
+        # validate() should always return a list
         assert isinstance(errors, list), f"Fixture {fixture_name}: validate() returned non-list"
-        # All items should be strings
         assert all(isinstance(e, str) for e in errors), f"Fixture {fixture_name}: validate() returned non-string errors"
+        # Known-good fixture queries should produce zero validation errors
+        assert errors == [], f"Fixture {fixture_name}: validate() returned unexpected errors: {errors}"
 
 
 class TestFixtureRegressionCatches:

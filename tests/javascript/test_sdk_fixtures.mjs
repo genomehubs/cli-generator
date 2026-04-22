@@ -185,8 +185,88 @@ const FIXTURE_TO_BUILDER = {
   assembly_index_with_filter: () =>
     new QueryBuilder("assembly")
       .addAttribute("assembly_level", "eq", "complete genome")
-      .addField("assembly_name")
+      .addField("assembly_span")
       .addField("assembly_level"),
+};
+
+// ── Expected URL substrings per fixture ───────────────────────────────────────
+// Each entry maps a fixture name to substrings that MUST appear in the built URL.
+// Uses raw (percent-encoded) URL strings so assertions pass without decoding.
+// This catches builder methods that silently ignore their arguments.
+
+const FIXTURE_EXPECTED_URL_PARTS = {
+  basic_taxon_search: ["result=taxon"],
+  numeric_field_integer_filter: ["result=taxon", "chromosome_count"],
+  numeric_field_range: ["result=taxon", "genome_size"],
+  enum_field_filter: ["result=taxon", "assembly_level"],
+  taxa_filter_tree: [
+    "result=taxon",
+    "tax_tree",
+    "Mammalia",
+    "tax_rank",
+    "species",
+  ],
+  taxa_with_negative_filter: ["result=taxon", "Mammalia", "Rodentia"],
+  multiple_fields_single_filter: [
+    "result=taxon",
+    "genome_size",
+    "chromosome_count",
+    "assembly_level",
+  ],
+  fields_with_modifiers: [
+    "result=taxon",
+    "genome_size%3Amin",
+    "chromosome_count%3Amedian",
+  ],
+  pagination_size_variation: ["result=taxon", "size=50"],
+  pagination_second_page: ["result=taxon", "offset=10"],
+  complex_multi_constraint: [
+    "result=taxon",
+    "tax_tree",
+    "Primates",
+    "assembly_span",
+  ],
+  complex_multi_filter_same_field: ["result=taxon", "c_value", "genome_size"],
+  assembly_index_basic: ["result=assembly"],
+  sample_index_basic: ["result=sample"],
+  exclude_ancestral_single: ["result=taxon", "genome_size", "excludeAncestral"],
+  exclude_descendant_single: ["result=taxon", "c_value", "excludeDescendant"],
+  exclude_direct_single: ["result=taxon", "assembly_level", "excludeDirect"],
+  exclude_missing_single: [
+    "result=taxon",
+    "chromosome_count",
+    "excludeMissing",
+  ],
+  exclude_multiple_types_combined: [
+    "result=taxon",
+    "excludeAncestral",
+    "excludeMissing",
+    "excludeDirect",
+  ],
+  exclude_with_taxa_filter: [
+    "result=taxon",
+    "tax_tree",
+    "Mammalia",
+    "excludeAncestral",
+  ],
+  sorting_by_chromosome_count: [
+    "result=taxon",
+    "sortBy=chromosome_count",
+    "sortOrder=asc",
+  ],
+  sorting_descending_order: [
+    "result=taxon",
+    "sortBy=c_value",
+    "sortOrder=desc",
+  ],
+  with_taxonomy_param: ["result=taxon", "taxonomy=ncbi", "assembly_level"],
+  with_names_param: ["result=taxon", "names=scientific_name"],
+  with_ranks_param: ["result=taxon", "ranks=", "genus"],
+  assembly_index_with_filter: [
+    "result=assembly",
+    "assembly_level",
+    "assembly_span",
+  ],
 };
 
 const API_BASE = "https://goat.genomehubs.org/api";
@@ -220,6 +300,18 @@ describe("URL building", () => {
         hasEndpoint,
         `${name}: URL should contain endpoint — got ${url}`,
       );
+    });
+  }
+
+  for (const [name, parts] of Object.entries(FIXTURE_EXPECTED_URL_PARTS)) {
+    test(`toUrl encodes state: ${name}`, () => {
+      const url = FIXTURE_TO_BUILDER[name]().toUrl();
+      for (const expected of parts) {
+        assert.ok(
+          url.includes(expected),
+          `${name}: expected '${expected}' in URL — got: ${url}`,
+        );
+      }
     });
   }
 });
@@ -392,6 +484,12 @@ describe("QueryBuilder validation and description", () => {
           `${name}: validate() errors should be strings`,
         );
       }
+      // Known-good fixture queries should produce zero validation errors
+      assert.deepEqual(
+        errors,
+        [],
+        `${name}: validate() returned unexpected errors: ${JSON.stringify(errors)}`,
+      );
     });
   }
 });

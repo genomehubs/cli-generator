@@ -43,20 +43,11 @@ class QueryBuilder:
         index: Index to search — one of ``"taxon"``, ``"assembly"``,
             ``"sample"``.  More indexes may be available depending on the
             site.
-        validation_level: Validation mode for ``validate()``:
-            - ``"full"`` (default): Attempts to fetch metadata from v3 API endpoints
-              (gracefully handles 404s if not yet deployed). Falls back to local files.
-            - ``"partial"``: Uses only embedded files (no API fetch). Recommended
-              until v3 API is available.
-        api_base: Base URL for API metadata endpoints (v3+). Defaults to
-            ``"https://genomehubs.org"``.
     """
 
     def __init__(
         self,
         index: str,
-        validation_level: str = "full",
-        api_base: str = "https://genomehubs.org",
     ) -> None:
         self._index = index
         self._taxa: list[str] = []
@@ -81,9 +72,6 @@ class QueryBuilder:
         self._include_estimates: bool = True
         self._tidy: bool = False
         self._taxonomy: str = "ncbi"
-        # Validation options
-        self._validation_level: str = validation_level
-        self._api_base: str = api_base
 
     # ── Identifiers ──────────────────────────────────────────────────────────
 

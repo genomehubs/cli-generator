@@ -187,12 +187,18 @@ fn validate_query_impl(
         errors.push(format!("unknown search index '{}'", query.index));
     }
 
-    // Validate attributes
+    // Validate attributes — name checks are skipped when field_meta is empty
+    // (no metadata available → structural-only validation, no false unknowns)
     for attr in &query.attributes {
         let attr_name = synonyms
             .get(&attr.name)
             .map(|s| s.as_str())
             .unwrap_or(&attr.name);
+
+        if field_meta.is_empty() {
+            // No field metadata provided: skip field-name checks entirely.
+            continue;
+        }
 
         if !field_meta.contains_key(attr_name) {
             errors.push(format!(
@@ -327,13 +333,15 @@ fn validate_query_impl(
         }
     }
 
-    // Validate fields
-    for field in &query.fields {
-        if !field_meta.contains_key(&field.name) {
-            errors.push(format!(
-                "unknown field '{}' for index '{}'",
-                field.name, query.index
-            ));
+    // Validate fields — name checks are skipped when field_meta is empty
+    if !field_meta.is_empty() {
+        for field in &query.fields {
+            if !field_meta.contains_key(&field.name) {
+                errors.push(format!(
+                    "unknown field '{}' for index '{}'",
+                    field.name, query.index
+                ));
+            }
         }
     }
 

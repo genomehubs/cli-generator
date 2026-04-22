@@ -36,5 +36,12 @@ build_ui_url <- function(query_yaml, params_yaml, endpoint) .Call(wrap__build_ui
 #' JSON object mapping each language code to generated source code.
 render_snippet <- function(snapshot_json, site_name, api_base, sdk_name, languages) .Call(wrap__render_snippet, snapshot_json, site_name, api_base, sdk_name, languages)
 
+#' Validate a query against field metadata and configuration.
+#'
+#' Returns a JSON array of error strings. An empty array (`"[]"`) means the
+#' query is valid. `field_meta_json` is a JSON object mapping field names to
+#' metadata; pass `"{}"` to skip field-name checks (structural checks only).
+validate_query_json <- function(query_yaml, field_meta_json, config_json, synonyms_json) .Call(wrap__validate_query_json, query_yaml, field_meta_json, config_json, synonyms_json)
+
 
 # nolint end
