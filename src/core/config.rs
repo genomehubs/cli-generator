@@ -51,6 +51,11 @@ pub struct SiteConfig {
     /// Which SDK languages to generate (defaults to ["python"]).
     #[serde(default = "default_enabled_sdks")]
     pub enabled_sdks: Vec<String>,
+    /// Base URL of the web UI without a trailing slash,
+    /// e.g. `"https://goat.genomehubs.org"`.
+    /// When absent, derived by stripping any trailing `/api` segment from `api_base`.
+    #[serde(default)]
+    pub ui_base: Option<String>,
 }
 
 fn default_api_version() -> String {
@@ -82,6 +87,19 @@ impl SiteConfig {
         self.sdk_name
             .clone()
             .unwrap_or_else(|| format!("{}_sdk", self.name.replace('-', "_")))
+    }
+
+    /// Return the UI base URL for this site.
+    ///
+    /// Uses `ui_base` from the YAML when present; otherwise strips any trailing
+    /// `/api` path segment from `api_base` as a sensible default.
+    pub fn resolved_ui_base(&self) -> String {
+        self.ui_base.clone().unwrap_or_else(|| {
+            self.api_base
+                .strip_suffix("/api")
+                .unwrap_or(&self.api_base)
+                .to_string()
+        })
     }
 
     /// Return the `resultFields` endpoint URL for a given index.

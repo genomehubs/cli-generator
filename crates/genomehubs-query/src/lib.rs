@@ -78,6 +78,27 @@ pub fn build_url_for_endpoint(
     query::build_query_url(&query, &params, api_base, api_version, endpoint)
 }
 
+/// Build a fully-encoded UI URL from YAML inputs.
+///
+/// Produces the same query parameters as [`build_url`] but routes to the
+/// web interface rather than the REST API.  The `ui_base` is used as-is
+/// (no version component is inserted), so the result is
+/// `{ui_base}/{endpoint}?result=…&query=…`.
+///
+/// Returns the fully percent-encoded URL, or an empty string on parse error.
+#[cfg_attr(feature = "wasm", wasm_bindgen)]
+pub fn build_ui_url(query_yaml: &str, params_yaml: &str, ui_base: &str, endpoint: &str) -> String {
+    let query = match query::SearchQuery::from_yaml(query_yaml) {
+        Ok(q) => q,
+        Err(_) => return String::new(),
+    };
+    let params = match query::QueryParams::from_yaml(params_yaml) {
+        Ok(p) => p,
+        Err(_) => return String::new(),
+    };
+    query::build_ui_url(&query, &params, ui_base, endpoint)
+}
+
 /// Parse the `status` block from a raw genomehubs API JSON response.
 ///
 /// Returns a compact JSON string: `{"hits":N,"ok":true|false,"error":null|"msg"}`.

@@ -110,6 +110,10 @@ enum {{ index.name | capitalize }}Commands {
         #[arg(long)]
         url: bool,
 
+        /// Print the UI URL and exit without fetching.
+        #[arg(long = "ui-url")]
+        ui_url: bool,
+
         /// Fetch all matching records using cursor-based pagination.
         ///
         /// Uses the /searchPaginated endpoint in chunks of 1 000 records.
@@ -207,7 +211,7 @@ fn run(cli: Cli) -> anyhow::Result<()> {
     match cli.command {
 {% for index in indexes %}
         Commands::{{ index.name | capitalize }} { subcommand } => match subcommand {
-            {{ index.name | capitalize }}Commands::Search { taxon, taxon_filter, query, filter, exclude, rank, sort, size, page, include_estimates, taxonomy, lineage_ranks, name_classes, url, all, max_results, file, no_query_column, suppress_divergence_warnings, describe, verbose, snippet_languages, format, flags } => {
+            {{ index.name | capitalize }}Commands::Search { taxon, taxon_filter, query, filter, exclude, rank, sort, size, page, include_estimates, taxonomy, lineage_ranks, name_classes, url, ui_url, all, max_results, file, no_query_column, suppress_divergence_warnings, describe, verbose, snippet_languages, format, flags } => {
                 if flags.list_field_groups {
                     for (name, short, desc) in generated::cli_flags::{{ index.name | capitalize }}Flags::list_groups() {
                         match short {
@@ -359,6 +363,19 @@ fn run(cli: Cli) -> anyhow::Result<()> {
                         &opts,
                     );
                     println!("{query_url}");
+                    return Ok(());
+                }
+
+                if ui_url {
+                    let ui_query_url = generated::client::ui_url(
+                        generated::indexes::Index::{{ index.name | capitalize }},
+                        &full_query,
+                        &fields,
+                        size,
+                        include_estimates,
+                        &opts,
+                    );
+                    println!("{ui_query_url}");
                     return Ok(());
                 }
 

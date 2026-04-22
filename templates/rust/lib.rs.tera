@@ -209,6 +209,7 @@ fn to_tidy_records(records_json: &str) -> String {
 fn {{ sdk_name }}(m: &Bound<'_, PyModule>) -> PyResult<()> {
     use generated::sdk;
     m.add_function(wrap_pyfunction!(sdk::build_url, m)?)?;
+    m.add_function(wrap_pyfunction!(sdk::build_ui_url, m)?)?;
     m.add_function(wrap_pyfunction!(sdk::search, m)?)?;
     m.add_function(wrap_pyfunction!(sdk::count, m)?)?;
     m.add_class::<sdk::FieldInfo>()?;

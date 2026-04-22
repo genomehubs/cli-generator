@@ -11,6 +11,7 @@ with contextlib.suppress(ImportError):
     from .cli_generator import (  # type: ignore[import-not-found]
         annotate_source_labels,
         annotated_values,
+        build_ui_url,
         build_url,
         describe_query,
         parse_batch_json,
@@ -31,6 +32,7 @@ from .query import QueryBuilder
 __all__ = [
     "annotate_source_labels",
     "annotated_values",
+    "build_ui_url",
     "build_url",
     "describe_query",
     "from_file",

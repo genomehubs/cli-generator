@@ -182,6 +182,12 @@ CANONICAL_METHODS = {
         "js_name": "toUrl",
         "r_name": "to_url",
     },
+    "to_ui_url": {
+        "params": [],
+        "python_name": "to_ui_url",
+        "js_name": "toUiUrl",
+        "r_name": "to_ui_url",
+    },
     "count": {
         "params": [],
         "python_name": "count",

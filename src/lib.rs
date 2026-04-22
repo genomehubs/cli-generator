@@ -71,6 +71,29 @@ fn build_url(
     ))
 }
 
+/// Build a fully-encoded genomehubs UI URL from YAML inputs.
+///
+/// Produces the same query parameters as `build_url` but targets the web
+/// interface rather than the REST API — no version component is inserted,
+/// so the result is `{ui_base}/{endpoint}?result=…&query=…`.
+///
+/// Raises `ValueError` when either YAML string cannot be parsed.
+#[cfg(feature = "extension-module")]
+#[pyfunction]
+fn build_ui_url(
+    query_yaml: &str,
+    params_yaml: &str,
+    ui_base: &str,
+    endpoint: &str,
+) -> PyResult<String> {
+    use crate::core::query::{build_ui_url as _build_ui_url, QueryParams, SearchQuery};
+    let query = SearchQuery::from_yaml(query_yaml)
+        .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
+    let params = QueryParams::from_yaml(params_yaml)
+        .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
+    Ok(_build_ui_url(&query, &params, ui_base, endpoint))
+}
+
 /// Describe a query in human-readable form, returning a string suitable for CLI help messages.
 #[cfg(feature = "extension-module")]
 #[pyfunction]
@@ -259,8 +282,6 @@ fn parse_batch_json(raw: &str) -> String {
     genomehubs_query::parse_batch_json(raw)
 }
 
-/// Python module definition for `cli_generator`.
-#[cfg(feature = "extension-module")]
 /// Validate a query against field metadata and configuration.
 ///
 /// Accepts YAML representations of the query and field metadata as JSON, and
@@ -274,6 +295,7 @@ fn parse_batch_json(raw: &str) -> String {
 /// - `synonyms_json`: JSON mapping attribute synonyms (or `{}` for none)
 ///
 /// Returns: JSON array of error strings, or `["error: ..."]` if parsing fails.
+#[cfg(feature = "extension-module")]
 #[pyfunction]
 fn validate_query_json(
     query_yaml: &str,
@@ -289,11 +311,14 @@ fn validate_query_json(
     )
 }
 
+/// Python module definition for `cli_generator`.
+
 #[cfg(feature = "extension-module")]
 #[pymodule]
 fn cli_generator(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(version, m)?)?;
     m.add_function(wrap_pyfunction!(build_url, m)?)?;
+    m.add_function(wrap_pyfunction!(build_ui_url, m)?)?;
     m.add_function(wrap_pyfunction!(describe_query, m)?)?;
     m.add_function(wrap_pyfunction!(render_snippet, m)?)?;
     m.add_function(wrap_pyfunction!(validate_query_json, m)?)?;

@@ -3,6 +3,7 @@ name: boat
 display_name: "BoaT"
 api_base: "https://boat.genomehubs.org/api"
 api_version: "v2"
+ui_base: "https://boat.genomehubs.org"
 
 enabled_sdks:
   - python

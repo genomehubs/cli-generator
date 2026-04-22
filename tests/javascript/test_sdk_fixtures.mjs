@@ -41,7 +41,7 @@ const { QueryBuilder, parseSearchJson, parseResponseStatus } = sdk;
 // bytes into a WebAssembly.Module and calling initSync before any exports.
 
 const SDK_DIR = dirname(JS_SDK_PATH);
-const WEB_PKG_JS   = resolve(SDK_DIR, "pkg-web", "genomehubs_query.js");
+const WEB_PKG_JS = resolve(SDK_DIR, "pkg-web", "genomehubs_query.js");
 const WEB_PKG_WASM = resolve(SDK_DIR, "pkg-web", "genomehubs_query_bg.wasm");
 
 let webPkg = null;
@@ -190,6 +190,7 @@ const FIXTURE_TO_BUILDER = {
 };
 
 const API_BASE = "https://goat.genomehubs.org/api";
+const UI_BASE = "https://goat.genomehubs.org";
 const fixtureNames = Object.keys(fixtures);
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
@@ -218,6 +219,26 @@ describe("URL building", () => {
       assert.ok(
         hasEndpoint,
         `${name}: URL should contain endpoint — got ${url}`,
+      );
+    });
+  }
+});
+
+describe("UI URL building", () => {
+  for (const [name, factory] of Object.entries(FIXTURE_TO_BUILDER)) {
+    test(`toUiUrl: ${name}`, () => {
+      const url = factory().toUiUrl(UI_BASE);
+      assert.ok(
+        url.startsWith(UI_BASE + "/"),
+        `${name}: UI URL should start with UI base — got ${url}`,
+      );
+      assert.ok(
+        !url.includes("/api/"),
+        `${name}: UI URL should not contain /api/ — got ${url}`,
+      );
+      assert.ok(
+        url.includes("result="),
+        `${name}: UI URL should contain result= parameter — got ${url}`,
       );
     });
   }
@@ -265,12 +286,16 @@ describe("fixture completeness", () => {
 describe("browser build (pkg-web) — response status parsing", () => {
   if (!webPkg) {
     test("pkg-web available", () => {
-      assert.fail(`pkg-web not found or failed to init: ${webInitError?.message}`);
+      assert.fail(
+        `pkg-web not found or failed to init: ${webInitError?.message}`,
+      );
     });
   } else {
     for (const name of fixtureNames) {
       test(`parse_response_status: ${name}`, () => {
-        const result = JSON.parse(webPkg.parse_response_status(JSON.stringify(fixtures[name])));
+        const result = JSON.parse(
+          webPkg.parse_response_status(JSON.stringify(fixtures[name])),
+        );
         assert.equal(typeof result.hits, "number");
         assert.ok(result.hits >= 0, `${name}: hits should be non-negative`);
         assert.equal(result.ok, true, `${name}: ok should be true`);
@@ -282,18 +307,32 @@ describe("browser build (pkg-web) — response status parsing", () => {
 describe("browser build (pkg-web) — record parsing", () => {
   if (!webPkg) {
     test("pkg-web available", () => {
-      assert.fail(`pkg-web not found or failed to init: ${webInitError?.message}`);
+      assert.fail(
+        `pkg-web not found or failed to init: ${webInitError?.message}`,
+      );
     });
   } else {
     for (const name of fixtureNames) {
       test(`parse_search_json: ${name}`, () => {
         const fixture = fixtures[name];
         if (!fixture.results || fixture.results.length === 0) return;
-        const records = JSON.parse(webPkg.parse_search_json(JSON.stringify(fixture)));
-        assert.ok(Array.isArray(records), `${name}: records should be an array`);
-        assert.ok(records.length > 0, `${name}: non-empty response should parse to records`);
+        const records = JSON.parse(
+          webPkg.parse_search_json(JSON.stringify(fixture)),
+        );
+        assert.ok(
+          Array.isArray(records),
+          `${name}: records should be an array`,
+        );
+        assert.ok(
+          records.length > 0,
+          `${name}: non-empty response should parse to records`,
+        );
         for (const rec of records) {
-          assert.equal(typeof rec, "object", `${name}: each record should be an object`);
+          assert.equal(
+            typeof rec,
+            "object",
+            `${name}: each record should be an object`,
+          );
         }
       });
     }
@@ -303,7 +342,9 @@ describe("browser build (pkg-web) — record parsing", () => {
 describe("browser build (pkg-web) — URL building", () => {
   if (!webPkg) {
     test("pkg-web available", () => {
-      assert.fail(`pkg-web not found or failed to init: ${webInitError?.message}`);
+      assert.fail(
+        `pkg-web not found or failed to init: ${webInitError?.message}`,
+      );
     });
   } else {
     for (const [name, factory] of Object.entries(FIXTURE_TO_BUILDER)) {
@@ -330,4 +371,79 @@ describe("browser build (pkg-web) — URL building", () => {
       });
     }
   }
+});
+
+// ── Additional method tests ────────────────────────────────────────────────────
+
+describe("QueryBuilder validation and description", () => {
+  for (const [name, factory] of Object.entries(FIXTURE_TO_BUILDER)) {
+    test(`validate: ${name}`, async () => {
+      const qb = factory();
+      const errors = await qb.validate();
+      assert.ok(
+        Array.isArray(errors),
+        `${name}: validate() should return an array`,
+      );
+      // Each error should be a string
+      for (const error of errors) {
+        assert.equal(
+          typeof error,
+          "string",
+          `${name}: validate() errors should be strings`,
+        );
+      }
+    });
+  }
+});
+
+describe("QueryBuilder code generation", () => {
+  for (const [name, factory] of Object.entries(FIXTURE_TO_BUILDER)) {
+    test(`describe: ${name}`, async () => {
+      const qb = factory();
+      const description = await qb.describe();
+      assert.ok(
+        typeof description === "string" && description.length > 0,
+        `${name}: describe() should return non-empty string`,
+      );
+    });
+
+    test(`snippet: ${name}`, async () => {
+      const qb = factory();
+      const snippets = await qb.snippet(["javascript", "python"]);
+      assert.ok(
+        typeof snippets === "object" && snippets !== null,
+        `${name}: snippet() should return an object`,
+      );
+      assert.ok(
+        "javascript" in snippets,
+        `${name}: snippet() should contain JavaScript language`,
+      );
+    });
+  }
+});
+
+describe("QueryBuilder state management", () => {
+  test("reset() clears state while preserving index", () => {
+    const qb = new QueryBuilder("taxon")
+      .setTaxa(["Mammalia"], "tree")
+      .addAttribute("genome_size", "ge", "1000000000")
+      .addField("organism_name");
+
+    const initialIndex = "taxon";
+    qb.reset();
+
+    assert.equal(qb._index, initialIndex, "reset() should preserve index");
+  });
+
+  test("merge() combines two builders", () => {
+    const qb1 = new QueryBuilder("taxon").setTaxa(["Mammalia"], "tree");
+    const qb2 = new QueryBuilder("taxon")
+      .addField("organism_name")
+      .addField("genome_size");
+
+    // merge() should complete without error
+    qb1.merge(qb2);
+
+    assert.ok(true, "merge() should complete without error");
+  });
 });

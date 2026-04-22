@@ -17,3 +17,6 @@ pub const API_BASE_URL: &str = "{{ api_base }}";
 
 /// API version path component, e.g. `"v2"`.
 pub const API_VERSION: &str = "{{ api_version }}";
+
+/// Base URL of the web UI without a trailing slash, e.g. `"https://goat.genomehubs.org"`.
+pub const UI_BASE_URL: &str = "{{ ui_base }}";

@@ -356,6 +356,7 @@ impl CodeGenerator {
         ctx.insert("site_display_name", &site.display_name);
         ctx.insert("api_base", &site.api_base);
         ctx.insert("api_version", &site.api_version);
+        ctx.insert("ui_base", &site.resolved_ui_base());
         ctx.insert("archive", &site.archive);
         ctx.insert("goat_cli_compat", &site.compat.goat_cli);
         ctx.insert("sdk_name", &site.resolved_sdk_name());
@@ -581,6 +582,7 @@ mod tests {
             validation: ValidationConfig::default(),
             sdk_name: None,
             enabled_sdks: vec!["python".to_string()],
+            ui_base: None,
         }
     }
 

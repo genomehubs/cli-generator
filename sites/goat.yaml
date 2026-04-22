@@ -3,6 +3,7 @@ name: goat
 display_name: "GoaT"
 api_base: "https://goat.genomehubs.org/api"
 api_version: "v2"
+ui_base: "https://goat.genomehubs.org"
 
 enabled_sdks:
   - python

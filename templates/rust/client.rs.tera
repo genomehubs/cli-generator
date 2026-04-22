@@ -5,6 +5,7 @@
 use anyhow::{Context, Result};
 
 const API_BASE: &str = super::super::cli_meta::API_BASE;
+const UI_BASE_URL: &str = super::super::cli_meta::UI_BASE_URL;
 
 /// Percent-encode a string using RFC 3986 unreserved characters.
 ///
@@ -139,6 +140,55 @@ pub fn search_url(
         parts.push(format!("sortOrder={}", pct_encode(&opts.sort_order)));
     }
     format!("{API_BASE}/search?{}", parts.join("&"))
+}
+
+/// Build the UI URL for a search query without performing an HTTP request.
+///
+/// The URL targets the web interface — no API version component is inserted.
+pub fn ui_url(
+    index: super::indexes::Index,
+    query: &str,
+    fields: &[&str],
+    size: usize,
+    include_estimates: bool,
+    opts: &SearchOptions,
+) -> String {
+    let mut parts: Vec<String> = Vec::new();
+    parts.push(format!("result={}", index.as_str()));
+    parts.push(format!("includeEstimates={include_estimates}"));
+    parts.push(format!("taxonomy={}", pct_encode(&opts.taxonomy)));
+    if !query.is_empty() {
+        parts.push(format!("query={}", pct_encode(query)));
+    }
+    if !fields.is_empty() {
+        parts.push(format!("fields={}", pct_encode(&fields.join(","))));
+    }
+    if !opts.name_classes.is_empty() {
+        parts.push(format!("names={}", pct_encode(&opts.name_classes.join(","))));
+    }
+    if !opts.lineage_ranks.is_empty() {
+        parts.push(format!("ranks={}", pct_encode(&opts.lineage_ranks.join(","))));
+    }
+    for (i, field) in opts.exclude_ancestral.iter().enumerate() {
+        parts.push(format!("excludeAncestral[{}]={}", i, pct_encode(field)));
+    }
+    for (i, field) in opts.exclude_descendant.iter().enumerate() {
+        parts.push(format!("excludeDescendant[{}]={}", i, pct_encode(field)));
+    }
+    for (i, field) in opts.exclude_direct.iter().enumerate() {
+        parts.push(format!("excludeDirect[{}]={}", i, pct_encode(field)));
+    }
+    for (i, field) in opts.exclude_missing.iter().enumerate() {
+        parts.push(format!("excludeMissing[{}]={}", i, pct_encode(field)));
+    }
+    parts.push(format!("size={size}"));
+    let offset = opts.page.saturating_sub(1) * size;
+    parts.push(format!("offset={offset}"));
+    if let Some(ref sort_by) = opts.sort_by {
+        parts.push(format!("sortBy={}", pct_encode(sort_by)));
+        parts.push(format!("sortOrder={}", pct_encode(&opts.sort_order)));
+    }
+    format!("{UI_BASE_URL}/search?{}", parts.join("&"))
 }
 
 /// Perform a count query against the {{ site_display_name }} API.

@@ -17,6 +17,7 @@ if TYPE_CHECKING:
 
 API_BASE: str = "{{ api_base }}"
 API_VERSION: str = "{{ api_version }}"
+UI_BASE: str = "{{ ui_base }}"
 
 # ── Base QueryBuilder (inlined from cli-generator at generation time) ─────────
 
@@ -424,6 +425,20 @@ class QueryBuilder:
                 ``"searchPaginated"``.
         """
         return str(_ext.build_url(self.to_query_yaml(), self.to_params_yaml(), endpoint))
+
+    def to_ui_url(self, endpoint: str = "search") -> str:
+        """Build a fully-encoded {{ site_display_name }} UI URL.
+
+        Produces the same query parameters as ``to_url`` but targets the web
+        interface rather than the REST API — no API version component is inserted.
+
+        Args:
+            endpoint: UI route — ``"search"`` (default).
+
+        Returns:
+            Fully-encoded UI URL string.
+        """
+        return str(_ext.build_ui_url(self.to_query_yaml(), self.to_params_yaml(), endpoint))
 
     def search(self, format: str = "tsv") -> str:
         """Execute a search and return the response body in the specified format.

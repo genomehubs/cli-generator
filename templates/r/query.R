@@ -34,7 +34,7 @@
 #'   \item{\code{set_taxonomy(taxonomy)}}{Set the taxonomy source (e.g. "ncbi").}
 #'   \item{\code{to_query_yaml()}}{Serialise query state to YAML.}
 #'   \item{\code{to_params_yaml()}}{Serialise execution parameters to YAML.}
-#'   \item{\code{to_url(endpoint = "search")}}{Build and return the API URL (no network call).}
+#'   \\item{\\code{to_url(endpoint = \"search\")}}{Build and return the API URL (no network call).}\n#'   \\item{\\code{to_ui_url(endpoint = \"search\")}}{Build and return the UI URL (no network call).}
 #'   \item{\code{count()}}{Fetch the count of matching records.}
 #'   \item{\code{search(format = "tsv")}}{Fetch results; returns parsed content.}
 #'   \item{\code{validate()}}{Validate the query; returns a character vector of error messages.}
@@ -89,6 +89,7 @@ QueryBuilder <- R6::R6Class(
     taxonomy = "ncbi",
     validation_level = "full",
     api_base_url = "{{ api_base }}",
+    ui_base_url = "{{ ui_base }}",
 
     # Return a copy of `fields` as a character vector, or character(0) if NULL.
     normalise_fields = function(fields) {
@@ -426,6 +427,13 @@ QueryBuilder <- R6::R6Class(
     #' @return A character string containing the full URL.
     to_url = function(endpoint = "search") {
       build_url(self$to_query_yaml(), self$to_params_yaml(), endpoint)
+    },
+
+    #' @description Build the UI URL for this query without making a network call.
+    #' @param endpoint UI route name (default: "search").
+    #' @return A character string containing the full UI URL.
+    to_ui_url = function(endpoint = "search") {
+      build_ui_url(self$to_query_yaml(), self$to_params_yaml(), endpoint)
     },
 
     #' @description Fetch the count of records matching this query.

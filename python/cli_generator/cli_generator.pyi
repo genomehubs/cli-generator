@@ -47,6 +47,33 @@ def build_url(
     """
     ...
 
+def build_ui_url(
+    query_yaml: str,
+    params_yaml: str,
+    ui_base: str,
+    endpoint: str,
+) -> str:
+    """Build a fully-encoded genomehubs UI URL from YAML inputs.
+
+    Produces the same query parameters as ``build_url`` but targets the web
+    interface rather than the REST API.  No version component is inserted;
+    the result is ``{ui_base}/{endpoint}?result=…&query=…``.
+
+    Args:
+        query_yaml: YAML-serialised ``SearchQuery`` (index, taxa, attributes, …).
+        params_yaml: YAML-serialised ``QueryParams`` (size, page, sort, …).
+        ui_base: Base URL of the web UI without trailing slash, e.g.
+            ``"https://goat.genomehubs.org"``.
+        endpoint: Endpoint name, e.g. ``"search"``.
+
+    Returns:
+        Fully-encoded UI URL string.
+
+    Raises:
+        ValueError: If either YAML string cannot be parsed.
+    """
+    ...
+
 def render_snippet(
     snapshot_json: str,
     site_name: str,

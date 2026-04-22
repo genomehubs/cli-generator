@@ -23,6 +23,12 @@ describe_query <- function(query_yaml, params_yaml, field_metadata_json, mode) .
 #' debugging or for delegating HTTP to R's `httr`.
 build_url <- function(query_yaml, params_yaml, endpoint) .Call(wrap__build_url, query_yaml, params_yaml, endpoint)
 
+#' Build a fully-encoded UI URL for the given query.
+#'
+#' Returns the URL string without making any network call. Unlike `build_url`,
+#' the result targets the web interface — no API version is inserted in the path.
+build_ui_url <- function(query_yaml, params_yaml, endpoint) .Call(wrap__build_ui_url, query_yaml, params_yaml, endpoint)
+
 #' Render code snippets for a query in one or more languages.
 #'
 #' `snapshot_json` is a JSON-serialised `QuerySnapshot`. `languages` is a

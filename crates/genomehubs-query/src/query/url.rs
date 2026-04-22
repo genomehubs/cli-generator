@@ -117,6 +117,42 @@ pub fn build_query_url(
     )
 }
 
+/// Build a fully-encoded UI URL from a [`SearchQuery`] and [`QueryParams`].
+///
+/// The UI URL uses the same query parameters as the API URL but routes
+/// to the web interface rather than the REST API.  Specifically, there is
+/// no version path component: the base becomes `{ui_base}/{endpoint}`.
+///
+/// # Parameters
+/// - `query`    — *what* to search for
+/// - `params`   — *how* to fetch and format results
+/// - `ui_base`  — base URL of the web UI without trailing slash,
+///   e.g. `"https://goat.genomehubs.org"`
+/// - `endpoint` — one of `"search"`, `"count"`, `"report"`
+pub fn build_ui_url(
+    query: &SearchQuery,
+    params: &QueryParams,
+    ui_base: &str,
+    endpoint: &str,
+) -> String {
+    let raw_query_fragment = build_raw_query_fragment(&query.identifiers, &query.attributes);
+    let exclusion_params = build_exclusion_params(&query.attributes);
+    let field_params = build_field_params(&query.attributes);
+
+    assemble_url(
+        ui_base,
+        "",
+        endpoint,
+        query.index.to_api_str(),
+        &raw_query_fragment,
+        &exclusion_params,
+        &field_params,
+        &query.attributes.names,
+        &query.attributes.ranks,
+        params,
+    )
+}
+
 // ── Query fragment builders ───────────────────────────────────────────────────
 
 /// Build the raw (unencoded) `query=` value from identifiers and attribute filters.
@@ -358,7 +394,11 @@ fn assemble_url(
     ranks: &[String],
     params: &QueryParams,
 ) -> String {
-    let base = format!("{api_base}/{api_version}/{endpoint}");
+    let base = if api_version.is_empty() {
+        format!("{api_base}/{endpoint}")
+    } else {
+        format!("{api_base}/{api_version}/{endpoint}")
+    };
     let mut parts: Vec<String> = Vec::new();
 
     parts.push(format!("result={}", encode_param(result)));

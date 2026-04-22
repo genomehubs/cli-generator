@@ -291,6 +291,12 @@ Sort results.  `order` is `"asc"` or `"desc"`.
 
 Build the URL without making a network request.
 
+### `to_ui_url(endpoint="search") -> str`
+
+Build the equivalent web UI URL without making a network request.  The result
+targets the browser interface rather than the REST API — no version component
+is inserted, so the path is `{ui_base}/{endpoint}?…`.
+
 ### `count(api_base, api_version) -> int`
 
 Return the number of matching records.

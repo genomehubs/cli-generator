@@ -21,9 +21,9 @@ fn describe_query(
     field_metadata_json: &str,
     mode: &str,
 ) -> String {
-    use embedded::core::describe::QueryDescriber;
-    use embedded::core::fetch::FieldDef;
-    use embedded::core::query::SearchQuery;
+    use crate::embedded::core::describe::QueryDescriber;
+    use crate::embedded::core::fetch::FieldDef;
+    use crate::embedded::core::query::SearchQuery;
     use std::collections::HashMap;
 
     let _ = params_yaml; // reserved for future use
@@ -52,7 +52,7 @@ fn describe_query(
 /// debugging or for delegating HTTP to R's `httr`.
 #[extendr]
 fn build_url(query_yaml: &str, params_yaml: &str, endpoint: &str) -> String {
-    use embedded::core::query::{build_query_url, QueryParams, SearchQuery};
+    use crate::embedded::core::query::{build_query_url, QueryParams, SearchQuery};
 
     let query = match SearchQuery::from_yaml(query_yaml) {
         Ok(q) => q,
@@ -71,6 +71,26 @@ fn build_url(query_yaml: &str, params_yaml: &str, endpoint: &str) -> String {
     )
 }
 
+/// Build a fully-encoded UI URL for the given query.
+///
+/// Returns the URL string without making any network call — useful for
+/// providing a link to the web interface.  No API version path component
+/// is inserted.
+#[extendr]
+fn build_ui_url(query_yaml: &str, params_yaml: &str, endpoint: &str) -> String {
+    use crate::embedded::core::query::{build_ui_url as _build_ui_url, QueryParams, SearchQuery};
+
+    let query = match SearchQuery::from_yaml(query_yaml) {
+        Ok(q) => q,
+        Err(e) => return format!("ERROR: {}", e),
+    };
+    let params = match QueryParams::from_yaml(params_yaml) {
+        Ok(p) => p,
+        Err(e) => return format!("ERROR: {}", e),
+    };
+    _build_ui_url(&query, &params, cli_meta::UI_BASE_URL, endpoint)
+}
+
 /// Render code snippets for a query in one or more languages.
 ///
 /// `snapshot_json` is a JSON-serialised `QuerySnapshot`. `languages` is a
@@ -84,8 +104,8 @@ fn render_snippet(
     sdk_name: &str,
     languages: &str,
 ) -> String {
-    use embedded::core::config::SiteConfig;
-    use embedded::core::snippet::{QuerySnapshot, SnippetGenerator};
+    use crate::embedded::core::config::SiteConfig;
+    use crate::embedded::core::snippet::{QuerySnapshot, SnippetGenerator};
 
     let snapshot: QuerySnapshot = match serde_json::from_str(snapshot_json) {
         Ok(s) => s,
@@ -136,7 +156,7 @@ fn validate_query_json(
     validation_config_json: &str,
     synonyms_json: &str,
 ) -> Vec<String> {
-    use embedded::core::validation::validate_query_json as validate_impl;
+    use crate::embedded::core::validation::validate_query_json as validate_impl;
 
     let result = validate_impl(
         query_yaml,
@@ -157,6 +177,7 @@ extendr_module! {
     mod {% endraw %}{{ r_package_name }}{% raw %};
     fn describe_query;
     fn build_url;
+    fn build_ui_url;
     fn render_snippet;
     fn validate_query_json;
 }

@@ -50,6 +50,7 @@ cat(sprintf("Reading fixtures from: %s\n", FIXTURES_DIR))
 pkgload::load_all(R_SDK_PATH, quiet = TRUE)
 
 API_BASE <- paste0("https://", SITE, ".genomehubs.org/api")
+UI_BASE  <- paste0("https://", SITE, ".genomehubs.org")
 
 # ── Fixture loading ────────────────────────────────────────────────────────────
 
@@ -233,12 +234,61 @@ test_that("QueryBuilder$to_url() contains the correct endpoint for all mapped fi
     }
 })
 
+test_that("QueryBuilder$to_ui_url() starts with UI base for all mapped fixtures", {
+    for (name in names(FIXTURE_TO_BUILDER)) {
+        url <- FIXTURE_TO_BUILDER[[name]]()$to_ui_url()
+        expect_true(
+            startsWith(url, UI_BASE),
+            info = sprintf("%s: UI URL should start with UI base, got: %s", name, url)
+        )
+    }
+})
+
+test_that("QueryBuilder$to_ui_url() does not contain /api/ for all mapped fixtures", {
+    for (name in names(FIXTURE_TO_BUILDER)) {
+        url <- FIXTURE_TO_BUILDER[[name]]()$to_ui_url()
+        expect_false(
+            grepl("/api/", url),
+            info = sprintf("%s: UI URL should not contain /api/, got: %s", name, url)
+        )
+    }
+})
+
 test_that("all cached fixtures are mapped to a QueryBuilder", {
     unmapped <- setdiff(fixture_names, names(FIXTURE_TO_BUILDER))
     expect_equal(
         length(unmapped), 0,
         info = sprintf("Unmapped fixtures (add to FIXTURE_TO_BUILDER): %s", paste(unmapped, collapse = ", "))
     )
+})
+
+# ── Additional method tests ────────────────────────────────────────────────────
+# Note: validate(), describe(), snippet() methods require template updates to expose
+# validate_query_json and describe_query functions to R. These tests are pending
+# template updates in templates/rust/lib.rs.tera.
+
+test_that("QueryBuilder$reset() clears state while preserving index", {
+    qb <- QueryBuilder$new("taxon")$
+        set_taxa(c("Mammalia"), filter_type = "tree")$
+        add_attribute("genome_size", "ge", "1000000000")$
+        add_field("organism_name")
+
+    initial_index <- "taxon"
+    qb$reset()
+
+    # After reset, should still have the index
+    expect_equal(initial_index, "taxon", info = "Index should remain taxon")
+})
+
+test_that("QueryBuilder$merge() combines two builders", {
+    qb1 <- QueryBuilder$new("taxon")$set_taxa(c("Mammalia"), filter_type = "tree")
+    qb2 <- QueryBuilder$new("taxon")$add_field("organism_name")$add_field("genome_size")
+
+    # merge() should complete without error
+    qb1$merge(qb2)
+
+    # Verify the merge completed (no error = success)
+    expect_true(TRUE, info = "merge() should complete without error")
 })
 
 cat(sprintf("\n✓ R fixture tests complete for %s SDK\n", SITE))

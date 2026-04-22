@@ -12,6 +12,7 @@
 
 const API_BASE = "{{ api_base_url }}";
 const API_VERSION = "v2";
+const UI_BASE = "{{ ui_base }}";
 
 // Load the pre-compiled WASM module (Node.js)
 // Use dynamic import to handle CommonJS exports from wasm-pack (Node.js target)
@@ -19,6 +20,7 @@ const wasmModule = await import("./pkg-nodejs/genomehubs_query.js");
 const {
   annotate_source_labels: _annotateSourceLabels,
   annotated_values: _annotatedValues,
+  build_ui_url: _buildUiUrl,
   build_url_for_endpoint: _buildUrlForEndpoint,
   describe_query: _describeQuery,
   parse_paginated_json: _parsePaginatedJson,
@@ -600,6 +602,21 @@ class QueryBuilder {
       apiVersion,
       endpoint,
     );
+  }
+
+  /**
+   * Build and return the full UI URL without making a network request.
+   * Targets the web interface rather than the REST API — no API version
+   * component is inserted.
+   *
+   * @param {string} [uiBase] - Override the default UI base URL.
+   * @param {string} [endpoint="search"] - UI route name.
+   * @returns {string}
+   */
+  toUiUrl(uiBase = UI_BASE, endpoint = "search") {
+    const queryYaml = this.toQueryYaml();
+    const paramsYaml = this.toParamsYaml();
+    return _buildUiUrl(queryYaml, paramsYaml, uiBase, endpoint);
   }
 
   // ── API calls ──────────────────────────────────────────────────────────────

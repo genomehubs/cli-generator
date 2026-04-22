@@ -244,6 +244,18 @@ class TestFixtureValidation:
         assert "search" in url or "count" in url, f"URL for {fixture_name} doesn't contain endpoint"
 
     @pytest.mark.parametrize("fixture_name", FIXTURE_TO_BUILDER.keys())
+    def test_builder_creates_valid_ui_url(self, fixture_name: str):
+        """Verify builder creates a valid UI URL for each fixture."""
+        qb = self.get_builder(fixture_name)
+        ui_url = qb.to_ui_url(ui_base="https://goat.genomehubs.org")
+
+        assert ui_url.startswith(
+            "https://goat.genomehubs.org/"
+        ), f"UI URL for {fixture_name} doesn't start with UI base"
+        assert "/api/" not in ui_url, f"UI URL for {fixture_name} contains /api/ — should be UI-only path"
+        assert "result=" in ui_url, f"UI URL for {fixture_name} missing result= parameter"
+
+    @pytest.mark.parametrize("fixture_name", FIXTURE_TO_BUILDER.keys())
     def test_fixture_counts_are_reasonable(self, fixture_name: str):
         """Verify fixture result counts are sensible.
 
@@ -390,6 +402,23 @@ class TestFixtureValidation:
         total_hits = response.get("status", {}).get("hits", 0)
         # Mammalia is a large clade with many species
         assert total_hits > 100, f"{fixture_name} returned too few hits for Mammalia subtree"
+
+    # ── Validate method tests ─────────────────────────────────────────────────
+
+    @pytest.mark.parametrize("fixture_name", FIXTURE_TO_BUILDER.keys())
+    def test_fixture_can_validate(self, fixture_name: str):
+        """Verify builder can validate a query.
+
+        Args:
+            fixture_name: Name of the fixture.
+        """
+        qb = self.get_builder(fixture_name)
+        errors = qb.validate()
+
+        # validate() should always return a list (even if empty)
+        assert isinstance(errors, list), f"Fixture {fixture_name}: validate() returned non-list"
+        # All items should be strings
+        assert all(isinstance(e, str) for e in errors), f"Fixture {fixture_name}: validate() returned non-string errors"
 
 
 class TestFixtureRegressionCatches:

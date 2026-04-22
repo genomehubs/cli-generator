@@ -11,7 +11,7 @@ pub mod url;
 
 pub use attributes::{Attribute, AttributeOperator, AttributeSet, AttributeValue, Field, Modifier};
 pub use identifiers::{Identifiers, TaxaIdentifier, TaxonFilterType};
-pub use url::build_query_url;
+pub use url::{build_query_url, build_ui_url};
 
 use serde::{Deserialize, Serialize};
 

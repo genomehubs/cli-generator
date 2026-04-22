@@ -466,6 +466,32 @@ class QueryBuilder:
             endpoint,
         )
 
+    def to_ui_url(
+        self,
+        ui_base: str = "https://goat.genomehubs.org",
+        endpoint: str = "search",
+    ) -> str:
+        """Build the full UI URL for this query without making a network call.
+
+        The UI URL targets the web interface rather than the REST API — no API
+        version component is inserted.
+
+        Args:
+            ui_base: Base URL of the web UI without trailing slash.
+            endpoint: API endpoint, e.g. ``"search"``.
+
+        Returns:
+            Fully encoded URL string.
+        """
+        from . import build_ui_url as _build_ui_url
+
+        return _build_ui_url(
+            self.to_query_yaml(),
+            self.to_params_yaml(),
+            ui_base,
+            endpoint,
+        )
+
     def count(
         self,
         api_base: str = "https://goat.genomehubs.org/api",
