@@ -307,10 +307,17 @@ jobs:
       - name: Smoke-test R SDK (build and instantiate)
         run: |
           sudo apt-get install -y libcurl4-openssl-dev libssl-dev zlib1g-dev libuv1-dev 2>/dev/null || true
-          R -e "install.packages(c('devtools', 'R6', 'httr', 'jsonlite', 'yaml'), repos='http://cran.r-project.org', quiet=TRUE)"
+          R -e "install.packages(c('R6', 'httr', 'jsonlite', 'yaml'), repos='http://cran.r-project.org', quiet=TRUE)"
           cd /tmp/generated/goat-cli/r/goat
           Rscript - <<'REOF'
-          devtools::load_all()
+          # Load R6 class system
+          library(R6)
+
+          # Source the generated QueryBuilder code
+          source("R/query.R")
+          source("R/extendr-wrappers.R")
+
+          # Instantiate and test
           qb <- QueryBuilder$new("taxon")
           qb$set_taxa(c("Mammalia"), filter_type="tree")
           qb$add_field("genome_size")
