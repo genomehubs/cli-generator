@@ -69,6 +69,7 @@ pub fn run(
     patch_python_init(&repo_dir, &sdk_name, &site.display_name)?;
     copy_config_files(site_name, sites_dir, &repo_dir)?;
     stamp_cargo_toml(&repo_dir, &site)?;
+    patch_cargo_toml(&repo_dir, &site.name, &sdk_name)?;
     patch_pyproject_toml(&repo_dir, &site.name, &sdk_name)?;
     create_r_package(&repo_dir, &site)?;
     create_js_package(&repo_dir, &site)?;
@@ -459,6 +460,29 @@ pub mod validation;
 
 /// Write `[package.metadata.cli-gen]` fields into the generated repo's `Cargo.toml`
 /// and inject the additional dependencies that the generated code requires.
+/// Patch the generated repo's main `Cargo.toml` to use the SDK name instead of the
+/// site name for the package name. This ensures the Python wheel is built with the
+/// correct name (e.g., `goat_sdk` instead of `goat_cli`).
+fn patch_cargo_toml(repo_dir: &Path, site_name: &str, sdk_name: &str) -> Result<()> {
+    let path = repo_dir.join("Cargo.toml");
+    if !path.exists() {
+        return Ok(());
+    }
+    let mut text = std::fs::read_to_string(&path).context("reading generated Cargo.toml")?;
+
+    // Fix package name in root Cargo.toml: replace {site}_cli with sdk_name
+    let old_pkg_name = format!("{}_cli", site_name.replace('-', "_"));
+    if old_pkg_name != sdk_name {
+        text = text.replace(
+            &format!("name = \"{old_pkg_name}\""),
+            &format!("name = \"{sdk_name}\""),
+        );
+    }
+
+    std::fs::write(&path, text).context("writing patched Cargo.toml")?;
+    Ok(())
+}
+
 /// Patch the generated repo's `pyproject.toml` to add runtime and dev deps
 /// needed by the generated Python code (`pyyaml` for `QueryBuilder` serialisation).
 ///
