@@ -221,6 +221,15 @@ jobs:
           maturin build --release --features extension-module
         working-directory: /tmp/generated/goat-cli
 
+      - name: Rename Python wheel (goat_cli → goat_sdk)
+        run: |
+          cd /tmp/generated/goat-cli/target/wheels
+          for file in goat_cli-*.whl; do
+            if [ -f "$file" ]; then
+              mv "$file" "${file//goat_cli/goat_sdk}"
+            fi
+          done
+
       - name: Upload Python SDK wheel
         uses: actions/upload-artifact@v4
         with:
@@ -298,33 +307,6 @@ jobs:
           check "genome_size"         taxon search --taxon Insecta  --field-groups genome-size
           check "habreg_2017"         taxon search --taxon "Homo sapiens" --field-groups legislation
           check "includeEstimates=false" taxon search --taxon Mammalia --field-groups busco --include-estimates=false
-
-      - name: Set up R (for SDK build test)
-        uses: r-lib/actions/setup-r@v2
-        with:
-          r-version: "4.3"
-
-      - name: Smoke-test R SDK (build and instantiate)
-        run: |
-          sudo apt-get install -y libcurl4-openssl-dev libssl-dev zlib1g-dev libuv1-dev 2>/dev/null || true
-          R -e "install.packages(c('R6', 'httr', 'jsonlite', 'yaml'), repos='http://cran.r-project.org', quiet=TRUE)"
-          cd /tmp/generated/goat-cli/r/goat
-          Rscript - <<'REOF'
-          # Load R6 class system
-          library(R6)
-
-          # Source the generated QueryBuilder code
-          source("R/query.R")
-          source("R/extendr-wrappers.R")
-
-          # Instantiate and test
-          qb <- QueryBuilder$new("taxon")
-          qb$set_taxa(c("Mammalia"), filter_type="tree")
-          qb$add_field("genome_size")
-          url <- qb$to_url()
-          if (!grepl("result=taxon", url)) stop("Invalid URL")
-          cat("R SDK smoke test PASSED:", substr(url, 1, 80), "\n")
-          REOF
 
       - name: Upload goat-cli binary + SDKs
         uses: actions/upload-artifact@v4
@@ -404,19 +386,29 @@ jobs:
   # ── SDK artifacts: R package ──────────────────────────────────────────────
   # R setup takes ~12 mins. Only run on main branch + manual trigger.
   sdk-artifacts-r:
-    name: Build and test R SDK
+    name: Build and test R SDK (${{ matrix.os }})
     if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            artifact-name: goat-sdk-r-linux
+          - os: macos-latest
+            artifact-name: goat-sdk-r-macos
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
 
       # System libraries must be installed before Set up R and R package installs.
       - name: Install system libraries for R packages
         run: |
-          sudo rm -f /var/lib/apt/lists/lock
-          sudo dpkg --configure -a
-          sudo apt-get -o Apt::Lock::Timeout=300 update
-          sudo apt-get -o Apt::Lock::Timeout=300 install -y libcurl4-openssl-dev libssl-dev zlib1g-dev libuv1-dev libfontconfig1-dev libfreetype6-dev pkg-config
+          if [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
+            sudo rm -f /var/lib/apt/lists/lock
+            sudo dpkg --configure -a
+            sudo apt-get -o Apt::Lock::Timeout=300 update
+            sudo apt-get -o Apt::Lock::Timeout=300 install -y libcurl4-openssl-dev libssl-dev zlib1g-dev libuv1-dev libfontconfig1-dev libfreetype6-dev pkg-config
+          fi
         shell: bash
         continue-on-error: true
 
@@ -475,6 +467,7 @@ jobs:
         continue-on-error: true
 
       - name: Upload R package
+        if: matrix.os == 'ubuntu-latest'
         uses: actions/upload-artifact@v4
         with:
           name: goat-sdk-r
