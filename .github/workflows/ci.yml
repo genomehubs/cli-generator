@@ -364,6 +364,10 @@ jobs:
           REPO_ROOT: ${{ github.workspace }}
         run: |
           npm run build
+
+          # Verify WASM and generated directories exist before packing
+          ls -lah | grep -E "pkg|generated" || echo "⚠️  Warning: pkg/generated directories may be missing"
+
           npm pack
         working-directory: /tmp/generated/goat-cli/js/goat
 

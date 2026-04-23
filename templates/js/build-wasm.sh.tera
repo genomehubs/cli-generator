@@ -65,15 +65,15 @@ rm -rf "$SCRIPT_DIR/pkg-nodejs" && mv pkg "$SCRIPT_DIR/pkg-nodejs"
 echo "  → Copying validation metadata..."
 mkdir -p "$SCRIPT_DIR/generated"
 
-# Copy field metadata if it exists
-if [ -f "$SCRIPT_DIR/../../../src/generated/field_meta.json" ]; then
-  cp "$SCRIPT_DIR/../../../src/generated/field_meta.json" "$SCRIPT_DIR/generated/field_meta.json"
+# Copy field metadata if it exists (in the generated project's src/generated/ directory)
+if [ -f "$SCRIPT_DIR/../../src/generated/field_meta.json" ]; then
+  cp "$SCRIPT_DIR/../../src/generated/field_meta.json" "$SCRIPT_DIR/generated/field_meta.json"
   echo "    ✓ field_meta.json"
 fi
 
-# Copy validation config if it exists
-if [ -f "$SCRIPT_DIR/../../../src/generated/validation_config.json" ]; then
-  cp "$SCRIPT_DIR/../../../src/generated/validation_config.json" "$SCRIPT_DIR/generated/validation_config.json"
+# Copy validation config if it exists (in the generated project's src/generated/ directory)
+if [ -f "$SCRIPT_DIR/../../src/generated/validation_config.json" ]; then
+  cp "$SCRIPT_DIR/../../src/generated/validation_config.json" "$SCRIPT_DIR/generated/validation_config.json"
   echo "    ✓ validation_config.json"
 fi
 
