@@ -368,23 +368,29 @@ jobs:
           # Detailed diagnostics before packing
           echo "=== Directory contents before npm pack ==="
           ls -lah
-          
+
           echo ""
           echo "=== Files in pkg-web/ ==="
           ls -lah pkg-web/ || echo "(empty or missing)"
-          
+
           echo ""
           echo "=== Files in pkg-nodejs/ ==="
           ls -lah pkg-nodejs/ || echo "(empty or missing)"
-          
+
           echo ""
           echo "=== Files in generated/ ==="
           ls -lah generated/ || echo "(empty or missing)"
-          
+
           echo ""
           echo "=== Check for .npmignore ==="
           [ -f .npmignore ] && cat .npmignore || echo "(no .npmignore)"
-          
+
+          echo ""
+          echo "=== File counts ==="
+          echo "pkg-web files: $(find pkg-web -type f 2>/dev/null | wc -l)"
+          echo "pkg-nodejs files: $(find pkg-nodejs -type f 2>/dev/null | wc -l)"
+          echo "generated files: $(find generated -type f 2>/dev/null | wc -l)"
+
           echo ""
           echo "=== Running npm pack ==="
           npm pack
