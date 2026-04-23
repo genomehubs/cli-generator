@@ -224,9 +224,21 @@ jobs:
       - name: Rename Python wheel (goat_cli → goat_sdk)
         run: |
           cd /tmp/generated/goat-cli/target/wheels
-          for file in goat_cli-*.whl; do
-            if [ -f "$file" ]; then
-              mv "$file" "${file//goat_cli/goat_sdk}"
+          for wheel in goat_cli-*.whl; do
+            if [ -f "$wheel" ]; then
+              new_wheel="${wheel//goat_cli/goat_sdk}"
+              # Extract wheel (it's a zip)
+              mkdir wheel_tmp
+              unzip -q "$wheel" -d wheel_tmp
+              # Rename dist-info directory inside
+              if [ -d "wheel_tmp/goat_cli-0.1.0.dist-info" ]; then
+                mv "wheel_tmp/goat_cli-0.1.0.dist-info" "wheel_tmp/goat_sdk-0.1.0.dist-info"
+              fi
+              # Repack the wheel
+              cd wheel_tmp
+              zip -qr "../$new_wheel" .
+              cd ..
+              rm -rf wheel_tmp "$wheel"
             fi
           done
 
