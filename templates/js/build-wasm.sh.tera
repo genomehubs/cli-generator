@@ -57,6 +57,10 @@ if [ ! -d "pkg" ] || [ -z "$(ls -A pkg)" ]; then
   exit 1
 fi
 rm -rf "$SCRIPT_DIR/pkg-web" && mv pkg "$SCRIPT_DIR/pkg-web"
+if [ ! -d "$SCRIPT_DIR/pkg-web" ] || [ -z "$(ls -A "$SCRIPT_DIR/pkg-web")" ]; then
+  echo "✗ ERROR: pkg-web directory empty or missing after move"
+  exit 1
+fi
 echo "    → pkg-web/ created with $(find "$SCRIPT_DIR/pkg-web" -type f | wc -l) files"
 
 # Build for Node.js
@@ -71,6 +75,10 @@ if [ ! -d "pkg" ] || [ -z "$(ls -A pkg)" ]; then
   exit 1
 fi
 rm -rf "$SCRIPT_DIR/pkg-nodejs" && mv pkg "$SCRIPT_DIR/pkg-nodejs"
+if [ ! -d "$SCRIPT_DIR/pkg-nodejs" ] || [ -z "$(ls -A "$SCRIPT_DIR/pkg-nodejs")" ]; then
+  echo "✗ ERROR: pkg-nodejs directory empty or missing after move"
+  exit 1
+fi
 echo "    → pkg-nodejs/ created with $(find "$SCRIPT_DIR/pkg-nodejs" -type f | wc -l) files"
 
 # Copy validation metadata files to make them available to both Node.js and browser SDKs

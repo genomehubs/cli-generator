@@ -365,9 +365,28 @@ jobs:
         run: |
           npm run build
 
-          # Verify WASM and generated directories exist before packing
-          ls -lah | grep -E "pkg|generated" || echo "⚠️  Warning: pkg/generated directories may be missing"
-
+          # Detailed diagnostics before packing
+          echo "=== Directory contents before npm pack ==="
+          ls -lah
+          
+          echo ""
+          echo "=== Files in pkg-web/ ==="
+          ls -lah pkg-web/ || echo "(empty or missing)"
+          
+          echo ""
+          echo "=== Files in pkg-nodejs/ ==="
+          ls -lah pkg-nodejs/ || echo "(empty or missing)"
+          
+          echo ""
+          echo "=== Files in generated/ ==="
+          ls -lah generated/ || echo "(empty or missing)"
+          
+          echo ""
+          echo "=== Check for .npmignore ==="
+          [ -f .npmignore ] && cat .npmignore || echo "(no .npmignore)"
+          
+          echo ""
+          echo "=== Running npm pack ==="
           npm pack
         working-directory: /tmp/generated/goat-cli/js/goat
 

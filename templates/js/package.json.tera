@@ -18,11 +18,9 @@
     "query.js",
     "query.node.js",
     "query.browser.js",
-    "pkg-web/",
-    "pkg-nodejs/",
-    "generated/",
-    "pkg-web/*",
-    "pkg-nodejs/*"
+    "pkg-web",
+    "pkg-nodejs",
+    "generated"
   ],
   "scripts": {
     "build": "bash build-wasm.sh",
