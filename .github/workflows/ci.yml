@@ -360,6 +360,8 @@ jobs:
         working-directory: /tmp/generated/goat-cli/js/goat
 
       - name: Build JavaScript package (npm)
+        env:
+          REPO_ROOT: ${{ github.workspace }}
         run: |
           npm run build
           npm pack
