@@ -153,6 +153,29 @@ the Python extension and runs a Python smoke-test.
 WASM is rebuilt by default. Pass `--no-rebuild-wasm` to skip it when only
 templates or non-WASM Rust was changed.
 
+### Artifact validation (release prep)
+
+Before releasing or during MVP preparation, validate that downloaded CLI and SDK
+artifacts work correctly across platforms:
+
+```bash
+# Quick validation (smoke tests, ~30 seconds)
+bash scripts/validate_artifacts.sh /path/to/artifacts
+
+# Deep validation (real API calls, ~2-3 minutes)
+bash scripts/validate_artifacts.sh --deep /path/to/artifacts
+```
+
+Validators auto-detect CLI, Python, R, and JavaScript SDKs regardless of artifact
+folding structure. For organizing messy CI downloads:
+
+```bash
+bash scripts/organize_artifacts.sh /path/to/downloads
+bash scripts/validate_artifacts.sh ./artifacts
+```
+
+See [VALIDATION.md](scripts/VALIDATION.md) for comprehensive documentation.
+
 ---
 
 ## Generated code

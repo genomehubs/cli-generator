@@ -6,9 +6,9 @@ Choose your path based on what you want to do:
 | ----------------------------------------- | -------------------------------------------------------------------- | ------ |
 | Try the CLI without installing anything   | [1. Try the goat-CLI preview](#1-try-the-goat-cli-preview)           | 5 min  |
 | Generate a CLI for your own API           | [2. Generate a custom CLI](#2-generate-a-custom-cli)                 | 10 min |
-| Use the Python SDK (programmatic queries) | [3. Python SDK](#3-python-sdk)                                       | 5 min  |
-| Use the R SDK                             | [4. R SDK](#4-r-sdk)                                                 | 5 min  |
-| Use the JavaScript/Node.js SDK            | [5. JavaScript SDK](#5-javascript-sdk)                               | 5 min  |
+| Use the Python SDK (programmatic queries) | [GETTING_STARTED-python.md](GETTING_STARTED-python.md)               | 5 min  |
+| Use the R SDK                             | [GETTING_STARTED-r.md](GETTING_STARTED-r.md)                         | 5 min  |
+| Use the JavaScript/Node.js SDK            | [GETTING_STARTED-javascript.md](GETTING_STARTED-javascript.md)       | 5 min  |
 | Contribute to cli-generator               | [8. Contributing to cli-generator](#8-contributing-to-cli-generator) | 20 min |
 
 **New to cli-generator?** Start with section 1, then read [MAIN.md](docs/MAIN.md) (project overview) or [extension-guide.md](docs/planning/extension-guide.md) (how to extend it).
@@ -31,17 +31,65 @@ most recent **"Generated CLI tests"** run → **Artifacts**:
 | `goat-cli-linux-x86_64`  | Linux (x86-64)        |
 | `goat-cli-macos-aarch64` | macOS (Apple Silicon) |
 
-Download and unzip, then:
+Download and unzip, then make the binary executable:
 
 ```bash
 # Make executable (Linux / macOS)
 chmod +x goat-cli
+```
 
-# Basic usage
+### Verify the download
+
+Before using the CLI, run the validation script to confirm it works:
+
+```bash
+# From the cli-generator repo root (quick validation ~30 sec)
+bash scripts/validate_artifacts.sh ./path/to/extracted/artifacts
+
+# Or, for comprehensive testing with real API calls (~1-2 min per language)
+bash scripts/validate_artifacts.sh --deep ./path/to/extracted/artifacts
+```
+
+- **Quick validation** runs smoke tests (import, instantiate, URL generation)
+- **Deep validation** tests `.count()`, `.search()`, `.validate()`, and response parsing with real API calls
+
+Both should complete with all tests passing (✓).
+
+### Accessing Documentation
+
+The artifacts include full **interactive documentation** built with Quarto:
+
+**In the extracted artifacts:**
+
+```bash
+# Open the docs in your browser
+open goat-cli/docs/index.html
+
+# Or rebuild the docs locally
+cd goat-cli/docs
+quarto preview
+```
+
+The docs include:
+
+- **[QueryBuilder reference](goat-cli/docs/reference/query-builder.html)** — Complete method reference with examples in Python, R, and JavaScript
+- **[Quickstart guide](goat-cli/docs/quickstart.html)** — Step-by-step tutorials for all SDKs
+- **[Parse reference](goat-cli/docs/reference/parse.html)** — Response parsing API and examples
+
+**Language-specific quick references** (in the repo):
+
+- [GETTING_STARTED-python.md](GETTING_STARTED-python.md) — Python operators, patterns, debugging tips
+- [GETTING_STARTED-r.md](GETTING_STARTED-r.md) — R patterns, piping examples, troubleshooting
+- [GETTING_STARTED-javascript.md](GETTING_STARTED-javascript.md) — REPL examples, async patterns, file usage
+
+### Basic usage
+
+Once validated:
+
+```bash
+# Help and discovery
 ./goat-cli --help
 ./goat-cli taxon search --help
-
-# List available field groups and their short codes
 ./goat-cli taxon search --list-field-groups
 
 # Search examples
@@ -157,6 +205,8 @@ flag in your config appears in the generated source and in the API URL.
 ---
 
 ## 3. Python SDK
+
+**→ See [GETTING_STARTED-python.md](GETTING_STARTED-python.md) for comprehensive examples, operators, and API reference.**
 
 Each generated CLI includes a Python extension module (`{{ site_name }}_sdk`)
 built with [maturin](https://github.com/PyO3/maturin). The SDK provides a
@@ -415,6 +465,8 @@ results <- qb$search()
 
 ## 4. R SDK
 
+**→ See [GETTING_STARTED-r.md](GETTING_STARTED-r.md) for comprehensive examples, operators, and API reference.**
+
 Each generated CLI includes an R package (`r/<pkg_name>/`) with a `QueryBuilder` R6 class
 that has full parity with the Python SDK. URL building, `describe()`, and `snippet()` all
 delegate to the same Rust engine via [extendr](https://extendr.github.io/). HTTP calls
@@ -465,6 +517,8 @@ cat(snippets[["r"]], "\n")
 ---
 
 ## 5. JavaScript SDK
+
+**→ See [GETTING_STARTED-javascript.md](GETTING_STARTED-javascript.md) for comprehensive examples, operators, and API reference.**
 
 Each generated CLI includes a JavaScript package (`js/{{ js_package_name }}/`) with a `QueryBuilder`
 class that works in Node.js (≥ 18).

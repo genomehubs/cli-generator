@@ -246,6 +246,33 @@ For detailed guidance on extending cli-generator across languages, see
 [Extension Guide](docs/planning/extension-guide.md) and rule #10 in
 [Copilot Instructions](.github/copilot-instructions.md).
 
+### Artifact validation (before release)
+
+Before publishing released artifacts to users, validate they work end-to-end:
+
+```bash
+# Quick validation (smoke tests: help, imports, URL generation)
+bash scripts/validate_artifacts.sh /path/to/artifacts
+
+# Deep validation (real API calls, parse, describe, snippet)
+bash scripts/validate_artifacts.sh --deep /path/to/artifacts
+```
+
+Validators test CLI, Python SDK wheel, R package, and JavaScript SDK across
+all platforms (Linux and macOS). Quick mode takes ~30 seconds; deep mode ~2–3
+minutes due to real API calls.
+
+If artifacts have inconsistent names/structure from CI downloads, use the helper
+to reorganize them first:
+
+```bash
+bash scripts/organize_artifacts.sh /path/to/messy/downloads
+ls -la ./artifacts/  # Organized structure ready for validation
+```
+
+See [scripts/VALIDATION.md](scripts/VALIDATION.md) for all details and language-
+specific debugging.
+
 ---
 
 ## Architecture: Hand-written vs. generated code

@@ -229,13 +229,16 @@ jobs:
           retention-days: 14
 
       - name: Install wasm-pack (for JavaScript SDK)
-        if: matrix.os == 'ubuntu-latest'
         run: cargo install wasm-pack
 
       - name: Build JavaScript SDK WASM
-        if: matrix.os == 'ubuntu-latest'
         run: REPO_ROOT=${{ github.workspace }} bash build-wasm.sh
         working-directory: /tmp/generated/goat-cli/js/goat
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
 
       - name: Smoke-test Python SDK (URL builder — no network)
         run: |
@@ -260,6 +263,21 @@ jobs:
           print("  assembly URL:", url2[:80])
           EOF
 
+      - name: Smoke-test JavaScript SDK (fixture-based)
+        run: |
+          cd /tmp/generated/goat-cli/js/goat
+          npm install --silent
+          # Quick validation: import and instantiate
+          node --input-type=module - <<'EOF'
+          const { QueryBuilder } = await import("file://$(pwd)/query.js");
+          const qb = new QueryBuilder("taxon")
+            .setTaxa(["Mammalia"], "tree")
+            .addField("genome_size");
+          const url = qb.toUrl();
+          if (!url.includes("result=taxon")) throw new Error("Invalid URL: " + url);
+          console.log("JS SDK smoke test PASSED: " + url.substring(0, 80));
+          EOF
+
       - name: Assert URL outputs
         shell: bash
         run: |
@@ -279,6 +297,26 @@ jobs:
           check "genome_size"         taxon search --taxon Insecta  --field-groups genome-size
           check "habreg_2017"         taxon search --taxon "Homo sapiens" --field-groups legislation
           check "includeEstimates=false" taxon search --taxon Mammalia --field-groups busco --include-estimates=false
+
+      - name: Set up R (for SDK build test)
+        uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: "4.3"
+
+      - name: Smoke-test R SDK (build and instantiate)
+        run: |
+          sudo apt-get install -y libcurl4-openssl-dev libssl-dev zlib1g-dev libuv1-dev 2>/dev/null || true
+          R -e "install.packages(c('devtools', 'R6', 'httr', 'jsonlite', 'yaml'), repos='http://cran.r-project.org', quiet=TRUE)"
+          cd /tmp/generated/goat-cli/r/goat
+          Rscript - <<'REOF'
+          devtools::load_all()
+          qb <- QueryBuilder$new("taxon")
+          qb$set_taxa(c("Mammalia"), filter_type="tree")
+          qb$add_field("genome_size")
+          url <- qb$to_url()
+          if (!grepl("result=taxon", url)) stop("Invalid URL")
+          cat("R SDK smoke test PASSED:", substr(url, 1, 80), "\n")
+          REOF
 
       - name: Upload goat-cli binary + SDKs
         uses: actions/upload-artifact@v4
