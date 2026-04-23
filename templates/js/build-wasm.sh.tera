@@ -51,7 +51,13 @@ if ! wasm-pack build --target web --features wasm; then
   echo "✗ WASM build (web) failed"
   exit 1
 fi
+if [ ! -d "pkg" ] || [ -z "$(ls -A pkg)" ]; then
+  echo "✗ ERROR: pkg directory not created or empty after web build"
+  ls -lah .
+  exit 1
+fi
 rm -rf "$SCRIPT_DIR/pkg-web" && mv pkg "$SCRIPT_DIR/pkg-web"
+echo "    → pkg-web/ created with $(find "$SCRIPT_DIR/pkg-web" -type f | wc -l) files"
 
 # Build for Node.js
 echo "  → Building for Node.js (--target nodejs)"
@@ -59,7 +65,13 @@ if ! wasm-pack build --target nodejs --features wasm; then
   echo "✗ WASM build (nodejs) failed"
   exit 1
 fi
+if [ ! -d "pkg" ] || [ -z "$(ls -A pkg)" ]; then
+  echo "✗ ERROR: pkg directory not created or empty after nodejs build"
+  ls -lah .
+  exit 1
+fi
 rm -rf "$SCRIPT_DIR/pkg-nodejs" && mv pkg "$SCRIPT_DIR/pkg-nodejs"
+echo "    → pkg-nodejs/ created with $(find "$SCRIPT_DIR/pkg-nodejs" -type f | wc -l) files"
 
 # Copy validation metadata files to make them available to both Node.js and browser SDKs
 echo "  → Copying validation metadata..."
