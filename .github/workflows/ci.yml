@@ -268,8 +268,9 @@ jobs:
           cd /tmp/generated/goat-cli/js/goat
           npm install --silent
           # Quick validation: import and instantiate
-          node --input-type=module - <<'EOF'
-          const { QueryBuilder } = await import("file://$(pwd)/query.js");
+          JS_SDK_PATH=$(pwd)
+          node --input-type=module - <<EOF
+          const { QueryBuilder } = await import("file://${JS_SDK_PATH}/query.js");
           const qb = new QueryBuilder("taxon")
             .setTaxa(["Mammalia"], "tree")
             .addField("genome_size");
