@@ -19,7 +19,7 @@ fi
 # Check if WASM module is built (pkg-nodejs folder expected)
 if [[ ! -d "$JS_SDK_DIR/pkg-nodejs" ]]; then
   echo "✗ JavaScript SDK WASM module missing (pkg-nodejs/ not found)"
-  echo "  → CI artifacts are incomplete. The WASM module should have been built and included."
+  echo "  → CI artifacts are incomplete. The WASM module must be built and included."
   exit 1
 fi
 

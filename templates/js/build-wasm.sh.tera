@@ -47,12 +47,18 @@ cd "$REPO_ROOT/crates/genomehubs-query"
 
 # Build for web
 echo "  → Building for browsers (--target web)"
-wasm-pack build --target web --features wasm
+if ! wasm-pack build --target web --features wasm; then
+  echo "✗ WASM build (web) failed"
+  exit 1
+fi
 rm -rf "$SCRIPT_DIR/pkg-web" && mv pkg "$SCRIPT_DIR/pkg-web"
 
 # Build for Node.js
 echo "  → Building for Node.js (--target nodejs)"
-wasm-pack build --target nodejs --features wasm
+if ! wasm-pack build --target nodejs --features wasm; then
+  echo "✗ WASM build (nodejs) failed"
+  exit 1
+fi
 rm -rf "$SCRIPT_DIR/pkg-nodejs" && mv pkg "$SCRIPT_DIR/pkg-nodejs"
 
 # Copy validation metadata files to make them available to both Node.js and browser SDKs

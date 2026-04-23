@@ -36,6 +36,10 @@ echo ""
 
 mkdir -p "$OUTPUT_DIR"
 
+# Create .gitignore to prevent 2k+ files from cluttering git status
+echo "*" > "$OUTPUT_DIR/.gitignore"
+echo "!.gitignore" >> "$OUTPUT_DIR/.gitignore"
+
 # ────────────────────────────────────────────────────────────────────────────
 # CLI Binary Detection
 # ────────────────────────────────────────────────────────────────────────────
@@ -45,15 +49,16 @@ echo "Scanning for CLI binary..."
 # Look for CLI binary: might be executable, or might be in target/release/ folder
 cli_found=$(find "$INPUT_DIR" -type f -name "goat-cli" 2>/dev/null | head -1)
 
-# If not found, look for any executable named *-cli
+# If not found, look for any file named *-cli (don't require executable bit, since macOS downloads lose it)
 if [[ -z "$cli_found" ]]; then
-  cli_found=$(find "$INPUT_DIR" -type f -executable -name "*-cli" 2>/dev/null | head -1)
+  cli_found=$(find "$INPUT_DIR" -type f -name "*-cli" 2>/dev/null | head -1)
 fi
 
 if [[ -n "$cli_found" ]]; then
   cli_filename=$(basename "$cli_found")
   echo "  Found: $cli_filename"
-  cp "$cli_found" "$OUTPUT_DIR/goat-cli"
+  # Use cat instead of cp to preserve executable bit on macOS downloads
+  cat "$cli_found" > "$OUTPUT_DIR/goat-cli"
   chmod +x "$OUTPUT_DIR/goat-cli"
   echo "  ✓ Copied to: $OUTPUT_DIR/goat-cli"
 else
@@ -68,13 +73,23 @@ echo ""
 
 echo "Scanning for Python SDK wheel..."
 
-# Look for any .whl file (goat_sdk*.whl, goat_cli*.whl, etc.)
-wheel_found=$(find "$INPUT_DIR" -type f -name "*.whl" 2>/dev/null | head -1)
+# Look for goat SDK wheels in order of preference:
+# 1. goat_sdk*.whl (new naming after generator fix)
+# 2. goat_cli*.whl (current naming during transition)
+# 3. Any other .whl as fallback
+wheel_found=$(find "$INPUT_DIR" -type f -name "goat_sdk*.whl" 2>/dev/null | head -1)
+if [[ -z "$wheel_found" ]]; then
+  wheel_found=$(find "$INPUT_DIR" -type f -name "goat_cli*.whl" 2>/dev/null | head -1)
+fi
+if [[ -z "$wheel_found" ]]; then
+  wheel_found=$(find "$INPUT_DIR" -type f -name "goat*.whl" 2>/dev/null | head -1)
+fi
 
 if [[ -n "$wheel_found" ]]; then
   wheel_filename=$(basename "$wheel_found")
   echo "  Found: $wheel_filename"
-  cp "$wheel_found" "$OUTPUT_DIR/${wheel_filename}"
+  # Use cat instead of cp to preserve file integrity
+  cat "$wheel_found" > "$OUTPUT_DIR/${wheel_filename}"
   echo "  ✓ Copied to: $OUTPUT_DIR/${wheel_filename}"
 else
   echo "  ⊙ No Python wheel (.whl) found"
@@ -156,6 +171,20 @@ if [[ -n "$js_query" ]]; then
   mkdir -p "$OUTPUT_DIR/js"
   cp -r "$js_dir" "$OUTPUT_DIR/js/goat"
   echo "  ✓ Copied to: $OUTPUT_DIR/js/goat"
+
+  # WASM packages (pkg-nodejs/ and pkg-web/) should have been copied as part of js_dir
+  # But verify they're present
+  if [[ ! -d "$OUTPUT_DIR/js/goat/pkg-nodejs" ]]; then
+    # Try copying from adjacent location if they exist elsewhere
+    if [[ -d "$(dirname "$js_dir")/pkg-nodejs" ]]; then
+      cp -r "$(dirname "$js_dir")/pkg-nodejs" "$OUTPUT_DIR/js/goat/"
+    fi
+  fi
+  if [[ ! -d "$OUTPUT_DIR/js/goat/pkg-web" ]]; then
+    if [[ -d "$(dirname "$js_dir")/pkg-web" ]]; then
+      cp -r "$(dirname "$js_dir")/pkg-web" "$OUTPUT_DIR/js/goat/"
+    fi
+  fi
 else
   # Check if there's a tarball that might contain JS (same issue as R)
   js_tarball=$(find "$INPUT_DIR" -maxdepth 2 -type f \( -name "goat*.tar" -o -name "goat*.tar.gz" \) 2>/dev/null | grep -v "\.tar$" | head -1)

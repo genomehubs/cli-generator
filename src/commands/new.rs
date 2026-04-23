@@ -859,9 +859,14 @@ fn create_js_package(repo_dir: &Path, site: &SiteConfig) -> Result<()> {
 
     let template_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("templates/js");
 
-    // Path to the pre-built WASM package in the cli-generator repo
+    // Path to the pre-built WASM packages in the cli-generator repo
+    // After build-wasm.sh runs, these will be at pkg-nodejs and pkg-web
     let wasm_pkg_dir =
         std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("crates/genomehubs-query/pkg");
+    let wasm_pkg_nodejs = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("crates/genomehubs-query/pkg-nodejs");
+    let wasm_pkg_web = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("crates/genomehubs-query/pkg-web");
 
     let mut context = Context::new();
     context.insert("js_package_name", &js_package_name);
@@ -869,6 +874,61 @@ fn create_js_package(repo_dir: &Path, site: &SiteConfig) -> Result<()> {
     context.insert("site_display_name", &site.display_name);
     context.insert("api_base_url", &site.api_base);
     context.insert("ui_base", &site.resolved_ui_base());
+
+    // 3. Copy pre-built WASM packages into js/{package}/pkg-nodejs/ and pkg-web/
+    // Try pkg-nodejs first (standard location after build-wasm.sh)
+    if wasm_pkg_nodejs.is_dir() {
+        let pkg_dest = js_dir.join("pkg-nodejs");
+        std::fs::create_dir_all(&pkg_dest)
+            .with_context(|| format!("creating js/{}/pkg-nodejs", &js_package_name))?;
+        for entry in std::fs::read_dir(&wasm_pkg_nodejs)
+            .with_context(|| "reading WASM pkg-nodejs directory")?
+        {
+            let entry = entry?;
+            let fname = entry.file_name();
+            if fname != ".gitignore" {
+                std::fs::copy(entry.path(), pkg_dest.join(&fname))
+                    .with_context(|| format!("copying WASM file {:?}", fname))?;
+            }
+        }
+    } else if wasm_pkg_web.is_dir() {
+        // Fallback: also copy pkg-web if it exists
+        let pkg_dest = js_dir.join("pkg-web");
+        std::fs::create_dir_all(&pkg_dest)
+            .with_context(|| format!("creating js/{}/pkg-web", &js_package_name))?;
+        for entry in
+            std::fs::read_dir(&wasm_pkg_web).with_context(|| "reading WASM pkg-web directory")?
+        {
+            let entry = entry?;
+            let fname = entry.file_name();
+            if fname != ".gitignore" {
+                std::fs::copy(entry.path(), pkg_dest.join(&fname))
+                    .with_context(|| format!("copying WASM file {:?}", fname))?;
+            }
+        }
+    } else if wasm_pkg_dir.is_dir() {
+        // Fallback: if only pkg/ exists (older builds), copy it to pkg-nodejs
+        let pkg_dest = js_dir.join("pkg-nodejs");
+        std::fs::create_dir_all(&pkg_dest)
+            .with_context(|| format!("creating js/{}/pkg-nodejs", &js_package_name))?;
+        for entry in
+            std::fs::read_dir(&wasm_pkg_dir).with_context(|| "reading WASM pkg directory")?
+        {
+            let entry = entry?;
+            let fname = entry.file_name();
+            if fname != ".gitignore" {
+                std::fs::copy(entry.path(), pkg_dest.join(&fname))
+                    .with_context(|| format!("copying WASM file {:?}", fname))?;
+            }
+        }
+    } else {
+        eprintln!(
+            "warn: WASM packages not found at {}",
+            wasm_pkg_nodejs.display()
+        );
+        eprintln!("  Generated JavaScript SDK will require manual WASM build.");
+        eprintln!("  Run: bash build-wasm.sh in js/{}/", &js_package_name);
+    }
 
     // 1. Render package.json
     if let Ok(tmpl) = std::fs::read_to_string(template_dir.join("package.json.tera")) {

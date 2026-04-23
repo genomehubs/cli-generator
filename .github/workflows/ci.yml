@@ -231,6 +231,9 @@ jobs:
       - name: Install wasm-pack (for JavaScript SDK)
         run: cargo install wasm-pack
 
+      - name: Add wasm32-unknown-unknown target
+        run: rustup target add wasm32-unknown-unknown
+
       - name: Build JavaScript SDK WASM
         run: REPO_ROOT=${{ github.workspace }} bash build-wasm.sh
         working-directory: /tmp/generated/goat-cli/js/goat
@@ -357,7 +360,9 @@ jobs:
         working-directory: /tmp/generated/goat-cli/js/goat
 
       - name: Build JavaScript package (npm)
-        run: npm run build 2>/dev/null || npm pack
+        run: |
+          npm run build
+          npm pack
         working-directory: /tmp/generated/goat-cli/js/goat
 
       - name: Run JavaScript fixture tests

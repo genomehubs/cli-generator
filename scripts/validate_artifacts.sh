@@ -92,8 +92,15 @@ find_cli_binary() {
 
 find_python_wheel() {
   # Look for any .whl file recursively (handles goat_cli-*.whl, goat_sdk-*.whl, etc.)
-  find "$ARTIFACTS_DIR" -type f -name "*.whl" 2>/dev/null | head -1
-  [[ $? -eq 0 ]] && return 0 || return 1
+  local wheel
+  wheel=$(find "$ARTIFACTS_DIR" -type f -name "*.whl" 2>/dev/null | head -1)
+
+  if [[ -n "$wheel" ]]; then
+    echo "$wheel"
+    return 0
+  fi
+
+  return 1
 }
 
 find_r_sdk() {
@@ -105,14 +112,19 @@ find_r_sdk() {
 
   # Search for R package by DESCRIPTION file marker
   # R packages have DESCRIPTION file at their root
-  find "$ARTIFACTS_DIR" -type f -name "DESCRIPTION" 2>/dev/null | while read desc; do
+  local desc
+  desc=$(find "$ARTIFACTS_DIR" -type f -name "DESCRIPTION" 2>/dev/null | head -1)
+
+  if [[ -n "$desc" ]]; then
+    local desc_dir
     desc_dir="$(dirname "$desc")"
     # Verify it looks like an R package (has R folder or NAMESPACE)
     if [[ -d "$desc_dir/R" ]] || [[ -f "$desc_dir/NAMESPACE" ]]; then
       echo "$desc_dir"
       return 0
     fi
-  done
+  fi
+
   return 1
 }
 
@@ -124,11 +136,16 @@ find_js_sdk() {
   fi
 
   # Search for query.js file recursively (handles various folder structures)
-  find "$ARTIFACTS_DIR" -type f -name "query.js" 2>/dev/null | while read query_js; do
+  local query_js
+  query_js=$(find "$ARTIFACTS_DIR" -type f -name "query.js" 2>/dev/null | head -1)
+
+  if [[ -n "$query_js" ]]; then
+    local js_dir
     js_dir="$(dirname "$query_js")"
     echo "$js_dir"
     return 0
-  done
+  fi
+
   return 1
 }
 
