@@ -90,7 +90,7 @@ if (length(file_arg) > 0) {
   # Fallback: assume current working directory is the repo root
   repo_root <- normalizePath(getwd())
 }
-fixture_path <- file.path(repo_root, "tests", "python", "fixtures-goat", "fixture_mammalia_search_raw.json")
+fixture_path <- file.path(repo_root, "scripts", "fixtures-goat", "fixture_mammalia_search_raw.json")
 if (file.exists(fixture_path)) {
   cat("Test 6: Deterministic fixture-based checks\n")
   raw_fixture <- readChar(fixture_path, file.info(fixture_path)$size, useBytes = TRUE)

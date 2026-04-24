@@ -195,9 +195,7 @@ def main() -> None:
     # Test 11: Deterministic fixture-based checks
     print("Test 11: Deterministic fixture-based checks (fixture_mammalia_search_raw.json)")
     fixture_path = os.path.abspath(
-        os.path.join(
-            os.path.dirname(__file__), "..", "tests", "python", "fixtures-goat", "fixture_mammalia_search_raw.json"
-        )
+        os.path.join(os.path.dirname(__file__), "fixtures-goat", "fixture_mammalia_search_raw.json")
     )
     if not os.path.isfile(fixture_path):
         print(f"  ⊙ Fixture not found at {fixture_path} — skipping deterministic checks")

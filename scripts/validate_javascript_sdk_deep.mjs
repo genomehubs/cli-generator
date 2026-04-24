@@ -81,13 +81,7 @@ try {
 
   // Deterministic fixture checks
   console.log("Test 4: Deterministic fixture-based checks");
-  const fixturePath = path.resolve(
-    process.cwd(),
-    "tests",
-    "python",
-    "fixtures-goat",
-    "fixture_mammalia_search_raw.json",
-  );
+  const fixturePath = path.resolve(process.cwd(), "scripts", "fixtures-goat", "fixture_mammalia_search_raw.json");
   if (!fs.existsSync(fixturePath)) {
     console.log(
       `  ⊙ Fixture not found at ${fixturePath} — skipping deterministic checks`,
