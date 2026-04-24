@@ -45,3 +45,27 @@ validate_query_json <- function(query_yaml, field_meta_json, config_json, synony
 
 
 # nolint end
+
+#' Parse the `status` block from a raw genomehubs API JSON response.
+parse_response_status <- function(raw) .Call(wrap__parse_response_status, raw)
+
+#' Flatten a raw API JSON response into an array of flat record objects.
+parse_search_json <- function(raw) .Call(wrap__parse_search_json, raw)
+
+#' Add `{field}__label` columns derived from aggregation source.
+annotate_source_labels <- function(records_json, mode) .Call(wrap__annotate_source_labels, records_json, mode)
+
+#' Replace `{field}`/`{field}__source` pairs with explicit source-keyed columns.
+split_source_columns <- function(records_json) .Call(wrap__split_source_columns, records_json)
+
+#' Strip all `__*` sub-key columns, keeping identity columns and bare field values.
+values_only <- function(records_json, keep_columns_json) .Call(wrap__values_only, records_json, keep_columns_json)
+
+#' Replace non-direct field values with their annotated label string, then strip `__*` columns.
+annotated_values <- function(records_json, mode, keep_columns_json) .Call(wrap__annotated_values, records_json, mode, keep_columns_json)
+
+#' Reshape flat records from `parse_search_json` into long/tidy format.
+to_tidy_records <- function(records_json) .Call(wrap__to_tidy_records, records_json)
+
+#' Parse one page from a `/searchPaginated` response.
+parse_paginated_json <- function(raw) .Call(wrap__parse_paginated_json, raw)

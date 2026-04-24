@@ -25,13 +25,13 @@ def build_url(query_yaml: str, params_yaml: str, endpoint: str) -> str:
     """
     ...
 
-def search(query_yaml: str, params_yaml: str, format: str = "tsv") -> str:
+def search(query_yaml: str, params_yaml: str, format: str = "json") -> str:
     """Execute a search and return the response body in the specified format.
 
     Args:
         query_yaml: YAML-serialised ``SearchQuery``.
         params_yaml: YAML-serialised ``QueryParams``.
-        format: Output format — ``"json"``, ``"tsv"``, or ``"csv"`` (default: ``"tsv"``)
+        format: Output format — ``"json"``, ``"tsv"``, or ``"csv"`` (default: ``"json"``)
 
     Returns:
         Response body as a string in the requested format.

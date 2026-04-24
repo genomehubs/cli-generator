@@ -108,6 +108,7 @@ fn parse_response_status(raw: &str) -> String {
         Ok(status) => parse::response_status_to_json(&status),
         Err(e) => parse::response_status_to_json(&parse::ResponseStatus {
             hits: 0,
+            took: 0,
             ok: false,
             error: Some(e),
         }),

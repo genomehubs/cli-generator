@@ -48,6 +48,16 @@ cat > "$TMP_R" << 'REOF'
         # Load package
         devtools::load_all(pkg_dir, quiet = TRUE)
 
+        pkg <- "goat"
+        getNamespaceExports(pkg)
+        lsf.str(envir = asNamespace(pkg))
+        exports <- getNamespaceExports(pkg)
+        sapply(exports, function(n) {
+            obj <- getExportedValue(pkg, n)
+            paste(class(obj), collapse = "/")
+        })
+        cat("Exports:\n"); print(getNamespaceExports(pkg))
+
         cat("\n== Deep Validation: R SDK ==\n\n")
 
         # Test 1: Validate method
@@ -67,8 +77,8 @@ cat > "$TMP_R" << 'REOF'
         qb <- QueryBuilder$new("taxon")
         qb$set_taxa(c("Mammalia"), filter_type = "tree")
         count <- qb$count()
-        stopifnot(is.numeric(count), "count() should return numeric")
-        stopifnot(count > 0, "Expected count > 0 for Mammalia")
+        if (!is.numeric(count)) stop("count() should return numeric")
+        if (!(count > 0)) stop("Expected count > 0 for Mammalia")
         cat(sprintf("  ✓ count() works: %d records found\n", count))
 
         # Test 3: Search method (real API call)
@@ -78,8 +88,8 @@ cat > "$TMP_R" << 'REOF'
         qb$add_field("genome_size")
         qb$set_size(10)
         results <- qb$search()
-        stopifnot(is.data.frame(results), "search() should return data.frame")
-        stopifnot(nrow(results) > 0, "Expected results for Mammalia search")
+        if (!is.data.frame(results)) stop("search() should return data.frame")
+        if (!(nrow(results) > 0)) stop("Expected results for Mammalia search")
         cat(sprintf("  ✓ search() works: returned %d results\n", nrow(results)))
         cat(sprintf("    First result: %s\n", results[1, "taxon_name"]))
 
@@ -91,7 +101,7 @@ cat > "$TMP_R" << 'REOF'
         qb$add_field("genome_size")
         qb$set_size(10)
         results <- qb$search()
-        stopifnot(all(!is.na(results$genome_size)), "All results should have genome_size")
+        if (!all(!is.na(results$genome_size))) stop("All results should have genome_size")
         cat(sprintf("  ✓ add_attribute() works: %d results with genome_size >= 1G\n", nrow(results)))
 
         # Test 5: Multiple attribute filters
@@ -103,7 +113,7 @@ cat > "$TMP_R" << 'REOF'
         qb$add_field("genome_size")
         qb$set_size(10)
         results <- qb$search()
-        stopifnot(nrow(results) > 0, "Expected results in 1G-3G range")
+        if (!(nrow(results) > 0)) stop("Expected results in 1G-3G range")
         cat(sprintf("  ✓ Multiple filters work: %d results with 1G <= genome_size <= 3G\n", nrow(results)))
 
         # Test 6: Response parsing
@@ -112,10 +122,11 @@ cat > "$TMP_R" << 'REOF'
         qb$set_taxa(c("Insecta"), filter_type = "tree")
         qb$add_field("genome_size")
         qb$set_size(5)
-        response <- qb$search_raw()
-        status_json <- fromJSON(cli_generator::parse_response_status(response))
-        stopifnot(!is.null(status_json$hits), "Status should have 'hits' field")
-        stopifnot(!is.null(status_json$took), "Status should have 'took' field")
+        # Fetch raw JSON response for parsing (explicit json format)
+        response <- qb$search(format = "json")
+        status_json <- fromJSON(parse_response_status(response))
+        if (is.null(status_json$hits)) stop("Status should have 'hits' field")
+        if (is.null(status_json$took)) stop("Status should have 'took' field")
         cat(sprintf("  ✓ parse_response_status() works\n"))
         cat(sprintf("    Total hits: %d\n", status_json$hits))
         cat(sprintf("    Query time: %dms\n", status_json$took))
@@ -126,17 +137,17 @@ cat > "$TMP_R" << 'REOF'
         qb$set_taxa(c("Mammalia"), filter_type = "tree")
         qb$add_attribute("genome_size", "ge", "1G")
         description <- qb$describe()
-        stopifnot(is.character(description), "describe() should return character")
-        stopifnot(nchar(description) > 0, "Description should not be empty")
+        if (!is.character(description)) stop("describe() should return character")
+        if (!(nchar(description) > 0)) stop("Description should not be empty")
         cat(sprintf("  ✓ describe() works\n"))
         cat(sprintf("    %s...\n", substr(description, 1, 100)))
 
         # Test 8: Snippet generation
         cat("Test 8: Code snippet generation ($snippet())\n")
         snippets <- qb$snippet(languages = c("python", "r", "javascript"))
-        stopifnot("python" %in% names(snippets), "Should generate python snippet")
-        stopifnot("r" %in% names(snippets), "Should generate r snippet")
-        stopifnot("javascript" %in% names(snippets), "Should generate javascript snippet")
+        if (!("python" %in% names(snippets))) stop("Should generate python snippet")
+        if (!("r" %in% names(snippets))) stop("Should generate r snippet")
+        if (!("javascript" %in% names(snippets))) stop("Should generate javascript snippet")
         cat(sprintf("  ✓ snippet() works for all languages\n"))
 
         cat("\n✓ All deep validation tests passed!\n\n")

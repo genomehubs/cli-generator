@@ -25,6 +25,8 @@ pub struct ResponseStatus {
     pub ok: bool,
     /// Error message returned by the API, if any.
     pub error: Option<String>,
+    /// Query execution time in milliseconds, if present.
+    pub took: u64,
 }
 
 /// Minimal serde view of just the `status` block we need.
@@ -32,6 +34,7 @@ pub struct ResponseStatus {
 struct ApiStatus {
     hits: Option<serde_json::Value>,
     success: Option<bool>,
+    took: Option<serde_json::Value>,
     error: Option<serde_json::Value>,
 }
 
@@ -72,23 +75,39 @@ pub fn parse_response_status(raw: &str) -> Result<ResponseStatus, String> {
                 hits: 0,
                 ok: false,
                 error: Some("missing status block in API response".to_string()),
+                took: 0,
             });
         }
     };
 
     let hits = parse_hits(status.hits.as_ref());
     let ok = status.success.unwrap_or(false);
+    let took = parse_took(status.took.as_ref());
     let error = status.error.and_then(|v| match v {
         serde_json::Value::String(s) if !s.is_empty() => Some(s),
         serde_json::Value::Null => None,
         other => Some(other.to_string()),
     });
 
-    Ok(ResponseStatus { hits, ok, error })
+    Ok(ResponseStatus {
+        hits,
+        ok,
+        error,
+        took,
+    })
 }
 
 /// Coerce `hits` from either a JSON number or a JSON string to `u64`.
 fn parse_hits(value: Option<&serde_json::Value>) -> u64 {
+    match value {
+        Some(serde_json::Value::Number(n)) => n.as_u64().unwrap_or(0),
+        Some(serde_json::Value::String(s)) => s.parse().unwrap_or(0),
+        _ => 0,
+    }
+}
+
+/// Coerce `took` from either a JSON number or a JSON string to `u64`.
+fn parse_took(value: Option<&serde_json::Value>) -> u64 {
     match value {
         Some(serde_json::Value::Number(n)) => n.as_u64().unwrap_or(0),
         Some(serde_json::Value::String(s)) => s.parse().unwrap_or(0),
@@ -102,14 +121,14 @@ fn parse_hits(value: Option<&serde_json::Value>) -> u64 {
 pub fn response_status_to_json(status: &ResponseStatus) -> String {
     match &status.error {
         None => format!(
-            r#"{{"hits":{},"ok":{},"error":null}}"#,
-            status.hits, status.ok
+            r#"{{"hits":{},"ok":{},"took":{},"error":null}}"#,
+            status.hits, status.ok, status.took
         ),
         Some(msg) => {
             let escaped = msg.replace('\\', r"\\").replace('"', r#"\""#);
             format!(
-                r#"{{"hits":{},"ok":{},"error":"{}"}}"#,
-                status.hits, status.ok, escaped
+                r#"{{"hits":{},"ok":{},"took":{},"error":"{}"}}"#,
+                status.hits, status.ok, status.took, escaped
             )
         }
     }
@@ -1018,6 +1037,7 @@ mod tests {
     fn to_json_round_trips() {
         let status = ResponseStatus {
             hits: 5,
+            took: 15,
             ok: true,
             error: None,
         };
@@ -1034,12 +1054,14 @@ mod tests {
     fn to_json_round_trips_with_error() {
         let status = ResponseStatus {
             hits: 0,
+            took: 123,
             ok: false,
             error: Some("bad request".to_string()),
         };
         let json = response_status_to_json(&status);
         let v: serde_json::Value = serde_json::from_str(&json).unwrap();
         assert_eq!(v["error"], "bad request");
+        assert_eq!(v["took"], 123);
     }
 
     // ── parse_search_json ─────────────────────────────────────────────────────

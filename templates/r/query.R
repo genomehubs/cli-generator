@@ -428,12 +428,21 @@ QueryBuilder <- R6::R6Class(
     #' @description Fetch the count of records matching this query.
     #' @return An integer.
     count = function() {
-      url <- self$to_url("count")
-      response <- httr::GET(url, httr::accept("application/json"))
-      httr::stop_for_status(response)
-      raw_text <- httr::content(response, as = "text", encoding = "UTF-8")
-      status <- jsonlite::fromJSON(parse_response_status(raw_text))
-      as.integer(status[["hits"]] %||% 0L)
+      # Clone this builder with size=0 for counting (matches JS/Python behavior)
+      counter <- QueryBuilder$new(private$index_name)
+      counter$merge(self)
+      counter$set_size(0)
+      url <- counter$to_url("search")
+      resp <- httr::GET(url, httr::accept("application/json"))
+      httr::stop_for_status(resp)
+      raw_text <- httr::content(resp, as = "text", encoding = "UTF-8")
+      status <- tryCatch(
+        jsonlite::fromJSON(parse_response_status(raw_text)),
+        error = function(e) list(hits = 0)
+      )
+      hits <- status[["hits"]]
+      if (is.null(hits)) hits <- 0
+      as.integer(as.numeric(hits))
     },
 
     #' @description Fetch results for this query.
@@ -457,7 +466,14 @@ QueryBuilder <- R6::R6Class(
           stringsAsFactors = FALSE, quote = "\""
         )
       } else {
-        httr::content(response, as = "parsed", type = "application/json")
+        # For JSON requests return the raw text so callers can pass the
+        # unmodified response to the parse_* helpers. If a caller wants a
+        # parsed R object they can call jsonlite::fromJSON(qb$search(format="json"))
+        if (format == "json") {
+          httr::content(response, as = "text", encoding = "UTF-8")
+        } else {
+          httr::content(response, as = "parsed", type = "application/json")
+        }
       }
     },
 
@@ -510,7 +526,7 @@ QueryBuilder <- R6::R6Class(
 
       snapshot <- list(
         index        = jsonlite::unbox(private$index_name),
-        taxa         = as.list(private$taxa_names),
+        taxa         = private$taxa_names,
         taxon_filter = jsonlite::unbox(private$taxa_filter_type),
         rank         = if (!is.null(private$rank_name)) jsonlite::unbox(private$rank_name) else NULL,
         filters      = filters,

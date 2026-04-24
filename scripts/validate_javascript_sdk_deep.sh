@@ -49,7 +49,7 @@ echo "Running deep validation for JavaScript SDK..."
 # Run deep tests
 node --input-type=module << EOF || exit 1
 
-import { QueryBuilder } from "file://$JS_SDK_DIR/query.js";
+import { QueryBuilder, parseSearchJson, parseResponseStatus } from "file://$JS_SDK_DIR/query.js";
 
 console.log("\n== Deep Validation: JavaScript SDK ==\n");
 
@@ -73,7 +73,8 @@ const qb2 = new QueryBuilder("taxon")
   .setTaxa(["Mammalia"], "tree")
   .addField("genome_size")
   .setSize(10);
-const results = await qb2.search();
+const raw = await qb2.search();
+const results = parseSearchJson(raw);
 assert(Array.isArray(results), "search() should return array");
 assert(results.length > 0, "Expected results for Mammalia search");
 console.log(\`  ✓ search() works: returned \${results.length} results\`);
@@ -86,7 +87,8 @@ const qb3 = new QueryBuilder("taxon")
   .addAttribute("genome_size", "ge", "1G")
   .addField("genome_size")
   .setSize(10);
-const filtered = await qb3.search();
+const rawFiltered = await qb3.search();
+const filtered = parseSearchJson(rawFiltered);
 assert(filtered.length > 0, "Expected results with genome_size >= 1G");
 assert(filtered.every(r => r.genome_size !== null), "All results should have genome_size");
 console.log(\`  ✓ addAttribute() works: \${filtered.length} results with genome_size >= 1G\`);
@@ -99,7 +101,8 @@ const qb4 = new QueryBuilder("taxon")
   .addAttribute("genome_size", "le", "3G")
   .addField("genome_size")
   .setSize(10);
-const multiFiltered = await qb4.search();
+const rawMultiFiltered = await qb4.search();
+const multiFiltered = parseSearchJson(rawMultiFiltered);
 assert(multiFiltered.length > 0, "Expected results in 1G-3G range");
 console.log(\`  ✓ Multiple filters work: \${multiFiltered.length} results with 1G <= genome_size <= 3G\`);
 
@@ -108,7 +111,7 @@ console.log("Test 5: Query description (describe())");
 const qb5 = new QueryBuilder("taxon")
   .setTaxa(["Mammalia"], "tree")
   .addAttribute("genome_size", "ge", "1G");
-const description = qb5.describe();
+const description = await qb5.describe();
 assert(typeof description === "string", "describe() should return string");
 assert(description.length > 0, "Description should not be empty");
 console.log(\`  ✓ describe() works\`);
@@ -116,7 +119,7 @@ console.log(\`    \${description.substring(0, 100)}...\`);
 
 // Test 6: Snippet generation
 console.log("Test 6: Code snippet generation (snippet())");
-const snippets = qb5.snippet({ siteName: "goat", sdkName: "goat_sdk", languages: ["python", "r", "javascript"] });
+const snippets = await qb5.snippet(["python", "r", "javascript"], "goat", "goat_sdk");
 assert(snippets.python, "Should generate python snippet");
 assert(snippets.r, "Should generate r snippet");
 assert(snippets.javascript, "Should generate javascript snippet");
@@ -137,7 +140,7 @@ for (const {op, name} of ops) {
     const qb_op = new QueryBuilder("taxon")
       .setTaxa(["Mammalia"], "tree")
       .addAttribute("genome_size", op, op === "exists" ? null : "1G")
-      .set_size(1);
+      .setSize(1);
     // Just verify URL builds - don't search each one
     const url = qb_op.toUrl();
     assert(url.includes("genome_size"), \`URL should include genome_size for operator '\${op}'\`);

@@ -106,15 +106,15 @@ print(url)
 count = QueryBuilder("taxon").set_taxa(["Mammalia"], filter_type="tree").count()
 print(f"Found {count} records")
 
-# Search returns TSV by default
-tsv_results = (
+# Search returns JSON by default
+results = (
     QueryBuilder("taxon")
     .set_taxa(["Insecta"], filter_type="tree")
     .add_field("genome_size")
     .set_size(20)
     .search()
 )
-print(tsv_results)
+print(results)
 
 # Search as a pandas DataFrame (requires pandas)
 df = (

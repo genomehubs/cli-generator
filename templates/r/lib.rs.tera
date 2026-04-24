@@ -172,6 +172,91 @@ fn validate_query_json(
     }
 }
 
+/// Parse the `status` block from a raw genomehubs API JSON response.
+#[extendr]
+fn parse_response_status(raw: &str) -> String {
+    use crate::embedded::core::parse;
+    match parse::parse_response_status(raw) {
+        Ok(status) => parse::response_status_to_json(&status),
+        Err(e) => parse::response_status_to_json(&parse::ResponseStatus {
+            hits: 0,
+            took: 0,
+            ok: false,
+            error: Some(e),
+        }),
+    }
+}
+
+/// Flatten a raw API JSON response into an array of flat record objects.
+#[extendr]
+fn parse_search_json(raw: &str) -> String {
+    use crate::embedded::core::parse;
+    match parse::parse_search_json(raw) {
+        Ok(records) => records,
+        Err(e) => format!("{{\"error\": \"{}\"}}", e),
+    }
+}
+
+/// Add `{field}__label` columns derived from aggregation source.
+#[extendr]
+fn annotate_source_labels(records_json: &str, mode: &str) -> String {
+    use crate::embedded::core::parse;
+    match parse::annotate_source_labels(records_json, mode) {
+        Ok(records) => records,
+        Err(e) => format!("{{\"error\": \"{}\"}}", e),
+    }
+}
+
+/// Replace `{field}`/`{field}__source` pairs with explicit source-keyed columns.
+#[extendr]
+fn split_source_columns(records_json: &str) -> String {
+    use crate::embedded::core::parse;
+    match parse::split_source_columns(records_json) {
+        Ok(records) => records,
+        Err(e) => format!("{{\"error\": \"{}\"}}", e),
+    }
+}
+
+/// Strip all `__*` sub-key columns, keeping identity columns and bare field values.
+#[extendr]
+fn values_only(records_json: &str, keep_columns_json: &str) -> String {
+    use crate::embedded::core::parse;
+    match parse::values_only(records_json, keep_columns_json) {
+        Ok(records) => records,
+        Err(e) => format!("{{\"error\": \"{}\"}}", e),
+    }
+}
+
+/// Replace non-direct field values with their annotated label string, then strip `__*` columns.
+#[extendr]
+fn annotated_values(records_json: &str, mode: &str, keep_columns_json: &str) -> String {
+    use crate::embedded::core::parse;
+    match parse::annotated_values(records_json, mode, keep_columns_json) {
+        Ok(records) => records,
+        Err(e) => format!("{{\"error\": \"{}\"}}", e),
+    }
+}
+
+/// Reshape flat records from `parse_search_json` into long/tidy format.
+#[extendr]
+fn to_tidy_records(records_json: &str) -> String {
+    use crate::embedded::core::parse;
+    match parse::to_tidy_records(records_json) {
+        Ok(records) => records,
+        Err(e) => format!("{{\"error\": \"{}\"}}", e),
+    }
+}
+
+/// Parse one page from a `/searchPaginated` response.
+#[extendr]
+fn parse_paginated_json(raw: &str) -> String {
+    use crate::embedded::core::parse;
+    match parse::parse_paginated_json(raw) {
+        Ok(page) => parse::paginated_page_to_json(&page),
+        Err(e) => format!("{{\"error\": \"{:?}\"}}", e),
+    }
+}
+
 // Register all exported functions with R.
 extendr_module! {
     mod {% endraw %}{{ r_package_name }}{% raw %};
@@ -180,5 +265,13 @@ extendr_module! {
     fn build_ui_url;
     fn render_snippet;
     fn validate_query_json;
+    fn parse_response_status;
+    fn parse_search_json;
+    fn annotate_source_labels;
+    fn split_source_columns;
+    fn values_only;
+    fn annotated_values;
+    fn to_tidy_records;
+    fn parse_paginated_json;
 }
 {% endraw %}

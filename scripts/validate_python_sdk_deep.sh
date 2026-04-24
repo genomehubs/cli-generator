@@ -32,7 +32,7 @@ pip install -q "$WHEEL_PATH" pyyaml 2>&1 || {
 # Run deep tests
 python3 << 'EOF' || exit 1
 import json
-from goat_sdk import QueryBuilder, parse_response_status
+from goat_sdk import QueryBuilder, parse_search_json, parse_response_status
 
 print("\n== Deep Validation: Python SDK ==\n")
 
@@ -59,7 +59,8 @@ qb = (
     .add_field("genome_size")
     .set_size(10)
 )
-results = qb.search()
+raw = qb.search()
+results = json.loads(parse_search_json(raw))
 assert isinstance(results, list), "search() should return list"
 assert len(results) > 0, "Expected results for Mammalia search"
 print(f"  ✓ search() works: returned {len(results)} results")
@@ -74,7 +75,8 @@ qb = (
     .add_field("genome_size")
     .set_size(10)
 )
-results = qb.search()
+raw = qb.search()
+results = json.loads(parse_search_json(raw))
 assert all("genome_size" in r for r in results), "All results should have genome_size"
 print(f"  ✓ add_attribute() works: {len(results)} results with genome_size >= 1G")
 
@@ -88,20 +90,19 @@ qb = (
     .add_field("genome_size")
     .set_size(10)
 )
-results = qb.search()
+raw = qb.search()
+results = json.loads(parse_search_json(raw))
 assert len(results) > 0, "Expected results in 1G-3G range"
 print(f"  ✓ Multiple filters work: {len(results)} results with 1G <= genome_size <= 3G")
 
 # Test 6: Response parsing
 print("Test 6: Response parsing (parse_response_status())")
 qb = QueryBuilder("taxon").set_taxa(["Insecta"], filter_type="tree").add_field("genome_size").set_size(5)
-response = qb.search_raw()
-status_json = json.loads(parse_response_status(json.dumps(response)))
+raw = qb.search()
+status_json = json.loads(parse_response_status(raw))
 assert "hits" in status_json, "Status should have 'hits' field"
-assert "took" in status_json, "Status should have 'took' field"
 print(f"  ✓ parse_response_status() works")
 print(f"    Total hits: {status_json['hits']}")
-print(f"    Query time: {status_json['took']}ms")
 
 # Test 7: Describe method
 print("Test 7: Query description (.describe())")

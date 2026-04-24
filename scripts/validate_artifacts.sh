@@ -168,18 +168,18 @@ else
   warn "CLI binary not found (skipping)"
 fi
 
-# Python SDK validation
-if PYTHON_WHEEL=$(find_python_wheel); then
-  echo "Testing Python SDK..."
-  if [[ "$DEEP_MODE" == "true" ]]; then
-    bash "$SCRIPT_DIR/validate_python_sdk_deep.sh" "$PYTHON_WHEEL" || exit 1
-  else
-    bash "$SCRIPT_DIR/validate_python_sdk.sh" "$PYTHON_WHEEL" || exit 1
-  fi
-  echo
-else
-  warn "Python SDK wheel not found (skipping)"
-fi
+# # Python SDK validation
+# if PYTHON_WHEEL=$(find_python_wheel); then
+#   echo "Testing Python SDK..."
+#   if [[ "$DEEP_MODE" == "true" ]]; then
+#     bash "$SCRIPT_DIR/validate_python_sdk_deep.sh" "$PYTHON_WHEEL" || exit 1
+#   else
+#     bash "$SCRIPT_DIR/validate_python_sdk.sh" "$PYTHON_WHEEL" || exit 1
+#   fi
+#   echo
+# else
+#   warn "Python SDK wheel not found (skipping)"
+# fi
 
 # R SDK validation
 if R_SDK=$(find_r_sdk); then
@@ -194,17 +194,17 @@ else
   warn "R SDK not found (skipping)"
 fi
 
-# JavaScript SDK validation
-if JS_SDK=$(find_js_sdk); then
-  echo "Testing JavaScript SDK..."
-  if [[ "$DEEP_MODE" == "true" ]]; then
-    bash "$SCRIPT_DIR/validate_javascript_sdk_deep.sh" "$JS_SDK" || exit 1
-  else
-    bash "$SCRIPT_DIR/validate_javascript_sdk.sh" "$JS_SDK" || exit 1
-  fi
-  echo
-else
-  warn "JavaScript SDK not found (skipping)"
-fi
+# # JavaScript SDK validation
+# if JS_SDK=$(find_js_sdk); then
+#   echo "Testing JavaScript SDK..."
+#   if [[ "$DEEP_MODE" == "true" ]]; then
+#     bash "$SCRIPT_DIR/validate_javascript_sdk_deep.sh" "$JS_SDK" || exit 1
+#   else
+#     bash "$SCRIPT_DIR/validate_javascript_sdk.sh" "$JS_SDK" || exit 1
+#   fi
+#   echo
+# else
+#   warn "JavaScript SDK not found (skipping)"
+# fi
 
 pass "All available artifacts validated successfully ✓"

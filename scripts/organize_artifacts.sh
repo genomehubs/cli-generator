@@ -38,7 +38,6 @@ mkdir -p "$OUTPUT_DIR"
 
 # Create .gitignore to prevent 2k+ files from cluttering git status
 echo "*" > "$OUTPUT_DIR/.gitignore"
-echo "!.gitignore" >> "$OUTPUT_DIR/.gitignore"
 
 # ────────────────────────────────────────────────────────────────────────────
 # CLI Binary Detection

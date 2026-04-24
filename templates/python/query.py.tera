@@ -429,11 +429,11 @@ class QueryBuilder:
         """
         return str(_ext.build_ui_url(self.to_query_yaml(), self.to_params_yaml(), endpoint))
 
-    def search(self, format: str = "tsv") -> str:
+    def search(self, format: str = "json") -> str:
         """Execute a search and return the response body in the specified format.
 
         Args:
-            format: Output format — ``"json"``, ``"tsv"``, or ``"csv"`` (default: ``"tsv"``)
+            format: Output format — ``"json"``, ``"tsv"``, or ``"csv"`` (default: ``"json"``)
 
         Returns:
             Response body as a string in the requested format.
@@ -542,7 +542,21 @@ class QueryBuilder:
 
     def count(self) -> int:
         """Execute a count query and return the hit count."""
-        return int(_ext.count(self.to_query_yaml()))
+        import urllib.request
+        import urllib.parse
+        import json
+
+        url = self.to_url("search")
+        req = urllib.request.Request(url, headers={"Accept": "application/json"})
+        with urllib.request.urlopen(req) as resp:
+            raw = resp.read().decode()
+
+        status = json.loads(_ext.parse_response_status(raw))
+        hits = status.get("hits", 0)
+        try:
+            return int(hits)
+        except Exception:
+            return int(float(hits)) if hits else 0
 
     def validate(self) -> list[str]:
         """Validate the current query state against the bundled field metadata.
