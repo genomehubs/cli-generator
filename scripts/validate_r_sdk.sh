@@ -32,76 +32,17 @@ echo "✓ R found: $R_VERSION"
 
 # Test QueryBuilder operations in R
 # Create a temporary R script file
-R_SCRIPT_FILE=$(mktemp)
-trap "rm -f $R_SCRIPT_FILE" EXIT
+"$PWD/scripts/validate_r_sdk.R" || {
+    echo "✗ Missing helper script: scripts/validate_r_sdk.R"
+    exit 1
+}
 
-cat > "$R_SCRIPT_FILE" <<'REOF'
-    tryCatch({
-        # Load required packages
-        library(devtools, quietly = TRUE)
-
-        # Get the R package directory from command-line arguments
-        args <- commandArgs(trailingOnly = TRUE)
-        pkg_dir <- args[1]
-
-        if (!dir.exists(pkg_dir)) {
-            stop("Package directory not found: ", pkg_dir)
-        }
-
-        # Install package dependencies
-        install.packages(c("R6", "httr", "jsonlite", "yaml"),
-                        repos = "https://cloud.r-project.org",
-                        quiet = TRUE)
-
-        # Load the package from local source
-        devtools::load_all(pkg_dir, quiet = TRUE)
-
-        # Test 1: Load the library
-        cat("Import successful\n")
-
-        # Test 2: Instantiate QueryBuilder
-        qb <- QueryBuilder$new("taxon")
-        cat("Instantiation successful\n")
-
-        # Test 3: Call builder methods
-        qb$set_taxa(c("Mammalia"), filter_type = "tree")
-        qb$add_field("genome_size")
-        cat("Methods successful\n")
-
-        # Test 4: Generate URL
-        url <- qb$to_url()
-        cat("URL generated:", url, "\n")
-
-        # Verify URL contains expected parts
-        if (!grepl("api/v2/search", url)) {
-            stop("URL missing API endpoint")
-        }
-        if (!grepl("taxonomy=ncbi", url)) {
-            stop("URL missing taxonomy parameter")
-        }
-        if (!grepl("query=tax", url)) {
-            stop("URL missing taxa query")
-        }
-        if (!grepl("genome_size", url)) {
-            stop("URL missing field")
-        }
-
-        cat("✓ All R SDK tests passed\n")
-
-    }, error = function(e) {
-        cat("✗ Error:", conditionMessage(e), "\n")
-        quit(status = 1)
-    })
-REOF
-
-R_RESULT=$(Rscript --vanilla "$R_SCRIPT_FILE" "$R_PKG_DIR" 2>&1)
-
-if [ $? -eq 0 ]; then
-    echo "$R_RESULT" | sed 's/^/  /'
-    echo "✓ R SDK validation passed"
-    exit 0
-else
+R_RESULT=$(Rscript --vanilla "$PWD/scripts/validate_r_sdk.R" "$R_PKG_DIR" 2>&1) || {
     echo "$R_RESULT" | sed 's/^/  /'
     echo "✗ R SDK validation failed"
     exit 1
-fi
+}
+
+echo "$R_RESULT" | sed 's/^/  /'
+echo "✓ R SDK validation passed"
+exit 0

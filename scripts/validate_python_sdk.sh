@@ -31,47 +31,6 @@ pip install -q "$WHEEL_PATH" pyyaml || fail "Failed to install wheel"
 
 pass "Python SDK installed"
 
-# Test 1: Import works
-python3 -c "from goat_sdk import QueryBuilder" || fail "Failed to import QueryBuilder"
-pass "Import QueryBuilder works"
-
-# Test 2: Basic builder
-python3 << 'EOF' || fail "QueryBuilder basic usage failed"
-from goat_sdk import QueryBuilder
-qb = QueryBuilder("taxon")
-assert qb._index == "taxon", "Index not set"
-EOF
-pass "QueryBuilder instantiation works"
-
-# Test 3: Builder methods
-python3 << 'EOF' || fail "QueryBuilder methods failed"
-from goat_sdk import QueryBuilder
-qb = QueryBuilder("taxon").set_taxa(["Mammalia"], filter_type="tree").add_field("genome_size")
-assert len(qb._taxa) > 0, "Taxa not set"
-assert len(qb._fields) > 0, "Fields not set"
-EOF
-pass "QueryBuilder methods (set_taxa, add_field) work"
-
-# Test 4: URL generation
-python3 << 'EOF' || fail "URL generation failed"
-from goat_sdk import QueryBuilder
-qb = QueryBuilder("taxon").set_taxa(["Mammalia"], filter_type="tree").add_field("genome_size")
-url = qb.to_url()
-assert "genomehubs.org" in url, "URL doesn't contain API base"
-assert "search" in url, "URL doesn't contain endpoint"
-assert "Mammalia" in url, "Taxa not in URL"
-print(f"Generated URL: {url}")
-EOF
-pass "URL generation works"
-
-# Test 5: Validation
-python3 << 'EOF' || fail "Validation failed"
-from goat_sdk import QueryBuilder
-qb = QueryBuilder("taxon").set_taxa(["Mammalia"], filter_type="tree").add_field("genome_size")
-errors = qb.validate()
-assert isinstance(errors, list), "validate() didn't return list"
-print(f"Validation returned {len(errors)} errors")
-EOF
-pass "Validation works"
-
-echo "✓ Python SDK validation passed"
+# Run standalone Python validation script (installed wheel required)
+python3 scripts/validate_python_sdk.py || fail "Python SDK basic validation failed"
+pass "Python SDK validation passed"

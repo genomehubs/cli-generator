@@ -282,6 +282,19 @@ jobs:
           console.log("JS SDK smoke test PASSED: " + url.substring(0, 80));
           EOF
 
+      - name: Run SDK validators (Python deep, JS deep, R deep)
+        run: |
+          set -euo pipefail
+          echo "Running Python deep validator against built wheel..."
+          pip install /tmp/generated/goat-cli/target/wheels/*.whl pyyaml
+          bash $GITHUB_WORKSPACE/scripts/validate_python_sdk_deep.sh /tmp/generated/goat-cli/target/wheels/*.whl
+
+          echo "Running JavaScript deep validator against generated JS SDK..."
+          bash $GITHUB_WORKSPACE/scripts/validate_javascript_sdk_deep.sh /tmp/generated/goat-cli/js/goat
+
+          echo "Running R deep validator against generated R package..."
+          bash $GITHUB_WORKSPACE/scripts/validate_r_sdk_deep.sh /tmp/generated/goat-cli/r/goat
+
       - name: Assert URL outputs
         shell: bash
         run: |

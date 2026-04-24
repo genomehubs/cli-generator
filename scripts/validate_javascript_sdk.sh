@@ -39,46 +39,6 @@ fi
 
 pass "Node.js found: $(node --version)"
 
-# Test 1: Import works
-node --input-type=module << EOF || fail "Failed to import QueryBuilder"
-const { QueryBuilder } = await import("file://$JS_SDK_DIR/query.js");
-console.log("Import successful");
-EOF
-pass "Import QueryBuilder works"
-
-# Test 2: Basic builder
-node --input-type=module << EOF || fail "QueryBuilder instantiation failed"
-const { QueryBuilder } = await import("file://$JS_SDK_DIR/query.js");
-const qb = new QueryBuilder("taxon");
-if (qb._index !== "taxon") throw new Error("Index not set");
-console.log("Instantiation successful");
-EOF
-pass "QueryBuilder instantiation works"
-
-# Test 3: Builder methods
-node --input-type=module << EOF || fail "QueryBuilder methods failed"
-const { QueryBuilder } = await import("file://$JS_SDK_DIR/query.js");
-const qb = new QueryBuilder("taxon")
-  .setTaxa(["Mammalia"], "tree")
-  .addField("genome_size");
-if (qb._taxa.length === 0) throw new Error("Taxa not set");
-if (qb._fields.length === 0) throw new Error("Fields not set");
-console.log("Methods successful");
-EOF
-pass "QueryBuilder methods (setTaxa, addField) work"
-
-# Test 4: URL generation
-node --input-type=module << EOF || fail "URL generation failed"
-const { QueryBuilder } = await import("file://$JS_SDK_DIR/query.js");
-const qb = new QueryBuilder("taxon")
-  .setTaxa(["Mammalia"], "tree")
-  .addField("genome_size");
-const url = qb.toUrl();
-if (!url.includes("genomehubs.org")) throw new Error("URL missing API base");
-if (!url.includes("search")) throw new Error("URL missing endpoint");
-if (!url.includes("Mammalia")) throw new Error("Taxa not in URL");
-console.log("URL generated: " + url);
-EOF
-pass "URL generation works"
-
-echo "✓ JavaScript SDK validation passed"
+# Delegate to the Node.js validator script for basic checks
+node "$PWD/scripts/validate_javascript_sdk.js" "$JS_SDK_DIR" || fail "JavaScript SDK basic validation failed"
+pass "JavaScript SDK validation passed"
