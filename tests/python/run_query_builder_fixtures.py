@@ -32,6 +32,7 @@ import runpy
 spec = runpy.run_path(str(DISCOVER))
 FIXTURE_DEFINITIONS = spec.get("FIXTURE_DEFINITIONS", [])
 
+
 def run_rust_example_for_query(query_dict):
     """Invoke the Rust example to print the ES body for the provided query dict.
 
@@ -140,9 +141,7 @@ def compare_bodies(fixture_body, gen_body):
     if len(f_filters) != len(g_filters):
         msgs.append(f"filter count differs: fixture={len(f_filters)} generated={len(g_filters)}")
     # detect minimum_should_match wrapper in fixture
-    f_has_msm = any(
-        isinstance(f, dict) and ("minimum_should_match" in json.dumps(f)) for f in f_filters
-    )
+    f_has_msm = any(isinstance(f, dict) and ("minimum_should_match" in json.dumps(f)) for f in f_filters)
     g_has_msm = any("minimum_should_match" in json.dumps(f) for f in g_filters)
     if f_has_msm and not g_has_msm:
         msgs.append("fixture sets minimum_should_match but generated does not")
