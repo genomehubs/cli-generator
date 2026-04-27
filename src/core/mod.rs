@@ -11,9 +11,13 @@
 //!
 //! No PyO3 or clap dependencies live here.
 
+pub mod attr_types;
 pub mod codegen;
 pub mod config;
+pub mod count;
 pub mod describe;
 pub mod fetch;
+pub mod process_hits;
 pub mod query;
+pub mod query_builder;
 pub mod snippet;

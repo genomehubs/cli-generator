@@ -67,6 +67,10 @@ def run_rust_example_for_query(query_dict):
         args += ["--names", ",".join(query_dict.get("names"))]
     if query_dict.get("ranks"):
         args += ["--ranks", ",".join(query_dict.get("ranks"))]
+    if query_dict.get("sort_by"):
+        args += ["--sort_by", str(query_dict.get("sort_by"))]
+    if query_dict.get("sort_order"):
+        args += ["--sort_order", str(query_dict.get("sort_order"))]
     if query_dict.get("assemblies"):
         args += ["--assemblies", ",".join(query_dict.get("assemblies"))]
     if query_dict.get("samples"):
@@ -91,6 +95,10 @@ def run_rust_example_for_query(query_dict):
             "attributes": query_dict.get("attributes", []),
             "fields": [f if isinstance(f, dict) else {"name": f} for f in query_dict.get("fields", [])],
         }
+        if query_dict.get("names"):
+            query_yaml_dict["names"] = query_dict.get("names")
+        if query_dict.get("ranks"):
+            query_yaml_dict["ranks"] = query_dict.get("ranks")
         args += ["--query_yaml", json.dumps(query_yaml_dict)]
 
     try:
@@ -166,6 +174,11 @@ def main():
 
         # Build query dict from fixture definition (same as discover_fixtures)
         query_dict = fixture_def["query_builder"]()
+        # If the fixture file specifies `fields` but the fixture definition
+        # did not, use the fixture's `fields` when invoking the example so
+        # generated bodies include the same attribute wrappers.
+        if not query_dict.get("fields") and fixture.get("fields"):
+            query_dict["fields"] = fixture.get("fields")
 
         gen_body, err = run_rust_example_for_query(query_dict)
         if err:

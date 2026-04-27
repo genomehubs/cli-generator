@@ -1,0 +1,21 @@
+# Elasticsearch integration test config template
+# Copy to `config/es_integration.toml` or set ES_INTEGRATION_CONFIG env var.
+
+# Base URL for your Elasticsearch instance (no trailing slash)
+base_url = "http://localhost:9200"
+
+# Optional: default `result` to use when building the query (`taxon`, `assembly`, `sample`).
+# The integration test derives the index name from the `result` param in the query
+# and then appends `index_suffix` if present.
+default_result = "taxon"
+
+# Optional: suffix to append to the base index name (useful for versioned indexes)
+# e.g. "_v2" -> "taxon_v2"
+index_suffix = ""
+
+# Optional: basic auth
+# username = "elastic"
+# password = "changeme"
+
+# Optional: path to attach headers or other options (not used in minimal test)
+# headers = { "Authorization" = "Bearer ..." }
