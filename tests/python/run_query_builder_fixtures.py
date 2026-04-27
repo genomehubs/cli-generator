@@ -12,6 +12,7 @@ Usage:
 Requires: `cargo` available and the repo built (this script shells out
 to `cargo run --example live_query_demo`).
 """
+
 import json
 import subprocess
 import sys
