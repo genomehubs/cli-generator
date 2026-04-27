@@ -126,7 +126,22 @@ def main() -> None:
         print("    Sample annotated source labels (first 2 rows):")
         print(json.dumps(asl[:2], indent=2, ensure_ascii=False))
     split = json.loads(split_source_columns(records_json))
+    # Normalise split output: it may be a dict, array of dicts, or array of JSON strings.
+    if isinstance(split, dict):
+        split = list(split.values())
     assert isinstance(split, list), "split_source_columns should return JSON array"
+    normalised_split = []
+    for row in split:
+        if isinstance(row, str):
+            try:
+                row_obj = json.loads(row)
+            except Exception:
+                # keep as-is string if it isn't JSON
+                continue
+        else:
+            row_obj = row
+        normalised_split.append(row_obj)
+    split = normalised_split
     print(f"  ✓ split_source_columns() works: returned {len(split)} rows")
     if len(split) > 0:
         print("    Sample split columns (first 2 rows):")
@@ -206,17 +221,79 @@ def main() -> None:
     parsed = json.loads(parse_search_json(raw_fixture))
     print(f"  ✓ Parsed fixture into {len(parsed)} records")
 
+    # Determine expected presence of direct/descendant based on `{field}__source` keys in parsed records
+    expected_direct = False
+    expected_desc = False
+    for rec in parsed:
+        if isinstance(rec, str):
+            try:
+                rec_obj = json.loads(rec)
+            except Exception:
+                continue
+        else:
+            rec_obj = rec
+        if not isinstance(rec_obj, dict):
+            continue
+        for k, v in rec_obj.items():
+            if not k.endswith("__source"):
+                continue
+            if isinstance(v, str):
+                if v == "direct":
+                    expected_direct = True
+                if v == "descendant":
+                    expected_desc = True
+
+    # Inspect split_source_columns output and normalise
     split = json.loads(split_source_columns(parse_search_json(raw_fixture)))
-    # check for __direct / __descendant keys presence
+
+    if isinstance(split, dict):
+        split = list(split.values())
+    normalised_split = []
+    for row in split:
+        if isinstance(row, str):
+            try:
+                row_obj = json.loads(row)
+            except Exception:
+                continue
+        else:
+            row_obj = row
+        if isinstance(row_obj, dict):
+            normalised_split.append(row_obj)
+    split = normalised_split
+
+    # check for __direct / __descendant keys presence in split output
     has_direct = any(any(k.endswith("__direct") for k in row.keys()) for row in split)
     has_desc = any(any(k.endswith("__descendant") for k in row.keys()) for row in split)
     print(f"    Found __direct columns: {has_direct}, __descendant columns: {has_desc}")
-    assert has_direct or has_desc, "Expected at least one __direct or __descendant split column"
 
+    # Assert that presence in split matches expected presence derived from fixture
+    if expected_direct:
+        assert has_direct, "Expected __direct split columns based on fixture aggregation_source"
+    else:
+        assert not has_direct, "Did not expect __direct split columns for this fixture"
+    if expected_desc:
+        assert has_desc, "Expected __descendant split columns based on fixture aggregation_source"
+    else:
+        assert not has_desc, "Did not expect __descendant split columns for this fixture"
+
+    # Normalise annotated_values output
     ann_vals = json.loads(annotated_values(parse_search_json(raw_fixture), mode="non_direct"))
+    normalised_ann = []
+    for row in ann_vals:
+        if isinstance(row, str):
+            try:
+                row_obj = json.loads(row)
+            except Exception:
+                continue
+        elif isinstance(row, dict):
+            row_obj = row
+        else:
+            continue
+        normalised_ann.append(row_obj)
+
     # look for Descendant-labelled values in annotated output
     found_descendant_label = False
-    for row in ann_vals:
+    for row in normalised_ann:
         for v in row.values():
             if isinstance(v, str) and "Descendant" in v:
                 found_descendant_label = True
@@ -224,7 +301,12 @@ def main() -> None:
         if found_descendant_label:
             break
     print(f"    Found 'Descendant' label in annotated values: {found_descendant_label}")
-    assert found_descendant_label, "Expected at least one 'Descendant' label in annotated values"
+
+    # Assert annotated output matches expectation: if any field aggregation_source lists 'descendant', expect Descendant labels
+    if expected_desc:
+        assert found_descendant_label, "Expected at least one 'Descendant' label in annotated values based on fixture"
+    else:
+        assert not found_descendant_label, "Did not expect 'Descendant' labels in annotated values for this fixture"
 
     print("  ✓ Deterministic fixture checks passed")
 

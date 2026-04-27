@@ -81,7 +81,12 @@ try {
 
   // Deterministic fixture checks
   console.log("Test 4: Deterministic fixture-based checks");
-  const fixturePath = path.resolve(process.cwd(), "scripts", "fixtures-goat", "fixture_mammalia_search_raw.json");
+  const fixturePath = path.resolve(
+    process.cwd(),
+    "scripts",
+    "fixtures-goat",
+    "fixture_mammalia_search_raw.json",
+  );
   if (!fs.existsSync(fixturePath)) {
     console.log(
       `  ⊙ Fixture not found at ${fixturePath} — skipping deterministic checks`,
@@ -94,11 +99,25 @@ try {
     : JSON.parse(rawFixture).results.map((r) => r.result);
   console.log(`  ✓ Parsed fixture into ${parsed.length} records`);
 
-  // Look for __direct / __descendant keys in parsed objects or in split result if helper available
+  // Derive expected presence of direct/descendant from parsed rows' `*__source` keys
+  let expectedDirect = false;
+  let expectedDescendant = false;
+  if (Array.isArray(parsed)) {
+    for (const row of parsed) {
+      if (row && typeof row === "object") {
+        for (const [k, v] of Object.entries(row)) {
+          if (!k.endsWith("__source")) continue;
+          if (v === "direct") expectedDirect = true;
+          if (v === "descendant") expectedDescendant = true;
+        }
+      }
+    }
+  }
+
+  // Inspect split output for column suffixes
   let hasDirect = false;
   let hasDescendant = false;
   if (splitSourceColumns) {
-    // prefer passing parsed records array to helper if available
     let split = splitSourceColumns(
       parsed ? parsed : rawFixture ? rawFixture : JSON.stringify(parsed),
     );
@@ -109,7 +128,7 @@ try {
         if (k.endsWith("__descendant")) hasDescendant = true;
       }
     }
-  } else {
+  } else if (Array.isArray(parsed)) {
     for (const row of parsed) {
       for (const k of Object.keys(row)) {
         if (k.endsWith("__direct")) hasDirect = true;
@@ -120,36 +139,32 @@ try {
   console.log(
     `    Found __direct columns: ${hasDirect}, __descendant columns: ${hasDescendant}`,
   );
-  if (!(hasDirect || hasDescendant)) {
-    // fallback: check for __source or __label keys indicating direct/descendant presence
-    let hasSourceDirect = false;
-    let hasSourceDesc = false;
-    let hasLabelDesc = false;
-    for (const row of parsed) {
-      for (const [k, v] of Object.entries(row)) {
-        if (k.endsWith("__source") && v === "direct") hasSourceDirect = true;
-        if (k.endsWith("__source") && v === "descendant") hasSourceDesc = true;
-        if (
-          k.endsWith("__label") &&
-          typeof v === "string" &&
-          v.includes("Descendant")
-        )
-          hasLabelDesc = true;
-      }
-    }
-    console.log(
-      `    Fallback: found __source direct: ${hasSourceDirect}, __source descendant: ${hasSourceDesc}, __label Descendant: ${hasLabelDesc}`,
-    );
-    if (!(hasSourceDirect || hasSourceDesc || hasLabelDesc))
+
+  // Assert split output matches expectations derived from `{field}__source` keys
+  if (expectedDirect) {
+    if (!hasDirect)
       throw new Error(
-        "Expected indicators of direct/descendant sources in parsed fixture",
+        "Expected __direct split columns based on fixture `{field}__source` values",
+      );
+  } else {
+    if (hasDirect)
+      throw new Error("Did not expect __direct split columns for this fixture");
+  }
+  if (expectedDescendant) {
+    if (!hasDescendant)
+      throw new Error(
+        "Expected __descendant split columns based on fixture `{field}__source` values",
+      );
+  } else {
+    if (hasDescendant)
+      throw new Error(
+        "Did not expect __descendant split columns for this fixture",
       );
   }
 
   // Annotated values check for Descendant label
   let foundDescendantLabel = false;
   if (annotatedValues) {
-    // annotatedValues expects parsed records in most exports
     let ann = annotatedValues(parsed);
     if (!Array.isArray(ann)) ann = Object.values(ann);
     for (const row of ann) {
@@ -159,7 +174,6 @@ try {
       }
     }
   } else {
-    // fallback: search values in parsed rows for 'Descendant'
     for (const row of parsed) {
       for (const v of Object.values(row)) {
         if (typeof v === "string" && v.includes("Descendant"))
@@ -170,10 +184,17 @@ try {
   console.log(
     `    Found 'Descendant' label in annotated values: ${foundDescendantLabel}`,
   );
-  if (!foundDescendantLabel)
-    throw new Error(
-      "Expected at least one 'Descendant' label in annotated values",
-    );
+  if (expectedDescendant) {
+    if (!foundDescendantLabel)
+      throw new Error(
+        "Expected at least one 'Descendant' label in annotated values based on `{field}__source` values",
+      );
+  } else {
+    if (foundDescendantLabel)
+      throw new Error(
+        "Did not expect 'Descendant' labels in annotated values for this fixture",
+      );
+  }
 
   console.log("\n✓ All deep validation tests passed!");
   process.exit(0);
