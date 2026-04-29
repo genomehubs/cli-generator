@@ -22,12 +22,11 @@ fi
 
 echo "Running deep validation for R SDK..."
 
-if [ ! -f "$PWD/scripts/validate_r_sdk_deep.R" ]; then
+"$PWD/scripts/validate_r_sdk_deep.R" || {
     echo "✗ Missing helper script: scripts/validate_r_sdk_deep.R"
     exit 1
-fi
+}
 
-# Invoke the R validator via Rscript to avoid permission/execution issues
 Rscript --vanilla "$PWD/scripts/validate_r_sdk_deep.R" "$R_PKG_DIR" || exit 1
 
 echo "✓ R SDK deep validation passed"

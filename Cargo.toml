@@ -8,7 +8,7 @@ license = "MIT"
 readme = "README.md"
 
 [workspace]
-members = [".", "crates/genomehubs-query"]
+members = [".", "crates/genomehubs-query", "crates/genomehubs-api"]
 
 # `cdylib`  — shared library loaded by Python (maturin builds this into a wheel).
 # `rlib`    — Rust lib used by the binary and by `cargo test` (no libpython needed).

@@ -9,6 +9,12 @@ base_url = "http://localhost:9200"
 # and then appends `index_suffix` if present.
 default_result = "taxon"
 
+default_index = "taxon"
+default_taxonomy = "ncbi"
+default_version = "2021.10.15"
+hub_name = "goat"
+index_separator = "--"
+
 # Optional: suffix to append to the base index name (useful for versioned indexes)
 # e.g. "_v2" -> "taxon_v2"
 index_suffix = "--ncbi--goat--2021.10.15"

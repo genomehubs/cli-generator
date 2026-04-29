@@ -1,0 +1,25 @@
+[package]
+name = "genomehubs-api"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+axum = { version = "0.7", features = ["tokio", "http1"] }
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+anyhow = "1.0"
+toml = "0.7"
+reqwest = { version = "0.12", features = ["json", "rustls-tls"] }
+
+# OpenAPI/Swagger
+utoipa = "5.4"
+utoipa-swagger-ui = { version = "8.1", features = ["axum"] }
+tracing-subscriber = "0.3"
+tracing = "0.1"
+chrono = { version = "0.4", features = ["serde"] }
+# hyper = { version = "1", features = ["server", "http1"] }
+
+# Use the existing crate in workspace if present
+# query_builder crate is in src/core as part of main crate; we'll call it via path when ready
+cli_generator = { package = "cli-generator", path = "../../" }

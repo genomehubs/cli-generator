@@ -1,0 +1,253 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "genomehubs-api",
+    "description": "",
+    "license": {
+      "name": ""
+    },
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/api/v3/indices": {
+      "get": {
+        "tags": [
+          "routes::indices"
+        ],
+        "operationId": "get_indices_openapi",
+        "responses": {
+          "200": {
+            "description": "Cached indices",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IndicesResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v3/resultFields": {
+      "get": {
+        "tags": [
+          "routes::result_fields"
+        ],
+        "operationId": "get_result_fields",
+        "parameters": [
+          {
+            "name": "result",
+            "in": "query",
+            "description": "Result type (taxon|assembly|sample)",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Field metadata",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultFieldsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v3/status": {
+      "get": {
+        "tags": [
+          "routes::status"
+        ],
+        "operationId": "get_status",
+        "responses": {
+          "200": {
+            "description": "Health status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatusResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v3/taxonomic-ranks": {
+      "get": {
+        "tags": [
+          "routes::taxonomic_ranks"
+        ],
+        "operationId": "get_taxonomic_ranks_openapi",
+        "responses": {
+          "200": {
+            "description": "Cached taxonomic ranks",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RanksResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v3/taxonomies": {
+      "get": {
+        "tags": [
+          "routes::taxonomies"
+        ],
+        "operationId": "get_taxonomies_openapi",
+        "responses": {
+          "200": {
+            "description": "Cached taxonomies",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaxonomiesResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "FieldMeta": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "processed_type": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "type": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "IndicesResponse": {
+        "type": "object",
+        "required": [
+          "indices"
+        ],
+        "properties": {
+          "indices": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "last_updated": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "RanksResponse": {
+        "type": "object",
+        "required": [
+          "taxonomic_ranks"
+        ],
+        "properties": {
+          "last_updated": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "taxonomic_ranks": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "ResultFieldsResponse": {
+        "type": "object",
+        "required": [
+          "status",
+          "fields",
+          "identifiers",
+          "hub",
+          "release",
+          "source"
+        ],
+        "properties": {
+          "fields": {},
+          "hub": {
+            "type": "string"
+          },
+          "identifiers": {},
+          "release": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "status": {}
+        }
+      },
+      "StatusResponse": {
+        "type": "object",
+        "required": [
+          "ready"
+        ],
+        "properties": {
+          "last_updated": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ready": {
+            "type": "boolean"
+          }
+        }
+      },
+      "TaxonomiesResponse": {
+        "type": "object",
+        "required": [
+          "taxonomies"
+        ],
+        "properties": {
+          "last_updated": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "taxonomies": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  }
+}

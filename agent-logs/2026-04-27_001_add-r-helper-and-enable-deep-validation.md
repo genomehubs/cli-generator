@@ -79,7 +79,7 @@ The shell wrapper (`scripts/validate_r_sdk.sh`) first invokes `scripts/validate_
 - Run deep Python and JavaScript validations now that their blocks are re-enabled, to confirm their deep validators and network/API behaviour pass in this environment.
 - Optionally add the same presence-probe pattern to other language helper scripts (if any) to make the wrappers uniformly resilient.
 
-If you want, I can run the deep Python and JavaScript validation passes now (they will exercise network/API calls and may take ~2-3 minutes each). 
+If you want, I can run the deep Python and JavaScript validation passes now (they will exercise network/API calls and may take ~2-3 minutes each).
 
 ---
 
