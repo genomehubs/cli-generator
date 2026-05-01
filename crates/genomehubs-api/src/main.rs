@@ -4,7 +4,9 @@ use std::{fs, net::SocketAddr, path::PathBuf, sync::Arc};
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
+mod es_client;
 mod es_metadata;
+mod index_name;
 mod routes;
 
 #[derive(Clone)]
@@ -17,6 +19,7 @@ pub struct AppState {
     pub index_separator: String,
     pub index_suffix: Option<String>,
     pub cache: Option<std::sync::Arc<tokio::sync::RwLock<es_metadata::MetadataCache>>>,
+    pub client: reqwest::Client,
 }
 
 #[derive(OpenApi)]
@@ -24,6 +27,7 @@ pub struct AppState {
     paths(
         routes::count::post_count,
         routes::result_fields::get_result_fields,
+        routes::search::post_search,
         routes::status::get_status,
         routes::taxonomies::get_taxonomies_openapi,
         routes::taxonomic_ranks::get_taxonomic_ranks_openapi,
@@ -34,6 +38,8 @@ pub struct AppState {
         routes::count::CountResponse,
         routes::result_fields::FieldMeta,
         routes::result_fields::ResultFieldsResponse,
+        routes::search::SearchRequest,
+        routes::search::SearchResponse,
         routes::status::StatusResponse,
         routes::taxonomies::TaxonomiesResponse,
         routes::taxonomic_ranks::RanksResponse,
@@ -117,6 +123,9 @@ async fn main() {
         index_separator, default_taxonomy, index_separator, hub_name, index_separator
     ) + &default_version;
 
+    // Create the HTTP client once and share it across handlers
+    let client = reqwest::Client::new();
+
     let state = Arc::new(AppState {
         es_base: es_base.clone(),
         default_result: default_result.clone(),
@@ -128,6 +137,7 @@ async fn main() {
         cache: Some(std::sync::Arc::new(tokio::sync::RwLock::new(
             es_metadata::MetadataCache::default(),
         ))),
+        client: client.clone(),
     });
 
     // Log effective configuration for debugging
@@ -136,9 +146,8 @@ async fn main() {
     let openapi = ApiDoc::openapi();
 
     // Populate cache on startup (blocking with retry). If this errors the app will not start.
-    let client = reqwest::Client::new();
     // Spawn the populate step now and await it so server only starts when cache populated.
-    match es_metadata::populate_with_retry(state.clone(), &client, None).await {
+    match es_metadata::populate_with_retry(state.clone(), &state.client, None).await {
         Ok(_) => tracing::info!("metadata cache populated"),
         Err(e) => tracing::error!(error = %e, "failed to populate metadata cache on startup"),
     }
@@ -160,6 +169,10 @@ async fn main() {
         .route(
             "/api/v3/count",
             axum::routing::post(routes::count::post_count),
+        )
+        .route(
+            "/api/v3/search",
+            axum::routing::post(routes::search::post_search),
         )
         .route("/api/v3/indices", get(routes::indices::get_indices))
         .layer(Extension(state))
@@ -207,6 +220,7 @@ mod tests {
             index_separator: "--".to_string(),
             index_suffix: Some("--ncbi--goat--2021.10.15".to_string()),
             cache: Some(std::sync::Arc::new(tokio::sync::RwLock::new(cache))),
+            client: reqwest::Client::new(),
         });
 
         // status

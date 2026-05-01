@@ -2,7 +2,7 @@ use axum::{extract::Json, Extension};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
-use crate::AppState;
+use crate::{es_client, index_name, AppState};
 
 #[derive(Deserialize, utoipa::ToSchema)]
 pub struct CountRequest {
@@ -53,26 +53,10 @@ pub async fn post_count(
         }
     };
 
-    // Build index name
-    fn index_name_for(
-        query_index: &genomehubs_query::query::SearchIndex,
-        state: &AppState,
-    ) -> String {
-        let base = match query_index {
-            genomehubs_query::query::SearchIndex::Taxon => "taxon",
-            genomehubs_query::query::SearchIndex::Assembly => "assembly",
-            genomehubs_query::query::SearchIndex::Sample => "sample",
-        };
-        let mut idx = base.to_string();
-        if let Some(suf) = &state.index_suffix {
-            idx.push_str(suf);
-        }
-        idx
-    }
+    // Resolve index name using shared helper
+    let idx = index_name::resolve_index(&query.index, &state);
 
-    let idx = index_name_for(&query.index, &state);
-
-    // Use the project's canonical builder to create a proper ES search body
+    // Build ES request body using the shared query_builder
     let group = match query.index {
         genomehubs_query::query::SearchIndex::Taxon => "taxon",
         genomehubs_query::query::SearchIndex::Assembly => "assembly",
@@ -87,7 +71,7 @@ pub async fn post_count(
                 .attributes
                 .fields
                 .iter()
-                .map(|s| s.name.as_str())
+                .map(|f| f.name.as_str())
                 .collect(),
         )
     };
@@ -111,6 +95,10 @@ pub async fn post_count(
     let size = 0usize;
     let offset = (params.page.saturating_sub(1)) * params.size;
 
+    // Build a URL for the response (for debugging/reproduction)
+    let built_url =
+        genomehubs_query::query::build_query_url(&query, &params, &state.es_base, "v3", "count");
+
     let body = match cli_generator::core::query_builder::build_search_body(
         None,
         fields_slice.as_deref(),
@@ -130,58 +118,36 @@ pub async fn post_count(
         Err(e) => {
             return Json(CountResponse {
                 status: super::ApiStatus::error(format!("failed to build ES body: {}", e)),
-                url: "".to_string(),
+                url: built_url,
             })
         }
     };
 
-    // No-op: `build_search_body` now omits empty `aggs` itself.
+    // Execute count query against ES using shared helper
+    let raw = match es_client::execute_count(&state.client, &state.es_base, &idx, &body).await {
+        Ok(v) => v,
+        Err(e) => {
+            return Json(CountResponse {
+                status: super::ApiStatus::error(e),
+                url: built_url,
+            })
+        }
+    };
 
-    // POST to _search (size=0) and read hits.total.value
-    let es_base = state.es_base.trim_end_matches('/').to_string();
-    let url = format!("{}/{}/_search", es_base, idx);
-    let client = reqwest::Client::new();
-
-    match client.post(&url).json(&body).send().await {
-        Ok(resp) => match resp.text().await {
-            Ok(raw) => {
-                if let Ok(v) = serde_json::from_str::<serde_json::Value>(&raw) {
-                    if let Some(total) = v
-                        .get("hits")
-                        .and_then(|h| h.get("total"))
-                        .and_then(|t| t.get("value"))
-                        .and_then(|n| n.as_u64())
-                    {
-                        let took = v.get("took").and_then(|t| t.as_u64()).unwrap_or(0);
-                        return Json(CountResponse {
-                            status: super::ApiStatus::query_ok(total, took),
-                            url,
-                        });
-                    }
-                    return Json(CountResponse {
-                        status: super::ApiStatus::error(format!(
-                            "unexpected ES response: {}",
-                            &raw.chars().take(512).collect::<String>()
-                        )),
-                        url,
-                    });
-                }
-                Json(CountResponse {
-                    status: super::ApiStatus::error(format!(
-                        "non-JSON ES response: {}",
-                        &raw.chars().take(512).collect::<String>()
-                    )),
-                    url,
-                })
-            }
-            Err(e) => Json(CountResponse {
-                status: super::ApiStatus::error(format!("failed to read ES response: {}", e)),
-                url,
-            }),
-        },
-        Err(e) => Json(CountResponse {
-            status: super::ApiStatus::error(format!("request error: {}", e)),
-            url,
-        }),
+    // Extract hits and took from ES response
+    if let Some(total) = raw.get("count").and_then(|c| c.as_u64()) {
+        let took = raw.get("took").and_then(|t| t.as_u64()).unwrap_or(0);
+        return Json(CountResponse {
+            status: super::ApiStatus::query_ok(total, took),
+            url: built_url,
+        });
     }
+
+    Json(CountResponse {
+        status: super::ApiStatus::error(format!(
+            "unexpected ES count response: {}",
+            raw.to_string().chars().take(512).collect::<String>()
+        )),
+        url: built_url,
+    })
 }

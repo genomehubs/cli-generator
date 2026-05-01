@@ -50,6 +50,7 @@ impl ApiStatus {
 pub mod count;
 pub mod indices;
 pub mod result_fields;
+pub mod search;
 pub mod status;
 pub mod taxonomic_ranks;
 pub mod taxonomies;
