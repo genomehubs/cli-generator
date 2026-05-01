@@ -6,7 +6,9 @@ use crate::AppState;
 
 #[derive(Serialize, utoipa::ToSchema)]
 pub struct RanksResponse {
-    pub taxonomic_ranks: Vec<String>,
+    pub status: super::ApiStatus,
+    pub ranks: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub last_updated: Option<String>,
 }
 
@@ -21,7 +23,8 @@ pub async fn get_taxonomic_ranks(
         last = r.last_updated.clone();
     }
     Json(RanksResponse {
-        taxonomic_ranks: ranks,
+        status: super::ApiStatus::ok(),
+        ranks,
         last_updated: last,
     })
 }

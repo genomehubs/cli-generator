@@ -1,17 +1,26 @@
-use genomehubs_query::{build_url_for_endpoint, query::{SearchQuery, QueryParams}};
+use genomehubs_query::{
+    build_url_for_endpoint,
+    query::{QueryParams, SearchQuery},
+};
 
 #[test]
 fn builder_returns_empty_for_invalid_yaml() {
     // User-supplied YAML used `op: eq` which is not the expected `operator: eq`.
-        let bad_query = "index: taxon\nattributes:\n- name: assembly_level\n  op: eq\n  value: chromosome\n";
+    let bad_query =
+        "index: taxon\nattributes:\n- name: assembly_level\n  op: eq\n  value: chromosome\n";
     let params = "size: 0\n";
     let url = build_url_for_endpoint(bad_query, params, "http://localhost:9200", "v2", "count");
-    assert!(url.is_empty(), "expected empty URL for invalid YAML, got {}", url);
+    assert!(
+        url.is_empty(),
+        "expected empty URL for invalid YAML, got {}",
+        url
+    );
 }
 
 #[test]
 fn builder_returns_url_for_valid_yaml() {
-        let good_query = "index: taxon\nattributes:\n- name: assembly_level\n  operator: eq\n  value: chromosome\n";
+    let good_query =
+        "index: taxon\nattributes:\n- name: assembly_level\n  operator: eq\n  value: chromosome\n";
     let params = "size: 0\n";
     // Try parsing to get a clearer error if parsing fails.
     println!("GOOD QUERY:\n{}", good_query);

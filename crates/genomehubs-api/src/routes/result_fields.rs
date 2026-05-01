@@ -20,7 +20,7 @@ pub struct FieldMeta {
 
 #[derive(Serialize, utoipa::ToSchema)]
 pub struct ResultFieldsResponse {
-    pub status: serde_json::Value,
+    pub status: super::ApiStatus,
     pub fields: serde_json::Value,
     pub identifiers: serde_json::Value,
     pub hub: String,
@@ -54,10 +54,7 @@ pub async fn get_result_fields(
         let r = lock.read().await;
         let attr_types = r.attr_types.clone();
         if !attr_types.is_object() {
-            (
-                json!({}),
-                json!({"success": false, "error": "no attr_types in cache"}),
-            )
+            (json!({}), super::ApiStatus::error("no attr_types in cache"))
         } else {
             let fv = if result_type != "multi" {
                 if let Some(group_val) = attr_types.get(&result_type) {
@@ -72,13 +69,10 @@ pub async fn get_result_fields(
             } else {
                 serde_json::to_value(&attr_types).unwrap_or_else(|_| json!({}))
             };
-            (fv, json!({"success": true}))
+            (fv, super::ApiStatus::ok())
         }
     } else {
-        (
-            json!({}),
-            json!({"success": false, "error": "no cache configured"}),
-        )
+        (json!({}), super::ApiStatus::error("no cache configured"))
     };
 
     // identifiers currently not cached; return empty object for now.

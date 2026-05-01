@@ -22,6 +22,7 @@ pub struct AppState {
 #[derive(OpenApi)]
 #[openapi(
     paths(
+        routes::count::post_count,
         routes::result_fields::get_result_fields,
         routes::status::get_status,
         routes::taxonomies::get_taxonomies_openapi,
@@ -29,6 +30,8 @@ pub struct AppState {
         routes::indices::get_indices_openapi,
     ),
     components(schemas(
+        routes::ApiStatus,
+        routes::count::CountResponse,
         routes::result_fields::FieldMeta,
         routes::result_fields::ResultFieldsResponse,
         routes::status::StatusResponse,
@@ -208,19 +211,23 @@ mod tests {
 
         // status
         let Json(status_body) = routes::status::get_status(Extension(state.clone())).await;
+        assert!(status_body.status.success);
         assert!(status_body.ready);
 
         // taxonomies
         let Json(tax) = routes::taxonomies::get_taxonomies(Extension(state.clone())).await;
+        assert!(tax.status.success);
         assert!(tax.taxonomies.contains(&"ncbi".to_string()));
 
         // ranks
         let Json(ranks) =
             routes::taxonomic_ranks::get_taxonomic_ranks(Extension(state.clone())).await;
-        assert!(ranks.taxonomic_ranks.contains(&"species".to_string()));
+        assert!(ranks.status.success);
+        assert!(ranks.ranks.contains(&"species".to_string()));
 
         // indices
         let Json(idx) = routes::indices::get_indices(Extension(state.clone())).await;
+        assert!(idx.status.success);
         assert!(idx.indices.contains(&"attributes".to_string()));
 
         // resultFields
@@ -228,6 +235,6 @@ mod tests {
             result: Some("taxon".to_string()),
         });
         let Json(rf) = routes::result_fields::get_result_fields(q, Extension(state.clone())).await;
-        assert!(rf.status.get("success").is_some());
+        assert!(rf.status.success);
     }
 }

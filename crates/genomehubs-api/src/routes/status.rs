@@ -6,7 +6,10 @@ use crate::AppState;
 
 #[derive(Serialize, utoipa::ToSchema)]
 pub struct StatusResponse {
+    pub status: super::ApiStatus,
     pub ready: bool,
+    pub supported: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub last_updated: Option<String>,
 }
 
@@ -27,8 +30,18 @@ pub async fn get_status(Extension(state): Extension<Arc<AppState>>) -> Json<Stat
             last = r.last_updated.clone();
         }
     }
+    let supported = vec![
+        "/status".to_string(),
+        "/resultFields".to_string(),
+        "/taxonomies".to_string(),
+        "/taxonomicRanks".to_string(),
+        "/indices".to_string(),
+        "/count".to_string(),
+    ];
     Json(StatusResponse {
+        status: super::ApiStatus::ok(),
         ready,
+        supported,
         last_updated: last,
     })
 }

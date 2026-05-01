@@ -6,7 +6,9 @@ use crate::AppState;
 
 #[derive(Serialize, utoipa::ToSchema)]
 pub struct IndicesResponse {
+    pub status: super::ApiStatus,
     pub indices: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub last_updated: Option<String>,
 }
 
@@ -19,6 +21,7 @@ pub async fn get_indices(Extension(state): Extension<Arc<AppState>>) -> Json<Ind
         last = r.last_updated.clone();
     }
     Json(IndicesResponse {
+        status: super::ApiStatus::ok(),
         indices,
         last_updated: last,
     })
@@ -32,7 +35,9 @@ pub async fn get_indices(Extension(state): Extension<Arc<AppState>>) -> Json<Ind
     )
 )]
 #[allow(dead_code)]
-pub async fn get_indices_openapi(Extension(state): Extension<Arc<AppState>>) -> Json<IndicesResponse> {
+pub async fn get_indices_openapi(
+    Extension(state): Extension<Arc<AppState>>,
+) -> Json<IndicesResponse> {
     // Wrapper for OpenAPI generation; actual handler is `get_indices`.
     get_indices(Extension(state)).await
 }

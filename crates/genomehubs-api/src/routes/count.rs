@@ -14,14 +14,9 @@ pub struct CountRequest {
 
 #[derive(Serialize, utoipa::ToSchema)]
 pub struct CountResponse {
+    pub status: super::ApiStatus,
     /// The executed ES URL
     pub url: String,
-    /// Number of hits
-    pub hits: u64,
-    /// Whether the request succeeded
-    pub ok: bool,
-    /// Optional error message
-    pub error: Option<String>,
 }
 
 #[utoipa::path(
@@ -42,10 +37,8 @@ pub async fn post_count(
         Ok(q) => q,
         Err(e) => {
             return Json(CountResponse {
+                status: super::ApiStatus::error(format!("failed to parse query_yaml: {}", e)),
                 url: "".to_string(),
-                hits: 0,
-                ok: false,
-                error: Some(format!("failed to parse query_yaml: {}", e)),
             })
         }
     };
@@ -54,10 +47,8 @@ pub async fn post_count(
         Ok(p) => p,
         Err(e) => {
             return Json(CountResponse {
+                status: super::ApiStatus::error(format!("failed to parse params_yaml: {}", e)),
                 url: "".to_string(),
-                hits: 0,
-                ok: false,
-                error: Some(format!("failed to parse params_yaml: {}", e)),
             })
         }
     };
@@ -138,10 +129,8 @@ pub async fn post_count(
         Ok(b) => b,
         Err(e) => {
             return Json(CountResponse {
+                status: super::ApiStatus::error(format!("failed to build ES body: {}", e)),
                 url: "".to_string(),
-                hits: 0,
-                ok: false,
-                error: Some(format!("failed to build ES body: {}", e)),
             })
         }
     };
@@ -163,45 +152,36 @@ pub async fn post_count(
                         .and_then(|t| t.get("value"))
                         .and_then(|n| n.as_u64())
                     {
+                        let took = v.get("took").and_then(|t| t.as_u64()).unwrap_or(0);
                         return Json(CountResponse {
+                            status: super::ApiStatus::query_ok(total, took),
                             url,
-                            hits: total,
-                            ok: true,
-                            error: None,
                         });
                     }
                     return Json(CountResponse {
-                        url,
-                        hits: 0,
-                        ok: false,
-                        error: Some(format!(
+                        status: super::ApiStatus::error(format!(
                             "unexpected ES response: {}",
                             &raw.chars().take(512).collect::<String>()
                         )),
+                        url,
                     });
                 }
                 Json(CountResponse {
-                    url,
-                    hits: 0,
-                    ok: false,
-                    error: Some(format!(
+                    status: super::ApiStatus::error(format!(
                         "non-JSON ES response: {}",
                         &raw.chars().take(512).collect::<String>()
                     )),
+                    url,
                 })
             }
             Err(e) => Json(CountResponse {
+                status: super::ApiStatus::error(format!("failed to read ES response: {}", e)),
                 url,
-                hits: 0,
-                ok: false,
-                error: Some(format!("failed to read ES response: {}", e)),
             }),
         },
         Err(e) => Json(CountResponse {
+            status: super::ApiStatus::error(format!("request error: {}", e)),
             url,
-            hits: 0,
-            ok: false,
-            error: Some(format!("request error: {}", e)),
         }),
     }
 }

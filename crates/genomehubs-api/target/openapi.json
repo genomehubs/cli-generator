@@ -9,6 +9,36 @@
     "version": "0.1.0"
   },
   "paths": {
+    "/api/v3/count": {
+      "post": {
+        "tags": [
+          "routes::count"
+        ],
+        "operationId": "post_count",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CountRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Count result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CountResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v3/indices": {
       "get": {
         "tags": [
@@ -123,6 +153,73 @@
   },
   "components": {
     "schemas": {
+      "ApiStatus": {
+        "type": "object",
+        "description": "Uniform status block present in every v3 API response.\n\nMetadata-only endpoints (taxonomies, ranks, indices) omit `hits` and `took`.\nQuery endpoints always populate all four fields.",
+        "required": [
+          "success"
+        ],
+        "properties": {
+          "error": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "hits": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "minimum": 0
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "took": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "minimum": 0
+          }
+        }
+      },
+      "CountRequest": {
+        "type": "object",
+        "required": [
+          "query_yaml",
+          "params_yaml"
+        ],
+        "properties": {
+          "params_yaml": {
+            "type": "string",
+            "description": "YAML string describing the QueryParams"
+          },
+          "query_yaml": {
+            "type": "string",
+            "description": "YAML string describing the SearchQuery"
+          }
+        }
+      },
+      "CountResponse": {
+        "type": "object",
+        "required": [
+          "status",
+          "url"
+        ],
+        "properties": {
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "url": {
+            "type": "string",
+            "description": "The executed ES URL"
+          }
+        }
+      },
       "FieldMeta": {
         "type": "object",
         "required": [
@@ -149,6 +246,7 @@
       "IndicesResponse": {
         "type": "object",
         "required": [
+          "status",
           "indices"
         ],
         "properties": {
@@ -163,13 +261,17 @@
               "string",
               "null"
             ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
           }
         }
       },
       "RanksResponse": {
         "type": "object",
         "required": [
-          "taxonomic_ranks"
+          "status",
+          "ranks"
         ],
         "properties": {
           "last_updated": {
@@ -178,11 +280,14 @@
               "null"
             ]
           },
-          "taxonomic_ranks": {
+          "ranks": {
             "type": "array",
             "items": {
               "type": "string"
             }
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
           }
         }
       },
@@ -208,13 +313,17 @@
           "source": {
             "type": "string"
           },
-          "status": {}
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          }
         }
       },
       "StatusResponse": {
         "type": "object",
         "required": [
-          "ready"
+          "status",
+          "ready",
+          "supported"
         ],
         "properties": {
           "last_updated": {
@@ -225,12 +334,22 @@
           },
           "ready": {
             "type": "boolean"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "supported": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         }
       },
       "TaxonomiesResponse": {
         "type": "object",
         "required": [
+          "status",
           "taxonomies"
         ],
         "properties": {
@@ -239,6 +358,9 @@
               "string",
               "null"
             ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
           },
           "taxonomies": {
             "type": "array",
