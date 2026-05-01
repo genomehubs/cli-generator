@@ -16,6 +16,14 @@ report (histogram, scatter, tree, map, arc) is described by an `AxisSpec`; the t
 system determines how ES aggregations are built, how domains/bounds are computed, and
 how SDK users express axis configuration.
 
+**Related work (deferred from earlier phases):**
+
+- `fieldOpts` (v2 search parameter) — binning/aggregation options for individual fields
+  - Currently not implemented in v3
+  - Should be aligned with Phase 4 axis configuration concepts
+  - Consider whether to add as search endpoint parameter or handle separately
+  - Naming may need alignment with axis terminology (e.g., `fieldAgg` or `fieldBinning`)
+
 ---
 
 ## Files to Create

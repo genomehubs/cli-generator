@@ -47,10 +47,14 @@ impl ApiStatus {
     }
 }
 
+pub mod batchSearch;
 pub mod count;
 pub mod indices;
+pub mod lookup;
+pub mod record;
 pub mod result_fields;
 pub mod search;
 pub mod status;
+pub mod summary;
 pub mod taxonomic_ranks;
 pub mod taxonomies;

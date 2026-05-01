@@ -12,6 +12,10 @@ const SUPPORTED_ENDPOINTS: &[&str] = &[
     "/indices",
     "/count",
     "/search",
+    "/record",
+    "/lookup",
+    "/summary",
+    "/batchSearch",
 ];
 
 #[derive(Serialize, utoipa::ToSchema)]

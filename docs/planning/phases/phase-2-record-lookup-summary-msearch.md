@@ -1,37 +1,40 @@
-# Phase 2: `/record`, `/lookup`, `/summary`, `/msearch`
+# Phase 2: `/record`, `/lookup`, `/batchSearch`
 
 **Depends on:** Phase 0 (ApiStatus), Phase 1 (es_client, index_name, AppState.client)
 **Blocks:** Phase 3 (SDK methods call these endpoints)
-**Estimated scope:** ~5 new files, 1 shared helper extracted
+**Estimated scope:** ~4 new files, 1 shared helper extracted
 
-Steps 1–4 (the four routes) are independent and can be implemented in parallel.
-Step 5 (shared `fetch_records_by_id` helper) should be extracted after `/record` is working
-and before `/summary` is started.
+Steps 1–3 (the three routes) are independent and can be implemented in parallel.
+
+**Note:** `/summary` has been deferred to Phase 5 (after report aggregation infrastructure
+is in place) so it can reuse histogram aggregation logic rather than implementing its own
+nested aggregation query builder. This keeps aggregation logic centralized and avoids
+maintenance drift across endpoints.
 
 ---
 
 ## Goal
 
-Implement the four remaining "simple" (non-report) endpoints:
+Implement the three remaining "simple" (non-aggregation) endpoints:
 
-| Endpoint   | Method | Purpose                                        |
-| ---------- | ------ | ---------------------------------------------- |
-| `/record`  | GET    | Fetch one or more records by ID                |
-| `/lookup`  | GET    | Autocomplete / identifier resolution           |
-| `/summary` | GET    | Aggregate field values across taxon lineage    |
-| `/msearch` | POST   | Batch multiple search queries into one ES call |
+| Endpoint       | Method | Purpose                                |
+| -------------- | ------ | -------------------------------------- |
+| `/record`      | GET    | Fetch one or more records by ID        |
+| `/lookup`      | GET    | Autocomplete / identifier resolution   |
+| `/batchSearch` | POST   | Batch multiple search queries into one |
+
+`/summary` is deferred to Phase 5 to leverage report aggregation infrastructure.
 
 ---
 
 ## Files to Create
 
-| File                                          | Route                                 |
-| --------------------------------------------- | ------------------------------------- |
-| `crates/genomehubs-api/src/routes/record.rs`  | `GET /api/v3/record`                  |
-| `crates/genomehubs-api/src/routes/lookup.rs`  | `GET /api/v3/lookup`                  |
-| `crates/genomehubs-api/src/routes/summary.rs` | `GET /api/v3/summary`                 |
-| `crates/genomehubs-api/src/routes/msearch.rs` | `POST /api/v3/msearch`                |
-| `crates/genomehubs-api/src/fetch_records.rs`  | Shared `fetch_records_by_id()` helper |
+| File                                              | Route                                 |
+| ------------------------------------------------- | ------------------------------------- |
+| `crates/genomehubs-api/src/routes/record.rs`      | `GET /api/v3/record`                  |
+| `crates/genomehubs-api/src/routes/lookup.rs`      | `GET /api/v3/lookup`                  |
+| `crates/genomehubs-api/src/routes/batchSearch.rs` | `POST /api/v3/batchSearch`            |
+| `crates/genomehubs-api/src/fetch_records.rs`      | Shared `fetch_records_by_id()` helper |
 
 ## Files to Modify
 
@@ -353,116 +356,35 @@ index mapping and stores `has_sayt_field: bool` and `has_trigram_field: bool` in
 
 ---
 
-### 3. `routes/summary.rs`
+### 3. `routes/batchSearch.rs`
 
-**Request:** `GET /api/v3/summary?recordId={id}&result={type}&fields={f1,f2}&summary={min,max}`
-
-This is the most complex of the four routes. It:
-
-1. Fetches the target record to determine its lineage path
-2. Runs a nested aggregation along the lineage to compute min/max/avg for requested fields
-3. Returns `summaries: [{ name, field, lineage, summary: { min, max, avg } }]`
-
-```rust
-#[derive(Deserialize)]
-pub struct SummaryQuery {
-    #[serde(rename = "recordId")]
-    pub record_id: String,
-    pub result: Option<String>,
-    pub fields: String,              // comma-separated
-    pub summary: Option<String>,     // comma-separated: "min,max,mean"
-}
-
-#[derive(Serialize, utoipa::ToSchema)]
-pub struct SummaryItem {
-    pub name: String,
-    pub field: String,
-    pub lineage: String,
-    pub taxonomy: String,
-    pub summary: serde_json::Value,  // { min, max, avg, count }
-}
-
-#[derive(Serialize, utoipa::ToSchema)]
-pub struct SummaryResponse {
-    pub status: ApiStatus,
-    pub summaries: Vec<SummaryItem>,
-}
-```
-
-**Aggregation body** for field values across taxon lineage:
-
-```rust
-fn build_summary_agg(taxon_id: &str, field: &str) -> serde_json::Value {
-    json!({
-        "size": 0,
-        "query": {
-            "nested": {
-                "path": "lineage",
-                "query": {
-                    "term": { "lineage.taxon_id": taxon_id }
-                }
-            }
-        },
-        "aggs": {
-            "by_taxon": {
-                "nested": { "path": "attributes" },
-                "aggs": {
-                    "field_filter": {
-                        "filter": { "term": { "attributes.key": field } },
-                        "aggs": {
-                            "values": {
-                                "nested": { "path": "attributes.values" },
-                                "aggs": {
-                                    "stats": { "stats": { "field": "attributes.values.value" } }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    })
-}
-```
-
-Note: the exact path names (`attributes.key`, `attributes.values.value`) must be verified
-against the actual ES mapping. Check with:
-
-```bash
-curl http://localhost:9200/{taxon_index}/_mapping | jq '.[] | .mappings.properties.attributes'
-```
-
----
-
-### 4. `routes/msearch.rs`
-
-**Request:** `POST /api/v3/msearch` with body `{ searches: [{ query_yaml, params_yaml }] }`
+**Request:** `POST /api/v3/batchSearch` with body `{ searches: [{ query_yaml, params_yaml }] }`
 
 Uses ES `_msearch` API to batch all queries into a single HTTP round-trip.
 
 ```rust
 #[derive(Deserialize, utoipa::ToSchema)]
-pub struct MSearchItem {
+pub struct BatchSearchItem {
     pub query_yaml: String,
     pub params_yaml: String,
 }
 
 #[derive(Deserialize, utoipa::ToSchema)]
-pub struct MSearchRequest {
-    pub searches: Vec<MSearchItem>,
+pub struct BatchSearchRequest {
+    pub searches: Vec<BatchSearchItem>,
 }
 
 #[derive(Serialize, utoipa::ToSchema)]
-pub struct MSearchResultItem {
+pub struct BatchSearchResultItem {
     pub status: ApiStatus,
     pub count: usize,
     pub hits: Vec<serde_json::Value>,
 }
 
 #[derive(Serialize, utoipa::ToSchema)]
-pub struct MSearchResponse {
+pub struct BatchSearchResponse {
     pub status: ApiStatus,
-    pub results: Vec<MSearchResultItem>,
+    pub results: Vec<BatchSearchResultItem>,
 }
 ```
 
@@ -504,12 +426,12 @@ async fn execute_msearch(
 Handler:
 
 ```rust
-pub async fn post_msearch(
+pub async fn post_batchSearch(
     Extension(state): Extension<Arc<AppState>>,
-    Json(req): Json<MSearchRequest>,
-) -> Json<MSearchResponse> {
+    Json(req): Json<BatchSearchRequest>,
+) -> Json<BatchSearchResponse> {
     if req.searches.len() > 100 {
-        return Json(MSearchResponse {
+        return Json(BatchSearchResponse {
             status: ApiStatus::error("maximum 100 searches per request"),
             results: vec![],
         });
@@ -520,14 +442,14 @@ pub async fn post_msearch(
     for item in &req.searches {
         let query = match genomehubs_query::query::SearchQuery::from_yaml(&item.query_yaml) {
             Ok(q) => q,
-            Err(e) => return Json(MSearchResponse {
+            Err(e) => return Json(BatchSearchResponse {
                 status: ApiStatus::error(format!("failed to parse query_yaml: {e}")),
                 results: vec![],
             }),
         };
         let params = match genomehubs_query::query::QueryParams::from_yaml(&item.params_yaml) {
             Ok(p) => p,
-            Err(e) => return Json(MSearchResponse {
+            Err(e) => return Json(BatchSearchResponse {
                 status: ApiStatus::error(format!("failed to parse params_yaml: {e}")),
                 results: vec![],
             }),
@@ -547,7 +469,7 @@ pub async fn post_msearch(
     let ndjson = build_msearch_body(&index_bodies);
     let raw = match execute_msearch(&state.client, &state.es_base, &ndjson).await {
         Ok(v) => v,
-        Err(e) => return Json(MSearchResponse {
+        Err(e) => return Json(BatchSearchResponse {
             status: ApiStatus::error(e),
             results: vec![],
         }),

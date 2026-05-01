@@ -2,7 +2,12 @@
 
 **Depends on:** Phase 4 (axis types), Phase 1 (es_client, AppState.client)
 **Blocks:** Phase 6 (report routes use bounds, agg, pipeline), Phase 7 (arc uses agg)
-**Estimated scope:** ~5 new files in `crates/genomehubs-api/src/report/`
+**Estimated scope:** ~5 new files in `crates/genomehubs-api/src/report/` + /summary endpoint
+
+**Note:** Phase 5 also includes the `GET /api/v3/summary` endpoint (deferred from Phase 2).
+The summary aggregation logic reuses the `AggBuilder` infrastructure to avoid duplication
+with histogram aggregations. Once report infrastructure is in place, adding /summary becomes
+a thin wrapper around existing aggregation builders.
 
 ---
 

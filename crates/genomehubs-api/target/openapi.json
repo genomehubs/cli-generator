@@ -9,6 +9,36 @@
     "version": "0.1.0"
   },
   "paths": {
+    "/api/v3/batchSearch": {
+      "post": {
+        "tags": [
+          "routes::batchSearch"
+        ],
+        "operationId": "post_batchSearch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchSearchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Batch search results",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchSearchResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v3/count": {
       "post": {
         "tags": [
@@ -59,6 +89,96 @@
         }
       }
     },
+    "/api/v3/lookup": {
+      "get": {
+        "tags": [
+          "routes::lookup"
+        ],
+        "operationId": "get_lookup",
+        "parameters": [
+          {
+            "name": "searchTerm",
+            "in": "query",
+            "description": "Search term for lookup",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "result",
+            "in": "query",
+            "description": "Result type (taxon|assembly|sample)",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "description": "Maximum results to return (default 10)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lookup results",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LookupResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v3/record": {
+      "get": {
+        "tags": [
+          "routes::record"
+        ],
+        "operationId": "get_record",
+        "parameters": [
+          {
+            "name": "recordId",
+            "in": "query",
+            "description": "Record ID (comma-separated for multiple)",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "result",
+            "in": "query",
+            "description": "Result type (taxon|assembly|sample)",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Record(s)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v3/resultFields": {
       "get": {
         "tags": [
@@ -90,6 +210,36 @@
         }
       }
     },
+    "/api/v3/search": {
+      "post": {
+        "tags": [
+          "routes::search"
+        ],
+        "operationId": "post_search",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SearchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Search results",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v3/status": {
       "get": {
         "tags": [
@@ -103,6 +253,64 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/StatusResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v3/summary": {
+      "get": {
+        "tags": [
+          "routes::summary"
+        ],
+        "operationId": "get_summary",
+        "parameters": [
+          {
+            "name": "recordId",
+            "in": "query",
+            "description": "Record ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "result",
+            "in": "query",
+            "description": "Result type (taxon|assembly|sample)",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "fields",
+            "in": "query",
+            "description": "Fields to summarize (comma-separated)",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "summary",
+            "in": "query",
+            "description": "Summary types (min,max,mean)",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Summary results",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SummaryResponse"
                 }
               }
             }
@@ -187,6 +395,74 @@
           }
         }
       },
+      "BatchSearchItem": {
+        "type": "object",
+        "required": [
+          "query_yaml",
+          "params_yaml"
+        ],
+        "properties": {
+          "params_yaml": {
+            "type": "string"
+          },
+          "query_yaml": {
+            "type": "string"
+          }
+        }
+      },
+      "BatchSearchRequest": {
+        "type": "object",
+        "required": [
+          "searches"
+        ],
+        "properties": {
+          "searches": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BatchSearchItem"
+            }
+          }
+        }
+      },
+      "BatchSearchResponse": {
+        "type": "object",
+        "required": [
+          "status",
+          "results"
+        ],
+        "properties": {
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BatchSearchResultItem"
+            }
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          }
+        }
+      },
+      "BatchSearchResultItem": {
+        "type": "object",
+        "required": [
+          "status",
+          "count",
+          "hits"
+        ],
+        "properties": {
+          "count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "hits": {
+            "type": "array",
+            "items": {}
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          }
+        }
+      },
       "CountRequest": {
         "type": "object",
         "required": [
@@ -267,6 +543,49 @@
           }
         }
       },
+      "LookupResponse": {
+        "type": "object",
+        "required": [
+          "status",
+          "results"
+        ],
+        "properties": {
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LookupResult"
+            }
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          }
+        }
+      },
+      "LookupResult": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "reason"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "rank": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          }
+        }
+      },
       "RanksResponse": {
         "type": "object",
         "required": [
@@ -284,6 +603,58 @@
             "type": "array",
             "items": {
               "type": "string"
+            }
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          }
+        }
+      },
+      "RecordItem": {
+        "type": "object",
+        "required": [
+          "record",
+          "recordId",
+          "result"
+        ],
+        "properties": {
+          "record": {},
+          "recordId": {
+            "type": "string"
+          },
+          "result": {
+            "type": "string"
+          }
+        }
+      },
+      "RecordQuery": {
+        "type": "object",
+        "required": [
+          "recordId"
+        ],
+        "properties": {
+          "recordId": {
+            "type": "string"
+          },
+          "result": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "RecordResponse": {
+        "type": "object",
+        "required": [
+          "status",
+          "records"
+        ],
+        "properties": {
+          "records": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RecordItem"
             }
           },
           "status": {
@@ -318,6 +689,48 @@
           }
         }
       },
+      "SearchRequest": {
+        "type": "object",
+        "required": [
+          "query_yaml",
+          "params_yaml"
+        ],
+        "properties": {
+          "params_yaml": {
+            "type": "string",
+            "description": "YAML string describing the QueryParams."
+          },
+          "query_yaml": {
+            "type": "string",
+            "description": "YAML string describing the SearchQuery."
+          }
+        }
+      },
+      "SearchResponse": {
+        "type": "object",
+        "required": [
+          "status",
+          "url",
+          "results"
+        ],
+        "properties": {
+          "results": {
+            "type": "array",
+            "items": {},
+            "description": "Flat result records."
+          },
+          "search_after": {
+            "description": "Cursor for the next page, if more results exist."
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "url": {
+            "type": "string",
+            "description": "URL that was built for this query (for debugging/reproduction)."
+          }
+        }
+      },
       "StatusResponse": {
         "type": "object",
         "required": [
@@ -342,6 +755,76 @@
             "type": "array",
             "items": {
               "type": "string"
+            }
+          }
+        }
+      },
+      "SummaryItem": {
+        "type": "object",
+        "required": [
+          "name",
+          "field",
+          "lineage",
+          "taxonomy",
+          "summary"
+        ],
+        "properties": {
+          "field": {
+            "type": "string"
+          },
+          "lineage": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "summary": {},
+          "taxonomy": {
+            "type": "string"
+          }
+        }
+      },
+      "SummaryQuery": {
+        "type": "object",
+        "required": [
+          "recordId",
+          "fields"
+        ],
+        "properties": {
+          "fields": {
+            "type": "string"
+          },
+          "recordId": {
+            "type": "string"
+          },
+          "result": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "summary": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "SummaryResponse": {
+        "type": "object",
+        "required": [
+          "status",
+          "summaries"
+        ],
+        "properties": {
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "summaries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SummaryItem"
             }
           }
         }

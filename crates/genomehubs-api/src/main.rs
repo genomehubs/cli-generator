@@ -6,6 +6,7 @@ use utoipa_swagger_ui::SwaggerUi;
 
 mod es_client;
 mod es_metadata;
+mod fetch_records;
 mod index_name;
 mod routes;
 
@@ -25,22 +26,38 @@ pub struct AppState {
 #[derive(OpenApi)]
 #[openapi(
     paths(
+        routes::batchSearch::post_batchSearch,
         routes::count::post_count,
+        routes::lookup::get_lookup,
+        routes::record::get_record,
         routes::result_fields::get_result_fields,
         routes::search::post_search,
         routes::status::get_status,
+        routes::summary::get_summary,
         routes::taxonomies::get_taxonomies_openapi,
         routes::taxonomic_ranks::get_taxonomic_ranks_openapi,
         routes::indices::get_indices_openapi,
     ),
     components(schemas(
         routes::ApiStatus,
+        routes::batchSearch::BatchSearchItem,
+        routes::batchSearch::BatchSearchRequest,
+        routes::batchSearch::BatchSearchResponse,
+        routes::batchSearch::BatchSearchResultItem,
         routes::count::CountResponse,
+        routes::lookup::LookupResponse,
+        routes::lookup::LookupResult,
+        routes::record::RecordItem,
+        routes::record::RecordQuery,
+        routes::record::RecordResponse,
         routes::result_fields::FieldMeta,
         routes::result_fields::ResultFieldsResponse,
         routes::search::SearchRequest,
         routes::search::SearchResponse,
         routes::status::StatusResponse,
+        routes::summary::SummaryItem,
+        routes::summary::SummaryQuery,
+        routes::summary::SummaryResponse,
         routes::taxonomies::TaxonomiesResponse,
         routes::taxonomic_ranks::RanksResponse,
         routes::indices::IndicesResponse,
@@ -154,27 +171,34 @@ async fn main() {
 
     let app = Router::<()>::new()
         .route(
-            "/api/v3/resultFields",
-            get(routes::result_fields::get_result_fields),
-        )
-        .route("/api/v3/status", get(routes::status::get_status))
-        .route(
-            "/api/v3/taxonomies",
-            get(routes::taxonomies::get_taxonomies),
-        )
-        .route(
-            "/api/v3/taxonomicRanks",
-            get(routes::taxonomic_ranks::get_taxonomic_ranks),
+            "/api/v3/batchSearch",
+            axum::routing::post(routes::batchSearch::post_batchSearch),
         )
         .route(
             "/api/v3/count",
             axum::routing::post(routes::count::post_count),
         )
+        .route("/api/v3/indices", get(routes::indices::get_indices))
+        .route("/api/v3/lookup", get(routes::lookup::get_lookup))
+        .route("/api/v3/record", get(routes::record::get_record))
+        .route(
+            "/api/v3/resultFields",
+            get(routes::result_fields::get_result_fields),
+        )
         .route(
             "/api/v3/search",
             axum::routing::post(routes::search::post_search),
         )
-        .route("/api/v3/indices", get(routes::indices::get_indices))
+        .route("/api/v3/status", get(routes::status::get_status))
+        .route("/api/v3/summary", get(routes::summary::get_summary))
+        .route(
+            "/api/v3/taxonomicRanks",
+            get(routes::taxonomic_ranks::get_taxonomic_ranks),
+        )
+        .route(
+            "/api/v3/taxonomies",
+            get(routes::taxonomies::get_taxonomies),
+        )
         .layer(Extension(state))
         .merge(SwaggerUi::new("/swagger-ui").url("/api-doc/openapi.json", openapi.clone()));
 
@@ -210,6 +234,8 @@ mod tests {
                 "taxon": {"kingdom": {"type": "keyword", "summary": "kingdom"}}
             }),
             last_updated: Some("now".to_string()),
+            has_sayt_field: true,
+            has_trigram_field: false,
         };
         let state = std::sync::Arc::new(AppState {
             es_base: "http://localhost:9200".to_string(),

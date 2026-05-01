@@ -12,6 +12,8 @@ pub struct MetadataCache {
     pub attr_types: JsonValue,
     pub taxonomic_ranks: Vec<String>,
     pub last_updated: Option<String>,
+    pub has_sayt_field: bool,
+    pub has_trigram_field: bool,
 }
 
 fn processed_type(meta: &JsonValue) -> Option<String> {
@@ -233,6 +235,103 @@ pub async fn fetch_attr_types(
     Ok(JsonValue::Object(types_map))
 }
 
+/// Check if taxon_names.name.live field exists in the index mapping.
+/// Used to enable Stage 1 (SAYT) lookups across synonyms and common names.
+async fn check_sayt_field(
+    client: &Client,
+    es_base: &str,
+    index: &str,
+) -> Result<bool, String> {
+    let url = format!("{}/{}/_mapping", es_base.trim_end_matches('/'), index);
+
+    let resp = client
+        .get(&url)
+        .send()
+        .await
+        .map_err(|e| format!("mapping request failed: {}", e))?;
+
+    if !resp.status().is_success() {
+        return Ok(false);
+    }
+
+    let mapping_json: JsonValue = resp
+        .json()
+        .await
+        .map_err(|e| format!("json parse error: {}", e))?;
+
+    // Check if taxon_names.name.live exists
+    if let Some(indices) = mapping_json.as_object() {
+        for (_, index_mapping) in indices.iter() {
+            if let Some(properties) = index_mapping
+                .get("mappings")
+                .and_then(|m| m.get("properties"))
+            {
+                if let Some(taxon_names) = properties.get("taxon_names") {
+                    if let Some(nested_props) = taxon_names.get("properties") {
+                        if let Some(name_field) = nested_props.get("name") {
+                            if let Some(fields) = name_field.get("fields") {
+                                if fields.get("live").is_some() {
+                                    return Ok(true);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(false)
+}
+
+/// Check if taxon_names.name.trigram field exists in the index mapping.
+async fn check_trigram_field(
+    client: &Client,
+    es_base: &str,
+    index: &str,
+) -> Result<bool, String> {
+    let url = format!("{}/{}/_mapping", es_base.trim_end_matches('/'), index);
+
+    let resp = client
+        .get(&url)
+        .send()
+        .await
+        .map_err(|e| format!("mapping request failed: {}", e))?;
+
+    if !resp.status().is_success() {
+        return Ok(false);
+    }
+
+    let mapping_json: JsonValue = resp
+        .json()
+        .await
+        .map_err(|e| format!("json parse error: {}", e))?;
+
+    // Check if taxon_names.name.trigram exists
+    if let Some(indices) = mapping_json.as_object() {
+        for (_, index_mapping) in indices.iter() {
+            if let Some(properties) = index_mapping
+                .get("mappings")
+                .and_then(|m| m.get("properties"))
+            {
+                if let Some(taxon_names) = properties.get("taxon_names") {
+                    if let Some(properties) = taxon_names.get("properties") {
+                        if let Some(name_field) = properties.get("name") {
+                            if let Some(fields) = name_field.get("fields") {
+                                if fields.get("trigram").is_some() {
+                                    return Ok(true);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(false)
+}
+
 pub async fn fetch_taxonomic_ranks(
     client: &Client,
     es_base: &str,
@@ -312,6 +411,14 @@ pub async fn populate_cache(state: Arc<AppState>, client: &Client) -> Result<(),
         .await
         .unwrap_or_default();
 
+    let has_sayt_field = check_sayt_field(client, es_base, &taxon_index)
+        .await
+        .unwrap_or(false);
+
+    let has_trigram_field = check_trigram_field(client, es_base, &taxon_index)
+        .await
+        .unwrap_or(false);
+
     let now = chrono::Utc::now().to_rfc3339();
 
     let cache = MetadataCache {
@@ -320,6 +427,8 @@ pub async fn populate_cache(state: Arc<AppState>, client: &Client) -> Result<(),
         attr_types,
         taxonomic_ranks: ranks,
         last_updated: Some(now),
+        has_sayt_field,
+        has_trigram_field,
     };
 
     // write into AppState cache (tokio RwLock inside AppState)
