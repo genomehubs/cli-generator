@@ -237,11 +237,7 @@ pub async fn fetch_attr_types(
 
 /// Check if taxon_names.name.live field exists in the index mapping.
 /// Used to enable Stage 1 (SAYT) lookups across synonyms and common names.
-async fn check_sayt_field(
-    client: &Client,
-    es_base: &str,
-    index: &str,
-) -> Result<bool, String> {
+async fn check_sayt_field(client: &Client, es_base: &str, index: &str) -> Result<bool, String> {
     let url = format!("{}/{}/_mapping", es_base.trim_end_matches('/'), index);
 
     let resp = client
@@ -285,11 +281,7 @@ async fn check_sayt_field(
 }
 
 /// Check if taxon_names.name.trigram field exists in the index mapping.
-async fn check_trigram_field(
-    client: &Client,
-    es_base: &str,
-    index: &str,
-) -> Result<bool, String> {
+async fn check_trigram_field(client: &Client, es_base: &str, index: &str) -> Result<bool, String> {
     let url = format!("{}/{}/_mapping", es_base.trim_end_matches('/'), index);
 
     let resp = client

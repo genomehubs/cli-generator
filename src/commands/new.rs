@@ -848,6 +848,11 @@ fn ensure_license_file(repo_dir: &Path) -> Result<()> {
 }
 
 /// Scaffold a JavaScript SDK package in `js/{js_package_name}/`.
+#[allow(clippy::cognitive_complexity)]
+// This function orchestrates multi-step SDK generation with intentional branching
+// for WASM package detection (try pkg-nodejs → pkg-web → pkg fallback).
+// Refactoring would require passing 10+ state variables between helpers.
+// See docs/planning/phases/technical-debt.md for future cleanup plan.
 fn create_js_package(repo_dir: &Path, site: &SiteConfig) -> Result<()> {
     use tera::Context;
 

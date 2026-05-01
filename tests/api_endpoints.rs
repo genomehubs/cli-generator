@@ -29,7 +29,10 @@ fn load_es_config() -> Option<EsConfig> {
         .unwrap_or_else(|_| PathBuf::from("config/es_integration.toml"));
 
     if !cfg_path.exists() {
-        eprintln!("skipping API endpoint tests; config not found at {:?}", cfg_path);
+        eprintln!(
+            "skipping API endpoint tests; config not found at {:?}",
+            cfg_path
+        );
         return None;
     }
 
@@ -55,19 +58,16 @@ fn fetch_first_taxon_id(base_url: &str, index: &str) -> Option<String> {
             "_source": ["taxon_id"]
         });
 
-        match client.post(&url).json(&body).send().await {
-            Ok(resp) => {
-                if let Ok(data) = resp.json::<serde_json::Value>().await {
-                    if let Some(hits) = data["hits"]["hits"].as_array() {
-                        if let Some(first_hit) = hits.first() {
-                            if let Some(taxon_id) = first_hit["_source"]["taxon_id"].as_str() {
-                                return Some(taxon_id.to_string());
-                            }
+        if let Ok(resp) = client.post(&url).json(&body).send().await {
+            if let Ok(data) = resp.json::<serde_json::Value>().await {
+                if let Some(hits) = data["hits"]["hits"].as_array() {
+                    if let Some(first_hit) = hits.first() {
+                        if let Some(taxon_id) = first_hit["_source"]["taxon_id"].as_str() {
+                            return Some(taxon_id.to_string());
                         }
                     }
                 }
             }
-            Err(_) => {}
         }
         None
     })
@@ -81,9 +81,7 @@ fn api_lookup_get_with_search_term() {
     };
 
     let api_base = get_api_base_url();
-    let _index = cfg
-        .default_index
-        .unwrap_or_else(|| "taxon".to_string());
+    let _index = cfg.default_index.unwrap_or_else(|| "taxon".to_string());
     let _suffix = cfg.index_suffix.unwrap_or_default();
 
     let rt = tokio::runtime::Runtime::new().unwrap();
@@ -91,7 +89,10 @@ fn api_lookup_get_with_search_term() {
         let client = reqwest::Client::new();
 
         // Test 1: Basic lookup with search term
-        let url = format!("{}/api/v3/lookup?searchTerm=Homo&result=taxon&size=5", api_base);
+        let url = format!(
+            "{}/api/v3/lookup?searchTerm=Homo&result=taxon&size=5",
+            api_base
+        );
         let resp = client.get(&url).send().await.expect("lookup request");
         assert_eq!(resp.status(), 200, "lookup status should be 200");
 
@@ -107,7 +108,10 @@ fn api_lookup_get_with_search_term() {
             for result in results {
                 assert!(result["id"].is_string(), "result.id should be a string");
                 assert!(result["name"].is_string(), "result.name should be a string");
-                assert!(result["reason"].is_string(), "result.reason should be a string");
+                assert!(
+                    result["reason"].is_string(),
+                    "result.reason should be a string"
+                );
             }
         }
     });
@@ -132,7 +136,10 @@ fn api_lookup_empty_search_term() {
         assert_eq!(resp.status(), 200, "lookup status should be 200");
 
         let body: serde_json::Value = resp.json().await.expect("parsing lookup response");
-        assert!(body["status"]["success"].as_bool().unwrap_or(false), "status should be successful");
+        assert!(
+            body["status"]["success"].as_bool().unwrap_or(false),
+            "status should be successful"
+        );
     });
 }
 
@@ -144,9 +151,7 @@ fn api_record_get_with_id() {
     };
 
     let api_base = get_api_base_url();
-    let index = cfg
-        .default_index
-        .unwrap_or_else(|| "taxon".to_string());
+    let index = cfg.default_index.unwrap_or_else(|| "taxon".to_string());
     let suffix = cfg.index_suffix.unwrap_or_default();
     let full_index = format!("{}{}", index, suffix);
 
@@ -172,18 +177,27 @@ fn api_record_get_with_id() {
         assert_eq!(resp.status(), 200, "record status should be 200");
 
         let body: serde_json::Value = resp.json().await.expect("parsing record response");
-        assert!(body["status"]["success"].as_bool().unwrap_or(false), "status.success should be true");
         assert!(
-            body["records"].is_array(),
-            "records should be an array"
+            body["status"]["success"].as_bool().unwrap_or(false),
+            "status.success should be true"
         );
+        assert!(body["records"].is_array(), "records should be an array");
 
         // Verify record structure
         if let Some(records) = body["records"].as_array() {
             for record in records {
-                assert!(record["recordId"].is_string(), "record.recordId should be a string");
-                assert!(record["result"].is_string(), "record.result should be a string");
-                assert!(record["record"].is_object(), "record.record should be an object");
+                assert!(
+                    record["recordId"].is_string(),
+                    "record.recordId should be a string"
+                );
+                assert!(
+                    record["result"].is_string(),
+                    "record.result should be a string"
+                );
+                assert!(
+                    record["record"].is_object(),
+                    "record.record should be an object"
+                );
             }
         }
     });
@@ -197,9 +211,7 @@ fn api_record_multiple_ids() {
     };
 
     let api_base = get_api_base_url();
-    let index = cfg
-        .default_index
-        .unwrap_or_else(|| "taxon".to_string());
+    let index = cfg.default_index.unwrap_or_else(|| "taxon".to_string());
     let suffix = cfg.index_suffix.unwrap_or_default();
     let full_index = format!("{}{}", index, suffix);
 
@@ -207,28 +219,31 @@ fn api_record_multiple_ids() {
     let rt = tokio::runtime::Runtime::new().unwrap();
     let prefixed_ids = rt.block_on(async {
         let client = reqwest::Client::new();
-        let url = format!("{}/{}/_search", cfg.base_url.trim_end_matches('/'), full_index);
+        let url = format!(
+            "{}/{}/_search",
+            cfg.base_url.trim_end_matches('/'),
+            full_index
+        );
         let body = json!({
             "size": 3,
             "query": { "match_all": {} },
             "_source": ["taxon_id"]
         });
 
-        match client.post(&url).json(&body).send().await {
-            Ok(resp) => {
-                if let Ok(data) = resp.json::<serde_json::Value>().await {
-                    if let Some(hits) = data["hits"]["hits"].as_array() {
-                        hits.iter()
-                            .filter_map(|h| h["_source"]["taxon_id"].as_str().map(|s| s.to_string()))
-                            .collect::<Vec<_>>()
-                    } else {
-                        vec![]
-                    }
+        if let Ok(resp) = client.post(&url).json(&body).send().await {
+            if let Ok(data) = resp.json::<serde_json::Value>().await {
+                if let Some(hits) = data["hits"]["hits"].as_array() {
+                    hits.iter()
+                        .filter_map(|h| h["_source"]["taxon_id"].as_str().map(|s| s.to_string()))
+                        .collect::<Vec<_>>()
                 } else {
                     vec![]
                 }
+            } else {
+                vec![]
             }
-            Err(_) => vec![],
+        } else {
+            vec![]
         }
     });
 
@@ -257,7 +272,10 @@ fn api_record_multiple_ids() {
         );
 
         if let Some(records) = body["records"].as_array() {
-            assert!(!records.is_empty(), "should have returned at least one record");
+            assert!(
+                !records.is_empty(),
+                "should have returned at least one record"
+            );
             // Verify that we got records for the requested IDs
             assert_eq!(
                 records.len(),
@@ -345,18 +363,24 @@ fn api_batchsearch_multiple_queries() {
         assert_eq!(resp.status(), 200, "batchSearch status should be 200");
 
         let response: serde_json::Value = resp.json().await.expect("parsing batchSearch response");
-        assert!(response["status"]["success"].as_bool().unwrap_or(false), "status.success should be true");
         assert!(
-            response["results"].is_array(),
-            "results should be an array"
+            response["status"]["success"].as_bool().unwrap_or(false),
+            "status.success should be true"
         );
+        assert!(response["results"].is_array(), "results should be an array");
 
         // Verify result structure
         if let Some(results) = response["results"].as_array() {
             assert_eq!(results.len(), 2, "should have 2 result entries");
             for result in results {
-                assert!(result["status"]["success"].as_bool().unwrap_or(false), "each result status should be successful");
-                assert!(result["count"].is_number(), "result.count should be a number");
+                assert!(
+                    result["status"]["success"].as_bool().unwrap_or(false),
+                    "each result status should be successful"
+                );
+                assert!(
+                    result["count"].is_number(),
+                    "result.count should be a number"
+                );
                 assert!(result["hits"].is_array(), "result.hits should be an array");
             }
         }
