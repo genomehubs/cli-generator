@@ -43,6 +43,7 @@ use serde::{Deserialize, Serialize};
 /// ranks: [genus]
 /// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct SearchQuery {
     /// Which index to search.
     pub index: SearchIndex,
@@ -83,6 +84,7 @@ pub enum SearchIndex {
 /// `count` / `search` / `report` with different pagination and formatting.
 /// Corresponds to the `submit_query` parameters in the GoaT MCP server.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct QueryParams {
     /// Maximum records per page; maps to `&size=` (default 10).
     #[serde(default = "default_size")]

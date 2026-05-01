@@ -86,6 +86,7 @@ fn normalize_value(input: &str) -> String {
 ///
 /// Corresponds to the `process_attributes` artifact in the GoaT MCP server.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct AttributeSet {
     /// Attribute filter conditions (e.g. `genome_size < 3G`).
     #[serde(default)]
@@ -159,6 +160,7 @@ pub struct AttributeSet {
 /// value: [DTOL, CANBP]
 /// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct Attribute {
     /// Attribute name; may be a synonym.
     pub name: String,
@@ -181,6 +183,7 @@ pub struct Attribute {
 
 /// A single column to return in search results.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct Field {
     /// Field name; may be a synonym, normalised during validation.
     pub name: String,

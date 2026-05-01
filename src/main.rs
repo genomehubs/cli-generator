@@ -86,8 +86,13 @@ enum Commands {
 }
 
 fn main() {
+    // Initialise structured logging from `RUST_LOG` / env filter.
+    tracing_subscriber::fmt()
+        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
+        .init();
+
     if let Err(e) = run(Cli::parse().command) {
-        eprintln!("error: {e:#}");
+        tracing::error!(error = ?e, "application error");
         std::process::exit(1);
     }
 }

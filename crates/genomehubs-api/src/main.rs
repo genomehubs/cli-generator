@@ -154,6 +154,10 @@ async fn main() {
             "/api/v3/taxonomicRanks",
             get(routes::taxonomic_ranks::get_taxonomic_ranks),
         )
+        .route(
+            "/api/v3/count",
+            axum::routing::post(routes::count::post_count),
+        )
         .route("/api/v3/indices", get(routes::indices::get_indices))
         .layer(Extension(state))
         .merge(SwaggerUi::new("/swagger-ui").url("/api-doc/openapi.json", openapi.clone()));

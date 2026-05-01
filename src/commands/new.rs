@@ -76,7 +76,7 @@ pub fn run(
     create_quarto_docs(&repo_dir, &site)?;
     ensure_license_file(&repo_dir)?;
 
-    println!("✓  Generated '{repo_name}' in {}", repo_dir.display());
+    tracing::info!(repo = %repo_dir.display(), repo_name = %repo_name, "✓  Generated '{}' in {}", repo_name, repo_dir.display());
     Ok(())
 }
 
@@ -97,7 +97,7 @@ fn postprocess_language(dir: &Path, language: &str) -> Result<()> {
                 .arg("120")
                 .arg(dir)
                 .status()
-                .map_err(|e| eprintln!("warn: black not installed: {e}"));
+                .map_err(|e| tracing::warn!(error = %e, "black not installed"));
 
             // Sort imports with isort (idempotent, non-fatal if missing)
             let _ = std::process::Command::new("isort")
@@ -107,7 +107,7 @@ fn postprocess_language(dir: &Path, language: &str) -> Result<()> {
                 .arg("120")
                 .arg(dir)
                 .status()
-                .map_err(|e| eprintln!("warn: isort not installed: {e}"));
+                .map_err(|e| tracing::warn!(error = %e, "isort not installed"));
         }
         "rust" => {
             // Phase 2: Add rustfmt + clippy --fix
@@ -922,12 +922,11 @@ fn create_js_package(repo_dir: &Path, site: &SiteConfig) -> Result<()> {
             }
         }
     } else {
-        eprintln!(
-            "warn: WASM packages not found at {}",
-            wasm_pkg_nodejs.display()
+        tracing::warn!(
+            pkg = %wasm_pkg_nodejs.display(),
+            js_package = %js_package_name,
+            "WASM packages not found; generated JavaScript SDK will require manual WASM build."
         );
-        eprintln!("  Generated JavaScript SDK will require manual WASM build.");
-        eprintln!("  Run: bash build-wasm.sh in js/{}/", &js_package_name);
     }
 
     // 1. Render package.json
@@ -937,7 +936,7 @@ fn create_js_package(repo_dir: &Path, site: &SiteConfig) -> Result<()> {
                 std::fs::write(js_dir.join("package.json"), content)
                     .with_context(|| format!("writing js/{}/package.json", &js_package_name))?;
             }
-            Err(e) => eprintln!("warn: failed to render package.json template: {e}"),
+            Err(e) => tracing::warn!(error = %e, "failed to render package.json template"),
         }
     }
 
@@ -948,7 +947,7 @@ fn create_js_package(repo_dir: &Path, site: &SiteConfig) -> Result<()> {
                 std::fs::write(js_dir.join("query.js"), content)
                     .with_context(|| format!("writing js/{}/query.js", &js_package_name))?;
             }
-            Err(e) => eprintln!("warn: failed to render query.js template: {e}"),
+            Err(e) => tracing::warn!(error = %e, "failed to render query.js template"),
         }
     }
 
@@ -959,7 +958,7 @@ fn create_js_package(repo_dir: &Path, site: &SiteConfig) -> Result<()> {
                 std::fs::write(js_dir.join("query.node.js"), content)
                     .with_context(|| format!("writing js/{}/query.node.js", &js_package_name))?;
             }
-            Err(e) => eprintln!("warn: failed to render query.node.js template: {e}"),
+            Err(e) => tracing::warn!(error = %e, "failed to render query.node.js template"),
         }
     }
 
@@ -970,7 +969,7 @@ fn create_js_package(repo_dir: &Path, site: &SiteConfig) -> Result<()> {
                 std::fs::write(js_dir.join("query.browser.js"), content)
                     .with_context(|| format!("writing js/{}/query.browser.js", &js_package_name))?;
             }
-            Err(e) => eprintln!("warn: failed to render query.browser.js template: {e}"),
+            Err(e) => tracing::warn!(error = %e, "failed to render query.browser.js template"),
         }
     }
 
@@ -991,11 +990,9 @@ fn create_js_package(repo_dir: &Path, site: &SiteConfig) -> Result<()> {
             }
         }
     } else {
-        eprintln!(
-            "warn: WASM package not found at {}. \
-             Run: wasm-pack build --target nodejs --features wasm \
-             in crates/genomehubs-query/",
-            wasm_pkg_dir.display()
+        tracing::warn!(
+            pkg = %wasm_pkg_dir.display(),
+            "WASM package not found; Run: wasm-pack build --target nodejs --features wasm in crates/genomehubs-query/"
         );
     }
 
@@ -1013,7 +1010,7 @@ fn create_js_package(repo_dir: &Path, site: &SiteConfig) -> Result<()> {
                         .ok();
                 }
             }
-            Err(e) => eprintln!("warn: failed to render build-wasm.sh template: {e}"),
+            Err(e) => tracing::warn!(error = %e, "failed to render build-wasm.sh template"),
         }
     }
 

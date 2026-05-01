@@ -25,7 +25,7 @@ pub fn run(repo_path: &Path) -> Result<()> {
     let stored_hash = read_stored_hash(&cargo_toml_path)?;
 
     if current_hash == stored_hash {
-        println!("✓  Repo is in sync (hash {current_hash}).");
+        tracing::info!(hash = %current_hash, "✓  Repo is in sync (hash {}).", current_hash);
         Ok(())
     } else {
         bail!(

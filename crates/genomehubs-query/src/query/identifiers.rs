@@ -34,6 +34,7 @@ impl<'de> Deserialize<'de> for Identifiers {
         D: Deserializer<'de>,
     {
         #[derive(Deserialize)]
+        #[serde(deny_unknown_fields)]
         struct Raw {
             #[serde(default)]
             taxa: Vec<String>,
@@ -94,6 +95,7 @@ impl Serialize for Identifiers {
 /// Taxon names with their filter strategy.
 /// This struct is used within `Identifiers` to specify how taxon names should be filtered in the query (e.g., direct matches, including descendants, including ancestors).
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct TaxaIdentifier {
     pub names: Vec<String>,
     pub filter_type: TaxonFilterType,

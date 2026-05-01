@@ -1,3 +1,4 @@
+pub mod count;
 pub mod indices;
 pub mod result_fields;
 pub mod status;

@@ -96,6 +96,10 @@ pub fn build_search_body(
 
     // Build an empty `aggs` skeleton and populate the `filters` map from
     // `fields` if provided. This mirrors the JS builder fixtures.
+    // Only include `aggs` when there are explicit fields requested. Building
+    // an empty `filters` object (as Elasticsearch rejects empty filters)
+    // would cause ES to return an `illegal_argument_exception`.
+    let mut include_aggs = false;
     let mut aggs_val = json!({
         "fields": {
             "nested": { "path": "attributes" },
@@ -112,6 +116,7 @@ pub fn build_search_body(
     });
     if let Some(flds) = fields {
         if !flds.is_empty() {
+            include_aggs = true;
             if let Some(filters_obj) = aggs_val
                 .get_mut("fields")
                 .and_then(|v| v.get_mut("aggs"))
@@ -126,7 +131,9 @@ pub fn build_search_body(
             }
         }
     }
-    body["aggs"] = aggs_val;
+    if include_aggs {
+        body["aggs"] = aggs_val;
+    }
 
     let q = query.unwrap_or("").trim();
     // Only return `match_all` when there is nothing at all to filter on.
@@ -988,5 +995,38 @@ mod tests {
         let b = build_count_body(Some("a=1 and b:foo"), false).unwrap();
         let filters = b["query"]["bool"]["filter"].as_array().unwrap();
         assert!(filters.iter().any(|f| f.get("term").is_some()));
+    }
+
+    #[test]
+    fn search_body_adds_non_empty_aggregation_filters_for_assembly_level() {
+        let body = build_search_body(
+            None,
+            Some(&["assembly_level"]),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            0,
+            0,
+            None,
+            None,
+        )
+        .unwrap();
+
+        let filters = body["aggs"]["fields"]["aggs"]["by_key"]["filters"]["filters"]
+            .as_object()
+            .expect("expected filters map object");
+
+        assert!(
+            !filters.is_empty(),
+            "expected non-empty aggregation filters"
+        );
+        assert_eq!(
+            filters.get("assembly_level"),
+            Some(&json!({ "term": { "attributes.key": "assembly_level" } }))
+        );
     }
 }

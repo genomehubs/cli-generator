@@ -80,7 +80,7 @@
         }
       }
     },
-    "/api/v3/taxonomic-ranks": {
+    "/api/v3/taxonomicRanks": {
       "get": {
         "tags": [
           "routes::taxonomic_ranks"

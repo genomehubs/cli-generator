@@ -44,7 +44,7 @@ pub fn run(repo_path: &Path, config_dir: Option<&Path>, force_fresh: bool) -> Re
     }
     write_generated_files(repo_path, &all_files).context("writing generated files")?;
 
-    println!("✓  Updated generated files in {}", repo_path.display());
+    tracing::info!(repo = %repo_path.display(), "✓  Updated generated files in {}", repo_path.display());
     Ok(())
 }
 
