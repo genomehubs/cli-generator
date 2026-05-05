@@ -354,6 +354,46 @@ def parse_batch_json(raw: str) -> str:
     """
     ...
 
+def parse_record_json(raw: str) -> str:
+    """Parse the ``records`` array from a raw ``/record`` API response.
+
+    Extracts the ``records`` array from the API envelope and flattens each
+    record by merging top-level fields (``recordId``, ``result``) with the
+    nested ``record`` object fields. Returns a JSON array string of flat
+    record dictionaries.
+
+    Args:
+        raw: Raw JSON string from the ``/record`` API endpoint.
+
+    Returns:
+        JSON array string where each element is a flat record dictionary with
+        all envelope and nested fields merged at the top level.
+
+    Raises:
+        ValueError: If the input is not valid JSON.
+    """
+    ...
+
+def parse_lookup_json(raw: str) -> str:
+    """Parse the ``results`` array from a raw ``/lookup`` API response.
+
+    Extracts the ``results`` array from the API envelope and normalises each
+    result to a simple candidate dictionary with ``id``, ``name``, ``rank``,
+    and ``reason`` fields. Supports field fallbacks for v2 compatibility
+    (e.g., ``taxon_id`` → ``id``, ``scientific_name`` → ``name``).
+
+    Args:
+        raw: Raw JSON string from the ``/lookup`` API endpoint.
+
+    Returns:
+        JSON array string where each element is a candidate dictionary with
+        ``id``, ``name``, ``rank``, and ``reason`` fields.
+
+    Raises:
+        ValueError: If the input is not valid JSON.
+    """
+    ...
+
 def validate_query_json(
     query_yaml: str,
     field_metadata_json: str,

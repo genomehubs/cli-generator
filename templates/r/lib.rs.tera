@@ -257,6 +257,26 @@ fn parse_paginated_json(raw: &str) -> String {
     }
 }
 
+/// Parse the `records` array from a raw `/record` API response.
+#[extendr]
+fn parse_record_json(raw: &str) -> String {
+    use crate::embedded::core::parse;
+    match parse::parse_record_json(raw) {
+        Ok(records) => records,
+        Err(e) => format!("{{\"error\": \"{}\"}}", e),
+    }
+}
+
+/// Parse the `results` array from a raw `/lookup` API response.
+#[extendr]
+fn parse_lookup_json(raw: &str) -> String {
+    use crate::embedded::core::parse;
+    match parse::parse_lookup_json(raw) {
+        Ok(results) => results,
+        Err(e) => format!("{{\"error\": \"{}\"}}", e),
+    }
+}
+
 // Register all exported functions with R.
 extendr_module! {
     mod {% endraw %}{{ r_package_name }}{% raw %};
@@ -273,5 +293,7 @@ extendr_module! {
     fn annotated_values;
     fn to_tidy_records;
     fn parse_paginated_json;
+    fn parse_record_json;
+    fn parse_lookup_json;
 }
 {% endraw %}

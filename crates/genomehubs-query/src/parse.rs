@@ -981,6 +981,108 @@ pub fn msearch_result_to_json(result: &MsearchResult) -> String {
     .to_string()
 }
 
+/// Parse the `records` array from a raw `/record` API response.
+///
+/// Extracts a flat record dict from the `/record` response envelope, merging
+/// the top-level `recordId` and `result` fields with all fields from the nested
+/// `record` object.
+///
+/// Returns a JSON array string where each element is a flat dict:
+/// `[{ "recordId": "taxon-9606", "result": "taxon", "taxon_id": "9606", ... }]`
+///
+/// # Example
+/// ```
+/// use genomehubs_query::parse::parse_record_json;
+///
+/// let json = r#"{"status":{"success":true},"records":[{"recordId":"taxon-9606","result":"taxon","record":{"taxon_id":"9606","scientific_name":"Homo sapiens"}}]}"#;
+/// let result = parse_record_json(json).unwrap();
+/// let records: Vec<serde_json::Value> = serde_json::from_str(&result).unwrap();
+/// assert_eq!(records[0]["recordId"], "taxon-9606");
+/// assert_eq!(records[0]["scientific_name"], "Homo sapiens");
+/// ```
+pub fn parse_record_json(raw: &str) -> Result<String, String> {
+    let envelope: serde_json::Value =
+        serde_json::from_str(raw).map_err(|e| format!("invalid JSON: {e}"))?;
+
+    let records = envelope
+        .get("records")
+        .and_then(|r| r.as_array())
+        .ok_or_else(|| "missing 'records' array in response".to_string())?;
+
+    let flat: Vec<serde_json::Value> = records
+        .iter()
+        .map(|rec| {
+            let mut out = serde_json::Map::new();
+            // Top-level envelope fields
+            if let Some(id) = rec.get("recordId").and_then(|v| v.as_str()) {
+                out.insert(
+                    "recordId".to_string(),
+                    serde_json::Value::String(id.to_string()),
+                );
+            }
+            if let Some(result) = rec.get("result").and_then(|v| v.as_str()) {
+                out.insert(
+                    "result".to_string(),
+                    serde_json::Value::String(result.to_string()),
+                );
+            }
+            // Flatten all fields from the nested `record` object
+            if let Some(record_obj) = rec.get("record").and_then(|r| r.as_object()) {
+                for (k, v) in record_obj {
+                    out.insert(k.clone(), v.clone());
+                }
+            }
+            serde_json::Value::Object(out)
+        })
+        .collect();
+
+    serde_json::to_string(&flat).map_err(|e| format!("serialisation error: {e}"))
+}
+
+/// Parse the `results` array from a raw `/lookup` API response.
+///
+/// Normalises the `/lookup` response into a simple list of candidates with
+/// id, name, rank, and reason fields.
+///
+/// Returns a JSON array string: `[{ "id": "9606", "name": "Homo sapiens", "rank": "species", "reason": "sayt" }]`
+///
+/// # Example
+/// ```
+/// use genomehubs_query::parse::parse_lookup_json;
+///
+/// let json = r#"{"status":{"hits":1},"results":[{"id":"9606","name":"Homo sapiens","rank":"species","reason":"exact"}]}"#;
+/// let result = parse_lookup_json(json).unwrap();
+/// let candidates: Vec<serde_json::Value> = serde_json::from_str(&result).unwrap();
+/// assert_eq!(candidates[0]["name"], "Homo sapiens");
+/// assert_eq!(candidates[0]["reason"], "exact");
+/// ```
+pub fn parse_lookup_json(raw: &str) -> Result<String, String> {
+    let envelope: serde_json::Value =
+        serde_json::from_str(raw).map_err(|e| format!("invalid JSON: {e}"))?;
+
+    let results = envelope
+        .get("results")
+        .and_then(|r| r.as_array())
+        .ok_or_else(|| "missing 'results' array in response".to_string())?;
+
+    let candidates: Vec<serde_json::Value> = results
+        .iter()
+        .map(|item| {
+            serde_json::json!({
+                "id": item.get("id").or_else(|| item.get("taxon_id"))
+                         .and_then(|v| v.as_str()).unwrap_or(""),
+                "name": item.get("name").or_else(|| item.get("scientific_name"))
+                            .and_then(|v| v.as_str()).unwrap_or(""),
+                "rank": item.get("rank").or_else(|| item.get("taxon_rank"))
+                            .and_then(|v| v.as_str()),
+                "reason": item.get("reason").and_then(|v| v.as_str()).unwrap_or("match"),
+            })
+        })
+        .collect();
+
+    serde_json::to_string(&candidates).map_err(|e| format!("serialisation error: {e}"))
+}
+
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 #[cfg(test)]
@@ -1679,5 +1781,109 @@ mod tests {
         let json_str = msearch_result_to_json(&result);
         let v: serde_json::Value = serde_json::from_str(&json_str).unwrap();
         assert!(v["results"][0]["error"].is_null());
+    }
+
+    // ── parse_record_json ────────────────────────────────────────────────────
+
+    #[test]
+    fn parse_record_json_extracts_flat_fields() {
+        let raw = r#"{"status":{"success":true},"records":[{"recordId":"taxon-2759","result":"taxon","record":{"taxon_id":"2759","scientific_name":"Eukaryota","taxon_rank":"superkingdom"}}]}"#;
+        let out = parse_record_json(raw).unwrap();
+        let arr: Vec<serde_json::Value> = serde_json::from_str(&out).unwrap();
+        assert_eq!(arr.len(), 1);
+        assert_eq!(arr[0]["recordId"], "taxon-2759");
+        assert_eq!(arr[0]["result"], "taxon");
+        assert_eq!(arr[0]["scientific_name"], "Eukaryota");
+        assert_eq!(arr[0]["taxon_rank"], "superkingdom");
+    }
+
+    #[test]
+    fn parse_record_json_multiple_records() {
+        let raw = r#"{"status":{"success":true},"records":[{"recordId":"taxon-9606","result":"taxon","record":{"taxon_id":"9606","scientific_name":"Homo sapiens"}},{"recordId":"taxon-10090","result":"taxon","record":{"taxon_id":"10090","scientific_name":"Mus musculus"}}]}"#;
+        let out = parse_record_json(raw).unwrap();
+        let arr: Vec<serde_json::Value> = serde_json::from_str(&out).unwrap();
+        assert_eq!(arr.len(), 2);
+        assert_eq!(arr[0]["scientific_name"], "Homo sapiens");
+        assert_eq!(arr[1]["scientific_name"], "Mus musculus");
+    }
+
+    #[test]
+    fn parse_record_json_empty_records_array() {
+        let raw = r#"{"status":{"success":true},"records":[]}"#;
+        let out = parse_record_json(raw).unwrap();
+        let arr: Vec<serde_json::Value> = serde_json::from_str(&out).unwrap();
+        assert_eq!(arr.len(), 0);
+    }
+
+    #[test]
+    fn parse_record_json_missing_records_returns_err() {
+        let raw = r#"{"status":{"success":true}}"#;
+        assert!(parse_record_json(raw).is_err());
+    }
+
+    #[test]
+    fn parse_record_json_invalid_json_returns_err() {
+        assert!(parse_record_json("not json").is_err());
+    }
+
+    // ── parse_lookup_json ────────────────────────────────────────────────────
+
+    #[test]
+    fn parse_lookup_json_normalises_results() {
+        let raw = r#"{"status":{"hits":1},"results":[{"id":"9606","name":"Homo sapiens","rank":"species","reason":"sayt"}]}"#;
+        let out = parse_lookup_json(raw).unwrap();
+        let arr: Vec<serde_json::Value> = serde_json::from_str(&out).unwrap();
+        assert_eq!(arr.len(), 1);
+        assert_eq!(arr[0]["id"], "9606");
+        assert_eq!(arr[0]["name"], "Homo sapiens");
+        assert_eq!(arr[0]["rank"], "species");
+        assert_eq!(arr[0]["reason"], "sayt");
+    }
+
+    #[test]
+    fn parse_lookup_json_uses_fallback_fields() {
+        let raw = r#"{"status":{"hits":1},"results":[{"taxon_id":"10090","scientific_name":"Mus musculus","taxon_rank":"species","reason":"wildcard"}]}"#;
+        let out = parse_lookup_json(raw).unwrap();
+        let arr: Vec<serde_json::Value> = serde_json::from_str(&out).unwrap();
+        assert_eq!(arr[0]["id"], "10090");
+        assert_eq!(arr[0]["name"], "Mus musculus");
+        assert_eq!(arr[0]["rank"], "species");
+    }
+
+    #[test]
+    fn parse_lookup_json_missing_rank_is_null() {
+        let raw = r#"{"status":{"hits":1},"results":[{"id":"9606","name":"Homo sapiens","reason":"exact"}]}"#;
+        let out = parse_lookup_json(raw).unwrap();
+        let arr: Vec<serde_json::Value> = serde_json::from_str(&out).unwrap();
+        assert!(arr[0]["rank"].is_null());
+    }
+
+    #[test]
+    fn parse_lookup_json_multiple_results() {
+        let raw = r#"{"status":{"hits":2},"results":[{"id":"9606","name":"Homo sapiens","rank":"species","reason":"sayt"},{"id":"10090","name":"Mus musculus","rank":"species","reason":"wildcard"}]}"#;
+        let out = parse_lookup_json(raw).unwrap();
+        let arr: Vec<serde_json::Value> = serde_json::from_str(&out).unwrap();
+        assert_eq!(arr.len(), 2);
+        assert_eq!(arr[0]["reason"], "sayt");
+        assert_eq!(arr[1]["reason"], "wildcard");
+    }
+
+    #[test]
+    fn parse_lookup_json_empty_results_array() {
+        let raw = r#"{"status":{"hits":0},"results":[]}"#;
+        let out = parse_lookup_json(raw).unwrap();
+        let arr: Vec<serde_json::Value> = serde_json::from_str(&out).unwrap();
+        assert_eq!(arr.len(), 0);
+    }
+
+    #[test]
+    fn parse_lookup_json_missing_results_returns_err() {
+        let raw = r#"{"status":{"hits":0}}"#;
+        assert!(parse_lookup_json(raw).is_err());
+    }
+
+    #[test]
+    fn parse_lookup_json_invalid_json_returns_err() {
+        assert!(parse_lookup_json("not json").is_err());
     }
 }

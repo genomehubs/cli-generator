@@ -282,6 +282,29 @@ fn parse_batch_json(raw: &str) -> String {
     genomehubs_query::parse_batch_json(raw)
 }
 
+/// Parse the `records` array from a raw `/record` API response.
+///
+/// Returns a JSON array string of flat record dicts with all `_source` fields
+/// merged with envelope fields (`recordId`, `result`).
+///
+/// Raises `ValueError` on parse failure.
+#[cfg(feature = "extension-module")]
+#[pyfunction]
+fn parse_record_json(raw: &str) -> String {
+    genomehubs_query::parse_record_json(raw)
+}
+
+/// Parse the `results` array from a raw `/lookup` API response.
+///
+/// Returns a JSON array string of candidate dicts with id, name, rank, and reason.
+///
+/// Raises `ValueError` on parse failure.
+#[cfg(feature = "extension-module")]
+#[pyfunction]
+fn parse_lookup_json(raw: &str) -> String {
+    genomehubs_query::parse_lookup_json(raw)
+}
+
 /// Validate a query against field metadata and configuration.
 ///
 /// Accepts YAML representations of the query and field metadata as JSON, and
@@ -331,5 +354,7 @@ fn cli_generator(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(to_tidy_records, m)?)?;
     m.add_function(wrap_pyfunction!(parse_paginated_json, m)?)?;
     m.add_function(wrap_pyfunction!(parse_batch_json, m)?)?;
+    m.add_function(wrap_pyfunction!(parse_record_json, m)?)?;
+    m.add_function(wrap_pyfunction!(parse_lookup_json, m)?)?;
     Ok(())
 }

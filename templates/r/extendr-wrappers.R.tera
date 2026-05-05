@@ -69,3 +69,9 @@ to_tidy_records <- function(records_json) .Call(wrap__to_tidy_records, records_j
 
 #' Parse one page from a `/searchPaginated` response.
 parse_paginated_json <- function(raw) .Call(wrap__parse_paginated_json, raw)
+
+#' Parse the `records` array from a raw `/record` API response.
+parse_record_json <- function(raw) .Call(wrap__parse_record_json, raw)
+
+#' Parse the `results` array from a raw `/lookup` API response.
+parse_lookup_json <- function(raw) .Call(wrap__parse_lookup_json, raw)

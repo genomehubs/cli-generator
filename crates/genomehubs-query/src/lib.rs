@@ -269,6 +269,28 @@ pub fn parse_batch_json(raw: &str) -> String {
     }
 }
 
+/// Parse the `records` array from a raw `/record` API response.
+///
+/// Extracts `records` array, flattens each by merging top-level `recordId`/`result`
+/// fields with the nested `record` object fields. Returns JSON array string.
+///
+/// Returns `{"error":"..."}` if the input is not valid JSON.
+#[cfg_attr(feature = "wasm", wasm_bindgen)]
+pub fn parse_record_json(raw: &str) -> String {
+    parse::parse_record_json(raw).unwrap_or_else(|e| format!(r#"{{"error":{e:?}}}"#))
+}
+
+/// Parse the `results` array from a raw `/lookup` API response.
+///
+/// Extracts `results` array, normalises each to simple candidate dict with
+/// id, name, rank, and reason fields. Returns JSON array string.
+///
+/// Returns `{"error":"..."}` if the input is not valid JSON.
+#[cfg_attr(feature = "wasm", wasm_bindgen)]
+pub fn parse_lookup_json(raw: &str) -> String {
+    parse::parse_lookup_json(raw).unwrap_or_else(|e| format!(r#"{{"error":{e:?}}}"#))
+}
+
 /// Describe a query in human-readable form.
 ///
 /// Generates a concise or verbose prose description of a genomehubs query,
