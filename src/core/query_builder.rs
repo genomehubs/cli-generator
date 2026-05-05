@@ -149,18 +149,41 @@ pub fn build_search_body(
         return Ok(body);
     }
 
-    // taxon term extraction: prefer tax_name(NAME)
-    let mut tax_term: Option<String> = None;
+    // taxon term extraction: handle tax_name(X), tax_tree(X), tax_lineage(X)
+    #[derive(Debug, Clone)]
+    enum TaxaExpr {
+        Name(String),
+        Tree(String),
+        Lineage(String),
+    }
+
+    let mut taxa_expr: Option<TaxaExpr> = None;
     if !q.is_empty() {
-        if let Some(start) = q.to_lowercase().find("tax_name(") {
+        let q_lower = q.to_lowercase();
+        // Try to match tax_name(X), tax_tree(X), tax_lineage(X)
+        if let Some(start) = q_lower.find("tax_name(") {
             if let Some(open) = q[start..].find('(') {
                 if let Some(close) = q[start + open..].find(')') {
                     let raw = &q[start + open + 1..start + open + close];
-                    tax_term = Some(raw.trim().to_string());
+                    taxa_expr = Some(TaxaExpr::Name(raw.trim().to_string()));
+                }
+            }
+        } else if let Some(start) = q_lower.find("tax_tree(") {
+            if let Some(open) = q[start..].find('(') {
+                if let Some(close) = q[start + open..].find(')') {
+                    let raw = &q[start + open + 1..start + open + close];
+                    taxa_expr = Some(TaxaExpr::Tree(raw.trim().to_string()));
+                }
+            }
+        } else if let Some(start) = q_lower.find("tax_lineage(") {
+            if let Some(open) = q[start..].find('(') {
+                if let Some(close) = q[start + open..].find(')') {
+                    let raw = &q[start + open + 1..start + open + close];
+                    taxa_expr = Some(TaxaExpr::Lineage(raw.trim().to_string()));
                 }
             }
         } else if q.split_whitespace().count() == 1 {
-            tax_term = Some(q.to_string());
+            taxa_expr = Some(TaxaExpr::Name(q.to_string()));
         }
     }
 
@@ -753,14 +776,14 @@ pub fn build_search_body(
         }
     }
 
-    // taxon filter: match taxon_names.name or taxon_id
-    // If no explicit tax term was provided but a `rank` was given, add a
+    // taxon filter: match taxon_names.name or taxon_id, or lineage for tree/lineage queries
+    // If no explicit taxa expression was provided but a `rank` was given, add a
     // taxon-identifiers wrapper (taxon_names / taxon_id / lineage) to
     // mirror the fixture shape which often includes an identifier search.
-    if tax_term.is_none() {
-        // Always add a taxon-identifiers wrapper when no explicit tax term
+    if taxa_expr.is_none() {
+        // Always add a taxon-identifiers wrapper when no explicit taxa expression
         // was provided. Use the `rank` string if present. When neither a
-        // tax term nor a rank is provided, many fixtures expect a default
+        // taxa expression nor a rank is provided, many fixtures expect a default
         // taxonomy root identifier (e.g. NCBI Eukaryota `2759`). Use the
         // `group` hint to choose a safe default for taxon queries.
         let idq = match rank {
@@ -822,15 +845,101 @@ pub fn build_search_body(
             .push(id_wrapper);
     }
 
-    if let Some(name) = tax_term {
-        let tax_filter = json!({
-            "bool": {
-                "should": [
-                    { "nested": { "path": "taxon_names", "query": { "bool": { "filter": [ { "match": { "taxon_names.name": name.to_lowercase() } } ] } } } },
-                    { "match": { "taxon_id": name.to_lowercase() } }
-                ]
+    if let Some(expr) = taxa_expr {
+        let tax_filter = match expr {
+            TaxaExpr::Name(name) => {
+                // For tax_name(X): match exact name or ID (supports comma-separated list)
+                // Split by comma and create OR clause for each value
+                let names: Vec<&str> = name.split(',').map(|s| s.trim()).collect();
+                let name_queries: Vec<serde_json::Value> = names
+                    .iter()
+                    .flat_map(|n| {
+                        let lower = n.to_lowercase();
+                        vec![
+                            json!({
+                                "nested": {
+                                    "path": "taxon_names",
+                                    "query": {
+                                        "bool": {
+                                            "filter": [{ "match": { "taxon_names.name": &lower } }]
+                                        }
+                                    }
+                                }
+                            }),
+                            json!({ "match": { "taxon_id": &lower } }),
+                        ]
+                    })
+                    .collect();
+
+                json!({
+                    "bool": {
+                        "should": name_queries
+                    }
+                })
             }
-        });
+            TaxaExpr::Tree(query_term) => {
+                // For tax_tree(X): match X and all descendants in lineage by taxon_id or scientific_name
+                // Supports comma-separated list
+                let terms: Vec<&str> = query_term.split(',').map(|s| s.trim()).collect();
+                let tree_queries: Vec<serde_json::Value> = terms
+                    .iter()
+                    .flat_map(|t| {
+                        let lower = t.to_lowercase();
+                        vec![
+                            json!({ "match": { "taxon_id": &lower } }),
+                            json!({
+                                "nested": {
+                                    "path": "lineage",
+                                    "query": {
+                                        "bool": {
+                                            "filter": [{
+                                                "bool": {
+                                                    "should": [
+                                                        { "match": { "lineage.taxon_id": &lower } },
+                                                        { "match": { "lineage.scientific_name": &lower } }
+                                                    ]
+                                                }
+                                            }]
+                                        }
+                                    }
+                                }
+                            }),
+                        ]
+                    })
+                    .collect();
+
+                json!({
+                    "bool": {
+                        "should": tree_queries
+                    }
+                })
+            }
+            TaxaExpr::Lineage(query_term) => {
+                // For tax_lineage(X): return records that ARE X (the ancestors).
+                // This differs from tree which includes descendants.
+                // V2 API extracts the lineage of X and returns those ancestor records,
+                // so we match only the direct taxon_id/scientific_name, not lineage descendants.
+                json!({
+                    "bool": {
+                        "should": [
+                            { "match": { "taxon_id": query_term.to_lowercase() } },
+                            {
+                                "nested": {
+                                    "path": "taxon_names",
+                                    "query": {
+                                        "bool": {
+                                            "filter": [
+                                                { "match": { "taxon_names.name": query_term.to_lowercase() } }
+                                            ]
+                                        }
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                })
+            }
+        };
         body["query"]["bool"]["filter"]
             .as_array_mut()
             .unwrap()

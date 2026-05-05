@@ -1,0 +1,25 @@
+## countBatch with multi-query combining: get total AND per-group counts
+## Each batch item can independently use OR/AND combining
+## Usage:
+##   POST /api/v3/countBatch
+##   curl -X POST http://localhost:3000/api/v3/countBatch \
+##     -H "Content-Type: application/json" \
+##     -d @examples/query-batch-count-multi.yaml
+
+queries:
+  # First batch item: count Mammalia OR Aves together (total)
+  - index: taxon
+    combine_with: OR
+    queries:
+      - index: taxon
+        taxa: [Mammalia]
+      - index: taxon
+        taxa: [Aves]
+
+  # Second batch item: count Mamm alone
+  - index: taxon
+    taxa: [Mammalia]
+
+  # Third batch item: count Aves alone
+  - index: taxon
+    taxa: [Aves]

@@ -1,0 +1,15 @@
+## Multi-query AND: search for (Mammalia AND "Felis" excluded)
+## This combines into a single ES query with bool.must
+## Usage:
+##   POST /api/v3/search
+##   curl -X POST http://localhost:3000/api/v3/search \
+##     -H "Content-Type: application/json" \
+##     -d '{"query_yaml": "'$(cat examples/query-multi-and.yaml | tr '\n' '\\n')'", "size": 10}'
+
+index: taxon
+combine_with: AND
+queries:
+  - index: taxon
+    taxa: [Mammalia]
+  - index: taxon
+    taxa: ["!Felis"]

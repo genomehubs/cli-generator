@@ -140,7 +140,11 @@ fn main() {
             if joined.is_empty() {
                 None
             } else {
-                Some(format!("tax_name({})", joined))
+                Some(format!(
+                    "{}({})",
+                    taxa_ident.filter_type.api_function(),
+                    joined
+                ))
             }
         } else {
             None

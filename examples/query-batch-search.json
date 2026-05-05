@@ -1,0 +1,16 @@
+{
+  "searches": [
+    {
+      "query_yaml": "index: taxon\ntaxa: [Mammalia]\nrank: species",
+      "params_yaml": "size: 5"
+    },
+    {
+      "query_yaml": "index: taxon\ntaxa: [Aves]\nrank: species",
+      "params_yaml": "size: 5"
+    },
+    {
+      "query_yaml": "index: taxon\ntaxa: [Reptilia]\nrank: species",
+      "params_yaml": "size: 5"
+    }
+  ]
+}

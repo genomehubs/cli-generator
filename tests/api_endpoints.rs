@@ -1,4 +1,4 @@
-// Integration tests for genomehubs-api v3 endpoints: /record, /lookup, /batchSearch
+// Integration tests for genomehubs-api v3 endpoints: /record, /lookup, /searchBatch
 //
 // These tests run against a live Elasticsearch instance when `config/es_integration.toml`
 // exists and contains ES connection details. The tests use the live ES data to verify
@@ -327,7 +327,7 @@ fn api_record_multiple_ids() {
 }
 
 #[test]
-fn api_batchsearch_multiple_queries() {
+fn api_searchbatch_multiple_queries() {
     let _cfg = match load_es_config() {
         Some(c) => c,
         None => return,
@@ -340,7 +340,7 @@ fn api_batchsearch_multiple_queries() {
         let client = reqwest::Client::new();
 
         // Test: Batch search with multiple queries
-        let url = format!("{}/api/v3/batchSearch", api_base);
+        let url = format!("{}/api/v3/searchBatch", api_base);
         let body = json!({
             "searches": [
                 {
@@ -359,10 +359,10 @@ fn api_batchsearch_multiple_queries() {
             .json(&body)
             .send()
             .await
-            .expect("batchSearch request");
-        assert_eq!(resp.status(), 200, "batchSearch status should be 200");
+            .expect("searchBatch request");
+        assert_eq!(resp.status(), 200, "searchBatch status should be 200");
 
-        let response: serde_json::Value = resp.json().await.expect("parsing batchSearch response");
+        let response: serde_json::Value = resp.json().await.expect("parsing searchBatch response");
         assert!(
             response["status"]["success"].as_bool().unwrap_or(false),
             "status.success should be true"
@@ -388,7 +388,7 @@ fn api_batchsearch_multiple_queries() {
 }
 
 #[test]
-fn api_batchsearch_max_queries_limit() {
+fn api_searchbatch_max_queries_limit() {
     let _cfg = match load_es_config() {
         Some(c) => c,
         None => return,
@@ -409,7 +409,7 @@ fn api_batchsearch_max_queries_limit() {
             }));
         }
 
-        let url = format!("{}/api/v3/batchSearch", api_base);
+        let url = format!("{}/api/v3/searchBatch", api_base);
         let body = json!({ "searches": searches });
 
         let resp = client
@@ -417,10 +417,10 @@ fn api_batchsearch_max_queries_limit() {
             .json(&body)
             .send()
             .await
-            .expect("batchSearch request");
-        assert_eq!(resp.status(), 200, "batchSearch status should be 200");
+            .expect("searchBatch request");
+        assert_eq!(resp.status(), 200, "searchBatch status should be 200");
 
-        let response: serde_json::Value = resp.json().await.expect("parsing batchSearch response");
+        let response: serde_json::Value = resp.json().await.expect("parsing searchBatch response");
         // Should fail or return error status due to exceeding max
         assert!(
             !response["status"]["success"].as_bool().unwrap_or(true),
@@ -430,7 +430,7 @@ fn api_batchsearch_max_queries_limit() {
 }
 
 #[test]
-fn api_batchsearch_invalid_yaml() {
+fn api_searchbatch_invalid_yaml() {
     let _cfg = match load_es_config() {
         Some(c) => c,
         None => return,
@@ -443,7 +443,7 @@ fn api_batchsearch_invalid_yaml() {
         let client = reqwest::Client::new();
 
         // Test: Invalid YAML should be handled gracefully
-        let url = format!("{}/api/v3/batchSearch", api_base);
+        let url = format!("{}/api/v3/searchBatch", api_base);
         let body = json!({
             "searches": [
                 {
@@ -458,14 +458,347 @@ fn api_batchsearch_invalid_yaml() {
             .json(&body)
             .send()
             .await
-            .expect("batchSearch request");
-        assert_eq!(resp.status(), 200, "batchSearch status should be 200");
+            .expect("searchBatch request");
+        assert_eq!(resp.status(), 200, "searchBatch status should be 200");
 
-        let response: serde_json::Value = resp.json().await.expect("parsing batchSearch response");
+        let response: serde_json::Value = resp.json().await.expect("parsing searchBatch response");
         // Should fail due to invalid query_yaml
         assert!(
             !response["status"]["success"].as_bool().unwrap_or(true),
             "should fail with invalid YAML"
         );
+    });
+}
+
+#[test]
+fn api_countBatch_multiple_queries() {
+    let _cfg = match load_es_config() {
+        Some(c) => c,
+        None => return,
+    };
+
+    let api_base = get_api_base_url();
+
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    rt.block_on(async {
+        let client = reqwest::Client::new();
+
+        // Test: Batch count with multiple queries
+        let url = format!("{}/api/v3/countBatch", api_base);
+        let body = json!({
+            "searches": [
+                {
+                    "query_yaml": "---\nindex: taxon\n",
+                    "params_yaml": "---\npage: 1\nsize: 10\n"
+                },
+                {
+                    "query_yaml": "---\nindex: taxon\n",
+                    "params_yaml": "---\npage: 1\nsize: 5\n"
+                },
+                {
+                    "query_yaml": "---\nindex: taxon\n",
+                    "params_yaml": "---\npage: 1\nsize: 1\n"
+                }
+            ]
+        });
+
+        let resp = client
+            .post(&url)
+            .json(&body)
+            .send()
+            .await
+            .expect("countBatch request");
+        assert_eq!(resp.status(), 200, "countBatch status should be 200");
+
+        let response: serde_json::Value = resp.json().await.expect("parsing countBatch response");
+        assert!(
+            response["status"]["success"].as_bool().unwrap_or(false),
+            "status.success should be true"
+        );
+        assert!(response["results"].is_array(), "results should be an array");
+
+        // Verify result structure
+        if let Some(results) = response["results"].as_array() {
+            assert_eq!(results.len(), 3, "should have 3 count results");
+            for (i, result) in results.iter().enumerate() {
+                assert!(
+                    result["status"]["success"].as_bool().unwrap_or(false),
+                    "result[{}].status.success should be true",
+                    i
+                );
+                assert!(
+                    result["count"].is_number(),
+                    "result[{}].count should be a number",
+                    i
+                );
+                let count = result["count"].as_u64().unwrap_or(0);
+                assert!(count >= 0, "result[{}].count should be non-negative", i);
+            }
+        }
+    });
+}
+
+#[test]
+fn api_countBatch_max_queries_limit() {
+    let _cfg = match load_es_config() {
+        Some(c) => c,
+        None => return,
+    };
+
+    let api_base = get_api_base_url();
+
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    rt.block_on(async {
+        let client = reqwest::Client::new();
+
+        // Test: Exceed max queries limit (100+)
+        let mut searches = Vec::new();
+        for i in 0..101 {
+            searches.push(json!({
+                "query_yaml": "---\nindex: taxon\n",
+                "params_yaml": format!("---\npage: {}\nsize: 1\n", i)
+            }));
+        }
+
+        let url = format!("{}/api/v3/countBatch", api_base);
+        let body = json!({ "searches": searches });
+
+        let resp = client
+            .post(&url)
+            .json(&body)
+            .send()
+            .await
+            .expect("countBatch request");
+        assert_eq!(resp.status(), 200, "countBatch status should be 200");
+
+        let response: serde_json::Value = resp.json().await.expect("parsing countBatch response");
+        // Should fail due to exceeding max
+        assert!(
+            !response["status"]["success"].as_bool().unwrap_or(true),
+            "should fail when exceeding max searches (>100)"
+        );
+    });
+}
+
+#[test]
+fn api_countBatch_invalid_yaml() {
+    let _cfg = match load_es_config() {
+        Some(c) => c,
+        None => return,
+    };
+
+    let api_base = get_api_base_url();
+
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    rt.block_on(async {
+        let client = reqwest::Client::new();
+
+        // Test: Invalid YAML in query should be handled gracefully
+        let url = format!("{}/api/v3/countBatch", api_base);
+        let body = json!({
+            "searches": [
+                {
+                    "query_yaml": "invalid: [yaml: content",
+                    "params_yaml": "---\npage: 1\nsize: 10\n"
+                }
+            ]
+        });
+
+        let resp = client
+            .post(&url)
+            .json(&body)
+            .send()
+            .await
+            .expect("countBatch request");
+        assert_eq!(resp.status(), 200, "countBatch status should be 200");
+
+        let response: serde_json::Value = resp.json().await.expect("parsing countBatch response");
+        // Should fail due to invalid query_yaml
+        assert!(
+            !response["status"]["success"].as_bool().unwrap_or(true),
+            "should fail with invalid YAML"
+        );
+    });
+}
+
+#[test]
+fn api_search_multi_query_or_combining() {
+    let _cfg = match load_es_config() {
+        Some(c) => c,
+        None => return,
+    };
+
+    let api_base = get_api_base_url();
+
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    rt.block_on(async {
+        let client = reqwest::Client::new();
+
+        // Test: Multi-query search with OR combining
+        let url = format!("{}/api/v3/search", api_base);
+        let body = json!({
+            "query_yaml": "---\nindex: taxon\nqueries:\n  - index: taxon\n  - index: taxon\ncombine_with: OR\n",
+            "params_yaml": "---\npage: 1\nsize: 10\n"
+        });
+
+        let resp = client
+            .post(&url)
+            .json(&body)
+            .send()
+            .await
+            .expect("search request");
+        assert_eq!(resp.status(), 200, "search status should be 200");
+
+        let response: serde_json::Value = resp.json().await.expect("parsing search response");
+        if !response["status"]["success"].as_bool().unwrap_or(false) {
+            eprintln!("Response: {}", serde_json::to_string_pretty(&response).unwrap());
+        }
+        assert!(
+            response["status"]["success"].as_bool().unwrap_or(false),
+            "status.success should be true for multi-query OR. Error: {:?}",
+            response["status"]["error"]
+        );
+        assert!(response["results"].is_array(), "results should be an array");
+        assert!(
+            response["status"]["hits"].is_number(),
+            "status.hits should be a number"
+        );
+    });
+}
+
+#[test]
+fn api_search_multi_query_and_combining() {
+    let _cfg = match load_es_config() {
+        Some(c) => c,
+        None => return,
+    };
+
+    let api_base = get_api_base_url();
+
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    rt.block_on(async {
+        let client = reqwest::Client::new();
+
+        // Test: Multi-query search with AND combining
+        let url = format!("{}/api/v3/search", api_base);
+        let body = json!({
+            "query_yaml": "---\nindex: taxon\nqueries:\n  - index: taxon\n  - index: taxon\ncombine_with: AND\n",
+            "params_yaml": "---\npage: 1\nsize: 10\n"
+        });
+
+        let resp = client
+            .post(&url)
+            .json(&body)
+            .send()
+            .await
+            .expect("search request");
+        assert_eq!(resp.status(), 200, "search status should be 200");
+
+        let response: serde_json::Value = resp.json().await.expect("parsing search response");
+        assert!(
+            response["status"]["success"].as_bool().unwrap_or(false),
+            "status.success should be true for multi-query AND"
+        );
+    });
+}
+
+#[test]
+fn api_search_multi_query_max_limit() {
+    let _cfg = match load_es_config() {
+        Some(c) => c,
+        None => return,
+    };
+
+    let api_base = get_api_base_url();
+
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    rt.block_on(async {
+        let client = reqwest::Client::new();
+
+        // Test: Multi-query search exceeding max 10 queries
+        let mut queries = vec![];
+        for _ in 0..11 {
+            queries.push(serde_json::json!({ "index": "taxon" }));
+        }
+
+        let url = format!("{}/api/v3/search", api_base);
+        let body = json!({
+            "query_yaml": serde_yaml::to_string(&serde_json::json!({
+                "queries": queries,
+                "combine_with": "OR"
+            })).unwrap(),
+            "params_yaml": "---\npage: 1\nsize: 1\n"
+        });
+
+        let resp = client
+            .post(&url)
+            .json(&body)
+            .send()
+            .await
+            .expect("search request");
+        assert_eq!(resp.status(), 200, "search status should be 200");
+
+        let response: serde_json::Value = resp.json().await.expect("parsing search response");
+        assert!(
+            !response["status"]["success"].as_bool().unwrap_or(true),
+            "should fail when exceeding max 10 queries"
+        );
+    });
+}
+
+#[test]
+fn api_countBatch_multi_query_per_item() {
+    let _cfg = match load_es_config() {
+        Some(c) => c,
+        None => return,
+    };
+
+    let api_base = get_api_base_url();
+
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    rt.block_on(async {
+        let client = reqwest::Client::new();
+
+        // Test: countBatch with multi-query per item
+        let url = format!("{}/api/v3/countBatch", api_base);
+        let body = json!({
+            "searches": [
+                {
+                    "query_yaml": "---\nindex: taxon\nqueries:\n  - index: taxon\n  - index: taxon\ncombine_with: OR\n",
+                    "params_yaml": "---\npage: 1\nsize: 10\n"
+                },
+                {
+                    "query_yaml": "---\nindex: taxon\n",
+                    "params_yaml": "---\npage: 1\nsize: 5\n"
+                }
+            ]
+        });
+
+        let resp = client
+            .post(&url)
+            .json(&body)
+            .send()
+            .await
+            .expect("countBatch request");
+        assert_eq!(resp.status(), 200, "countBatch status should be 200");
+
+        let response: serde_json::Value = resp.json().await.expect("parsing countBatch response");
+        assert!(
+            response["status"]["success"].as_bool().unwrap_or(false),
+            "status.success should be true for multi-query countBatch"
+        );
+        assert!(response["results"].is_array(), "results should be an array");
+
+        // Verify result structure
+        if let Some(results) = response["results"].as_array() {
+            assert_eq!(results.len(), 2, "should have 2 count results");
+            for result in results {
+                assert!(
+                    result["status"]["success"].as_bool().unwrap_or(false),
+                    "each result status should be successful"
+                );
+                assert!(result["count"].is_number(), "result.count should be a number");
+            }
+        }
     });
 }

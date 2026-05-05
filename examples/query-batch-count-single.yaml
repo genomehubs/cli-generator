@@ -1,0 +1,14 @@
+## countBatch with single queries: get counts for multiple queries separately
+## Usage:
+##   POST /api/v3/countBatch
+##   curl -X POST http://localhost:3000/api/v3/countBatch \
+##     -H "Content-Type: application/json" \
+##     -d @examples/query-batch-count-single.yaml
+
+queries:
+  - index: taxon
+    taxa: [Mammalia]
+  - index: taxon
+    taxa: [Aves]
+  - index: taxon
+    taxa: [Reptilia]

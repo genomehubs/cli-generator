@@ -1,0 +1,22 @@
+{
+  "query": {
+    "index": "taxon",
+    "combine_with": "OR",
+    "queries": [
+      {
+        "index": "taxon",
+        "taxa": ["Mammalia"],
+        "rank": "species"
+      },
+      {
+        "index": "taxon",
+        "taxa": ["Aves"],
+        "rank": "species"
+      }
+    ]
+  },
+  "params": {
+    "size": 10,
+    "page": 1
+  }
+}

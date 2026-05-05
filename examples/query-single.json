@@ -1,0 +1,4 @@
+{
+  "query_yaml": "index: taxon\ntaxa: [Mammalia]\nrank: species",
+  "params_yaml": "size: 10\npage: 1"
+}

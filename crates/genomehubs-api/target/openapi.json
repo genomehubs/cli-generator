@@ -9,36 +9,6 @@
     "version": "0.1.0"
   },
   "paths": {
-    "/api/v3/batchSearch": {
-      "post": {
-        "tags": [
-          "routes::batchSearch"
-        ],
-        "operationId": "post_batchSearch",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/BatchSearchRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Batch search results",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BatchSearchResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/v3/count": {
       "post": {
         "tags": [
@@ -62,6 +32,36 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/CountResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v3/countBatch": {
+      "post": {
+        "tags": [
+          "routes::countBatch"
+        ],
+        "operationId": "post_countBatch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CountBatchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Batch count results",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CountBatchResponse"
                 }
               }
             }
@@ -240,6 +240,36 @@
         }
       }
     },
+    "/api/v3/searchBatch": {
+      "post": {
+        "tags": [
+          "routes::searchBatch"
+        ],
+        "operationId": "post_searchBatch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SearchBatchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Batch search results",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchBatchResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v3/status": {
       "get": {
         "tags": [
@@ -395,7 +425,7 @@
           }
         }
       },
-      "BatchSearchItem": {
+      "CountBatchItem": {
         "type": "object",
         "required": [
           "query_yaml",
@@ -410,7 +440,7 @@
           }
         }
       },
-      "BatchSearchRequest": {
+      "CountBatchRequest": {
         "type": "object",
         "required": [
           "searches"
@@ -419,12 +449,13 @@
           "searches": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/BatchSearchItem"
-            }
+              "$ref": "#/components/schemas/CountBatchItem"
+            },
+            "description": "Array of queries to count in batch (max 100)."
           }
         }
       },
-      "BatchSearchResponse": {
+      "CountBatchResponse": {
         "type": "object",
         "required": [
           "status",
@@ -434,29 +465,26 @@
           "results": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/BatchSearchResultItem"
-            }
+              "$ref": "#/components/schemas/CountBatchResultItem"
+            },
+            "description": "Per-query count results."
           },
           "status": {
             "$ref": "#/components/schemas/ApiStatus"
           }
         }
       },
-      "BatchSearchResultItem": {
+      "CountBatchResultItem": {
         "type": "object",
         "required": [
           "status",
-          "count",
-          "hits"
+          "count"
         ],
         "properties": {
           "count": {
             "type": "integer",
+            "format": "int64",
             "minimum": 0
-          },
-          "hits": {
-            "type": "array",
-            "items": {}
           },
           "status": {
             "$ref": "#/components/schemas/ApiStatus"
@@ -689,6 +717,74 @@
           }
         }
       },
+      "SearchBatchItem": {
+        "type": "object",
+        "required": [
+          "query_yaml",
+          "params_yaml"
+        ],
+        "properties": {
+          "params_yaml": {
+            "type": "string"
+          },
+          "query_yaml": {
+            "type": "string"
+          }
+        }
+      },
+      "SearchBatchRequest": {
+        "type": "object",
+        "required": [
+          "searches"
+        ],
+        "properties": {
+          "searches": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SearchBatchItem"
+            }
+          }
+        }
+      },
+      "SearchBatchResponse": {
+        "type": "object",
+        "required": [
+          "status",
+          "results"
+        ],
+        "properties": {
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SearchBatchResultItem"
+            }
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          }
+        }
+      },
+      "SearchBatchResultItem": {
+        "type": "object",
+        "required": [
+          "status",
+          "count",
+          "hits"
+        ],
+        "properties": {
+          "count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "hits": {
+            "type": "array",
+            "items": {}
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          }
+        }
+      },
       "SearchRequest": {
         "type": "object",
         "required": [
@@ -697,12 +793,10 @@
         ],
         "properties": {
           "params_yaml": {
-            "type": "string",
-            "description": "YAML string describing the QueryParams."
+            "type": "string"
           },
           "query_yaml": {
-            "type": "string",
-            "description": "YAML string describing the SearchQuery."
+            "type": "string"
           }
         }
       },

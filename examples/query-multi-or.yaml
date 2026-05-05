@@ -1,0 +1,17 @@
+## Multi-query OR: search for Mammalia OR Aves
+## This combines into a single ES query with bool.should
+## Usage:
+##   POST /api/v3/search
+##   curl -X POST http://localhost:3000/api/v3/search \
+##     -H "Content-Type: application/json" \
+##     -d '{"query_yaml": "'$(cat examples/query-multi-or.yaml | tr '\n' '\\n')'", "size": 10}'
+
+index: taxon
+combine_with: OR
+queries:
+  - index: taxon
+    taxa: [Mammalia]
+    rank: species
+  - index: taxon
+    taxa: [Aves]
+    rank: species

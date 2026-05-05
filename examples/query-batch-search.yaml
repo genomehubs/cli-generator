@@ -1,0 +1,15 @@
+## searchBatch: multiple independent searches
+## Returns separate result sets for each query
+## Usage:
+##   POST /api/v3/searchBatch
+##   curl -X POST http://localhost:3000/api/v3/searchBatch \
+##     -H "Content-Type: application/json" \
+##     -d '{"queries": [{"query_yaml": "'$(cat examples/query-batch-search.yaml | sed -n '1,10p' | tr '\n' '\\n')'"}, ...]}'
+
+queries:
+  - query_yaml: "index: taxon\ntaxa: [Mammalia]\nrank: species"
+    size: 5
+  - query_yaml: "index: taxon\ntaxa: [Aves]\nrank: species"
+    size: 5
+  - query_yaml: "index: taxon\ntaxa: [Reptilia]\nrank: species"
+    size: 5

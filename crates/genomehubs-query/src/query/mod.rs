@@ -22,10 +22,12 @@ use serde::{Deserialize, Serialize};
 /// Combines the `process_identifiers` and `process_attributes` artifacts from
 /// the GoaT MCP server into a single serde-serialisable struct.
 ///
+/// Supports both single queries and multi-query OR/AND combinations.
+///
 /// Load from YAML with [`SearchQuery::from_yaml`]; build a URL with
 /// [`build_query_url`].
 ///
-/// # Example YAML
+/// # Single Query Example
 /// ```yaml
 /// index: taxon
 /// taxa: [Mammalia, "!Felis"]
@@ -42,17 +44,50 @@ use serde::{Deserialize, Serialize};
 /// names: [scientific_name]
 /// ranks: [genus]
 /// ```
+///
+/// # Multi-Query OR Example
+/// ```yaml
+/// combine_with: OR
+/// queries:
+///   - index: taxon
+///     taxa: [Mammalia]
+///   - index: taxon
+///     taxa: [Aves]
+/// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct SearchQuery {
-    /// Which index to search.
+    /// Which index to search (for single-query mode; ignored in multi-query).
+    #[serde(default)]
     pub index: SearchIndex,
     /// Taxon, assembly, and sample identifiers with rank and filter type.
-    #[serde(flatten)]
+    #[serde(flatten, default)]
     pub identifiers: Identifiers,
     /// Attribute filters, return fields, name classes, and rank columns.
-    #[serde(flatten)]
+    #[serde(flatten, default)]
     pub attributes: AttributeSet,
+    /// Multiple queries to combine (enables multi-query mode).
+    #[serde(default)]
+    pub queries: Option<Vec<SearchQuery>>,
+    /// How to combine multiple queries: AND or OR (default: AND).
+    #[serde(default)]
+    pub combine_with: CombineStrategy,
+}
+
+/// Strategy for combining multiple queries.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "UPPERCASE")]
+pub enum CombineStrategy {
+    /// Combine with boolean AND (default).
+    AND,
+    /// Combine with boolean OR.
+    OR,
+}
+
+impl Default for CombineStrategy {
+    fn default() -> Self {
+        CombineStrategy::AND
+    }
 }
 
 impl SearchQuery {
@@ -65,6 +100,28 @@ impl SearchQuery {
     pub fn to_yaml(&self) -> Result<String, serde_yaml::Error> {
         serde_yaml::to_string(self)
     }
+
+    /// Check if this query is in multi-query mode (has nested queries).
+    pub fn is_multi_query(&self) -> bool {
+        self.queries.is_some()
+    }
+
+    /// Check if this is a single query mode (no nested queries).
+    pub fn is_single_query(&self) -> bool {
+        !self.is_multi_query()
+    }
+}
+
+impl Default for SearchQuery {
+    fn default() -> Self {
+        SearchQuery {
+            index: SearchIndex::default(),
+            identifiers: Identifiers::default(),
+            attributes: AttributeSet::default(),
+            queries: None,
+            combine_with: CombineStrategy::default(),
+        }
+    }
 }
 
 /// Which API search index to query.
@@ -74,6 +131,12 @@ pub enum SearchIndex {
     Taxon,
     Assembly,
     Sample,
+}
+
+impl Default for SearchIndex {
+    fn default() -> Self {
+        SearchIndex::Taxon
+    }
 }
 
 // ── QueryParams ───────────────────────────────────────────────────────────────
@@ -260,6 +323,8 @@ taxa: []
             index: SearchIndex::Taxon,
             identifiers: Identifiers::default(),
             attributes: AttributeSet::default(),
+            queries: None,
+            combine_with: Default::default(),
         };
         let yaml = query.to_yaml().expect("serialize");
         assert!(yaml.contains("taxon"));
@@ -271,6 +336,8 @@ taxa: []
             index: SearchIndex::Assembly,
             identifiers: Identifiers::default(),
             attributes: AttributeSet::default(),
+            queries: None,
+            combine_with: Default::default(),
         };
         assert_eq!(query.index, SearchIndex::Assembly);
     }

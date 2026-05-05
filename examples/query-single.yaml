@@ -1,0 +1,10 @@
+## Single query: search for Mammalia
+## Usage:
+##   POST /api/v3/search
+##   curl -X POST http://localhost:3000/api/v3/search \
+##     -H "Content-Type: application/json" \
+##     -d '{"query_yaml": "'$(cat examples/query-single.yaml | tr '\n' '\\n')'", "size": 10}'
+
+index: taxon
+taxa: [Mammalia]
+rank: species

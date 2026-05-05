@@ -1,0 +1,11 @@
+{
+  "query": {
+    "index": "taxon",
+    "taxa": ["Mammalia"],
+    "rank": "species"
+  },
+  "params": {
+    "size": 10,
+    "page": 1
+  }
+}

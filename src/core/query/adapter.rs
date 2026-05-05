@@ -146,6 +146,8 @@ pub fn parse_url_params(
         index,
         identifiers,
         attributes,
+        queries: None,
+        combine_with: Default::default(),
     };
 
     Ok((query, qp))

@@ -945,6 +945,8 @@ mod tests {
                     index: SearchIndex::Assembly,
                     identifiers: Identifiers::default(),
                     attributes: AttributeSet::default(),
+                    queries: None,
+                    combine_with: Default::default(),
                 };
                 let url = build_query_url(
                     &query,

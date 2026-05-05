@@ -11,11 +11,12 @@ const SUPPORTED_ENDPOINTS: &[&str] = &[
     "/taxonomicRanks",
     "/indices",
     "/count",
+    "/countBatch",
     "/search",
     "/record",
     "/lookup",
     "/summary",
-    "/batchSearch",
+    "/searchBatch",
 ];
 
 #[derive(Serialize, utoipa::ToSchema)]

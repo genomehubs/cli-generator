@@ -1,0 +1,4 @@
+{
+  "query_yaml": "index: taxon\ncombine_with: AND\nqueries:\n  - index: taxon\n    taxa: [Mammalia]\n  - index: taxon\n    taxa: [\"!Felis\"]",
+  "params_yaml": "size: 10\npage: 1"
+}

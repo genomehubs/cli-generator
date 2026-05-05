@@ -1,466 +1,160 @@
-# Phase 3: SDK Coverage for New Endpoints
+# Phase 3: SDK Coverage for New Endpoints (Updated - Option A)
 
-**Depends on:** Phases 1–2 (API endpoints must exist before SDK methods are wired)
-**Blocks:** nothing downstream — SDK methods are standalone
-**Estimated scope:** ~3 template files, 2 parse functions, FFI exports (6-touchpoint checklist ×2)
-
----
-
-## Goal
-
-Add `record()`, `lookup()`, `summary()`, `msearch()` methods to all three SDK languages
-(Python, JavaScript, R) following the same pattern as `count()` and `search()`.
-
-Add `parse_record_json()` and `parse_lookup_json()` to the `genomehubs-query` parse module
-and expose them via PyO3, WASM, and extendr.
-
-Document and implement the v2/v3 API version transition strategy.
+**Strategic Decision:** Option A — Complete v3 API enhancements before SDK methods
+**Status:** Waiting for Phase 3a completion
+**Estimated scope:** Phase 3a (2-3 weeks v3 API) → Phase 3b (3-4 hours SDK templates)
 
 ---
 
-## 6-Touchpoint Checklist (from AGENTS.md)
+## Overview
 
-For each new function (`parse_record_json`, `parse_lookup_json`):
+**Phase 3a: v3 API Enhancement** (BLOCKING — NEXT PRIORITY)
 
-| #   | File                                   | Action                                                                |
-| --- | -------------------------------------- | --------------------------------------------------------------------- |
-| 1   | `crates/genomehubs-query/src/parse.rs` | Implement the function                                                |
-| 2   | `src/lib.rs`                           | Add `#[pyfunction]` + register in `#[pymodule]`                       |
-| 3   | `crates/genomehubs-query/src/lib.rs`   | Add `#[cfg_attr(feature = "wasm", wasm_bindgen)]` export              |
-| 4   | `templates/r/lib.rs.tera`              | Add `#[extendr]` function + register in `extendr_module!`             |
-| 5   | `templates/r/extendr-wrappers.R.tera`  | Add R wrapper function                                                |
-| 6   | `templates/python/query.py.tera`       | Call via binding; mirror signature in `python/cli_generator/query.py` |
+- Implement top-level OR support for combining multiple queries
+- Implement `countBatch` endpoint for batch count operations
+- Enables v2/v3 feature parity for all query types
 
-Also update the `__init__.py` import list in `src/commands/new.rs`:`patch_python_init()`.
+**Phase 3b: SDK Methods** (Blocked until 3a complete)
 
----
-
-## Files to Modify
-
-| File                                   | Change                                                   |
-| -------------------------------------- | -------------------------------------------------------- |
-| `crates/genomehubs-query/src/parse.rs` | Add `parse_record_json`, `parse_lookup_json`             |
-| `src/lib.rs`                           | PyO3 exports for both new functions                      |
-| `crates/genomehubs-query/src/lib.rs`   | WASM exports for both new functions                      |
-| `templates/r/lib.rs.tera`              | extendr exports for both new functions                   |
-| `templates/r/extendr-wrappers.R.tera`  | R wrapper stubs                                          |
-| `python/cli_generator/query.py`        | `record()`, `lookup()`, `summary()`, `msearch()` methods |
-| `templates/python/query.py.tera`       | Mirror the same methods                                  |
-| `templates/js/query.js`                | `record()`, `lookup()`, `summary()`, `msearch()` methods |
-| `templates/r/query.R`                  | `record()`, `lookup()`, `summary()`, `msearch()` methods |
-| `src/commands/new.rs`                  | Update `patch_python_init()` with new function names     |
+- Add 5 new methods to Python, JavaScript, R SDKs
+- Parse functions already completed (May 5, 2026)
+- All methods use language-appropriate naming conventions
 
 ---
 
-## Implementation
+## Phase 3a: v3 API Enhancement (CURRENT FOCUS)
 
-### Part A: Parse functions in `crates/genomehubs-query/src/parse.rs`
+**Goal:** Implement missing v3 API features to reach feature parity with v2.
 
-#### `parse_record_json`
+**Estimated effort:** 2–3 weeks
+**Deliverables:** Two new v3 API endpoints enabling top-level OR and batch count
 
-Extracts a flat record dict from the `/record` response envelope.
+### Task 3a.1: Top-Level OR Support
 
-```rust
-/// Parse the `records` array from a raw `/record` API response.
-///
-/// Returns a JSON array string where each element is a flat dict:
-/// `{ "recordId": "...", "result": "taxon", ...all _source fields... }`.
-pub fn parse_record_json(raw: &str) -> Result<String, String> {
-    let envelope: serde_json::Value =
-        serde_json::from_str(raw).map_err(|e| format!("invalid JSON: {e}"))?;
+**What:** Combine multiple queries with OR logic: `(query1) OR (query2) OR (query3)`
 
-    let records = envelope
-        .get("records")
-        .and_then(|r| r.as_array())
-        .ok_or_else(|| "missing 'records' array in response".to_string())?;
+**Implementation tasks:**
 
-    let flat: Vec<serde_json::Value> = records
-        .iter()
-        .map(|rec| {
-            let mut out = serde_json::Map::new();
-            // Top-level envelope fields
-            if let Some(id) = rec.get("recordId").and_then(|v| v.as_str()) {
-                out.insert("recordId".to_string(), serde_json::Value::String(id.to_string()));
-            }
-            if let Some(result) = rec.get("result").and_then(|v| v.as_str()) {
-                out.insert("result".to_string(), serde_json::Value::String(result.to_string()));
-            }
-            // Flatten all fields from the nested `record` object
-            if let Some(record_obj) = rec.get("record").and_then(|r| r.as_object()) {
-                for (k, v) in record_obj {
-                    out.insert(k.clone(), v.clone());
-                }
-            }
-            serde_json::Value::Object(out)
-        })
-        .collect();
+1. Enhance `SearchQuery` type in `crates/genomehubs-query/src/query/mod.rs`
+   - Add optional `queries: Vec<SearchQuery>` for multi-query syntax
+   - Add `combine_with: "AND" | "OR"` field (default: "AND")
+   - Update YAML deserialization
 
-    serde_json::to_string(&flat).map_err(|e| format!("serialisation error: {e}"))
-}
-```
+2. Implement OR combining logic in `crates/genomehubs-api/src/`
+   - Merge multiple SearchQuery objects into single ES query
+   - Use Elasticsearch `bool.should` with `minimum_should_match: 1` (v2 pattern)
+   - Clean up inner_hits recursion
 
-#### `parse_lookup_json`
+3. Add new API endpoint: `/api/v3/query` or extend `/search`
+   - Accept: `queries: [...], combine_with: "OR"`
+   - Return: Combined results with proper hit counts
 
-Normalises the `/lookup` response into a simple list of candidates.
+4. Add integration tests for OR query combinations
 
-```rust
-/// Parse the `results` array from a raw `/lookup` API response.
-///
-/// Returns a JSON array string: `[{ "id": "...", "name": "...", "rank": "...", "reason": "..." }]`
-pub fn parse_lookup_json(raw: &str) -> Result<String, String> {
-    let envelope: serde_json::Value =
-        serde_json::from_str(raw).map_err(|e| format!("invalid JSON: {e}"))?;
+### Task 3a.2: Batch Count (`countBatch`) Endpoint
 
-    let results = envelope
-        .get("results")
-        .and_then(|r| r.as_array())
-        .ok_or_else(|| "missing 'results' array in response".to_string())?;
+**What:** Count results for multiple queries in single request (ES `_msearch` with `size: 0`)
 
-    let candidates: Vec<serde_json::Value> = results
-        .iter()
-        .map(|item| {
-            serde_json::json!({
-                "id": item.get("id").or_else(|| item.get("taxon_id"))
-                         .and_then(|v| v.as_str()).unwrap_or(""),
-                "name": item.get("name").or_else(|| item.get("scientific_name"))
-                            .and_then(|v| v.as_str()).unwrap_or(""),
-                "rank": item.get("rank").or_else(|| item.get("taxon_rank"))
-                            .and_then(|v| v.as_str()),
-                "reason": item.get("reason").and_then(|v| v.as_str()).unwrap_or("match"),
-            })
-        })
-        .collect();
+**Implementation tasks:**
 
-    serde_json::to_string(&candidates).map_err(|e| format!("serialisation error: {e}"))
-}
-```
+1. Add `/api/v3/countBatch` endpoint in `crates/genomehubs-api/src/routes/countBatch.rs`
+   - Input: `searches: [{ query_yaml, params_yaml }, ...]` (max 100)
+   - Output: Per-query count results
+   - Reuse existing `batchSearch` infrastructure with `size: 0`
 
-Add tests in `parse.rs`:
+2. Response format:
 
-```rust
-#[test]
-fn parse_record_json_extracts_fields() {
-    let raw = r#"{"status":{"success":true},"records":[{"recordId":"2759","result":"taxon","record":{"taxon_id":"2759","scientific_name":"Eukaryota"}}]}"#;
-    let out = parse_record_json(raw).unwrap();
-    let arr: Vec<serde_json::Value> = serde_json::from_str(&out).unwrap();
-    assert_eq!(arr[0]["recordId"], "2759");
-    assert_eq!(arr[0]["scientific_name"], "Eukaryota");
-}
+   ```json
+   {
+     "status": { "success": true },
+     "results": [
+       { "status": { "success": true, "hits": 5250, "took": 5 } },
+       { "status": { "success": true, "hits": 12000, "took": 3 } }
+     ]
+   }
+   ```
 
-#[test]
-fn parse_lookup_json_normalises_results() {
-    let raw = r#"{"status":{"hits":2},"results":[{"id":"9606","name":"Homo sapiens","rank":"species","reason":"exact"}]}"#;
-    let out = parse_lookup_json(raw).unwrap();
-    let arr: Vec<serde_json::Value> = serde_json::from_str(&out).unwrap();
-    assert_eq!(arr[0]["name"], "Homo sapiens");
-    assert_eq!(arr[0]["reason"], "exact");
-}
-```
+3. Add integration tests for batch counts
+
+### Task 3a.3: Documentation & Versioning
+
+- Document new v3 endpoints in API reference
+- Update `_v3_supported` detection to include new endpoints
+- Add migration guide: v2 patterns → v3 equivalents
 
 ---
 
-### Part B: PyO3 exports in `src/lib.rs`
+## Phase 3b: SDK Methods (Depends on Phase 3a)
 
-Add after the existing parse function exports (e.g. after `parse_search_json`):
+**Estimated effort:** 3–4 hours
+**Deliverables:** 5 new methods across Python, JavaScript, R SDKs
 
-```rust
-/// Parse the `records` array from a raw `/record` API response.
-///
-/// Returns a JSON array string of flat record dicts.
-/// Raises `ValueError` on parse failure.
-#[cfg(feature = "extension-module")]
-#[pyfunction]
-fn parse_record_json(raw: &str) -> PyResult<String> {
-    genomehubs_query::parse::parse_record_json(raw)
-        .map_err(|e| PyValueError::new_err(e))
-}
+### Method Naming Conventions
 
-/// Parse the `results` array from a raw `/lookup` API response.
-///
-/// Returns a JSON array string of candidate dicts with id, name, rank, reason.
-/// Raises `ValueError` on parse failure.
-#[cfg(feature = "extension-module")]
-#[pyfunction]
-fn parse_lookup_json(raw: &str) -> PyResult<String> {
-    genomehubs_query::parse::parse_lookup_json(raw)
-        .map_err(|e| PyValueError::new_err(e))
-}
-```
+**Language-specific naming:** Uses language convention; API endpoint names remain camelCase
 
-Register both in the `#[pymodule]` `init` function:
+| Method       | Python           | JavaScript      | R                | Notes                      |
+| ------------ | ---------------- | --------------- | ---------------- | -------------------------- |
+| Batch search | `search_batch()` | `searchBatch()` | `search_batch()` | Replaces `batchSearch`     |
+| Batch count  | `count_batch()`  | `countBatch()`  | `count_batch()`  | NEW endpoint from Phase 3a |
+| Record fetch | `record()`       | `record()`      | `record()`       | Separate from search       |
+| Lookup       | `lookup()`       | `lookup()`      | `lookup()`       | Separate from search       |
+| Summary      | `summary()`      | `summary()`     | `summary()`      | Separate from search       |
 
-```rust
-m.add_function(wrap_pyfunction!(parse_record_json, m)?)?;
-m.add_function(wrap_pyfunction!(parse_lookup_json, m)?)?;
-```
+### Files to Modify (Phase 3b)
 
----
+| File                             | Change                                                      |
+| -------------------------------- | ----------------------------------------------------------- |
+| `python/cli_generator/query.py`  | Add 5 new methods (with proper snake_case names)            |
+| `templates/python/query.py.tera` | Mirror identical signatures for generated projects          |
+| `templates/js/query.js`          | Add 5 new methods (with camelCase names)                    |
+| `templates/r/query.R`            | Add 5 new methods + `search_all()` helper for R consistency |
 
-### Part C: WASM exports in `crates/genomehubs-query/src/lib.rs`
+### Parse Functions (Already Completed ✅)
 
-```rust
-/// Parse the `records` array from a raw `/record` API response.
-#[cfg_attr(feature = "wasm", wasm_bindgen)]
-pub fn parse_record_json(raw: &str) -> String {
-    crate::parse::parse_record_json(raw).unwrap_or_else(|e| format!("error: {e}"))
-}
+See previous Phase 3 work (May 5, 2026):
 
-/// Parse the `results` array from a raw `/lookup` API response.
-#[cfg_attr(feature = "wasm", wasm_bindgen)]
-pub fn parse_lookup_json(raw: &str) -> String {
-    crate::parse::parse_lookup_json(raw).unwrap_or_else(|e| format!("error: {e}"))
-}
-```
+- `parse_record_json()` in `crates/genomehubs-query/src/parse.rs` ✅
+- `parse_lookup_json()` in `crates/genomehubs-query/src/parse.rs` ✅
+- PyO3, WASM, extendr exports via 6-touchpoint checklist ✅
+- Python `__init__.py` imports updated ✅
+- Type stubs (`.pyi`) updated ✅
 
----
+### Method Implementation Patterns
 
-### Part D: extendr exports in `templates/r/lib.rs.tera`
+#### Python/R Pattern (for `search_batch()`, `count_batch()`, `record()`, etc.)
 
-```rust
-/// Parse the records array from a raw /record API response.
-#[extendr]
-fn parse_record_json(raw: &str) -> String {
-    crate::embedded::core::parse::parse_record_json(raw).unwrap_or_else(|e| format!("error: {e}"))
-}
-
-/// Parse the results array from a raw /lookup API response.
-#[extendr]
-fn parse_lookup_json(raw: &str) -> String {
-    crate::embedded::core::parse::parse_lookup_json(raw).unwrap_or_else(|e| format!("error: {e}"))
-}
-```
-
-Register in `extendr_module!`:
-
-```rust
-extendr_module! {
-    ...
-    fn parse_record_json;
-    fn parse_lookup_json;
-}
-```
-
----
-
-### Part E: `templates/r/extendr-wrappers.R.tera`
-
-Add the two wrapper stubs (follows the exact same pattern as the existing wrappers):
-
-```r
-#' @export
-parse_record_json <- function(raw) {
-  .Call(wrap__parse_record_json, raw)
-}
-
-#' @export
-parse_lookup_json <- function(raw) {
-  .Call(wrap__parse_lookup_json, raw)
-}
-```
-
----
-
-### Part F: SDK methods
-
-The pattern for all four new methods is identical across languages: build a URL
-(or a JSON body for v3), make an HTTP request, parse the response with the
-appropriate parse function.
-
-#### Python — `python/cli_generator/query.py` (and `templates/python/query.py.tera`)
-
-Both files must have identical method signatures. Changes go into both files.
+Build URL → HTTP request → Parse response → Return data
 
 ```python
-def record(
-    self,
-    record_id: str | list[str],
-    *,
-    api_base: str = "https://goat.genomehubs.org/api",
-    api_version: str = "v3",
-) -> list[dict[str, Any]]:
-    """Fetch one or more records by ID.
-
-    Args:
-        record_id: Single ID string or list of IDs.
-        api_base: API base URL.
-        api_version: ``"v2"`` or ``"v3"`` (default ``"v3"``).
-
-    Returns:
-        List of flat record dicts from :func:`parse_record_json`.
-    """
-    import json, urllib.request
-    from . import parse_record_json as _parse
-
-    ids = record_id if isinstance(record_id, list) else [record_id]
-    ids_str = ",".join(ids)
-    result_type = self._index
-
-    if api_version == "v3":
-        url = f"{api_base}/v3/record?recordId={ids_str}&result={result_type}"
-    else:
-        url = f"{api_base}/v2/record?recordId={ids_str}&result={result_type}"
-
-    with urllib.request.urlopen(url) as resp:
-        raw = resp.read().decode()
-    return json.loads(_parse(raw))
-
-
-def lookup(
-    self,
-    search_term: str,
-    *,
-    api_base: str = "https://goat.genomehubs.org/api",
-    api_version: str = "v3",
-) -> list[dict[str, Any]]:
-    """Resolve a search term to matching records.
-
-    Args:
-        search_term: Term to look up (supports prefix matching).
-        api_base: API base URL.
-        api_version: ``"v2"`` or ``"v3"`` (default ``"v3"``).
-
-    Returns:
-        List of candidate dicts from :func:`parse_lookup_json`.
-    """
-    import json, urllib.request, urllib.parse
-    from . import parse_lookup_json as _parse
-
-    encoded = urllib.parse.quote(search_term)
-    result_type = self._index
-
-    if api_version == "v3":
-        url = f"{api_base}/v3/lookup?searchTerm={encoded}&result={result_type}"
-    else:
-        url = f"{api_base}/v2/lookup?searchTerm={encoded}&result={result_type}"
-
-    with urllib.request.urlopen(url) as resp:
-        raw = resp.read().decode()
-    return json.loads(_parse(raw))
-
-
-def summary(
-    self,
-    record_id: str,
-    fields: list[str],
-    summary_types: list[str] | None = None,
-    *,
-    api_base: str = "https://goat.genomehubs.org/api",
-    api_version: str = "v3",
-) -> list[dict[str, Any]]:
-    """Fetch field summaries for a record.
-
-    Args:
-        record_id: Record ID to summarise.
-        fields: Field names to aggregate.
-        summary_types: Aggregation types, e.g. ``["min", "max"]``.
-        api_base: API base URL.
-        api_version: ``"v2"`` or ``"v3"`` (default ``"v3"``).
-
-    Returns:
-        Raw summaries list from the API response.
-    """
+def search_batch(self, queries, api_base=..., api_version="v3"):
+    """Execute multiple searches in batch."""
     import json, urllib.request
 
-    fields_str = ",".join(fields)
-    result_type = self._index
-    summary_str = ",".join(summary_types) if summary_types else "min,max,mean"
+    url = f"{api_base}/v3/searchBatch"
+    payload = {"searches": [
+        {"query_yaml": q.to_query_yaml(), "params_yaml": q.to_params_yaml()}
+        for q in queries
+    ]}
+    req = urllib.request.Request(url, data=json.dumps(payload).encode(),
+                                 headers={"Content-Type": "application/json"})
+    with urllib.request.urlopen(req) as resp:
+        data = json.loads(resp.read().decode())
+    # Parse results with parse_search_json
+    return [json.loads(parse_search_json(json.dumps(r))) for r in data["results"]]
 
-    if api_version == "v3":
-        url = (f"{api_base}/v3/summary?recordId={record_id}"
-               f"&result={result_type}&fields={fields_str}&summary={summary_str}")
-    else:
-        url = (f"{api_base}/v2/summary?recordId={record_id}"
-               f"&result={result_type}&fields={fields_str}&summary={summary_str}")
-
-    with urllib.request.urlopen(url) as resp:
-        raw = resp.read().decode()
-    data = json.loads(raw)
-    return data.get("summaries", [])
-
-
-def msearch(
-    self,
-    queries: list["QueryBuilder"],
-    *,
-    api_base: str = "https://goat.genomehubs.org/api",
-    api_version: str = "v3",
-) -> list[list[dict[str, Any]]]:
-    """Execute multiple queries in a single batch request.
-
-    Args:
-        queries: List of ``QueryBuilder`` instances to execute.
-        api_base: API base URL.
-        api_version: ``"v2"`` or ``"v3"`` (default ``"v3"``).
-
-    Returns:
-        List of result lists, one per query, each from :func:`parse_search_json`.
-    """
-    import json, urllib.request
-    from . import parse_search_json as _parse
-
-    if api_version == "v3":
-        url = f"{api_base}/v3/msearch"
-        payload = json.dumps({
-            "searches": [
-                {"query_yaml": q.to_query_yaml(), "params_yaml": q.to_params_yaml()}
-                for q in queries
-            ]
-        }).encode()
-        req = urllib.request.Request(url, data=payload,
-                                     headers={"Content-Type": "application/json"})
-        with urllib.request.urlopen(req) as resp:
-            data = json.loads(resp.read().decode())
-        return [
-            json.loads(_parse(json.dumps(result)))
-            for result in data.get("results", [])
-        ]
-    else:
-        # v2: run searches sequentially (no native batch endpoint in v2 for SDK)
-        return [q.search() for q in queries]
+def count_batch(self, queries, api_base=..., api_version="v3"):
+    """Get counts for multiple queries in batch."""
+    # Similar to search_batch but parse results as counts
+    # Extract status.hits from each result
+    return [r["status"]["hits"] for r in data["results"]]
 ```
 
-#### JavaScript — `templates/js/query.js`
-
-Follow the same pattern as `count()` and `search()` already in the file.
+#### JavaScript Pattern
 
 ```javascript
-async record(recordId, { apiBase = this._apiBase, apiVersion = "v3" } = {}) {
-    const ids = Array.isArray(recordId) ? recordId.join(",") : recordId;
-    const url = `${apiBase}/${apiVersion}/record?recordId=${encodeURIComponent(ids)}&result=${this._index}`;
-    const resp = await fetch(url);
-    const raw = await resp.text();
-    const data = JSON.parse(raw);
-    return (data.records || []).map(r => ({ ...r.record, recordId: r.recordId, result: r.result }));
-}
-
-async lookup(searchTerm, { apiBase = this._apiBase, apiVersion = "v3" } = {}) {
-    const url = `${apiBase}/${apiVersion}/lookup?searchTerm=${encodeURIComponent(searchTerm)}&result=${this._index}`;
-    const resp = await fetch(url);
-    const raw = await resp.text();
-    // Use WASM parse_lookup_json if available, else parse inline
-    if (typeof parse_lookup_json === "function") {
-        return JSON.parse(parse_lookup_json(raw));
-    }
-    const data = JSON.parse(raw);
-    return data.results || [];
-}
-
-async summary(recordId, fields, summaryTypes = ["min", "max", "mean"],
-              { apiBase = this._apiBase, apiVersion = "v3" } = {}) {
-    const fieldsStr = fields.join(",");
-    const summaryStr = summaryTypes.join(",");
-    const url = `${apiBase}/${apiVersion}/summary?recordId=${encodeURIComponent(recordId)}&result=${this._index}&fields=${fieldsStr}&summary=${summaryStr}`;
-    const resp = await fetch(url);
-    const data = await resp.json();
-    return data.summaries || [];
-}
-
-async msearch(queryBuilders, { apiBase = this._apiBase, apiVersion = "v3" } = {}) {
-    if (apiVersion !== "v3") {
-        // v2 fallback: sequential
-        return Promise.all(queryBuilders.map(q => q.search()));
-    }
-    const url = `${apiBase}/v3/msearch`;
+async searchBatch(queryBuilders, { apiBase = API_BASE, apiVersion = "v3" } = {}) {
+    const url = `${apiBase}/v3/searchBatch`;
     const payload = {
         searches: queryBuilders.map(q => ({
             query_yaml: q.toQueryYaml(),
@@ -473,158 +167,90 @@ async msearch(queryBuilders, { apiBase = this._apiBase, apiVersion = "v3" } = {}
         body: JSON.stringify(payload),
     });
     const data = await resp.json();
-    return (data.results || []).map(r => r.hits || []);
+    return data.results.map(r => r.hits || []);
+}
+
+async countBatch(queryBuilders, { apiBase = API_BASE, apiVersion = "v3" } = {}) {
+    // Similar to searchBatch but extract hits from status
+    return data.results.map(r => r.status?.hits || 0);
 }
 ```
 
-#### R — `templates/r/query.R`
+#### R Pattern
 
 ```r
-#' Fetch one or more records by ID
-#'
-#' @param record_id Character scalar or vector of record IDs.
-#' @param api_base API base URL.
-#' @param api_version API version string, "v2" or "v3".
-#' @return A list of record lists.
-#' @export
-record = function(record_id, api_base = private$.api_base, api_version = "v3") {
-  ids_str <- paste(record_id, collapse = ",")
-  url <- sprintf("%s/%s/record?recordId=%s&result=%s",
-                 api_base, api_version,
-                 URLencode(ids_str, reserved = TRUE), private$.index)
-  raw <- readLines(url, warn = FALSE)
-  raw_str <- paste(raw, collapse = "\n")
-  parsed <- parse_record_json(raw_str)
-  jsonlite::fromJSON(parsed, simplifyVector = FALSE)
+search_batch = function(queries, api_base = private$.api_base, api_version = "v3") {
+  url <- paste0(api_base, "/v3/searchBatch")
+  payload <- list(searches = lapply(queries, function(q) {
+    list(query_yaml = q$to_query_yaml(), params_yaml = q$to_params_yaml())
+  }))
+  resp <- jsonlite::fromJSON(
+    httr::POST(url, body = jsonlite::toJSON(payload), encode = "json"),
+    simplifyVector = FALSE
+  )
+  lapply(resp$results, function(r) r$hits %||% list())
 },
 
-#' Resolve a search term to matching records
-#'
-#' @param search_term Character string to look up.
-#' @param api_base API base URL.
-#' @param api_version API version string.
-#' @return A list of candidate lists.
-#' @export
-lookup = function(search_term, api_base = private$.api_base, api_version = "v3") {
-  url <- sprintf("%s/%s/lookup?searchTerm=%s&result=%s",
-                 api_base, api_version,
-                 URLencode(search_term, reserved = TRUE), private$.index)
-  raw <- readLines(url, warn = FALSE)
-  raw_str <- paste(raw, collapse = "\n")
-  parsed <- parse_lookup_json(raw_str)
-  jsonlite::fromJSON(parsed, simplifyVector = FALSE)
+count_batch = function(queries, api_base = private$.api_base, api_version = "v3") {
+  # Similar to search_batch but extract status.hits
+  sapply(resp$results, function(r) r$status$hits %||% 0)
 },
+```
 
-#' Fetch field summaries for a record
-#'
-#' @param record_id Record ID string.
-#' @param fields Character vector of field names.
-#' @param summary_types Character vector of aggregation types (default min, max, mean).
-#' @return A list of summary items.
-#' @export
-summary = function(record_id, fields, summary_types = c("min", "max", "mean"),
-                   api_base = private$.api_base, api_version = "v3") {
-  url <- sprintf("%s/%s/summary?recordId=%s&result=%s&fields=%s&summary=%s",
-                 api_base, api_version,
-                 URLencode(record_id, reserved = TRUE), private$.index,
-                 paste(fields, collapse = ","),
-                 paste(summary_types, collapse = ","))
-  data <- jsonlite::fromJSON(url, simplifyVector = FALSE)
-  data$summaries %||% list()
-},
+### API Version Detection (Optional v2/v3 Fallback)
+
+If needed, implement version probing:
+
+```python
+def _probe_v3_support(self, api_base: str) -> bool:
+    """Check if API supports v3 endpoints."""
+    if not hasattr(self, '_v3_checked'):
+        try:
+            resp = urllib.request.urlopen(f"{api_base}/v3/status", timeout=2)
+            self._v3_checked = True
+        except:
+            self._v3_checked = False
+    return self._v3_checked
 ```
 
 ---
 
-### Part G: v2/v3 API Version Transition
+## Completion Checklist (Phase 3a Prerequisites)
 
-**Strategy:**
+**Must complete before Phase 3b SDK methods:**
 
-1. At SDK build time (or on first use), probe `GET {api_base}/v3/status`
-2. If `200` → read `supported: [...]` list; store as `self._v3_supported`
-3. If `404` → set `self._v3_supported = []` (all v2)
-4. Each HTTP method checks: `if "/search" in self._v3_supported: use v3 else: use v2`
-
-Add to `QueryBuilder.__init__`:
-
-```python
-self._v3_supported: list[str] | None = None  # None = not yet probed
-```
-
-Add `_probe_api_version()`:
-
-```python
-def _probe_api_version(self, api_base: str) -> list[str]:
-    """Probe the API once and cache which v3 endpoints are supported."""
-    if self._v3_supported is not None:
-        return self._v3_supported
-    import urllib.request, json
-    try:
-        url = f"{api_base}/v3/status"
-        with urllib.request.urlopen(url, timeout=5) as resp:
-            data = json.loads(resp.read().decode())
-            self._v3_supported = data.get("supported", [])
-    except Exception:
-        self._v3_supported = []
-    return self._v3_supported
-```
-
-In each HTTP method, replace hardcoded `api_version` default with:
-
-```python
-supported = self._probe_api_version(api_base)
-api_version = "v3" if "/search" in supported else "v2"
-```
-
-**Fallback:** If the probe/mixed-mode logic creates complexity in generated SDK code,
-use a `api_version` field in `SiteConfig` set at generation time instead.
+- [ ] Top-level OR support in `SearchQuery` type
+- [ ] `/api/v3/query` endpoint (OR combining) implementation + tests
+- [ ] `/api/v3/countBatch` endpoint implementation + tests
+- [ ] Integration tests pass for both new endpoints
+- [ ] API documentation updated
+- [ ] Version detection updated
 
 ---
 
-## Verification
+## Verification (Phase 3b)
+
+Once Phase 3a complete, verify SDK methods:
 
 ```bash
-# Rebuild Python extension
-maturin develop --features extension-module
-
 # Python
-python -c "
-from cli_generator import parse_record_json, parse_lookup_json
-print(parse_record_json('{\"records\":[{\"recordId\":\"1\",\"result\":\"taxon\",\"record\":{\"taxon_id\":\"1\"}}]}'))
-print(parse_lookup_json('{\"results\":[{\"id\":\"9606\",\"name\":\"Homo sapiens\",\"reason\":\"exact\"}]}'))
-"
+pytest tests/python/ -v -k "test_search_batch or test_count_batch or test_record"
 
-# Full pytest suite
-pytest tests/python/ -v
+# JavaScript
+npm test -- --grep "searchBatch|countBatch|record"
 
-# SDK method test (requires live API)
-python -c "
-from cli_generator import QueryBuilder
-qb = QueryBuilder('taxon')
-recs = qb.record('2759', api_base='https://goat.genomehubs.org/api')
-print(recs[0].get('scientific_name'))
-"
+# R
+R CMD check *.tar.gz
 
-# dev site end-to-end
+# End-to-end
 bash scripts/dev_site.sh --python goat
 ```
 
 ---
 
-## Completion Checklist
+## Next Steps
 
-- [ ] `parse_record_json` implemented + unit tests in `parse.rs`
-- [ ] `parse_lookup_json` implemented + unit tests in `parse.rs`
-- [ ] PyO3 exports in `src/lib.rs` (registered in `#[pymodule]`)
-- [ ] WASM exports in `crates/genomehubs-query/src/lib.rs`
-- [ ] extendr exports in `templates/r/lib.rs.tera`
-- [ ] R wrapper stubs in `templates/r/extendr-wrappers.R.tera`
-- [ ] `src/commands/new.rs` `patch_python_init()` updated
-- [ ] `record()`, `lookup()`, `summary()`, `msearch()` in `python/cli_generator/query.py`
-- [ ] Same methods in `templates/python/query.py.tera` (identical signatures)
-- [ ] Same methods in `templates/js/query.js`
-- [ ] Same methods in `templates/r/query.R`
-- [ ] `_probe_api_version()` added (or build-time config variable as fallback)
-- [ ] `maturin develop` succeeds
-- [ ] `pytest tests/python/ -v` passes
-- [ ] `bash scripts/dev_site.sh --python goat` passes
+1. **Start Phase 3a:** Implement top-level OR support in v3 API
+2. **Track progress:** Update this document as Phase 3a tasks complete
+3. **Begin Phase 3b:** Once Phase 3a endpoints are live and tested
+4. **Document v2/v3 transition:** Add to GETTING_STARTED guides

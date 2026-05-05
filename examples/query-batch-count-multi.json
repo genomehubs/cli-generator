@@ -1,0 +1,16 @@
+{
+  "searches": [
+    {
+      "query_yaml": "index: taxon\ncombine_with: OR\nqueries:\n  - index: taxon\n    taxa: [Mammalia]\n  - index: taxon\n    taxa: [Aves]",
+      "params_yaml": "size: 0"
+    },
+    {
+      "query_yaml": "index: taxon\ntaxa: [Mammalia]",
+      "params_yaml": "size: 0"
+    },
+    {
+      "query_yaml": "index: taxon\ntaxa: [Aves]",
+      "params_yaml": "size: 0"
+    }
+  ]
+}

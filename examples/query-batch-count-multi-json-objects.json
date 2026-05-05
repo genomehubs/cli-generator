@@ -1,0 +1,45 @@
+{
+  "searches": [
+    {
+      "query": {
+        "index": "taxon",
+        "combine_with": "OR",
+        "queries": [
+          {
+            "index": "taxon",
+            "taxa": ["Canis lupus"],
+            "taxon_filter_type": "tree"
+          },
+          {
+            "index": "taxon",
+            "taxa": ["Fragaria vesca"],
+            "taxon_filter_type": "tree"
+          }
+        ]
+      },
+      "params": {
+        "size": 0
+      }
+    },
+    {
+      "query": {
+        "index": "taxon",
+        "taxa": ["Canis lupus"],
+        "taxon_filter_type": "lineage"
+      },
+      "params": {
+        "size": 0
+      }
+    },
+    {
+      "query": {
+        "index": "taxon",
+        "taxa": ["Fragaria vesca"],
+        "taxon_filter_type": "lineage"
+      },
+      "params": {
+        "size": 0
+      }
+    }
+  ]
+}
