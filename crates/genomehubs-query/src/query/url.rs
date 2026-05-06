@@ -489,7 +489,7 @@ mod tests {
     use crate::query::{
         attributes::{Attribute, AttributeSet, AttributeValue, Field, Modifier},
         identifiers::{Identifiers, TaxaIdentifier, TaxonFilterType},
-        QueryParams, SearchIndex, SearchQuery,
+        CombineStrategy, QueryParams, SearchIndex, SearchQuery,
     };
 
     fn default_params() -> QueryParams {
@@ -508,6 +508,8 @@ mod tests {
                 ..Default::default()
             },
             attributes: AttributeSet::default(),
+            queries: None,
+            combine_with: CombineStrategy::AND,
         }
     }
 
@@ -566,6 +568,8 @@ mod tests {
                 }],
                 ..Default::default()
             },
+            queries: None,
+            combine_with: CombineStrategy::AND,
         };
         let url = build_query_url(
             &query,
@@ -602,6 +606,8 @@ mod tests {
                 ranks: vec!["genus".to_string()],
                 ..Default::default()
             },
+            queries: None,
+            combine_with: CombineStrategy::AND,
         };
         let url = build_query_url(
             &query,
@@ -630,6 +636,8 @@ mod tests {
                 }],
                 ..Default::default()
             },
+            queries: None,
+            combine_with: CombineStrategy::AND,
         };
         let url = build_query_url(
             &query,
@@ -661,6 +669,8 @@ mod tests {
                 ],
                 ..Default::default()
             },
+            queries: None,
+            combine_with: CombineStrategy::AND,
         };
         let url = build_query_url(
             &query,
@@ -691,6 +701,8 @@ mod tests {
                 }],
                 ..Default::default()
             },
+            queries: None,
+            combine_with: CombineStrategy::AND,
         };
         let url = build_query_url(
             &query,
@@ -748,6 +760,8 @@ mod tests {
             index: SearchIndex::Taxon,
             identifiers: Identifiers::default(),
             attributes: AttributeSet::default(),
+            queries: None,
+            combine_with: CombineStrategy::AND,
         };
         let url = build_query_url(
             &query,
@@ -801,6 +815,8 @@ mod tests {
                 }],
                 ..Default::default()
             },
+            queries: None,
+            combine_with: CombineStrategy::AND,
         };
         let url = build_query_url(
             &query,
@@ -825,6 +841,8 @@ mod tests {
                 ..Default::default()
             },
             attributes: AttributeSet::default(),
+            queries: None,
+            combine_with: CombineStrategy::AND,
         };
         let url = build_query_url(
             &query,
@@ -870,6 +888,8 @@ mod tests {
                             ..Default::default()
                         },
                         attributes: AttributeSet::default(),
+                        queries: None,
+                        combine_with: CombineStrategy::AND,
                     }
                 })
                 .boxed()
@@ -925,6 +945,8 @@ mod tests {
                         ..Default::default()
                     },
                     attributes: AttributeSet::default(),
+                    queries: None,
+                    combine_with: CombineStrategy::AND,
                 };
                 let url = build_query_url(
                     &query,

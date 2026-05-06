@@ -192,13 +192,17 @@ async fn resolve_lineage_taxon_ids(
         .send()
         .await
         .map_err(|e| format!("lineage query failed: {e}"))?;
-    
+
     let result: serde_json::Value = resp.json().await.map_err(|e| format!("parse error: {e}"))?;
-    
+
     // Extract all taxon_ids from lineage arrays
     let mut taxon_ids = std::collections::HashSet::new();
-    
-    if let Some(hits) = result.get("hits").and_then(|h| h.get("hits")).and_then(|h| h.as_array()) {
+
+    if let Some(hits) = result
+        .get("hits")
+        .and_then(|h| h.get("hits"))
+        .and_then(|h| h.as_array())
+    {
         for hit in hits {
             if let Some(source) = hit.get("_source") {
                 if let Some(lineage) = source.get("lineage").and_then(|l| l.as_array()) {
@@ -211,11 +215,11 @@ async fn resolve_lineage_taxon_ids(
             }
         }
     }
-    
+
     if taxon_ids.is_empty() {
         return Err(format!("no lineage found for taxon: {}", taxon_name));
     }
-    
+
     Ok(taxon_ids.into_iter().collect::<Vec<_>>().join(","))
 }
 
@@ -335,7 +339,10 @@ pub async fn post_countBatch(
                 // Handle lineage filter: resolve ancestor taxa_ids first
                 let mut resolved_taxa = nested_query.identifiers.taxa.clone();
                 if let Some(taxa) = &resolved_taxa {
-                    if matches!(taxa.filter_type, genomehubs_query::query::TaxonFilterType::Lineage) {
+                    if matches!(
+                        taxa.filter_type,
+                        genomehubs_query::query::TaxonFilterType::Lineage
+                    ) {
                         let idx = index_name::resolve_index(&nested_query.index, &state);
                         let lineage_ids = match resolve_lineage_taxon_ids(
                             &state.client,
@@ -348,7 +355,9 @@ pub async fn post_countBatch(
                             Ok(ids) => ids,
                             Err(e) => {
                                 return Json(CountBatchResponse {
-                                    status: ApiStatus::error(format!("lineage resolution failed: {e}")),
+                                    status: ApiStatus::error(format!(
+                                        "lineage resolution failed: {e}"
+                                    )),
                                     total: 0,
                                     unique: None,
                                     results: vec![],
@@ -364,13 +373,9 @@ pub async fn post_countBatch(
                 }
 
                 // Build taxa query fragment from identifiers
-                let taxa_query = resolved_taxa.as_ref().map(|t| {
-                    format!(
-                        "{}({})",
-                        t.filter_type.api_function(),
-                        t.names.join(",")
-                    )
-                });
+                let taxa_query = resolved_taxa
+                    .as_ref()
+                    .map(|t| format!("{}({})", t.filter_type.api_function(), t.names.join(",")));
 
                 let b = match cli_generator::core::query_builder::build_search_body(
                     taxa_query.as_deref(),
@@ -442,7 +447,10 @@ pub async fn post_countBatch(
             // Handle lineage filter: resolve ancestor taxa_ids first
             let mut resolved_taxa = query.identifiers.taxa.clone();
             if let Some(taxa) = &resolved_taxa {
-                if matches!(taxa.filter_type, genomehubs_query::query::TaxonFilterType::Lineage) {
+                if matches!(
+                    taxa.filter_type,
+                    genomehubs_query::query::TaxonFilterType::Lineage
+                ) {
                     let idx = index_name::resolve_index(&query.index, &state);
                     let lineage_ids = match resolve_lineage_taxon_ids(
                         &state.client,
@@ -471,13 +479,9 @@ pub async fn post_countBatch(
             }
 
             // Build taxa query fragment from identifiers
-            let taxa_query = resolved_taxa.as_ref().map(|t| {
-                format!(
-                    "{}({})",
-                    t.filter_type.api_function(),
-                    t.names.join(",")
-                )
-            });
+            let taxa_query = resolved_taxa
+                .as_ref()
+                .map(|t| format!("{}({})", t.filter_type.api_function(), t.names.join(",")));
 
             match cli_generator::core::query_builder::build_search_body(
                 taxa_query.as_deref(),
@@ -617,23 +621,29 @@ pub async fn post_countBatch(
         let first_index = &index_bodies[0].0;
         if index_bodies.iter().all(|(idx, _)| idx == first_index) {
             // Combine all bodies with OR and run unified query
-            let bodies: Vec<serde_json::Value> = index_bodies.iter().map(|(_, b)| b.clone()).collect();
-            let combined_body = combine_es_bodies(bodies, &genomehubs_query::query::CombineStrategy::OR);
-            
+            let bodies: Vec<serde_json::Value> =
+                index_bodies.iter().map(|(_, b)| b.clone()).collect();
+            let combined_body =
+                combine_es_bodies(bodies, &genomehubs_query::query::CombineStrategy::OR);
+
             // Build NDJSON for single unified query
             let header = serde_json::json!({ "index": first_index });
-            let ndjson = format!("{}
+            let ndjson = format!(
+                "{}
 {}
-", 
+",
                 serde_json::to_string(&header).unwrap(),
                 serde_json::to_string(&combined_body).unwrap()
             );
-            
+
             // Execute the unified query
             match execute_msearch(&state.client, &state.es_base, &ndjson).await {
                 Ok(raw) => {
                     let empty_arr = vec![];
-                    let responses = raw.get("responses").and_then(|r| r.as_array()).unwrap_or(&empty_arr);
+                    let responses = raw
+                        .get("responses")
+                        .and_then(|r| r.as_array())
+                        .unwrap_or(&empty_arr);
                     if let Some(response) = responses.first() {
                         if response.get("error").is_none() {
                             response

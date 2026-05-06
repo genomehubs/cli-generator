@@ -19,6 +19,7 @@
 pub mod describe;
 pub mod parse;
 pub mod query;
+pub mod report;
 pub mod snippet;
 pub mod types;
 pub mod validation;

@@ -54,7 +54,7 @@ use serde::{Deserialize, Serialize};
 ///   - index: taxon
 ///     taxa: [Aves]
 /// ```
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(deny_unknown_fields)]
 pub struct SearchQuery {
     /// Which index to search (for single-query mode; ignored in multi-query).
@@ -75,19 +75,14 @@ pub struct SearchQuery {
 }
 
 /// Strategy for combining multiple queries.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
 #[serde(rename_all = "UPPERCASE")]
 pub enum CombineStrategy {
     /// Combine with boolean AND (default).
+    #[default]
     AND,
     /// Combine with boolean OR.
     OR,
-}
-
-impl Default for CombineStrategy {
-    fn default() -> Self {
-        CombineStrategy::AND
-    }
 }
 
 impl SearchQuery {
@@ -112,31 +107,14 @@ impl SearchQuery {
     }
 }
 
-impl Default for SearchQuery {
-    fn default() -> Self {
-        SearchQuery {
-            index: SearchIndex::default(),
-            identifiers: Identifiers::default(),
-            attributes: AttributeSet::default(),
-            queries: None,
-            combine_with: CombineStrategy::default(),
-        }
-    }
-}
-
 /// Which API search index to query.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum SearchIndex {
+    #[default]
     Taxon,
     Assembly,
     Sample,
-}
-
-impl Default for SearchIndex {
-    fn default() -> Self {
-        SearchIndex::Taxon
-    }
 }
 
 // ── QueryParams ───────────────────────────────────────────────────────────────

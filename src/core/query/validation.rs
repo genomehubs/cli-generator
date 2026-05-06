@@ -20,6 +20,7 @@ use crate::core::query::{
     identifiers::Identifiers,
     SearchQuery,
 };
+use genomehubs_query::query::CombineStrategy;
 
 // ── FieldMeta ─────────────────────────────────────────────────────────────────
 
@@ -457,6 +458,9 @@ mod tests {
                 }],
                 ..Default::default()
             },
+
+            queries: None,
+            combine_with: CombineStrategy::AND,
         };
         let errors = validate_query(
             &query,
@@ -482,6 +486,9 @@ mod tests {
                 }],
                 ..Default::default()
             },
+
+            queries: None,
+            combine_with: CombineStrategy::AND,
         };
         let errors = validate_query(
             &query,
@@ -515,6 +522,9 @@ mod tests {
                 }],
                 ..Default::default()
             },
+
+            queries: None,
+            combine_with: CombineStrategy::AND,
         };
         let errors = validate_query(
             &query,
@@ -542,6 +552,9 @@ mod tests {
                 }],
                 ..Default::default()
             },
+
+            queries: None,
+            combine_with: CombineStrategy::AND,
         };
         let errors = validate_query(
             &query,
@@ -569,6 +582,9 @@ mod tests {
                 }],
                 ..Default::default()
             },
+
+            queries: None,
+            combine_with: CombineStrategy::AND,
         };
         let errors = validate_query(
             &query,
@@ -591,6 +607,9 @@ mod tests {
                 ..Default::default()
             },
             attributes: AttributeSet::default(),
+
+            queries: None,
+            combine_with: CombineStrategy::AND,
         };
         let errors = validate_query(
             &query,
@@ -610,6 +629,9 @@ mod tests {
             index: SearchIndex::Taxon,
             identifiers: Identifiers::default(),
             attributes: AttributeSet::default(),
+
+            queries: None,
+            combine_with: CombineStrategy::AND,
         };
         let errors = validate_query(
             &query,
@@ -632,6 +654,9 @@ mod tests {
                 names: vec!["not_a_name_class".to_string()],
                 ..Default::default()
             },
+
+            queries: None,
+            combine_with: CombineStrategy::AND,
         };
         let errors = validate_query(
             &query,
@@ -654,6 +679,9 @@ mod tests {
                 names: vec!["scientific_name:*bat*".to_string()],
                 ..Default::default()
             },
+
+            queries: None,
+            combine_with: CombineStrategy::AND,
         };
         let errors = validate_query(
             &query,
@@ -683,6 +711,9 @@ mod tests {
                 names: vec!["scientific_name".to_string()],
                 ..Default::default()
             },
+
+            queries: None,
+            combine_with: CombineStrategy::AND,
         };
         let errors = validate_query(
             &query,
@@ -703,6 +734,9 @@ mod tests {
                 ..Default::default()
             },
             attributes: AttributeSet::default(),
+
+            queries: None,
+            combine_with: CombineStrategy::AND,
         };
         let errors = validate_query(
             &query,
@@ -726,6 +760,9 @@ mod tests {
                 ..Default::default()
             },
             attributes: AttributeSet::default(),
+
+            queries: None,
+            combine_with: CombineStrategy::AND,
         };
         let errors = validate_query(
             &query,
@@ -762,6 +799,9 @@ mod tests {
                 }],
                 ..Default::default()
             },
+
+            queries: None,
+            combine_with: CombineStrategy::AND,
         };
         let errors = validate_query(
             &query,
@@ -796,6 +836,9 @@ mod tests {
                 }],
                 ..Default::default()
             },
+
+            queries: None,
+            combine_with: CombineStrategy::AND,
         };
         let errors = validate_query(
             &query,
@@ -822,6 +865,9 @@ mod tests {
                 }],
                 ..Default::default()
             },
+
+            queries: None,
+            combine_with: CombineStrategy::AND,
         };
         let errors = validate_query(
             &query,
@@ -848,6 +894,9 @@ mod tests {
                 }],
                 ..Default::default()
             },
+
+            queries: None,
+            combine_with: CombineStrategy::AND,
         };
         let errors = validate_query(
             &query,
@@ -880,6 +929,9 @@ mod tests {
                 names: vec!["invalid_name_class".to_string()],
                 ..Default::default()
             },
+
+            queries: None,
+            combine_with: CombineStrategy::AND,
         };
         let errors = validate_query(
             &query,
@@ -918,6 +970,9 @@ mod tests {
                 ..Identifiers::default()
             },
             attributes: AttributeSet::default(),
+
+            queries: None,
+            combine_with: CombineStrategy::AND,
         };
         // The TaxonFilterType is an enum that gets serialized; we test the validation
         let errors = validate_query(
@@ -952,6 +1007,9 @@ mod tests {
                 }],
                 ..Default::default()
             },
+
+            queries: None,
+            combine_with: CombineStrategy::AND,
         };
         let errors = validate_query(
             &query,
