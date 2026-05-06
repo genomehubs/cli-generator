@@ -11,6 +11,7 @@
 pub mod agg;
 pub mod bounds;
 pub mod pipeline;
+pub mod report_types;
 
 pub use agg::agg_builder_for;
 pub use bounds::compute_bounds;

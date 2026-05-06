@@ -53,6 +53,7 @@ pub mod deserialize_helpers;
 pub mod indices;
 pub mod lookup;
 pub mod record;
+pub mod report;
 pub mod result_fields;
 pub mod search;
 pub mod searchBatch;

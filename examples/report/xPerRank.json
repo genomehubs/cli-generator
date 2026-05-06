@@ -1,0 +1,14 @@
+{
+  "query": {
+    "index": "taxon",
+    "taxa": ["Mammalia"],
+    "taxon_filter_type": "tree"
+  },
+  "params": {
+    "taxonomy": "ncbi"
+  },
+  "report": {
+    "report": "xPerRank",
+    "x": "genome_size"
+  }
+}

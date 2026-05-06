@@ -31,6 +31,7 @@ pub struct AppState {
         routes::countBatch::post_countBatch,
         routes::lookup::get_lookup,
         routes::record::get_record,
+        routes::report::post_report,
         routes::result_fields::get_result_fields,
         routes::search::post_search,
         routes::searchBatch::post_searchBatch,
@@ -52,6 +53,8 @@ pub struct AppState {
         routes::record::RecordItem,
         routes::record::RecordQuery,
         routes::record::RecordResponse,
+        routes::report::ReportRequest,
+        routes::report::ReportResponse,
         routes::result_fields::FieldMeta,
         routes::result_fields::ResultFieldsResponse,
         routes::search::SearchRequest,
@@ -187,6 +190,10 @@ async fn main() {
         .route("/api/v3/indices", get(routes::indices::get_indices))
         .route("/api/v3/lookup", get(routes::lookup::get_lookup))
         .route("/api/v3/record", get(routes::record::get_record))
+        .route(
+            "/api/v3/report",
+            axum::routing::post(routes::report::post_report),
+        )
         .route(
             "/api/v3/resultFields",
             get(routes::result_fields::get_result_fields),

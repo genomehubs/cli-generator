@@ -1,0 +1,16 @@
+{
+  "query": {
+    "index": "taxon",
+    "taxa": ["Mammalia"],
+    "taxon_filter_type": "tree"
+  },
+  "params": {
+    "taxonomy": "ncbi"
+  },
+  "report": {
+    "report": "scatter",
+    "x": "genome_size",
+    "y": "assembly_span",
+    "scatter_threshold": 10000
+  }
+}

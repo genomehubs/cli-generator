@@ -12,7 +12,7 @@ echo "Searching for Mammalia..."
 curl -s -X POST "$API/search" \
   -H "Content-Type: application/json" \
   -d '{
-    "query_yaml": "'"$(sed 's/$/\\n/' examples/query-single.yaml | tr -d '\n')"'",
+    "query_yaml": "'"'$(sed 's/$/\\n/' examples/query/query-single.yaml | tr -d '\n')'"'",
     "size": 5
   }' | jq '.status, (.results | length)'
 
@@ -22,7 +22,7 @@ echo "Searching for Mammalia OR Aves..."
 curl -s -X POST "$API/search" \
   -H "Content-Type: application/json" \
   -d '{
-    "query_yaml": "'"$(sed 's/$/\\n/' examples/query-multi-or.yaml | tr -d '\n')"'",
+    "query_yaml": "'"'$(sed 's/$/\\n/' examples/query/query-multi-or.yaml | tr -d '\n')'"'",
     "size": 5
   }' | jq '.status, (.results | length)'
 
@@ -32,7 +32,7 @@ echo "Searching for Mammalia AND (NOT Felis)..."
 curl -s -X POST "$API/search" \
   -H "Content-Type: application/json" \
   -d '{
-    "query_yaml": "'"$(sed 's/$/\\n/' examples/query-multi-and.yaml | tr -d '\n')"'",
+    "query_yaml": "'"'$(sed 's/$/\\n/' examples/query/query-multi-and.yaml | tr -d '\n')'"'",
     "size": 5
   }' | jq '.status, (.results | length)'
 
@@ -41,14 +41,14 @@ echo "=== Count Single Queries ==="
 echo "Counting Mammalia, Aves, Reptilia separately..."
 curl -s -X POST "$API/countBatch" \
   -H "Content-Type: application/yaml" \
-  -d @examples/query-batch-count-single.yaml | jq '.results[] | {taxa: .hits}'
+  -d @examples/batch/query-batch-count-single.yaml | jq '.results[] | {taxa: .hits}'
 
 echo ""
 echo "=== Count Multi-Query Combining ==="
 echo "Counting: (Mammalia OR Aves) total, Mammalia alone, Aves alone..."
 curl -s -X POST "$API/countBatch" \
   -H "Content-Type: application/yaml" \
-  -d @examples/query-batch-count-multi.yaml | jq '.results[] | {count: .count}'
+  -d @examples/batch/query-batch-count-multi.yaml | jq '.results[] | {count: .count}'
 
 echo ""
 echo "=== SearchBatch (Parallel Independent Searches) ==="

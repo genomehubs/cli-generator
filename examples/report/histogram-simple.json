@@ -1,0 +1,16 @@
+{
+  "query": {
+    "index": "taxon",
+    "taxa": ["Mammalia"],
+    "taxon_filter_type": "tree",
+    "rank": "species"
+  },
+  "params": {
+    "taxonomy": "ncbi"
+  },
+  "report": {
+    "report": "histogram",
+    "x": "genome_size",
+    "x_opts": ";;20;log10"
+  }
+}

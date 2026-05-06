@@ -6,8 +6,10 @@
 
 use serde_json::{json, Value};
 
+use crate::es_metadata::MetadataCache;
 use genomehubs_query::report::axis::{Scale, ValueType};
 use genomehubs_query::report::{AxisSpec, BoundsResult};
+use std::sync::Arc;
 
 /// Raw bucket list extracted from an ES aggregation response.
 pub type RawBuckets = Vec<Value>;
@@ -32,18 +34,25 @@ pub struct HistogramAggBuilder {
     pub min: f64,
     pub max: f64,
     pub scale: Scale,
+    pub script: Option<String>,
 }
 
 impl AggBuilder for HistogramAggBuilder {
     fn build(&self, agg_name: &str) -> Value {
+        let mut hist = json!({
+            "field": &self.field,
+            "interval": self.interval,
+            "extended_bounds": { "min": self.min, "max": self.max },
+            "min_doc_count": 0
+        });
+
+        if let Some(script) = &self.script {
+            hist["script"] = Value::String(script.clone());
+        }
+
         json!({
             agg_name: {
-                "histogram": {
-                    "field": &self.field,
-                    "interval": self.interval,
-                    "extended_bounds": { "min": self.min, "max": self.max },
-                    "min_doc_count": 0
-                }
+                "histogram": hist
             }
         })
     }
@@ -180,27 +189,19 @@ impl AggBuilder for ReverseNestedAggBuilder {
 /// Compose two `AggBuilder`s: parent builds outer agg; inner is nested within each bucket.
 ///
 /// Used for patterns like: x-axis histogram → y-axis stats within each x bucket.
-pub struct CompositeAggBuilder {
-    pub outer: Box<dyn AggBuilder>,
-    pub inner: Box<dyn AggBuilder>,
+pub struct CompositeAggBuilder<'a> {
+    pub outer: &'a dyn AggBuilder,
+    pub inner: &'a dyn AggBuilder,
     pub inner_name: String,
 }
 
-impl AggBuilder for CompositeAggBuilder {
+impl<'a> AggBuilder for CompositeAggBuilder<'a> {
     fn build(&self, agg_name: &str) -> Value {
         let mut outer = self.outer.build(agg_name);
         let inner_agg = self.inner.build(&self.inner_name);
 
-        // Inject inner agg into outer's aggs key
-        if let Some(outer_obj) = outer.get_mut(agg_name) {
-            // Find the outer aggregation spec (histogram, date_histogram, or terms)
-            for key in &["histogram", "date_histogram", "terms", "geohash_grid"] {
-                if outer_obj.get(key).is_some() {
-                    outer_obj["aggs"] = inner_agg;
-                    break;
-                }
-            }
-        }
+        // Recursively inject inner agg into outer's nested structure
+        self.inject_inner_agg(&mut outer, agg_name, &inner_agg);
         outer
     }
 
@@ -209,48 +210,407 @@ impl AggBuilder for CompositeAggBuilder {
     }
 }
 
+impl<'a> CompositeAggBuilder<'a> {
+    /// Recursively inject inner aggregation into nested structures.
+    /// Handles both direct aggregations and nested attribute aggregations.
+    fn inject_inner_agg(&self, outer: &mut Value, agg_name: &str, inner_agg: &Value) {
+        if let Some(outer_obj) = outer.get_mut(agg_name) {
+            // First try direct injection (for simple histogram, terms, etc.)
+            for key in &["histogram", "date_histogram", "terms", "geohash_grid"] {
+                if outer_obj.get(key).is_some() {
+                    outer_obj["aggs"] = inner_agg.clone();
+                    return;
+                }
+            }
+
+            // If not found directly, look inside nested aggregations
+            if outer_obj.get("nested").is_some() {
+                if let Some(nested_aggs) = outer_obj.get_mut("aggs") {
+                    let filter_agg_opt = if nested_aggs.get("by_key").is_some() {
+                        nested_aggs.get_mut("by_key")
+                    } else {
+                        nested_aggs.get_mut("by_value")
+                    };
+
+                    if let Some(filter_agg) = filter_agg_opt {
+                        if let Some(inner_aggs) = filter_agg.get_mut("aggs") {
+                            for key in &["histogram", "date_histogram", "terms", "geohash_grid"] {
+                                if inner_aggs.get(key).is_some() {
+                                    if self.inner_name == "cat_agg" {
+                                        if let Some(agg_def) = inner_aggs.get_mut(key) {
+                                            if agg_def.get("aggs").is_none() {
+                                                agg_def["aggs"] = json!({});
+                                            }
+                                            if let Some(cat_agg_inner) = inner_agg.get("cat_agg") {
+                                                agg_def["aggs"]["cat_agg"] = cat_agg_inner.clone();
+                                            }
+                                        }
+                                    } else if let Some(inner_value) =
+                                        inner_agg.get(&self.inner_name)
+                                    {
+                                        inner_aggs[&self.inner_name.clone()] = inner_value.clone();
+                                    } else {
+                                        inner_aggs[&self.inner_name.clone()] = inner_agg.clone();
+                                    }
+                                    return;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// Determine if a field is a taxonomic rank.
+fn is_rank(field: &str, cache: &Option<Arc<tokio::sync::RwLock<MetadataCache>>>) -> bool {
+    if let Some(cache_lock) = cache {
+        if let Ok(c) = cache_lock.try_read() {
+            return c.taxonomic_ranks.contains(&field.to_string());
+        }
+    }
+    false
+}
+
+/// Determine if a field is an attribute.
+fn is_attribute(field: &str, cache: &Option<Arc<tokio::sync::RwLock<MetadataCache>>>) -> bool {
+    if let Some(cache_lock) = cache {
+        if let Ok(c) = cache_lock.try_read() {
+            if let Value::Object(groups) = &c.attr_types {
+                for (_, group) in groups {
+                    if let Value::Object(fields) = group {
+                        if fields.contains_key(field) {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    false
+}
+
+/// Get the exact value field for an attribute from metadata.
+/// Returns the processed_summary field (e.g., "attributes.long_value" for type=long).
+/// This MUST come from metadata, not guessed.
+fn get_attribute_value_field(
+    field: &str,
+    cache: &Option<Arc<tokio::sync::RwLock<MetadataCache>>>,
+) -> Result<String, String> {
+    if let Some(cache_lock) = cache {
+        if let Ok(c) = cache_lock.try_read() {
+            if let Value::Object(groups) = &c.attr_types {
+                // Search all groups for this field
+                for (_, group) in groups {
+                    if let Value::Object(fields) = group {
+                        if let Some(field_meta) = fields.get(field) {
+                            if let Value::Object(meta_obj) = field_meta {
+                                // Get processed_summary which is the exact ES field name
+                                if let Some(ps) =
+                                    meta_obj.get("processed_summary").and_then(|v| v.as_str())
+                                {
+                                    return Ok(format!("attributes.{}", ps));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    Err(format!("field '{}' not found in metadata", field))
+}
+
+/// Build a complete nested-attribute histogram aggregation with per-category sub-histograms.
+///
+/// Uses the v2 API's proven `categoryHistograms` pattern: a `filters` aggregation with one
+/// explicitly named bucket per known category label. This completely eliminates fake placeholder
+/// codes because only categories that exist in the bounds result are ever referenced.
+///
+/// # Aggregation structure
+/// ```text
+/// {agg_name}: nested(attributes)
+///   by_key: filter(x_field)
+///     histogram: histogram (main x-axis bucket counts)
+///     categoryHistograms: reverse_nested
+///       by_attribute: nested(attributes)
+///         by_cat: filter(cat_field)
+///           by_value: filters(one per cat_label)
+///             histogram: reverse_nested
+///               by_attribute: nested(attributes)
+///                 {x_field}: filter(x_field)
+///                   histogram: histogram (per-category bucket counts)
+/// ```
+pub fn build_nested_attribute_histogram_with_categories(
+    agg_name: &str,
+    x_field: &str,
+    x_bounds: &BoundsResult,
+    cat_field: &str,
+    cat_labels: &[String],
+    show_other: bool,
+    cache: &Option<Arc<tokio::sync::RwLock<MetadataCache>>>,
+) -> Result<Value, String> {
+    let x_value_field = get_attribute_value_field(x_field, cache)?;
+    let cat_value_field = get_attribute_value_field(cat_field, cache)?;
+
+    let [domain_min, domain_max] = x_bounds.domain.unwrap_or([0.0, 1.0]);
+    let ticks = x_bounds.tick_count.max(1) as f64;
+    let interval = (domain_max - domain_min) / ticks;
+
+    // Build one named filter per known category (no fake codes ever produced).
+    let mut filters = serde_json::Map::new();
+    for label in cat_labels {
+        filters.insert(
+            label.clone(),
+            json!({ "term": { &cat_value_field: label } }),
+        );
+    }
+    let mut filters_agg = json!({ "filters": Value::Object(filters) });
+    if show_other {
+        filters_agg["other_bucket_key"] = json!("other");
+    }
+
+    // Per-category inner histogram config — same bounds as the main histogram.
+    let inner_histogram = json!({
+        "histogram": {
+            "field": &x_value_field,
+            "interval": interval,
+            "extended_bounds": { "min": domain_min, "max": domain_max },
+            "offset": domain_min,
+            "min_doc_count": 0
+        }
+    });
+
+    // Dynamic key: {x_field} → filter → histogram inside the per-category reverse_nested path.
+    let mut x_field_agg = serde_json::Map::new();
+    x_field_agg.insert(
+        x_field.to_string(),
+        json!({
+            "filter": { "term": { "attributes.key": x_field } },
+            "aggs": { "histogram": inner_histogram }
+        }),
+    );
+
+    let category_histograms = json!({
+        "reverse_nested": {},
+        "aggs": {
+            "by_attribute": {
+                "nested": { "path": "attributes" },
+                "aggs": {
+                    "by_cat": {
+                        "filter": { "term": { "attributes.key": cat_field } },
+                        "aggs": {
+                            "by_value": {
+                                "filters": filters_agg,
+                                "aggs": {
+                                    "histogram": {
+                                        "reverse_nested": {},
+                                        "aggs": {
+                                            "by_attribute": {
+                                                "nested": { "path": "attributes" },
+                                                "aggs": Value::Object(x_field_agg)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    Ok(json!({
+        agg_name: {
+            "nested": { "path": "attributes" },
+            "aggs": {
+                "by_key": {
+                    "filter": { "term": { "attributes.key": x_field } },
+                    "aggs": {
+                        "histogram": {
+                            "histogram": {
+                                "field": &x_value_field,
+                                "interval": interval,
+                                "extended_bounds": { "min": domain_min, "max": domain_max },
+                                "offset": domain_min,
+                                "min_doc_count": 0
+                            }
+                        },
+                        "categoryHistograms": category_histograms
+                    }
+                }
+            }
+        }
+    }))
+}
+
 /// Select the appropriate `AggBuilder` for an axis spec.
 ///
 /// This is the main factory function; report handlers call it rather than
 /// constructing builders directly.
-pub fn agg_builder_for(spec: &AxisSpec, bounds: &BoundsResult) -> Box<dyn AggBuilder> {
+pub fn agg_builder_for(
+    spec: &AxisSpec,
+    bounds: &BoundsResult,
+    cache: &Option<Arc<tokio::sync::RwLock<MetadataCache>>>,
+) -> Result<Box<dyn AggBuilder>, String> {
+    let is_attr = is_attribute(&spec.field, cache);
+    let is_rk = is_rank(&spec.field, cache);
+
     match spec.value_type {
         ValueType::Numeric => {
-            let [min, max] = bounds.domain.unwrap_or([0.0, 1.0]);
-            let interval = compute_histogram_interval(min, max, bounds.tick_count, spec.opts.scale);
-            Box::new(HistogramAggBuilder {
-                field: spec.field.clone(),
-                interval,
-                min,
-                max,
-                scale: spec.opts.scale,
-            })
+            let [domain_min, domain_max] = bounds.domain.unwrap_or([0.0, 1.0]);
+
+            // For log scales, transform bounds to log space for histogram interval calculation
+            let (hist_min, hist_max) = match spec.opts.scale {
+                Scale::Log | Scale::Log10 => {
+                    let min_val = domain_min.max(1.0).log10();
+                    let max_val = domain_max.max(1.0).log10();
+                    (min_val, max_val)
+                }
+                Scale::Log2 => {
+                    let min_val = domain_min.max(1.0).log2();
+                    let max_val = domain_max.max(1.0).log2();
+                    (min_val, max_val)
+                }
+                Scale::Sqrt => {
+                    let min_val = domain_min.max(0.0).sqrt();
+                    let max_val = domain_max.sqrt();
+                    (min_val, max_val)
+                }
+                _ => (domain_min, domain_max),
+            };
+
+            // Compute interval in transformed space
+            let ticks = bounds.tick_count.max(1) as f64;
+            let interval = (hist_max - hist_min) / ticks;
+
+            if is_attr {
+                let value_field = get_attribute_value_field(&spec.field, cache)?;
+
+                // Build script transform for log scales
+                let script_opt = match spec.opts.scale {
+                    Scale::Log10 => Some("Math.log10(_value)".to_string()),
+                    Scale::Log => Some("Math.log(_value)".to_string()),
+                    Scale::Log2 => Some("Math.max(Math.log(_value)/Math.log(2), 0)".to_string()),
+                    Scale::Sqrt => Some("Math.sqrt(_value)".to_string()),
+                    _ => None,
+                };
+
+                let mut inner_agg = json!({
+                    "histogram": {
+                        "field": &value_field,
+                        "interval": interval,
+                        "extended_bounds": { "min": hist_min, "max": hist_max },
+                        "min_doc_count": 0
+                    }
+                });
+
+                if let Some(script) = script_opt {
+                    inner_agg["histogram"]["script"] = Value::String(script);
+                }
+
+                Ok(Box::new(NestedAttributeAggBuilder {
+                    field: spec.field.clone(),
+                    value_field,
+                    inner_agg_body: inner_agg,
+                    inner_agg_name: "histogram".to_string(),
+                }))
+            } else {
+                let script_opt = match spec.opts.scale {
+                    Scale::Log10 => Some("Math.log10(_value)".to_string()),
+                    Scale::Log => Some("Math.log(_value)".to_string()),
+                    Scale::Log2 => Some("Math.max(Math.log(_value)/Math.log(2), 0)".to_string()),
+                    Scale::Sqrt => Some("Math.sqrt(_value)".to_string()),
+                    _ => None,
+                };
+
+                Ok(Box::new(HistogramAggBuilder {
+                    field: spec.field.clone(),
+                    interval,
+                    min: hist_min,
+                    max: hist_max,
+                    scale: spec.opts.scale,
+                    script: script_opt,
+                }))
+            }
         }
         ValueType::Date => {
             let calendar_interval = bounds
                 .interval
                 .map(|i| i.to_es_interval().to_string())
                 .unwrap_or_else(|| "1y".to_string());
-            Box::new(DateHistogramAggBuilder {
-                field: spec.field.clone(),
-                calendar_interval,
-                time_zone: None,
-            })
-        }
-        ValueType::Keyword | ValueType::TaxonRank => Box::new(TermsAggBuilder {
-            field: spec.field.clone(),
-            size: spec.opts.size,
-            include: if bounds.fixed_terms.is_empty() {
-                None
+
+            if is_attr {
+                let value_field = get_attribute_value_field(&spec.field, cache)?;
+                let inner_agg = json!({
+                    "date_histogram": {
+                        "field": &value_field,
+                        "calendar_interval": &calendar_interval,
+                        "min_doc_count": 0
+                    }
+                });
+                Ok(Box::new(NestedAttributeAggBuilder {
+                    field: spec.field.clone(),
+                    value_field,
+                    inner_agg_body: inner_agg,
+                    inner_agg_name: "date_histogram".to_string(),
+                }))
             } else {
-                Some(bounds.fixed_terms.clone())
-            },
-        }),
-        ValueType::GeoPoint => Box::new(GeoHashAggBuilder {
+                Ok(Box::new(DateHistogramAggBuilder {
+                    field: spec.field.clone(),
+                    calendar_interval,
+                    time_zone: None,
+                }))
+            }
+        }
+        ValueType::Keyword | ValueType::TaxonRank => {
+            if is_attr {
+                let value_field = get_attribute_value_field(&spec.field, cache)?;
+                let inner_agg = json!({
+                    "terms": {
+                        "field": &value_field,
+                        "size": spec.opts.size,
+                        "min_doc_count": 0
+                    }
+                });
+                Ok(Box::new(NestedAttributeAggBuilder {
+                    field: spec.field.clone(),
+                    value_field,
+                    inner_agg_body: inner_agg,
+                    inner_agg_name: "terms".to_string(),
+                }))
+            } else if is_rk {
+                let inner_agg = json!({
+                    "terms": {
+                        "field": "lineage.taxon_id",
+                        "size": spec.opts.size,
+                        "min_doc_count": 0
+                    }
+                });
+                Ok(Box::new(NestedRankAggBuilder {
+                    field: spec.field.clone(),
+                    inner_agg_body: inner_agg,
+                    inner_agg_name: "terms".to_string(),
+                }))
+            } else {
+                Ok(Box::new(TermsAggBuilder {
+                    field: spec.field.clone(),
+                    size: spec.opts.size,
+                    include: if bounds.fixed_terms.is_empty() {
+                        None
+                    } else {
+                        Some(bounds.fixed_terms.clone())
+                    },
+                }))
+            }
+        }
+        ValueType::GeoPoint => Ok(Box::new(GeoHashAggBuilder {
             field: spec.field.clone(),
             precision: geohash_precision_for_size(spec.opts.size),
             size: spec.opts.size,
-        }),
+        })),
     }
 }
 
@@ -280,6 +640,77 @@ fn compute_histogram_interval(min: f64, max: f64, tick_count: usize, scale: Scal
             sqrt_interval * sqrt_interval
         }
         _ => (max - min) / ticks,
+    }
+}
+
+/// Wrapper that adds nested query logic around a base aggregation for nested attributes.
+pub struct NestedAttributeAggBuilder {
+    pub field: String,
+    pub value_field: String,
+    pub inner_agg_body: Value,
+    pub inner_agg_name: String,
+}
+
+impl AggBuilder for NestedAttributeAggBuilder {
+    fn build(&self, agg_name: &str) -> Value {
+        json!({
+            agg_name: {
+                "nested": { "path": "attributes" },
+                "aggs": {
+                    "by_key": {
+                        "filter": { "term": { "attributes.key": &self.field } },
+                        "aggs": {
+                            &self.inner_agg_name: self.inner_agg_body.clone()
+                        }
+                    }
+                }
+            }
+        })
+    }
+
+    fn extract(&self, resp: &Value, agg_name: &str) -> RawBuckets {
+        resp.pointer(&format!(
+            "/aggregations/{}/by_key/{}/buckets",
+            agg_name, self.inner_agg_name
+        ))
+        .and_then(|b| b.as_array())
+        .cloned()
+        .unwrap_or_default()
+    }
+}
+
+/// Wrapper that adds nested query logic around a base aggregation for nested rank (lineage) fields.
+pub struct NestedRankAggBuilder {
+    pub field: String,
+    pub inner_agg_body: Value,
+    pub inner_agg_name: String,
+}
+
+impl AggBuilder for NestedRankAggBuilder {
+    fn build(&self, agg_name: &str) -> Value {
+        json!({
+            agg_name: {
+                "nested": { "path": "lineage" },
+                "aggs": {
+                    "at_rank": {
+                        "filter": { "term": { "lineage.taxon_rank": &self.field } },
+                        "aggs": {
+                            &self.inner_agg_name: self.inner_agg_body.clone()
+                        }
+                    }
+                }
+            }
+        })
+    }
+
+    fn extract(&self, resp: &Value, agg_name: &str) -> RawBuckets {
+        resp.pointer(&format!(
+            "/aggregations/{}/at_rank/{}/buckets",
+            agg_name, self.inner_agg_name
+        ))
+        .and_then(|b| b.as_array())
+        .cloned()
+        .unwrap_or_default()
     }
 }
 

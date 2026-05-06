@@ -9,6 +9,73 @@ use reqwest::Client;
 use serde_json::{json, Value};
 
 use crate::es_client;
+use crate::es_metadata::MetadataCache;
+
+/// Determine if a field is a taxonomic rank (from lineage).
+/// Ranks are stored in the lineage.taxon_rank nested field.
+fn is_rank(
+    field: &str,
+    cache: &Option<std::sync::Arc<tokio::sync::RwLock<MetadataCache>>>,
+) -> bool {
+    if let Some(cache_lock) = cache {
+        if let Ok(c) = cache_lock.try_read() {
+            return c.taxonomic_ranks.contains(&field.to_string());
+        }
+    }
+    false
+}
+
+/// Determine if a field is an attribute (from attributes nested array).
+fn is_attribute(
+    field: &str,
+    cache: &Option<std::sync::Arc<tokio::sync::RwLock<MetadataCache>>>,
+) -> bool {
+    if let Some(cache_lock) = cache {
+        if let Ok(c) = cache_lock.try_read() {
+            if let Value::Object(groups) = &c.attr_types {
+                for (_, group) in groups {
+                    if let Value::Object(fields) = group {
+                        if fields.contains_key(field) {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    false
+}
+
+/// Get the exact value field for an attribute from metadata.
+/// Returns the processed_summary field (e.g., "attributes.long_value" for type=long).
+/// This MUST come from metadata, not guessed.
+fn get_attribute_value_field(
+    field: &str,
+    cache: &Option<std::sync::Arc<tokio::sync::RwLock<MetadataCache>>>,
+) -> Result<String, String> {
+    if let Some(cache_lock) = cache {
+        if let Ok(c) = cache_lock.try_read() {
+            if let Value::Object(groups) = &c.attr_types {
+                // Search all groups for this field
+                for (_, group) in groups {
+                    if let Value::Object(fields) = group {
+                        if let Some(field_meta) = fields.get(field) {
+                            if let Value::Object(meta_obj) = field_meta {
+                                // Get processed_summary which is the exact ES field name
+                                if let Some(ps) =
+                                    meta_obj.get("processed_summary").and_then(|v| v.as_str())
+                                {
+                                    return Ok(format!("attributes.{}", ps));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    Err(format!("field '{}' not found in metadata", field))
+}
 
 /// Probe Elasticsearch for the domain of a single axis field.
 ///
@@ -18,22 +85,31 @@ use crate::es_client;
 ///
 /// The `base_query` is ANDed with the existing query so bounds reflect
 /// only the data that will appear in the report (not the whole index).
+///
+/// Handles nested fields:
+/// - Attributes (nested under "attributes" path): wrap stats in nested query
+/// - Ranks (nested under "lineage" path): wrap terms in nested query
 pub async fn compute_bounds(
     client: &Client,
     es_base: &str,
     index: &str,
     spec: &AxisSpec,
     base_query: &Value,
+    cache: &Option<std::sync::Arc<tokio::sync::RwLock<MetadataCache>>>,
 ) -> Result<BoundsResult, String> {
     match spec.value_type {
         ValueType::Numeric => {
-            compute_numeric_bounds(client, es_base, index, spec, base_query).await
+            compute_numeric_bounds(client, es_base, index, spec, base_query, cache).await
         }
-        ValueType::Date => compute_date_bounds(client, es_base, index, spec, base_query).await,
+        ValueType::Date => {
+            compute_date_bounds(client, es_base, index, spec, base_query, cache).await
+        }
         ValueType::Keyword | ValueType::TaxonRank => {
-            compute_keyword_bounds(client, es_base, index, spec, base_query).await
+            compute_keyword_bounds(client, es_base, index, spec, base_query, cache).await
         }
-        ValueType::GeoPoint => compute_geo_bounds(client, es_base, index, spec, base_query).await,
+        ValueType::GeoPoint => {
+            compute_geo_bounds(client, es_base, index, spec, base_query, cache).await
+        }
     }
 }
 
@@ -43,22 +119,63 @@ async fn compute_numeric_bounds(
     index: &str,
     spec: &AxisSpec,
     base_query: &Value,
+    cache: &Option<std::sync::Arc<tokio::sync::RwLock<MetadataCache>>>,
 ) -> Result<BoundsResult, String> {
-    let agg_body = json!({
-        "size": 0,
-        "query": base_query,
-        "aggs": {
-            "field_stats": {
-                "stats": { "field": &spec.field }
+    let is_attr = is_attribute(&spec.field, cache);
+    let is_rk = is_rank(&spec.field, cache);
+
+    let agg_body = if is_attr {
+        let value_field = get_attribute_value_field(&spec.field, cache)?;
+        json!({
+            "size": 0,
+            "query": base_query,
+            "aggs": {
+                "by_attribute": {
+                    "nested": { "path": "attributes" },
+                    "aggs": {
+                        "by_key": {
+                            "filter": { "term": { "attributes.key": &spec.field } },
+                            "aggs": {
+                                "field_stats": {
+                                    "stats": { "field": &value_field }
+                                }
+                            }
+                        }
+                    }
+                }
             }
-        }
-    });
+        })
+    } else if is_rk {
+        return Ok(BoundsResult {
+            domain: None,
+            tick_count: spec.opts.size,
+            interval: None,
+            scale: Scale::Ordinal,
+            value_type: ValueType::TaxonRank,
+            fixed_terms: vec![],
+            cat_labels: vec![],
+        });
+    } else {
+        json!({
+            "size": 0,
+            "query": base_query,
+            "aggs": {
+                "field_stats": {
+                    "stats": { "field": &spec.field }
+                }
+            }
+        })
+    };
 
     let resp = es_client::execute_search(client, es_base, index, &agg_body).await?;
 
-    let stats = resp
-        .pointer("/aggregations/field_stats")
-        .ok_or_else(|| "missing field_stats aggregation".to_string())?;
+    let stats = if is_attr {
+        resp.pointer("/aggregations/by_attribute/by_key/field_stats")
+            .ok_or_else(|| "missing nested attribute stats aggregation".to_string())?
+    } else {
+        resp.pointer("/aggregations/field_stats")
+            .ok_or_else(|| "missing field_stats aggregation".to_string())?
+    };
 
     let raw_min = stats.get("min").and_then(|v| v.as_f64()).unwrap_or(0.0);
     let raw_max = stats.get("max").and_then(|v| v.as_f64()).unwrap_or(1.0);
@@ -104,22 +221,52 @@ async fn compute_date_bounds(
     index: &str,
     spec: &AxisSpec,
     base_query: &Value,
+    cache: &Option<std::sync::Arc<tokio::sync::RwLock<MetadataCache>>>,
 ) -> Result<BoundsResult, String> {
-    let agg_body = json!({
-        "size": 0,
-        "query": base_query,
-        "aggs": {
-            "date_range": {
-                "stats": { "field": &spec.field }
+    let is_attr = is_attribute(&spec.field, cache);
+
+    let agg_body = if is_attr {
+        json!({
+            "size": 0,
+            "query": base_query,
+            "aggs": {
+                "by_attribute": {
+                    "nested": { "path": "attributes" },
+                    "aggs": {
+                        "by_key": {
+                            "filter": { "term": { "attributes.key": &spec.field } },
+                            "aggs": {
+                                "date_range": {
+                                    "stats": { "field": "attributes.date_value" }
+                                }
+                            }
+                        }
+                    }
+                }
             }
-        }
-    });
+        })
+    } else {
+        json!({
+            "size": 0,
+            "query": base_query,
+            "aggs": {
+                "date_range": {
+                    "stats": { "field": &spec.field }
+                }
+            }
+        })
+    };
 
     let resp = es_client::execute_search(client, es_base, index, &agg_body).await?;
-    let stats = resp
-        .pointer("/aggregations/date_range")
-        .cloned()
-        .unwrap_or_default();
+    let stats = if is_attr {
+        resp.pointer("/aggregations/by_attribute/by_key/date_range")
+            .cloned()
+            .unwrap_or_default()
+    } else {
+        resp.pointer("/aggregations/date_range")
+            .cloned()
+            .unwrap_or_default()
+    };
 
     let min_ms = stats.get("min").and_then(|v| v.as_f64()).unwrap_or(0.0);
     let max_ms = stats.get("max").and_then(|v| v.as_f64()).unwrap_or(0.0);
@@ -147,6 +294,7 @@ async fn compute_keyword_bounds(
     index: &str,
     spec: &AxisSpec,
     base_query: &Value,
+    cache: &Option<std::sync::Arc<tokio::sync::RwLock<MetadataCache>>>,
 ) -> Result<BoundsResult, String> {
     // Use fixed_values if provided in opts; skip ES round-trip
     if !spec.opts.fixed_values.is_empty() {
@@ -173,31 +321,103 @@ async fn compute_keyword_bounds(
         });
     }
 
-    let agg_body = json!({
-        "size": 0,
-        "query": base_query,
-        "aggs": {
-            "top_terms": {
-                "terms": {
-                    "field": format!("{}.keyword", &spec.field),
-                    "size": spec.opts.size,
-                    "min_doc_count": 0
+    let is_attr = is_attribute(&spec.field, cache);
+    let is_rk = is_rank(&spec.field, cache);
+
+    let agg_body = if is_attr {
+        json!({
+            "size": 0,
+            "query": base_query,
+            "aggs": {
+                "by_attribute": {
+                    "nested": { "path": "attributes" },
+                    "aggs": {
+                        "by_key": {
+                            "filter": { "term": { "attributes.key": &spec.field } },
+                            "aggs": {
+                                "top_terms": {
+                                    "terms": {
+                                        "field": "attributes.keyword_value.raw",
+                                        "size": spec.opts.size,
+                                        "min_doc_count": 0
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
-        }
-    });
+        })
+    } else if is_rk {
+        json!({
+            "size": 0,
+            "query": base_query,
+            "aggs": {
+                "by_lineage": {
+                    "nested": { "path": "lineage" },
+                    "aggs": {
+                        "at_rank": {
+                            "filter": { "term": { "lineage.taxon_rank": &spec.field } },
+                            "aggs": {
+                                "top_terms": {
+                                    "terms": {
+                                        "field": "lineage.taxon_id",
+                                        "size": spec.opts.size,
+                                        "min_doc_count": 0
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        })
+    } else {
+        json!({
+            "size": 0,
+            "query": base_query,
+            "aggs": {
+                "top_terms": {
+                    "terms": {
+                        "field": format!("{}.keyword", &spec.field),
+                        "size": spec.opts.size,
+                        "min_doc_count": 0
+                    }
+                }
+            }
+        })
+    };
 
     let resp = es_client::execute_search(client, es_base, index, &agg_body).await?;
 
-    let buckets = resp
-        .pointer("/aggregations/top_terms/buckets")
-        .and_then(|b| b.as_array())
-        .cloned()
-        .unwrap_or_default();
+    let buckets = if is_attr {
+        resp.pointer("/aggregations/by_attribute/by_key/top_terms/buckets")
+            .and_then(|b| b.as_array())
+            .cloned()
+            .unwrap_or_default()
+    } else if is_rk {
+        resp.pointer("/aggregations/by_lineage/at_rank/top_terms/buckets")
+            .and_then(|b| b.as_array())
+            .cloned()
+            .unwrap_or_default()
+    } else {
+        resp.pointer("/aggregations/top_terms/buckets")
+            .and_then(|b| b.as_array())
+            .cloned()
+            .unwrap_or_default()
+    };
 
+    // Extract terms, but only those with actual doc_count > 0 to avoid placeholder/fake values
     let terms: Vec<String> = buckets
         .iter()
-        .filter_map(|b| b.get("key").and_then(|k| k.as_str()).map(|s| s.to_string()))
+        .filter_map(|b| {
+            let doc_count = b.get("doc_count").and_then(|c| c.as_u64()).unwrap_or(0);
+            if doc_count > 0 {
+                b.get("key").and_then(|k| k.as_str()).map(|s| s.to_string())
+            } else {
+                None
+            }
+        })
         .collect();
 
     Ok(BoundsResult {
@@ -217,6 +437,7 @@ async fn compute_geo_bounds(
     index: &str,
     spec: &AxisSpec,
     base_query: &Value,
+    _cache: &Option<std::sync::Arc<tokio::sync::RwLock<MetadataCache>>>,
 ) -> Result<BoundsResult, String> {
     let agg_body = json!({
         "size": 0,

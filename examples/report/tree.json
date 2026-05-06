@@ -1,0 +1,15 @@
+{
+  "query": {
+    "index": "taxon",
+    "taxa": ["Mammalia"],
+    "taxon_filter_type": "tree"
+  },
+  "params": {
+    "taxonomy": "ncbi"
+  },
+  "report": {
+    "report": "tree",
+    "rank": "phylum",
+    "depth": 5
+  }
+}
