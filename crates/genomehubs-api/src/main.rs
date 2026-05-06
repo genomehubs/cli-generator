@@ -8,6 +8,7 @@ mod es_client;
 mod es_metadata;
 mod fetch_records;
 mod index_name;
+mod report;
 mod routes;
 
 #[derive(Clone)]
