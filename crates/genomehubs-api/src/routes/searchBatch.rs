@@ -106,6 +106,50 @@ async fn execute_msearch(
     resp.json().await.map_err(|e| format!("parse error: {e}"))
 }
 
+/// Combine multiple ES query bodies using bool.should (OR) or bool.must (AND).
+fn combine_es_bodies(
+    bodies: Vec<serde_json::Value>,
+    combine_with: &genomehubs_query::query::CombineStrategy,
+) -> serde_json::Value {
+    if bodies.is_empty() {
+        return serde_json::json!({ "query": { "match_all": {} }, "size": 0 });
+    }
+    if bodies.len() == 1 {
+        return bodies.into_iter().next().unwrap();
+    }
+
+    // Extract the "query" clause from each body; combine with bool.should/must
+    let queries: Vec<serde_json::Value> = bodies
+        .iter()
+        .filter_map(|b| b.get("query").cloned())
+        .collect();
+
+    let combined_query = match combine_with {
+        genomehubs_query::query::CombineStrategy::OR => {
+            serde_json::json!({
+                "bool": {
+                    "should": queries,
+                    "minimum_should_match": 1
+                }
+            })
+        }
+        genomehubs_query::query::CombineStrategy::AND => {
+            serde_json::json!({
+                "bool": {
+                    "must": queries
+                }
+            })
+        }
+    };
+
+    // Preserve size from the first body, apply combined query
+    let mut result = bodies.into_iter().next().unwrap();
+    if let Some(obj) = result.as_object_mut() {
+        obj.insert("query".to_string(), combined_query);
+    }
+    result
+}
+
 /// For lineage(X), extract all ancestor taxon_ids by querying lineage of X.
 /// Returns comma-separated list of ancestor taxon_ids.
 async fn resolve_lineage_taxon_ids(
@@ -219,100 +263,247 @@ pub async fn post_searchBatch(
             }
         };
 
-        let group = match query.index {
-            genomehubs_query::query::SearchIndex::Taxon => "taxon",
-            genomehubs_query::query::SearchIndex::Assembly => "assembly",
-            genomehubs_query::query::SearchIndex::Sample => "sample",
-        };
+        // Check if this is multi-query mode (nested queries with OR/AND combining)
+        let body = if let Some(nested_queries) = &query.queries {
+            if nested_queries.is_empty() {
+                return Json(SearchBatchResponse {
+                    status: ApiStatus::error(
+                        "multi-query mode requires at least one query".to_string(),
+                    ),
+                    results: vec![],
+                });
+            }
+            if nested_queries.len() > 10 {
+                return Json(SearchBatchResponse {
+                    status: ApiStatus::error(
+                        "maximum 10 queries for multi-query combining".to_string(),
+                    ),
+                    results: vec![],
+                });
+            }
 
-        let field_names: Vec<&str> = query
-            .attributes
-            .fields
-            .iter()
-            .map(|f| f.name.as_str())
-            .collect();
+            // Validate all queries use the same index
+            let first_index = &nested_queries[0].index;
+            if !nested_queries.iter().all(|q| &q.index == first_index) {
+                return Json(SearchBatchResponse {
+                    status: ApiStatus::error(
+                        "all queries in multi-query mode must use the same index".to_string(),
+                    ),
+                    results: vec![],
+                });
+            }
 
-        let name_strs: Vec<&str> = query.attributes.names.iter().map(|s| s.as_str()).collect();
+            // Build bodies for each nested query (with size from params for documents)
+            let mut bodies: Vec<serde_json::Value> = vec![];
+            for nested_query in nested_queries {
+                let group = match nested_query.index {
+                    genomehubs_query::query::SearchIndex::Taxon => "taxon",
+                    genomehubs_query::query::SearchIndex::Assembly => "assembly",
+                    genomehubs_query::query::SearchIndex::Sample => "sample",
+                };
 
-        let rank_strs: Vec<&str> = query.attributes.ranks.iter().map(|s| s.as_str()).collect();
+                let field_names: Vec<&str> = nested_query
+                    .attributes
+                    .fields
+                    .iter()
+                    .map(|f| f.name.as_str())
+                    .collect();
 
-        // Handle lineage filter: resolve ancestor taxa_ids first
-        let mut resolved_taxa = query.identifiers.taxa.clone();
-        if let Some(taxa) = &resolved_taxa {
-            if matches!(
-                taxa.filter_type,
-                genomehubs_query::query::TaxonFilterType::Lineage
-            ) {
-                let idx = index_name::resolve_index(&query.index, &state);
-                let lineage_ids = match resolve_lineage_taxon_ids(
-                    &state.client,
-                    &state.es_base,
-                    &idx,
-                    &taxa.names.join(","),
-                )
-                .await
-                {
-                    Ok(ids) => ids,
+                let name_strs: Vec<&str> = nested_query
+                    .attributes
+                    .names
+                    .iter()
+                    .map(|s| s.as_str())
+                    .collect();
+
+                let rank_strs: Vec<&str> = nested_query
+                    .attributes
+                    .ranks
+                    .iter()
+                    .map(|s| s.as_str())
+                    .collect();
+
+                // Handle lineage filter: resolve ancestor taxa_ids first
+                let mut resolved_taxa = nested_query.identifiers.taxa.clone();
+                if let Some(taxa) = &resolved_taxa {
+                    if matches!(
+                        taxa.filter_type,
+                        genomehubs_query::query::TaxonFilterType::Lineage
+                    ) {
+                        let idx = index_name::resolve_index(&nested_query.index, &state);
+                        let lineage_ids = match resolve_lineage_taxon_ids(
+                            &state.client,
+                            &state.es_base,
+                            &idx,
+                            &taxa.names.join(","),
+                        )
+                        .await
+                        {
+                            Ok(ids) => ids,
+                            Err(e) => {
+                                return Json(SearchBatchResponse {
+                                    status: ApiStatus::error(format!(
+                                        "lineage resolution failed: {e}"
+                                    )),
+                                    results: vec![],
+                                })
+                            }
+                        };
+                        // Replace with resolved IDs, use Name filter to match direct taxon_id
+                        resolved_taxa = Some(genomehubs_query::query::TaxaIdentifier {
+                            filter_type: genomehubs_query::query::TaxonFilterType::Name,
+                            names: lineage_ids.split(',').map(|s| s.to_string()).collect(),
+                        });
+                    }
+                }
+
+                // Build taxa query fragment from identifiers
+                let taxa_query = resolved_taxa
+                    .as_ref()
+                    .map(|t| format!("{}({})", t.filter_type.api_function(), t.names.join(",")));
+
+                let b = match cli_generator::core::query_builder::build_search_body(
+                    taxa_query.as_deref(),
+                    if field_names.is_empty() {
+                        None
+                    } else {
+                        Some(field_names.as_slice())
+                    },
+                    None,
+                    Some(&nested_query.attributes.attributes),
+                    nested_query.identifiers.rank.as_deref(),
+                    if name_strs.is_empty() {
+                        None
+                    } else {
+                        Some(name_strs.as_slice())
+                    },
+                    if rank_strs.is_empty() {
+                        None
+                    } else {
+                        Some(rank_strs.as_slice())
+                    },
+                    params.sort_by.as_deref(),
+                    Some(match params.sort_order {
+                        genomehubs_query::query::SortOrder::Asc => "asc",
+                        genomehubs_query::query::SortOrder::Desc => "desc",
+                    }),
+                    params.size,
+                    (params.page - 1) * params.size,
+                    None,
+                    Some(group),
+                ) {
+                    Ok(b) => b,
                     Err(e) => {
                         return Json(SearchBatchResponse {
-                            status: ApiStatus::error(format!("lineage resolution failed: {e}")),
+                            status: ApiStatus::error(format!(
+                                "failed to build ES body for nested query: {e}"
+                            )),
                             results: vec![],
                         })
                     }
                 };
-                // Replace with resolved IDs, use Name filter to match direct taxon_id
-                resolved_taxa = Some(genomehubs_query::query::TaxaIdentifier {
-                    filter_type: genomehubs_query::query::TaxonFilterType::Name,
-                    names: lineage_ids.split(',').map(|s| s.to_string()).collect(),
-                });
+                bodies.push(b);
             }
-        }
 
-        // Build taxa query fragment from identifiers
-        let taxa_query = resolved_taxa
-            .as_ref()
-            .map(|t| format!("{}({})", t.filter_type.api_function(), t.names.join(",")));
+            // Combine the bodies with OR or AND
+            combine_es_bodies(bodies, &query.combine_with)
+        } else {
+            // Single-query mode (existing behavior)
+            let group = match query.index {
+                genomehubs_query::query::SearchIndex::Taxon => "taxon",
+                genomehubs_query::query::SearchIndex::Assembly => "assembly",
+                genomehubs_query::query::SearchIndex::Sample => "sample",
+            };
 
-        let sort_by = params.sort_by.as_deref();
-        let sort_order = match params.sort_order {
-            genomehubs_query::query::SortOrder::Asc => "asc",
-            genomehubs_query::query::SortOrder::Desc => "desc",
-        };
-        let offset = (params.page - 1) * params.size;
+            let field_names: Vec<&str> = query
+                .attributes
+                .fields
+                .iter()
+                .map(|f| f.name.as_str())
+                .collect();
 
-        let body = match cli_generator::core::query_builder::build_search_body(
-            taxa_query.as_deref(),
-            if field_names.is_empty() {
-                None
-            } else {
-                Some(field_names.as_slice())
-            },
-            None,
-            Some(&query.attributes.attributes),
-            query.identifiers.rank.as_deref(),
-            if name_strs.is_empty() {
-                None
-            } else {
-                Some(name_strs.as_slice())
-            },
-            if rank_strs.is_empty() {
-                None
-            } else {
-                Some(rank_strs.as_slice())
-            },
-            sort_by,
-            Some(sort_order),
-            params.size,
-            offset,
-            None,
-            Some(group),
-        ) {
-            Ok(b) => b,
-            Err(e) => {
-                return Json(SearchBatchResponse {
-                    status: ApiStatus::error(format!("failed to build ES body: {e}")),
-                    results: vec![],
-                })
+            let name_strs: Vec<&str> = query.attributes.names.iter().map(|s| s.as_str()).collect();
+
+            let rank_strs: Vec<&str> = query.attributes.ranks.iter().map(|s| s.as_str()).collect();
+
+            // Handle lineage filter: resolve ancestor taxa_ids first
+            let mut resolved_taxa = query.identifiers.taxa.clone();
+            if let Some(taxa) = &resolved_taxa {
+                if matches!(
+                    taxa.filter_type,
+                    genomehubs_query::query::TaxonFilterType::Lineage
+                ) {
+                    let idx = index_name::resolve_index(&query.index, &state);
+                    let lineage_ids = match resolve_lineage_taxon_ids(
+                        &state.client,
+                        &state.es_base,
+                        &idx,
+                        &taxa.names.join(","),
+                    )
+                    .await
+                    {
+                        Ok(ids) => ids,
+                        Err(e) => {
+                            return Json(SearchBatchResponse {
+                                status: ApiStatus::error(format!("lineage resolution failed: {e}")),
+                                results: vec![],
+                            })
+                        }
+                    };
+                    // Replace with resolved IDs, use Name filter to match direct taxon_id
+                    resolved_taxa = Some(genomehubs_query::query::TaxaIdentifier {
+                        filter_type: genomehubs_query::query::TaxonFilterType::Name,
+                        names: lineage_ids.split(',').map(|s| s.to_string()).collect(),
+                    });
+                }
+            }
+
+            // Build taxa query fragment from identifiers
+            let taxa_query = resolved_taxa
+                .as_ref()
+                .map(|t| format!("{}({})", t.filter_type.api_function(), t.names.join(",")));
+
+            let sort_by = params.sort_by.as_deref();
+            let sort_order = match params.sort_order {
+                genomehubs_query::query::SortOrder::Asc => "asc",
+                genomehubs_query::query::SortOrder::Desc => "desc",
+            };
+            let offset = (params.page - 1) * params.size;
+
+            match cli_generator::core::query_builder::build_search_body(
+                taxa_query.as_deref(),
+                if field_names.is_empty() {
+                    None
+                } else {
+                    Some(field_names.as_slice())
+                },
+                None,
+                Some(&query.attributes.attributes),
+                query.identifiers.rank.as_deref(),
+                if name_strs.is_empty() {
+                    None
+                } else {
+                    Some(name_strs.as_slice())
+                },
+                if rank_strs.is_empty() {
+                    None
+                } else {
+                    Some(rank_strs.as_slice())
+                },
+                sort_by,
+                Some(sort_order),
+                params.size,
+                offset,
+                None,
+                Some(group),
+            ) {
+                Ok(b) => b,
+                Err(e) => {
+                    return Json(SearchBatchResponse {
+                        status: ApiStatus::error(format!("failed to build ES body: {e}")),
+                        results: vec![],
+                    })
+                }
             }
         };
 

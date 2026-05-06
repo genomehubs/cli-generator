@@ -9,6 +9,8 @@ Choose your path based on what you want to do:
 | Use the Python SDK (programmatic queries) | [GETTING_STARTED-python.md](GETTING_STARTED-python.md)               | 5 min  |
 | Use the R SDK                             | [GETTING_STARTED-r.md](GETTING_STARTED-r.md)                         | 5 min  |
 | Use the JavaScript/Node.js SDK            | [GETTING_STARTED-javascript.md](GETTING_STARTED-javascript.md)       | 5 min  |
+| **API Reference** (v3 REST endpoints)     | [docs/api/batch-endpoints.md](docs/api/batch-endpoints.md)           | 10 min |
+| Migrate from v2 API to v3                 | [docs/api/v2-to-v3-migration.md](docs/api/v2-to-v3-migration.md)     | 15 min |
 | Contribute to cli-generator               | [8. Contributing to cli-generator](#8-contributing-to-cli-generator) | 20 min |
 
 **New to cli-generator?** Start with section 1, then read [MAIN.md](docs/MAIN.md) (project overview) or [extension-guide.md](docs/planning/extension-guide.md) (how to extend it).

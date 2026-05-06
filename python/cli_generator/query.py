@@ -595,6 +595,224 @@ class QueryBuilder:
 
         return all_records
 
+    def search_batch(
+        self,
+        queries: list["QueryBuilder"],
+        api_base: str = "https://goat.genomehubs.org/api",
+        api_version: str = "v3",
+    ) -> Any:
+        """Execute multiple searches in a single batch request.
+
+        Combines multiple QueryBuilder objects into a single batch API call,
+        returning document hits for each query.
+
+        Args:
+            queries: List of QueryBuilder objects to search in batch.
+            api_base: Base URL of the API.
+            api_version: API version string (default: "v3").
+
+        Returns:
+            List of parsed result objects, one per input query.
+
+        Raises:
+            ValueError: If more than 100 queries are provided.
+        """
+        import json
+        import urllib.request
+
+        from . import parse_batch_json
+
+        if len(queries) > 100:
+            raise ValueError("maximum 100 searches per batch request")
+
+        url = f"{api_base}/{api_version}/searchBatch"
+        payload = {
+            "searches": [
+                {
+                    "query_yaml": q.to_query_yaml(),
+                    "params_yaml": q.to_params_yaml(),
+                }
+                for q in queries
+            ]
+        }
+        req = urllib.request.Request(
+            url,
+            data=json.dumps(payload).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+        )
+        with urllib.request.urlopen(req) as resp:
+            body_text = resp.read().decode("utf-8")
+
+        parsed_results = []
+        data = json.loads(parse_batch_json(body_text))
+        for result in data.get("results", []):
+            parsed_results.append(result)
+        return parsed_results
+
+    def count_batch(
+        self,
+        queries: list["QueryBuilder"],
+        api_base: str = "https://goat.genomehubs.org/api",
+        api_version: str = "v3",
+    ) -> list[int]:
+        """Get hit counts for multiple queries in a single batch request.
+
+        Combines multiple QueryBuilder objects into a single batch count API call,
+        returning the hit count for each query.
+
+        Args:
+            queries: List of QueryBuilder objects to count in batch.
+            api_base: Base URL of the API.
+            api_version: API version string (default: "v3").
+
+        Returns:
+            List of hit counts, one per input query.
+
+        Raises:
+            ValueError: If more than 100 queries are provided.
+        """
+        import json
+        import urllib.request
+
+        from . import parse_batch_json
+
+        if len(queries) > 100:
+            raise ValueError("maximum 100 searches per batch request")
+
+        url = f"{api_base}/{api_version}/countBatch"
+        payload = {
+            "searches": [
+                {
+                    "query_yaml": q.to_query_yaml(),
+                    "params_yaml": q.to_params_yaml(),
+                }
+                for q in queries
+            ]
+        }
+        req = urllib.request.Request(
+            url,
+            data=json.dumps(payload).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+        )
+        with urllib.request.urlopen(req) as resp:
+            body_text = resp.read().decode("utf-8")
+
+        data = json.loads(parse_batch_json(body_text))
+        counts = []
+        for result in data.get("results", []):
+            counts.append(int(result.get("status", {}).get("hits") or 0))
+        return counts
+
+    def record(
+        self,
+        api_base: str = "https://goat.genomehubs.org/api",
+        api_version: str = "v3",
+    ) -> Any:
+        """Fetch a single record by ID or identifier.
+
+        Retrieves detailed information for a single record matching the current
+        query filters (typically just an ID or accession).
+
+        Args:
+            api_base: Base URL of the API.
+            api_version: API version string (default: "v3").
+
+        Returns:
+            Parsed record object with all available fields.
+        """
+        import json
+        import urllib.request
+
+        from . import parse_record_json
+
+        url = f"{api_base}/{api_version}/record"
+        payload = {
+            "query_yaml": self.to_query_yaml(),
+            "params_yaml": self.to_params_yaml(),
+        }
+        req = urllib.request.Request(
+            url,
+            data=json.dumps(payload).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+        )
+        with urllib.request.urlopen(req) as resp:
+            body_text = resp.read().decode("utf-8")
+
+        return json.loads(parse_record_json(body_text))
+
+    def lookup(
+        self,
+        api_base: str = "https://goat.genomehubs.org/api",
+        api_version: str = "v3",
+    ) -> Any:
+        """Lookup records by alternative identifiers.
+
+        Resolves alternative identifiers to their canonical IDs or fetches
+        related records based on the lookup criteria in this query.
+
+        Args:
+            api_base: Base URL of the API.
+            api_version: API version string (default: "v3").
+
+        Returns:
+            Parsed lookup result object.
+        """
+        import json
+        import urllib.request
+
+        from . import parse_lookup_json
+
+        url = f"{api_base}/{api_version}/lookup"
+        payload = {
+            "query_yaml": self.to_query_yaml(),
+            "params_yaml": self.to_params_yaml(),
+        }
+        req = urllib.request.Request(
+            url,
+            data=json.dumps(payload).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+        )
+        with urllib.request.urlopen(req) as resp:
+            body_text = resp.read().decode("utf-8")
+
+        return json.loads(parse_lookup_json(body_text))
+
+    def summary(
+        self,
+        api_base: str = "https://goat.genomehubs.org/api",
+        api_version: str = "v3",
+    ) -> Any:
+        """Fetch summary aggregations for the current query.
+
+        Computes summary statistics (counts, averages, ranges, etc.) for
+        records matching this query.
+
+        Args:
+            api_base: Base URL of the API.
+            api_version: API version string (default: "v3").
+
+        Returns:
+            Parsed summary object with aggregation results.
+        """
+        import json
+        import urllib.request
+
+        url = f"{api_base}/{api_version}/summary"
+        payload = {
+            "query_yaml": self.to_query_yaml(),
+            "params_yaml": self.to_params_yaml(),
+        }
+        req = urllib.request.Request(
+            url,
+            data=json.dumps(payload).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+        )
+        with urllib.request.urlopen(req) as resp:
+            body_text = resp.read().decode("utf-8")
+
+        data = json.loads(body_text)
+        return data
+
     # ── Utilities ─────────────────────────────────────────────────────────────
 
     def reset(self) -> "QueryBuilder":

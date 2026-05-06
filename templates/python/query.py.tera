@@ -558,6 +558,172 @@ class QueryBuilder:
         except Exception:
             return int(float(hits)) if hits else 0
 
+    def search_batch(
+        self,
+        queries: list["QueryBuilder"],
+    ) -> list[dict[str, Any]]:
+        """Execute multiple searches in a single batch request."""
+        import json
+        import urllib.request
+
+        url_base = self.to_url("search").split("?")[0].replace("/api/v", f"/api/v3/")
+        url = url_base.rsplit("/", 1)[0] + "/searchBatch"
+
+        payload = {
+            "searches": [
+                {
+                    "query_yaml": q.to_query_yaml(),
+                    "params_yaml": q.to_params_yaml(),
+                }
+                for q in queries
+            ]
+        }
+        req = urllib.request.Request(
+            url,
+            data=json.dumps(payload).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+        )
+        with urllib.request.urlopen(req) as resp:
+            body_text = resp.read().decode("utf-8")
+
+        parsed_results = []
+        data = json.loads(_ext.parse_batch_json(body_text))
+        for result in data.get("results", []):
+            parsed_results.append(result)
+        return parsed_results
+
+    def count_batch(
+        self,
+        queries: list["QueryBuilder"],
+    ) -> list[int]:
+        """Get hit counts for multiple queries in a batch request."""
+        import json
+        import urllib.request
+
+        url_base = self.to_url("search").split("?")[0].replace("/api/v", f"/api/v3/")
+        url = url_base.rsplit("/", 1)[0] + "/countBatch"
+
+        payload = {
+            "searches": [
+                {
+                    "query_yaml": q.to_query_yaml(),
+                    "params_yaml": q.to_params_yaml(),
+                }
+                for q in queries
+            ]
+        }
+        req = urllib.request.Request(
+            url,
+            data=json.dumps(payload).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+        )
+        with urllib.request.urlopen(req) as resp:
+            body_text = resp.read().decode("utf-8")
+
+        data = json.loads(_ext.parse_batch_json(body_text))
+        counts = []
+        for result in data.get("results", []):
+            counts.append(int(result.get("status", {}).get("hits") or 0))
+        return counts
+
+    def record(self, record_id: str, result: str | None = None) -> Any:
+        """Fetch a single record by ID or identifier.
+
+        Args:
+            record_id: Record ID to fetch (required)
+            result: Result type (taxon|assembly|sample); defaults to index type
+
+        Returns:
+            Parsed record object
+        """
+        if not record_id:
+            raise ValueError("record() requires a record_id parameter")
+        import urllib.parse
+        import json
+        import urllib.request
+
+        result_type = result or self._index or "taxon"
+
+        params = urllib.parse.urlencode({
+            "recordId": record_id,
+            "result": result_type,
+        })
+        url = f"{API_BASE}/v3/record?{params}"
+
+        req = urllib.request.Request(url, method="GET")
+        with urllib.request.urlopen(req) as resp:
+            body_text = resp.read().decode("utf-8")
+
+        return json.loads(body_text)
+
+    def lookup(self, search_term: str, result: str | None = None, size: int = 10) -> Any:
+        """Lookup records by alternative identifiers (autocomplete/search-as-you-type).
+
+        Args:
+            search_term: Search term for lookup (required)
+            result: Result type (taxon|assembly|sample); defaults to index type
+            size: Number of results to return (default: 10)
+
+        Returns:
+            Parsed lookup result
+        """
+        if not search_term:
+            raise ValueError("lookup() requires a search_term parameter")
+        import urllib.parse
+        import json
+        import urllib.request
+
+        result_type = result or self._index or "taxon"
+
+        params = urllib.parse.urlencode({
+            "searchTerm": search_term,
+            "result": result_type,
+            "size": str(size),
+        })
+        url = f"{API_BASE}/v3/lookup?{params}"
+
+        req = urllib.request.Request(url, method="GET")
+        with urllib.request.urlopen(req) as resp:
+            body_text = resp.read().decode("utf-8")
+
+        return json.loads(body_text)
+
+    def summary(self, record_id: str, fields: str, result: str | None = None, summary_types: str = "min,max,mean") -> Any:
+        """Fetch summary aggregations for specific fields.
+
+        Args:
+            record_id: Record ID to summarize (required)
+            fields: Comma-separated field names to summarize (required)
+            result: Result type (taxon|assembly|sample); defaults to index type
+            summary_types: Summary types to compute (default: "min,max,mean")
+
+        Returns:
+            Parsed summary object
+        """
+        if not record_id:
+            raise ValueError("summary() requires a record_id parameter")
+        if not fields:
+            raise ValueError("summary() requires a fields parameter")
+        import urllib.parse
+        import json
+        import urllib.request
+
+        result_type = result or self._index or "taxon"
+
+        params = urllib.parse.urlencode({
+            "recordId": record_id,
+            "result": result_type,
+            "fields": fields,
+            "summary": summary_types,
+        })
+        url = f"{API_BASE}/v3/summary?{params}"
+
+        req = urllib.request.Request(url, method="GET")
+        with urllib.request.urlopen(req) as resp:
+            body_text = resp.read().decode("utf-8")
+
+        return json.loads(body_text)
+
     def validate(self) -> list[str]:
         """Validate the current query state against the bundled field metadata.
 

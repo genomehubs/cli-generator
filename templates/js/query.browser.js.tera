@@ -11,7 +11,7 @@
  */
 
 const API_BASE = "{{ api_base_url }}";
-const API_VERSION = "v2";
+const API_VERSION = "{{ api_version }}";
 
 // Load the pre-compiled WASM module (browser-optimized)
 // Note: WASM must be initialized before use; handled via lazy init on first call

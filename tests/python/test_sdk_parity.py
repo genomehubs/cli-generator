@@ -230,6 +230,36 @@ CANONICAL_METHODS = {
         "js_name": "merge",
         "r_name": "merge",
     },
+    "search_batch": {
+        "params": ["queries", "api_base", "api_version"],
+        "python_name": "search_batch",
+        "js_name": "searchBatch",
+        "r_name": "search_batch",
+    },
+    "count_batch": {
+        "params": ["queries", "api_base", "api_version"],
+        "python_name": "count_batch",
+        "js_name": "countBatch",
+        "r_name": "count_batch",
+    },
+    "record": {
+        "params": ["api_base", "api_version"],
+        "python_name": "record",
+        "js_name": "record",
+        "r_name": "record",
+    },
+    "lookup": {
+        "params": ["api_base", "api_version"],
+        "python_name": "lookup",
+        "js_name": "lookup",
+        "r_name": "lookup",
+    },
+    "summary": {
+        "params": ["api_base", "api_version"],
+        "python_name": "summary",
+        "js_name": "summary",
+        "r_name": "summary",
+    },
 }
 
 CONSTRUCTOR_PARAMS: dict[str, dict[str, str]] = {}

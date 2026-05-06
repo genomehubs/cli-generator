@@ -88,6 +88,7 @@ QueryBuilder <- R6::R6Class(
     tidy = FALSE,
     taxonomy = "ncbi",
     api_base_url = "{{ api_base }}",
+    api_version = "{{ api_version }}",
     ui_base_url = "{{ ui_base }}",
 
     # Return a copy of `fields` as a character vector, or character(0) if NULL.
@@ -603,6 +604,147 @@ QueryBuilder <- R6::R6Class(
       }
 
       validate_query_json(self$to_query_yaml(), meta_json, config_json, synonyms_json)
+    },
+
+    #' @description Execute multiple searches in a single batch request.
+    #' @param queries List of QueryBuilder objects.
+    #' @param api_base Base URL of the API (default: from package).
+    #' @return List of batch search results.
+    search_batch = function(queries, api_base = NULL) {
+      if (length(queries) > 100) {
+        stop("maximum 100 searches per batch request")
+      }
+
+      if (is.null(api_base)) {
+        api_base <- private$.api_base
+      }
+
+      url <- paste0(api_base, "/", private$.api_version, "/searchBatch")
+      payload <- list(
+        searches = lapply(queries, function(q) {
+          list(
+            query_yaml = q$to_query_yaml(),
+            params_yaml = q$to_params_yaml()
+          )
+        })
+      )
+
+      resp <- httr::POST(url,
+        body = jsonlite::toJSON(payload, auto_unbox = TRUE),
+        httr::add_headers("Content-Type" = "application/json"),
+        httr::accept("application/json")
+      )
+      httr::stop_for_status(resp)
+      raw_text <- httr::content(resp, as = "text", encoding = "UTF-8")
+      data <- jsonlite::fromJSON(parse_batch_json(raw_text), simplifyVector = FALSE)
+      data$results %||% list()
+    },
+
+    #' @description Get hit counts for multiple queries in a batch request.
+    #' @param queries List of QueryBuilder objects.
+    #' @param api_base Base URL of the API (default: from package).
+    #' @return Numeric vector of hit counts.
+    count_batch = function(queries, api_base = NULL) {
+      if (length(queries) > 100) {
+        stop("maximum 100 searches per batch request")
+      }
+
+      if (is.null(api_base)) {
+        api_base <- private$.api_base
+      }
+
+      url <- paste0(api_base, "/", private$.api_version, "/countBatch")
+      payload <- list(
+        searches = lapply(queries, function(q) {
+          list(
+            query_yaml = q$to_query_yaml(),
+            params_yaml = q$to_params_yaml()
+          )
+        })
+      )
+
+      resp <- httr::POST(url,
+        body = jsonlite::toJSON(payload, auto_unbox = TRUE),
+        httr::add_headers("Content-Type" = "application/json"),
+        httr::accept("application/json")
+      )
+      httr::stop_for_status(resp)
+      raw_text <- httr::content(resp, as = "text", encoding = "UTF-8")
+      data <- jsonlite::fromJSON(parse_batch_json(raw_text), simplifyVector = FALSE)
+
+      counts <- sapply(data$results %||% list(), function(r) {
+        as.numeric(r$status$hits %||% 0)
+      })
+      if (length(counts) == 0) numeric(0) else counts
+    },
+
+    #' @description Fetch a single record by ID or identifier.
+    #' @param record_id Record ID to fetch (required).
+    #' @param result Result type (taxon|assembly|sample); defaults to index type.
+    #' @return Parsed record object.
+    record = function(record_id, result = NULL) {
+      if (is.null(record_id) || record_id == "") {
+        stop("record() requires a record_id parameter")
+      }
+      result_type <- if (is.null(result)) private$.index else result
+
+      params <- list(recordId = record_id, result = result_type)
+      url <- paste0(private$.api_base, "/", private$.api_version, "/record?")
+      query_string <- paste(names(params), sapply(params, as.character), sep = "=", collapse = "&")
+      url <- paste0(url, query_string)
+
+      resp <- httr::GET(url, httr::accept("application/json"))
+      httr::stop_for_status(resp)
+      raw_text <- httr::content(resp, as = "text", encoding = "UTF-8")
+      jsonlite::fromJSON(raw_text, simplifyVector = FALSE)
+    },
+
+    #' @description Lookup records by alternative identifiers (autocomplete/search-as-you-type).
+    #' @param search_term Search term for lookup (required).
+    #' @param result Result type (taxon|assembly|sample); defaults to index type.
+    #' @param size Number of results to return (default: 10).
+    #' @return Parsed lookup result.
+    lookup = function(search_term, result = NULL, size = 10) {
+      if (is.null(search_term) || search_term == "") {
+        stop("lookup() requires a search_term parameter")
+      }
+      result_type <- if (is.null(result)) private$.index else result
+
+      params <- list(searchTerm = search_term, result = result_type, size = as.character(size))
+      url <- paste0(private$.api_base, "/", private$.api_version, "/lookup?")
+      query_string <- paste(names(params), sapply(params, as.character), sep = "=", collapse = "&")
+      url <- paste0(url, query_string)
+
+      resp <- httr::GET(url, httr::accept("application/json"))
+      httr::stop_for_status(resp)
+      raw_text <- httr::content(resp, as = "text", encoding = "UTF-8")
+      jsonlite::fromJSON(raw_text, simplifyVector = FALSE)
+    },
+
+    #' @description Fetch summary aggregations for specific fields.
+    #' @param record_id Record ID to summarize (required).
+    #' @param fields Comma-separated field names to summarize (required).
+    #' @param result Result type (taxon|assembly|sample); defaults to index type.
+    #' @param summary_types Summary types to compute (default: "min,max,mean").
+    #' @return Parsed summary object.
+    summary = function(record_id, fields, result = NULL, summary_types = "min,max,mean") {
+      if (is.null(record_id) || record_id == "") {
+        stop("summary() requires a record_id parameter")
+      }
+      if (is.null(fields) || fields == "") {
+        stop("summary() requires a fields parameter")
+      }
+      result_type <- if (is.null(result)) private$.index else result
+
+      params <- list(recordId = record_id, result = result_type, fields = fields, summary = summary_types)
+      url <- paste0(private$.api_base, "/", private$.api_version, "/summary?")
+      query_string <- paste(names(params), sapply(params, as.character), sep = "=", collapse = "&")
+      url <- paste0(url, query_string)
+
+      resp <- httr::GET(url, httr::accept("application/json"))
+      httr::stop_for_status(resp)
+      raw_text <- httr::content(resp, as = "text", encoding = "UTF-8")
+      jsonlite::fromJSON(raw_text, simplifyVector = FALSE)
     },
 
     #' @description Reset query filters, preserving index and execution parameters.

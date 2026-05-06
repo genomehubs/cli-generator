@@ -459,6 +459,7 @@
         "type": "object",
         "required": [
           "status",
+          "total",
           "results"
         ],
         "properties": {
@@ -471,6 +472,21 @@
           },
           "status": {
             "$ref": "#/components/schemas/ApiStatus"
+          },
+          "total": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Sum of all individual result counts.",
+            "minimum": 0
+          },
+          "unique": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Count of unique results across all searches (only set if all searches use same index).",
+            "minimum": 0
           }
         }
       },
@@ -742,7 +758,8 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/SearchBatchItem"
-            }
+            },
+            "description": "Array of queries to search in batch (max 100)."
           }
         }
       },
@@ -757,7 +774,8 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/SearchBatchResultItem"
-            }
+            },
+            "description": "Per-query search results."
           },
           "status": {
             "$ref": "#/components/schemas/ApiStatus"
@@ -774,11 +792,13 @@
         "properties": {
           "count": {
             "type": "integer",
+            "description": "Number of actual documents returned in hits array",
             "minimum": 0
           },
           "hits": {
             "type": "array",
-            "items": {}
+            "items": {},
+            "description": "Array of document results"
           },
           "status": {
             "$ref": "#/components/schemas/ApiStatus"

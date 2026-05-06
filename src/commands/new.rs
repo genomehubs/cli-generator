@@ -570,6 +570,7 @@ fn create_r_package(repo_dir: &Path, site: &SiteConfig) -> Result<()> {
     context.insert("site_display_name", &site.display_name);
     context.insert("site_name", &site.name);
     context.insert("api_base", &site.api_base);
+    context.insert("api_version", &site.api_version);
     context.insert("ui_base", &site.resolved_ui_base());
 
     // Render a .tera (or plain text with Tera vars) template and write to dest.
@@ -882,6 +883,7 @@ fn create_js_package(repo_dir: &Path, site: &SiteConfig) -> Result<()> {
     context.insert("site_name", &site.name);
     context.insert("site_display_name", &site.display_name);
     context.insert("api_base_url", &site.api_base);
+    context.insert("api_version", &site.api_version);
     context.insert("ui_base", &site.resolved_ui_base());
 
     // 3. Copy pre-built WASM packages into js/{package}/pkg-nodejs/ and pkg-web/

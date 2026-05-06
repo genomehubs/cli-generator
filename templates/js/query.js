@@ -11,7 +11,7 @@
  */
 
 const API_BASE = "{{ api_base_url }}";
-const API_VERSION = "v2";
+const API_VERSION = "{{ api_version }}";
 const UI_BASE = "{{ ui_base }}";
 
 // Load the pre-compiled WASM module (Node.js)
@@ -23,7 +23,10 @@ const {
   build_ui_url: _buildUiUrl,
   build_url_for_endpoint: _buildUrlForEndpoint,
   describe_query: _describeQuery,
+  parse_batch_json: _parseBatchJson,
+  parse_lookup_json: _parseLookupJson,
   parse_paginated_json: _parsePaginatedJson,
+  parse_record_json: _parseRecordJson,
   parse_search_json: _parseSearchJson,
   render_snippet: _renderSnippet,
   split_source_columns: _splitSourceColumns,
@@ -697,6 +700,157 @@ class QueryBuilder {
     }
 
     return allRecords;
+  }
+
+  /**
+   * Execute multiple searches in a single batch request.
+   * @param {QueryBuilder[]} queries - Array of QueryBuilder objects
+   * @param {string} [apiBase=API_BASE] - Base URL of the API
+   * @returns {Promise<object[]>} - Array of batch search results
+   */
+  async searchBatch(queries, apiBase = API_BASE) {
+    if (queries.length > 100)
+      throw new Error("maximum 100 searches per batch request");
+
+    const url = `${apiBase}/v3/searchBatch`;
+    const payload = {
+      searches: queries.map((q) => ({
+        query_yaml: q.toQueryYaml(),
+        params_yaml: q.toParamsYaml(),
+      })),
+    };
+
+    const resp = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!resp.ok)
+      throw new Error(`API request failed: ${resp.status} ${resp.statusText}`);
+
+    const data = JSON.parse(_parseBatchJson(await resp.text()));
+    return data.results ?? [];
+  }
+
+  /**
+   * Get hit counts for multiple queries in a single batch request.
+   * @param {QueryBuilder[]} queries - Array of QueryBuilder objects
+   * @param {string} [apiBase=API_BASE] - Base URL of the API
+   * @returns {Promise<number[]>} - Array of hit counts
+   */
+  async countBatch(queries, apiBase = API_BASE) {
+    if (queries.length > 100)
+      throw new Error("maximum 100 searches per batch request");
+
+    const url = `${apiBase}/v3/countBatch`;
+    const payload = {
+      searches: queries.map((q) => ({
+        query_yaml: q.toQueryYaml(),
+        params_yaml: q.toParamsYaml(),
+      })),
+    };
+
+    const resp = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!resp.ok)
+      throw new Error(`API request failed: ${resp.status} ${resp.statusText}`);
+
+    const data = JSON.parse(_parseBatchJson(await resp.text()));
+    const counts = [];
+    for (const result of data.results ?? []) {
+      counts.push(result.status?.hits ?? 0);
+    }
+    return counts;
+  }
+
+  /**
+   * Fetch a single record by ID or identifier.
+   * @param {string} recordId - Record ID to fetch
+   * @param {string} [result] - Result type (taxon|assembly|sample), default from index
+   * @returns {Promise<object>} - Parsed record object
+   */
+  async record(recordId, result = null) {
+    if (!recordId) throw new Error("record() requires a recordId parameter");
+
+    const resultType = result || this._index || "taxon";
+    const params = new URLSearchParams({
+      recordId,
+      result: resultType,
+    });
+    const url = `${API_BASE}/v3/record?${params.toString()}`;
+
+    const resp = await fetch(url, { method: "GET" });
+
+    if (!resp.ok)
+      throw new Error(`API request failed: ${resp.status} ${resp.statusText}`);
+
+    return JSON.parse(await resp.text());
+  }
+
+  /**
+   * Lookup records by alternative identifiers (autocomplete/search-as-you-type).
+   * @param {string} searchTerm - Search term for lookup
+   * @param {string} [result] - Result type (taxon|assembly|sample), default from index
+   * @param {number} [size=10] - Number of results to return
+   * @returns {Promise<object>} - Parsed lookup result
+   */
+  async lookup(searchTerm, result = null, size = 10) {
+    if (!searchTerm)
+      throw new Error("lookup() requires a searchTerm parameter");
+
+    const resultType = result || this._index || "taxon";
+    const params = new URLSearchParams({
+      searchTerm,
+      result: resultType,
+      size: size.toString(),
+    });
+    const url = `${API_BASE}/v3/lookup?${params.toString()}`;
+
+    const resp = await fetch(url, { method: "GET" });
+
+    if (!resp.ok)
+      throw new Error(`API request failed: ${resp.status} ${resp.statusText}`);
+
+    return JSON.parse(await resp.text());
+  }
+
+  /**
+   * Fetch summary aggregations for specific fields.
+   * @param {string} recordId - Record ID to summarize
+   * @param {string} fields - Comma-separated field names to summarize
+   * @param {string} [result] - Result type (taxon|assembly|sample), default from index
+   * @param {string} [summaryTypes="min,max,mean"] - Summary types to compute
+   * @returns {Promise<object>} - Parsed summary object
+   */
+  async summary(
+    recordId,
+    fields,
+    result = null,
+    summaryTypes = "min,max,mean",
+  ) {
+    if (!recordId) throw new Error("summary() requires a recordId parameter");
+    if (!fields) throw new Error("summary() requires a fields parameter");
+
+    const resultType = result || this._index || "taxon";
+    const params = new URLSearchParams({
+      recordId,
+      result: resultType,
+      fields,
+      summary: summaryTypes,
+    });
+    const url = `${API_BASE}/v3/summary?${params.toString()}`;
+
+    const resp = await fetch(url, { method: "GET" });
+
+    if (!resp.ok)
+      throw new Error(`API request failed: ${resp.status} ${resp.statusText}`);
+
+    return JSON.parse(await resp.text());
   }
 
   // ── Utilities ──────────────────────────────────────────────────────────────

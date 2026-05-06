@@ -1,0 +1,37 @@
+# Test configuration for GoaT - local API testing
+# Use: target/release/cli-generator new goat-test -o workdir
+name: goat
+display_name: "GoaT (test)"
+api_base: "http://localhost:3000/api"
+api_version: "v3"
+ui_base: "http://localhost:3000"
+
+enabled_sdks:
+  - python
+  - r
+  - javascript
+
+indexes:
+  - name: taxon
+  - name: assembly
+  - name: sample
+
+# Python package name for the generated SDK (imported as `import goat_sdk`).
+sdk_name: goat_sdk
+
+compat:
+  goat_cli: true
+
+# Validation rules for query parameters.  Override any list to customise for
+# a specific GoaT deployment.  These defaults match the standard GoaT API.
+validation:
+  assembly_accession_prefixes: [gca_, gcf_, gcs_, gcn_, gcp_, gcr_, wgs, asm]
+  sample_accession_prefixes:
+    [srs, srr, srx, sam, ers, erp, erx, drr, drx, samea, sameg]
+  taxon_name_classes:
+    - scientific_name
+    - common_name
+    - synonym
+    - tolid_prefix
+    - authority
+  taxon_filter_types: [name, tree, lineage]
