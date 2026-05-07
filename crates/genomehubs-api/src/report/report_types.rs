@@ -275,23 +275,16 @@ pub async fn run_x_per_rank_report(
     state: &Arc<AppState>,
     index: &str,
     base_query: &Value,
-    report_config: &serde_yaml::Value,
+    _report_config: &serde_yaml::Value,
 ) -> Result<(u64, u64, Value), String> {
-    let x_field = report_config
-        .get("x")
-        .and_then(|v| v.as_str())
-        .ok_or("report_yaml missing 'x' field")?;
-
+    // Group by taxon_rank and return counts at each rank.
+    // Response format: simplified v3 style with just rank and count per bucket.
     let es_body = json!({
         "size": 0,
         "query": base_query,
         "aggs": {
             "by_rank": {
-                "terms": { "field": "taxon_rank", "size": 20 },
-                "aggs": {
-                    "field_stats": { "stats": { "field": x_field } },
-                    "value_count": { "value_count": { "field": x_field } }
-                }
+                "terms": { "field": "taxon_rank", "size": 100 }
             }
         }
     });
@@ -302,14 +295,33 @@ pub async fn run_x_per_rank_report(
         .pointer("/hits/total/value")
         .and_then(|v| v.as_u64())
         .unwrap_or(0);
-    let buckets = resp
+
+    // Transform ES buckets to v3 format: simplify to just rank + count.
+    let es_buckets = resp
         .pointer("/aggregations/by_rank/buckets")
+        .and_then(|b| b.as_array())
         .cloned()
         .unwrap_or_default();
 
+    let buckets: Vec<Value> = es_buckets
+        .iter()
+        .map(|bucket| {
+            let rank = bucket
+                .get("key")
+                .and_then(|k| k.as_str())
+                .unwrap_or("unknown");
+            let count = bucket
+                .get("doc_count")
+                .and_then(|c| c.as_u64())
+                .unwrap_or(0);
+            json!({
+                "rank": rank,
+                "count": count
+            })
+        })
+        .collect();
+
     let report_data = json!({
-        "type": "xPerRank",
-        "x": x_field,
         "buckets": buckets
     });
 
