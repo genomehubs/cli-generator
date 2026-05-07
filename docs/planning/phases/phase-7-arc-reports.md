@@ -124,35 +124,75 @@ pub fn filter_expr_to_es_query(expr: &str, base_query: &serde_json::Value)
 
 ## 2. Tree field axes
 
-### Config alignment with histogram
+### Config model
 
-Tree report `y` / `y_opts` follows exactly the same convention as histogram:
-
-```yaml
-report: tree
-y: genome_size # single field, median value shown (default)
-y_opts: ";;min" # show min value instead of median
-```
-
-Multiple fields use the sequence form (the `fields` key is a lower-level alias):
+The `axes` array is the canonical form for tree field configuration. It keeps field
+name, scale/bounds opts, and summary together per field, and extends naturally to
+multiple fields each with independent opts:
 
 ```yaml
 report: tree
-y:
-  - genome_size
-  - c_value
-y_opts: ";;min" # applies to all fields (same opts for each)
+axes:
+  - position: y
+    field: genome_size
+    summary: min
+    scale: log10
+  - position: y
+    field: c_value
+    summary: median
 ```
 
-The opts string uses the same `;;scale;transform` positional format as histogram
-x/y opts. For tree the only slot that matters is position 3 (summary function):
-`min`, `max`, `mean`, `median` (default). Other positions are accepted and ignored.
+Each entry is deserialized as `AxisInput`, which already carries all AxisOpts fields
+(`scale`, `min`, `max`, `bin_count`, `show_other`, `sort`, `interval`) plus `summary`
+alongside the field name. `AxisInput.into_spec()` produces a full `AxisSpec` with
+both the correct `AxisOpts` and `AxisSummary`.
+
+**Flat shorthand** — `y:` + `y_opts:` — remains valid as a convenience alias for the
+single-field case. It goes through the legacy flat-key branch in `resolve_axis_spec`,
+which produces `AxisSummary::Value` (no summary selection) and parses `y_opts:` as a
+standard `AxisOpts` string (`min;max;size;scale;sort;interval`). Equivalent to:
+
+```yaml
+axes:
+  - position: y
+    field: <value of y>
+    scale: <from y_opts>
+    min: <from y_opts>
+    max: <from y_opts>
+    # summary: Value (implicit)
+```
+
+**`y_opts` is only for the flat shorthand.** The `axes` form replaces it when
+per-field opts or summary selection is needed. There is no summary slot in the
+`AxisOpts` string; `summary:` is a separate structured key on the axis entry.
 
 ### Implementation
 
-`extract_tree_field` gains a `summary: SummaryFn` parameter (`Min | Max | Mean | Median`).
-The `run_tree_report` function parses the summary slot from `y_opts` (falling back to
-`Median`) and passes it through.
+`extract_tree_field` gains a `summary: AxisSummary` parameter. `run_tree_report`
+collects all `y`-role axis specs via `resolve_axis_spec` (multi-entry `axes` array,
+or single-entry flat `y:` + `y_opts:` fallback), then calls
+`extract_tree_field(src, field, summary)` for each.
+
+Mapping from `AxisSummary` variant to ES sub-field for `display_value`:
+
+| `AxisSummary` | sub-field used                                                     |
+| ------------- | ------------------------------------------------------------------ |
+| `Value`       | `long_value` → `float_value` → `half_float_value` (first non-null) |
+| `Min`         | `min`                                                              |
+| `Max`         | `max`                                                              |
+| `Median`      | `median`                                                           |
+| `Mean`        | `mean`                                                             |
+| `Count`       | `count`                                                            |
+| `Length`      | `length`                                                           |
+
+The existing `value`, `min`, `max` keys on each field entry are always populated
+(matching v2 `wantedSummaries = ["value", "min", "max"]`). `display_value` is the
+additionally emitted key set to the selected summary's sub-field value.
+
+Note: `resolve_axis_spec` currently returns `Option<AxisSpec>` (single spec per
+role). For multi-field tree support it must be extended to return `Vec<AxisSpec>` for
+the `Y` role, or a new `resolve_y_specs()` helper introduced. The flat `y:` shorthand
+produces a single-element vec.
 
 ### Node field response shape
 
@@ -171,13 +211,16 @@ keeping the full `{ value, min, max, source }` shape intact for other consumers:
 
 ### SDK method signature revision
 
-The `tree()` method gains `y_opts` and drops the ambiguous `fields` positional arg:
+The SDK `tree()` method exposes the simple single-field case. Callers needing
+per-field opts or summary control pass a raw `report_yaml` string directly to
+`_run_report`, which accepts the full `axes` array form. There is no `y_opts`
+parameter in the SDK method — opts are embedded in the `axes` entry alongside
+the field name when per-field control is needed:
 
 ```python
 def tree(
     self,
     y: str | list[str] | None = None,
-    y_opts: str = "",
     status_filter: str | None = None,
     cat: str | None = None,
     cat_opts: str = "",
@@ -191,12 +234,10 @@ def tree(
 ) -> list[dict[str, Any]]:
 ```
 
-`y` replaces `fields`. When `y` is a list, it maps to the `fields` YAML sequence.
-`fields` in `report_yaml` is kept as the internal key so the API is stable; the SDK
-method just translates.
-
-`ReportBuilder` gains `set_y_opts` (already present) and the internal `fields` field
-is driven from `y` only — `set_fields` becomes the backing store for both.
+`y` is converted to a `fields:` sequence in the report YAML. A string becomes
+`fields: [y]`; a list becomes `fields: [...]`. Both use `AxisSummary::Value` via
+the flat-key path in `resolve_axis_spec`. For summary selection or per-field
+scale, callers use the `axes` array via raw YAML.
 
 ---
 
@@ -238,17 +279,17 @@ z: "gc_percent>45" # optional
 
 ## Files to Create / Modify
 
-| File                                               | Change                                                                                                                |
-| -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| `crates/genomehubs-api/src/report/filter_expr.rs`  | New: shared filter-expression parser                                                                                  |
-| `crates/genomehubs-api/src/report/arc.rs`          | New: arc report logic (uses filter_expr)                                                                              |
-| `crates/genomehubs-api/src/report/mod.rs`          | Add `pub mod filter_expr; pub mod arc;`                                                                               |
-| `crates/genomehubs-api/src/report/report_types.rs` | Replace `build_status_filter_clause` stub with `filter_expr_to_es_query`; add `display_value` to `extract_tree_field` |
-| `crates/genomehubs-api/src/routes/report.rs`       | Add `"arc"` dispatch branch                                                                                           |
-| `python/cli_generator/query.py`                    | Revise `tree()` signature (`y`/`y_opts`); add `arc()`                                                                 |
-| `templates/python/query.py.tera`                   | Mirror same changes                                                                                                   |
-| `templates/js/query.js`                            | `tree()` + `arc()` methods                                                                                            |
-| `templates/r/query.R`                              | `tree()` + `arc()` methods                                                                                            |
+| File                                               | Change                                                                                                                                                   |
+| -------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `crates/genomehubs-api/src/report/filter_expr.rs`  | New: shared filter-expression parser                                                                                                                     |
+| `crates/genomehubs-api/src/report/arc.rs`          | New: arc report logic (uses filter_expr)                                                                                                                 |
+| `crates/genomehubs-api/src/report/mod.rs`          | Add `pub mod filter_expr; pub mod arc;`                                                                                                                  |
+| `crates/genomehubs-api/src/report/report_types.rs` | Replace `build_status_filter_clause` stub with `filter_expr_to_es_query`; add `summary: AxisSummary` param to `extract_tree_field`; emit `display_value` |
+| `crates/genomehubs-api/src/routes/report.rs`       | Add `"arc"` dispatch branch                                                                                                                              |
+| `python/cli_generator/query.py`                    | Revise `tree()` signature (`y` replaces `fields`, no `y_opts`); add `arc()`                                                                              |
+| `templates/python/query.py.tera`                   | Mirror same changes                                                                                                                                      |
+| `templates/js/query.js`                            | `tree()` + `arc()` methods                                                                                                                               |
+| `templates/r/query.R`                              | `tree()` + `arc()` methods                                                                                                                               |
 
 ---
 
@@ -613,8 +654,8 @@ curl -s -X POST http://localhost:3000/api/v3/report \
 - [ ] `filter_expr.rs` created: `parse_filter_string`, `build_nested_attribute_query`, `filter_expr_to_es_query`
 - [ ] Unit tests: numeric range, agg-function range, keyword match, compound AND
 - [ ] `build_status_filter_clause` stub in `report_types.rs` replaced by `filter_expr_to_es_query`
-- [ ] `extract_tree_field` gains `summary: SummaryFn` parameter; `display_value` in response
-- [ ] `tree()` SDK method revised: `y`/`y_opts` replaces `fields`; three-language parity
+- [ ] `extract_tree_field` gains `summary: AxisSummary` parameter; `display_value` set from correct sub-field per summary variant
+- [ ] `tree()` SDK method revised: `y` replaces `fields`, no `y_opts`; three-language parity
 - [ ] `crates/genomehubs-api/src/report/arc.rs` created; uses `filter_expr_to_es_query`
 - [ ] `"arc"` dispatch branch in `routes/report.rs`
 - [ ] `arc()` method in Python, JS, R

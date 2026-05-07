@@ -503,25 +503,31 @@ pub async fn run_tree_report(
     const MAX_TREE_NODES: usize = 100_000;
     const PAGE_SIZE: usize = 500;
 
-    // --- Collect fields to extract per node (`fields:` sequence; `y` as alias) ---
-    let tree_fields: Vec<String> = {
-        let from_seq = report_config
-            .get("fields")
-            .and_then(|v| v.as_sequence())
-            .map(|seq| {
-                seq.iter()
-                    .filter_map(|v| v.as_str().map(str::to_string))
-                    .collect::<Vec<_>>()
-            })
-            .unwrap_or_default();
-        if from_seq.is_empty() {
-            report_config
-                .get("y")
-                .and_then(|v| v.as_str())
-                .map(|s| vec![s.to_string()])
-                .unwrap_or_default()
+    // --- Collect y-axis field specs (field + summary + opts) ---
+    // Prefer structured `axes` array; fall back to flat `y:` / `y_opts:` or legacy
+    // `fields:` sequence (AxisSummary::Value for all).
+    let tree_field_specs: Vec<(String, AxisSummary)> = {
+        let from_axes = resolve_y_specs(report_config, state);
+        if !from_axes.is_empty() {
+            from_axes
+                .into_iter()
+                .map(|s| (s.field, s.summary))
+                .collect()
         } else {
+            // Legacy `fields:` sequence — no per-field summary control
+            let from_seq: Vec<String> = report_config
+                .get("fields")
+                .and_then(|v| v.as_sequence())
+                .map(|seq| {
+                    seq.iter()
+                        .filter_map(|v| v.as_str().map(str::to_string))
+                        .collect()
+                })
+                .unwrap_or_default();
             from_seq
+                .into_iter()
+                .map(|f| (f, AxisSummary::default()))
+                .collect()
         }
     };
 
@@ -625,7 +631,7 @@ pub async fn run_tree_report(
                 process_tree_hit(
                     src,
                     &lca_id,
-                    &tree_fields,
+                    &tree_field_specs,
                     cat_field.as_deref(),
                     &cat_labels,
                     &mut tree_nodes,
@@ -646,7 +652,14 @@ pub async fn run_tree_report(
 
     // --- Step 3: Status filter — run second paginated search, collect matching IDs ---
     let status_node_ids: Option<HashSet<String>> = if let Some(ref filter_str) = status_filter_str {
-        let filter_clause = build_status_filter_clause(filter_str, base_query);
+        let filter_clause =
+            match crate::report::filter_expr::filter_expr_to_es_query(filter_str, base_query) {
+                Ok(c) => c,
+                Err(e) => {
+                    eprintln!("[tree] invalid status_filter '{}': {}", filter_str, e);
+                    base_query.clone()
+                }
+            };
         let mut ids: HashSet<String> = HashSet::new();
         let mut sa: Option<Value> = None;
         loop {
@@ -718,7 +731,7 @@ pub async fn run_tree_report(
         // status=0: no match or no fields when fields/status_filter are not set.
         let status: u8 = match &status_node_ids {
             Some(ids) => u8::from(ids.contains(&id)),
-            None => u8::from(!tree_fields.is_empty() && node.contains_key("fields")),
+            None => u8::from(!tree_field_specs.is_empty() && node.contains_key("fields")),
         };
         node.insert("status".to_string(), json!(status));
         tree_nodes_json.insert(id, Value::Object(node));
@@ -1103,6 +1116,47 @@ fn resolve_axis_spec(
 // Tree helpers
 // ============================================================================
 
+/// Collect all `y`-role axis specs from `report_config`.
+///
+/// Prefers the structured `axes` array (multiple entries, per-field `summary` and
+/// opts).  Falls back to the flat `y:` + `y_opts:` shorthand for a single field
+/// with `AxisSummary::Value`.  Returns an empty vec when neither is present.
+fn resolve_y_specs(report_config: &serde_yaml::Value, state: &Arc<AppState>) -> Vec<AxisSpec> {
+    // Structured form: collect every entry with position == "y"
+    if let Some(axes) = report_config.get("axes").and_then(|a| a.as_sequence()) {
+        let specs: Vec<AxisSpec> = axes
+            .iter()
+            .filter(|e| e.get("position").and_then(|p| p.as_str()) == Some("y"))
+            .filter_map(|e| serde_yaml::from_value::<AxisInput>(e.clone()).ok())
+            .map(|input| {
+                let inferred = infer_value_type(&input.field, &state.cache);
+                input.into_spec(inferred)
+            })
+            .collect();
+        if !specs.is_empty() {
+            return specs;
+        }
+    }
+
+    // Flat shorthand fallback: `y:` + optional `y_opts:`
+    let field = match report_config.get("y").and_then(|v| v.as_str()) {
+        Some(f) => f,
+        None => return vec![],
+    };
+    let opts_str = report_config
+        .get("y_opts")
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
+    let value_type = infer_value_type(field, &state.cache);
+    vec![AxisSpec {
+        field: field.to_string(),
+        role: AxisRole::Y,
+        summary: AxisSummary::default(),
+        value_type,
+        opts: opts_str.parse().unwrap_or_default(),
+    }]
+}
+
 /// Find the LCA (lowest common ancestor) of the query result set.
 ///
 /// Uses a nested lineage aggregation sorted by doc_count desc + min_depth asc
@@ -1220,12 +1274,13 @@ async fn find_tree_lca(
 /// - Marks the taxon as a direct result.
 /// - Walks its lineage to create intermediate ancestor nodes and link children
 ///   up to (but not above) the LCA.
-/// - Extracts attribute values for each field in `tree_fields`.
+/// - Extracts attribute values for each `(field, summary)` spec; each field entry
+///   gains a `display_value` key set to the sub-field selected by its `AxisSummary`.
 /// - Assigns a cat label from `cat_labels` when `cat_field` is set.
 fn process_tree_hit(
     src: &Value,
     lca_id: &str,
-    tree_fields: &[String],
+    tree_field_specs: &[(String, AxisSummary)],
     cat_field: Option<&str>,
     cat_labels: &[String],
     tree_nodes: &mut std::collections::BTreeMap<String, serde_json::Map<String, Value>>,
@@ -1250,8 +1305,8 @@ fn process_tree_hit(
 
     // Collect all requested field data
     let mut merged_fields = serde_json::Map::new();
-    for field in tree_fields {
-        let extracted = extract_tree_field(src, field);
+    for (field, summary) in tree_field_specs {
+        let extracted = extract_tree_field(src, field, *summary);
         merged_fields.extend(extracted);
     }
 
@@ -1345,8 +1400,14 @@ fn process_tree_hit(
 
 /// Extract field metadata for `field_name` from a document's `attributes` array.
 ///
-/// Returns a map `{field_name: {source, value, min, max}}` or empty if not found.
-fn extract_tree_field(src: &Value, field_name: &str) -> serde_json::Map<String, Value> {
+/// Returns a map `{field_name: {source, value, min, max, display_value}}` or empty
+/// if the field is not present.  `display_value` is the sub-field selected by
+/// `summary`; `value`, `min`, and `max` are always included when available.
+fn extract_tree_field(
+    src: &Value,
+    field_name: &str,
+    summary: AxisSummary,
+) -> serde_json::Map<String, Value> {
     let mut fields_map = serde_json::Map::new();
     let attrs = match src.get("attributes").and_then(|a| a.as_array()) {
         Some(a) => a,
@@ -1362,20 +1423,32 @@ fn extract_tree_field(src: &Value, field_name: &str) -> serde_json::Map<String, 
         if let Some(source) = attr.get("aggregation_source") {
             field_data.insert("source".to_string(), source.clone());
         }
-        // Value: prefer long_value → float_value → half_float_value → keyword_value
-        let value = attr
+        // Raw stored value: prefer long_value → float_value → half_float_value → keyword_value
+        let raw_value = attr
             .get("long_value")
             .or_else(|| attr.get("float_value"))
             .or_else(|| attr.get("half_float_value"))
             .or_else(|| attr.get("keyword_value"));
-        if let Some(v) = value {
+        if let Some(v) = raw_value {
             field_data.insert("value".to_string(), v.clone());
         }
-        if let Some(min) = attr.get("min") {
-            field_data.insert("min".to_string(), min.clone());
+        for key in ["min", "max", "median", "mean", "count", "length"] {
+            if let Some(v) = attr.get(key) {
+                field_data.insert(key.to_string(), v.clone());
+            }
         }
-        if let Some(max) = attr.get("max") {
-            field_data.insert("max".to_string(), max.clone());
+        // display_value: the summary sub-field the UI should use for colouring/sizing
+        let display_value = match summary {
+            AxisSummary::Value => raw_value.cloned(),
+            AxisSummary::Min => attr.get("min").cloned(),
+            AxisSummary::Max => attr.get("max").cloned(),
+            AxisSummary::Median => attr.get("median").cloned(),
+            AxisSummary::Mean => attr.get("mean").cloned(),
+            AxisSummary::Count => attr.get("count").cloned(),
+            AxisSummary::Length => attr.get("length").cloned(),
+        };
+        if let Some(dv) = display_value {
+            field_data.insert("display_value".to_string(), dv);
         }
 
         fields_map.insert(field_name.to_string(), Value::Object(field_data));
@@ -1528,95 +1601,6 @@ fn resolve_cat_label(src: &Value, cat_field: &str, cat_labels: &[String]) -> Opt
         return cat_labels.first().cloned();
     }
     None
-}
-
-/// Compile a `status_filter` query-string fragment into an ES query clause.
-///
-/// Attribute fields are stored in a nested `attributes[]` array, so all
-/// comparisons are wrapped in a `nested` query with `path: "attributes"`.
-/// For numeric comparisons the range is applied over `long_value`,
-/// `float_value`, and `half_float_value` (should / minimum_should_match: 1)
-/// so the correct sub-field is matched regardless of how the value was stored.
-/// For equality comparisons (`=`) the term is applied to `keyword_value`.
-///
-/// The resulting clause is AND-ed with `base_query`.
-fn build_status_filter_clause(filter_str: &str, base_query: &Value) -> Value {
-    let nested_attr = |key: &str, inner: Value| -> Value {
-        json!({
-            "nested": {
-                "path": "attributes",
-                "query": {
-                    "bool": {
-                        "must": [
-                            { "term": { "attributes.key": key } },
-                            inner
-                        ]
-                    }
-                }
-            }
-        })
-    };
-
-    let numeric_range = |op: &str, val: f64| -> Value {
-        json!({
-            "bool": {
-                "should": [
-                    { "range": { "attributes.long_value":       { op: val } } },
-                    { "range": { "attributes.float_value":      { op: val } } },
-                    { "range": { "attributes.half_float_value": { op: val } } }
-                ],
-                "minimum_should_match": 1
-            }
-        })
-    };
-
-    let parsed: Option<(String, Value)> = if let Some(pos) = filter_str.find(">=") {
-        let field = filter_str[..pos].trim();
-        filter_str[pos + 2..]
-            .trim()
-            .parse::<f64>()
-            .ok()
-            .map(|v| (field.to_string(), numeric_range("gte", v)))
-    } else if let Some(pos) = filter_str.find("<=") {
-        let field = filter_str[..pos].trim();
-        filter_str[pos + 2..]
-            .trim()
-            .parse::<f64>()
-            .ok()
-            .map(|v| (field.to_string(), numeric_range("lte", v)))
-    } else if let Some(pos) = filter_str.find('>') {
-        let field = filter_str[..pos].trim();
-        filter_str[pos + 1..]
-            .trim()
-            .parse::<f64>()
-            .ok()
-            .map(|v| (field.to_string(), numeric_range("gt", v)))
-    } else if let Some(pos) = filter_str.find('<') {
-        let field = filter_str[..pos].trim();
-        filter_str[pos + 1..]
-            .trim()
-            .parse::<f64>()
-            .ok()
-            .map(|v| (field.to_string(), numeric_range("lt", v)))
-    } else if let Some(pos) = filter_str.find('=') {
-        let field = filter_str[..pos].trim();
-        let val = filter_str[pos + 1..].trim();
-        Some((
-            field.to_string(),
-            json!({ "term": { "attributes.keyword_value": val } }),
-        ))
-    } else {
-        None
-    };
-
-    match parsed {
-        Some((field, inner)) => json!({
-            "bool": {
-                "must": [ base_query.clone(), nested_attr(&field, inner) ]
-            }
-        }),
-        None => base_query.clone(),
-    }
 }
 
 /// Propagate cat labels from ancestors at `cat_rank` down to unlabelled descendants.
