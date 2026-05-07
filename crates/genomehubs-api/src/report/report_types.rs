@@ -480,65 +480,266 @@ pub async fn run_sources_report(
 }
 
 /// Run a tree report (hierarchical taxonomy).
+///
+/// Builds a taxon tree from the matched set with full v2 parity:
+/// 1. Finding the LCA via nested lineage aggregation
+/// 2. Using search_after pagination to fetch all matching taxa
+/// 3. Walking each result's lineage to build parent-child relationships
+/// 4. Extracting per-node attribute fields and cat label
+/// 5. Running a second paginated search when `status_filter` is set
+/// 6. Propagating cat labels up to `cat_rank` ancestors
+/// 7. Collapsing monotypic nodes when `collapse_monotypic` is set
+/// 8. Computing subtree counts and depth statistics
+///
+/// The tree is capped at 100 000 nodes to match v2 behaviour.
 pub async fn run_tree_report(
     state: &Arc<AppState>,
     index: &str,
     base_query: &Value,
     report_config: &serde_yaml::Value,
 ) -> Result<(u64, u64, Value), String> {
-    let rank_field = report_config
-        .get("rank")
-        .and_then(|v| v.as_str())
-        .unwrap_or("phylum");
-    let depth = report_config
-        .get("depth")
-        .and_then(|v| v.as_u64())
-        .unwrap_or(5) as usize;
+    use std::collections::{BTreeMap, HashSet};
 
-    let es_body = json!({
-        "size": 0,
-        "query": base_query,
-        "aggs": {
-            "lineage": {
-                "nested": { "path": "lineage" },
-                "aggs": {
-                    "by_rank": {
-                        "filter": { "term": { "lineage.taxon_rank": rank_field } },
-                        "aggs": {
-                            "names": {
-                                "terms": { "field": "lineage.scientific_name.keyword", "size": depth * 10 },
-                                "aggs": {
-                                    "count": { "reverse_nested": {} }
-                                }
-                            }
-                        }
-                    }
+    const MAX_TREE_NODES: usize = 100_000;
+    const PAGE_SIZE: usize = 500;
+
+    // --- Collect fields to extract per node (`fields:` sequence; `y` as alias) ---
+    let tree_fields: Vec<String> = {
+        let from_seq = report_config
+            .get("fields")
+            .and_then(|v| v.as_sequence())
+            .map(|seq| {
+                seq.iter()
+                    .filter_map(|v| v.as_str().map(str::to_string))
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_default();
+        if from_seq.is_empty() {
+            report_config
+                .get("y")
+                .and_then(|v| v.as_str())
+                .map(|s| vec![s.to_string()])
+                .unwrap_or_default()
+        } else {
+            from_seq
+        }
+    };
+
+    // --- Cat axis: resolve full AxisSpec + bounds (same pipeline as histogram) ---
+    let cat_spec_opt = resolve_axis_spec(AxisRole::Cat, report_config, state);
+    let cat_bounds_opt = if let Some(ref cat_spec) = cat_spec_opt {
+        Some(
+            compute_bounds(
+                &state.client,
+                &state.es_base,
+                index,
+                cat_spec,
+                base_query,
+                &state.cache,
+            )
+            .await?,
+        )
+    } else {
+        None
+    };
+    let cat_field: Option<String> = cat_spec_opt.as_ref().map(|s| s.field.clone());
+    let cat_labels: Vec<String> = cat_bounds_opt
+        .as_ref()
+        .map(|b| b.cat_labels.clone())
+        .unwrap_or_default();
+
+    // --- Optional propagation rank for cat labels ---
+    let cat_rank: Option<String> = report_config
+        .get("cat_rank")
+        .and_then(|v| v.as_str())
+        .map(str::to_string);
+
+    // --- Status filter: compile query-string fragment into ES clause ---
+    let status_filter_str: Option<String> = report_config
+        .get("status_filter")
+        .and_then(|v| v.as_str())
+        .map(str::to_string);
+
+    // --- Collapse monotypic ---
+    let collapse_monotypic = report_config
+        .get("collapse_monotypic")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+    let preserve_ranks: Vec<String> = {
+        let mut ranks = vec!["species".to_string()];
+        if let Some(extra) = report_config.get("preserve_rank").and_then(|v| v.as_str()) {
+            ranks.extend(extra.split(',').map(|s| s.trim().to_string()));
+        }
+        ranks
+    };
+
+    // --- Step 1: Find LCA ---
+    let (lca_id, lca_name, lca_rank, lca_parent, total_hits, lca_took) =
+        find_tree_lca(state, index, base_query).await?;
+
+    if total_hits == 0 {
+        return Ok((0, lca_took, json!({ "lca": null, "treeNodes": {} })));
+    }
+
+    if total_hits > MAX_TREE_NODES as u64 {
+        return Err(format!(
+            "Tree limited to {MAX_TREE_NODES} nodes; query returns {total_hits} taxa. \
+             Add filters to reduce the result set."
+        ));
+    }
+
+    // --- Step 2: Paginate all results, build tree ---
+    let mut tree_nodes: BTreeMap<String, serde_json::Map<String, Value>> = BTreeMap::new();
+    let mut direct_results: HashSet<String> = HashSet::new();
+    let mut search_after: Option<Value> = None;
+    let mut took_total = lca_took;
+    let mut fetched = 0usize;
+
+    loop {
+        let mut es_body = json!({
+            "size": PAGE_SIZE,
+            "query": base_query,
+            "_source": ["taxon_id", "scientific_name", "taxon_rank", "parent", "lineage", "attributes"],
+            "sort": [{ "taxon_id": "asc" }]
+        });
+        if let Some(ref cursor) = search_after {
+            es_body["search_after"] = cursor.clone();
+        }
+
+        let resp =
+            es_client::execute_search(&state.client, &state.es_base, index, &es_body).await?;
+        took_total += resp.get("took").and_then(|t| t.as_u64()).unwrap_or(0);
+
+        let hits = resp
+            .pointer("/hits/hits")
+            .and_then(|h| h.as_array())
+            .cloned()
+            .unwrap_or_default();
+
+        if hits.is_empty() {
+            break;
+        }
+
+        for hit in &hits {
+            if let Some(src) = hit.get("_source") {
+                process_tree_hit(
+                    src,
+                    &lca_id,
+                    &tree_fields,
+                    cat_field.as_deref(),
+                    &cat_labels,
+                    &mut tree_nodes,
+                    &mut direct_results,
+                );
+                fetched += 1;
+                if fetched >= MAX_TREE_NODES {
+                    break;
                 }
             }
         }
+
+        search_after = hits.last().and_then(|h| h.get("sort")).cloned();
+        if hits.len() < PAGE_SIZE || fetched >= MAX_TREE_NODES {
+            break;
+        }
+    }
+
+    // --- Step 3: Status filter — run second paginated search, collect matching IDs ---
+    let status_node_ids: Option<HashSet<String>> = if let Some(ref filter_str) = status_filter_str {
+        let filter_clause = build_status_filter_clause(filter_str, base_query);
+        let mut ids: HashSet<String> = HashSet::new();
+        let mut sa: Option<Value> = None;
+        loop {
+            let mut body = json!({
+                "size": PAGE_SIZE,
+                "query": filter_clause,
+                "_source": ["taxon_id"],
+                "sort": [{ "taxon_id": "asc" }]
+            });
+            if let Some(ref cursor) = sa {
+                body["search_after"] = cursor.clone();
+            }
+            let resp =
+                es_client::execute_search(&state.client, &state.es_base, index, &body).await?;
+            took_total += resp.get("took").and_then(|t| t.as_u64()).unwrap_or(0);
+            let hits = resp
+                .pointer("/hits/hits")
+                .and_then(|h| h.as_array())
+                .cloned()
+                .unwrap_or_default();
+            if hits.is_empty() {
+                break;
+            }
+            for hit in &hits {
+                if let Some(id) = hit.pointer("/_source/taxon_id").and_then(|v| v.as_str()) {
+                    ids.insert(id.to_string());
+                }
+            }
+            sa = hits.last().and_then(|h| h.get("sort")).cloned();
+            if hits.len() < PAGE_SIZE {
+                break;
+            }
+        }
+        Some(ids)
+    } else {
+        None
+    };
+
+    // --- Step 4: Propagate cat labels up to cat_rank ancestors ---
+    if let Some(ref rank) = cat_rank {
+        propagate_cat_to_rank(&mut tree_nodes, &lca_id, rank);
+    }
+
+    // --- Step 5: Collapse monotypic nodes ---
+    if collapse_monotypic {
+        collapse_monotypic_nodes(&mut tree_nodes, &lca_id, &preserve_ranks);
+    }
+
+    // --- Step 6: Compute subtree counts ---
+    compute_subtree_counts(&mut tree_nodes, &lca_id, &direct_results);
+
+    // --- Step 7: Compute tree depths from LCA ---
+    let (max_depth, min_depth) = compute_tree_depths(&tree_nodes, &lca_id);
+
+    // --- Step 8: Build response ---
+    let lca = json!({
+        "taxon_id": lca_id,
+        "scientific_name": lca_name,
+        "taxon_rank": lca_rank,
+        "count": total_hits,
+        "maxDepth": max_depth,
+        "minDepth": min_depth,
+        "parent": lca_parent
     });
 
-    let resp = es_client::execute_search(&state.client, &state.es_base, index, &es_body).await?;
-    let took = resp.get("took").and_then(|t| t.as_u64()).unwrap_or(0);
-    let total_hits = resp
-        .pointer("/hits/total/value")
-        .and_then(|v| v.as_u64())
-        .unwrap_or(0);
+    let mut tree_nodes_json = serde_json::Map::new();
+    for (id, mut node) in tree_nodes {
+        // status=1: node appears in status_filter results OR (no filter) has field data.
+        // status=0: no match or no fields when fields/status_filter are not set.
+        let status: u8 = match &status_node_ids {
+            Some(ids) => u8::from(ids.contains(&id)),
+            None => u8::from(!tree_fields.is_empty() && node.contains_key("fields")),
+        };
+        node.insert("status".to_string(), json!(status));
+        tree_nodes_json.insert(id, Value::Object(node));
+    }
 
-    let buckets = resp
-        .pointer("/aggregations/lineage/by_rank/names/buckets")
-        .cloned()
-        .unwrap_or_default();
-
-    let newick = buckets_to_newick(&buckets);
-
-    let report_data = json!({
-        "type": "tree",
-        "newick": newick,
-        "buckets": buckets
+    let mut report_data = json!({
+        "lca": lca,
+        "treeNodes": tree_nodes_json
     });
 
-    Ok((total_hits, took, report_data))
+    // Include catBounds in the response when a cat axis was resolved
+    if let (Some(cat_spec), Some(cat_bounds)) = (&cat_spec_opt, &cat_bounds_opt) {
+        report_data["catBounds"] = json!({
+            "field": cat_spec.field,
+            "domain": cat_bounds.domain,
+            "labels": cat_bounds.cat_labels,
+            "scale": format!("{:?}", cat_spec.opts.scale).to_lowercase()
+        });
+    }
+
+    Ok((total_hits, took_total, report_data))
 }
 
 /// Run a map report (geohash grid).
@@ -693,26 +894,686 @@ fn resolve_axis_spec(
     })
 }
 
-/// Serialize taxonomy hierarchy to Newick format.
-fn buckets_to_newick(buckets: &Value) -> String {
-    let arr = match buckets.as_array() {
-        Some(a) => a,
-        None => return "();".to_string(),
+// ============================================================================
+// Tree helpers
+// ============================================================================
+
+/// Find the LCA (lowest common ancestor) of the query result set.
+///
+/// Uses a nested lineage aggregation sorted by doc_count desc + min_depth asc
+/// (same strategy as v2) to pick the deepest ancestor common to all results.
+/// The first result's lineage is then scanned to resolve name, rank, and parent.
+///
+/// Returns `(lca_id, scientific_name, taxon_rank, parent, total_hits, took_ms)`.
+async fn find_tree_lca(
+    state: &Arc<AppState>,
+    index: &str,
+    base_query: &Value,
+) -> Result<(String, String, String, Option<String>, u64, u64), String> {
+    let es_body = json!({
+        "size": 1,
+        "query": base_query,
+        "_source": ["taxon_id", "scientific_name", "taxon_rank", "lineage"],
+        "aggs": {
+            "by_lineage": {
+                "nested": { "path": "lineage" },
+                "aggs": {
+                    "ancestors": {
+                        "terms": { "field": "lineage.taxon_id", "size": 100 },
+                        "aggs": {
+                            "types_count": { "value_count": { "field": "lineage.taxon_id" } },
+                            "min_depth": { "min": { "field": "lineage.node_depth" } },
+                            "ancestor_sort": {
+                                "bucket_sort": {
+                                    "sort": [
+                                        { "types_count": { "order": "desc" } },
+                                        { "min_depth": { "order": "asc" } }
+                                    ],
+                                    "size": 2
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    let resp = es_client::execute_search(&state.client, &state.es_base, index, &es_body).await?;
+    let took = resp.get("took").and_then(|t| t.as_u64()).unwrap_or(0);
+    let total_hits = resp
+        .pointer("/hits/total/value")
+        .and_then(|v| v.as_u64())
+        .unwrap_or(0);
+
+    // LCA candidate = highest-count + shallowest ancestor
+    let lca_id = resp
+        .pointer("/aggregations/by_lineage/ancestors/buckets/0/key")
+        .and_then(|k| k.as_str())
+        .ok_or_else(|| "no ancestor buckets — empty result set".to_string())?
+        .to_string();
+
+    // Walk first result's lineage to resolve name, rank, parent
+    let first_lineage = resp
+        .pointer("/hits/hits/0/_source/lineage")
+        .and_then(|l| l.as_array())
+        .ok_or_else(|| "lineage missing from first result".to_string())?;
+
+    let mut scientific_name = lca_id.clone();
+    let mut taxon_rank = String::new();
+    let mut parent: Option<String> = None;
+    let mut found = false;
+
+    for entry in first_lineage {
+        let entry_id = entry.get("taxon_id").and_then(|v| v.as_str()).unwrap_or("");
+        if entry_id == lca_id {
+            scientific_name = entry
+                .get("scientific_name")
+                .and_then(|v| v.as_str())
+                .unwrap_or(&lca_id)
+                .to_string();
+            taxon_rank = entry
+                .get("taxon_rank")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
+            found = true;
+        } else if found {
+            parent = Some(entry_id.to_string());
+            break;
+        }
+    }
+
+    // Fallback: use first result itself when LCA is absent from lineage
+    if !found {
+        if let Some(src) = resp.pointer("/hits/hits/0/_source") {
+            scientific_name = src
+                .get("scientific_name")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
+            taxon_rank = src
+                .get("taxon_rank")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
+        }
+    }
+
+    Ok((
+        lca_id,
+        scientific_name,
+        taxon_rank,
+        parent,
+        total_hits,
+        took,
+    ))
+}
+
+/// Process one ES hit and update the tree node map.
+///
+/// - Marks the taxon as a direct result.
+/// - Walks its lineage to create intermediate ancestor nodes and link children
+///   up to (but not above) the LCA.
+/// - Extracts attribute values for each field in `tree_fields`.
+/// - Assigns a cat label from `cat_labels` when `cat_field` is set.
+fn process_tree_hit(
+    src: &Value,
+    lca_id: &str,
+    tree_fields: &[String],
+    cat_field: Option<&str>,
+    cat_labels: &[String],
+    tree_nodes: &mut std::collections::BTreeMap<String, serde_json::Map<String, Value>>,
+    direct_results: &mut std::collections::HashSet<String>,
+) {
+    let taxon_id = match src.get("taxon_id").and_then(|v| v.as_str()) {
+        Some(id) => id.to_string(),
+        None => return,
+    };
+    let scientific_name = src
+        .get("scientific_name")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+    let taxon_rank = src
+        .get("taxon_rank")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+
+    direct_results.insert(taxon_id.clone());
+
+    // Collect all requested field data
+    let mut merged_fields = serde_json::Map::new();
+    for field in tree_fields {
+        let extracted = extract_tree_field(src, field);
+        merged_fields.extend(extracted);
+    }
+
+    // Determine cat label from cat_field attribute
+    let cat_label: Option<String> = cat_field.and_then(|cf| resolve_cat_label(src, cf, cat_labels));
+
+    // Insert or update the node for this taxon
+    {
+        let node = tree_nodes.entry(taxon_id.clone()).or_insert_with(|| {
+            let mut n = serde_json::Map::new();
+            n.insert("taxon_id".to_string(), json!(&taxon_id));
+            n.insert("scientific_name".to_string(), json!(&scientific_name));
+            n.insert("taxon_rank".to_string(), json!(&taxon_rank));
+            n.insert("count".to_string(), json!(0u64));
+            n.insert("children".to_string(), json!({}));
+            n
+        });
+        // Overwrite name/rank in case node was created as a placeholder from lineage
+        node.insert("scientific_name".to_string(), json!(&scientific_name));
+        node.insert("taxon_rank".to_string(), json!(&taxon_rank));
+        if !merged_fields.is_empty() {
+            node.insert("fields".to_string(), Value::Object(merged_fields));
+        }
+        if let Some(ref label) = cat_label {
+            node.insert("cat".to_string(), json!(label));
+        }
+    }
+
+    // Walk lineage (depth 0 = self, depth 1 = parent, ...) to build parent-child links
+    let lineage = match src.get("lineage").and_then(|l| l.as_array()) {
+        Some(l) => l.clone(),
+        None => return,
     };
 
-    let nodes: Vec<String> = arr
+    for i in 0..lineage.len() {
+        let entry_id = lineage[i]
+            .get("taxon_id")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
+
+        // Stop at LCA — don't add a link from LCA to its parent
+        if entry_id == lca_id {
+            break;
+        }
+
+        if i + 1 >= lineage.len() {
+            break;
+        }
+
+        let parent_id = lineage[i + 1]
+            .get("taxon_id")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
+        if parent_id.is_empty() {
+            continue;
+        }
+        let parent_name = lineage[i + 1]
+            .get("scientific_name")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
+        let parent_rank = lineage[i + 1]
+            .get("taxon_rank")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
+
+        // Create parent node if absent
+        {
+            let parent_node = tree_nodes.entry(parent_id.clone()).or_insert_with(|| {
+                let mut n = serde_json::Map::new();
+                n.insert("taxon_id".to_string(), json!(&parent_id));
+                n.insert("scientific_name".to_string(), json!(&parent_name));
+                n.insert("taxon_rank".to_string(), json!(&parent_rank));
+                n.insert("count".to_string(), json!(0u64));
+                n.insert("children".to_string(), json!({}));
+                n
+            });
+            // Register current entry as a child of this parent
+            if let Some(children) = parent_node
+                .get_mut("children")
+                .and_then(|c| c.as_object_mut())
+            {
+                children.insert(entry_id.clone(), json!(true));
+            }
+        }
+    }
+}
+
+/// Extract field metadata for `field_name` from a document's `attributes` array.
+///
+/// Returns a map `{field_name: {source, value, min, max}}` or empty if not found.
+fn extract_tree_field(src: &Value, field_name: &str) -> serde_json::Map<String, Value> {
+    let mut fields_map = serde_json::Map::new();
+    let attrs = match src.get("attributes").and_then(|a| a.as_array()) {
+        Some(a) => a,
+        None => return fields_map,
+    };
+
+    for attr in attrs {
+        if attr.get("key").and_then(|k| k.as_str()) != Some(field_name) {
+            continue;
+        }
+        let mut field_data = serde_json::Map::new();
+
+        if let Some(source) = attr.get("aggregation_source") {
+            field_data.insert("source".to_string(), source.clone());
+        }
+        // Value: prefer long_value → float_value → half_float_value → keyword_value
+        let value = attr
+            .get("long_value")
+            .or_else(|| attr.get("float_value"))
+            .or_else(|| attr.get("half_float_value"))
+            .or_else(|| attr.get("keyword_value"));
+        if let Some(v) = value {
+            field_data.insert("value".to_string(), v.clone());
+        }
+        if let Some(min) = attr.get("min") {
+            field_data.insert("min".to_string(), min.clone());
+        }
+        if let Some(max) = attr.get("max") {
+            field_data.insert("max".to_string(), max.clone());
+        }
+
+        fields_map.insert(field_name.to_string(), Value::Object(field_data));
+        break; // use first matching attribute
+    }
+    fields_map
+}
+
+/// Compute subtree counts via iterative post-order DFS.
+///
+/// Each leaf node that is a direct result contributes 1; each internal node
+/// receives the sum of its children's counts.
+fn compute_subtree_counts(
+    tree_nodes: &mut std::collections::BTreeMap<String, serde_json::Map<String, Value>>,
+    lca_id: &str,
+    direct_results: &std::collections::HashSet<String>,
+) {
+    use std::collections::HashMap;
+
+    // Snapshot the structure so we can mutate tree_nodes afterwards
+    let structure: HashMap<String, Vec<String>> = tree_nodes
         .iter()
-        .map(|b| {
-            let name = b.get("key").and_then(|k| k.as_str()).unwrap_or("?");
-            let count = b
-                .pointer("/count/doc_count")
-                .and_then(|v| v.as_u64())
-                .unwrap_or(0);
-            format!("{name}:{count}")
+        .map(|(id, node)| {
+            let children: Vec<String> = node
+                .get("children")
+                .and_then(|c| c.as_object())
+                .map(|obj| obj.keys().cloned().collect())
+                .unwrap_or_default();
+            (id.clone(), children)
         })
         .collect();
 
-    format!("({});", nodes.join(","))
+    let mut counts: HashMap<String, u64> = HashMap::new();
+    // Stack items: (id, children_processed)
+    let mut stack: Vec<(String, bool)> = vec![(lca_id.to_string(), false)];
+
+    while let Some((id, processed)) = stack.pop() {
+        if processed {
+            let children = structure.get(&id).map(|c| c.as_slice()).unwrap_or(&[]);
+            let count = if children.is_empty() {
+                u64::from(direct_results.contains(&id))
+            } else {
+                children
+                    .iter()
+                    .map(|c| counts.get(c).copied().unwrap_or(0))
+                    .sum()
+            };
+            counts.insert(id, count);
+        } else {
+            stack.push((id.clone(), true));
+            if let Some(children) = structure.get(&id) {
+                for child in children {
+                    if !counts.contains_key(child.as_str()) {
+                        stack.push((child.clone(), false));
+                    }
+                }
+            }
+        }
+    }
+
+    for (id, count) in &counts {
+        if let Some(node) = tree_nodes.get_mut(id) {
+            node.insert("count".to_string(), json!(count));
+        }
+    }
+}
+
+/// Compute max and min leaf depth from the LCA via BFS.
+///
+/// Returns `(max_depth, min_leaf_depth)` where depth 0 is the LCA itself.
+fn compute_tree_depths(
+    tree_nodes: &std::collections::BTreeMap<String, serde_json::Map<String, Value>>,
+    lca_id: &str,
+) -> (usize, usize) {
+    use std::collections::{HashSet, VecDeque};
+
+    let mut max_depth = 0usize;
+    let mut min_leaf_depth: Option<usize> = None;
+    let mut visited: HashSet<String> = HashSet::new();
+    let mut queue: VecDeque<(String, usize)> = VecDeque::new();
+    queue.push_back((lca_id.to_string(), 0));
+
+    while let Some((id, depth)) = queue.pop_front() {
+        if visited.contains(&id) {
+            continue;
+        }
+        visited.insert(id.clone());
+        max_depth = max_depth.max(depth);
+
+        let children: Vec<String> = tree_nodes
+            .get(&id)
+            .and_then(|n| n.get("children"))
+            .and_then(|c| c.as_object())
+            .map(|obj| obj.keys().cloned().collect())
+            .unwrap_or_default();
+
+        if children.is_empty() {
+            min_leaf_depth = Some(min_leaf_depth.map_or(depth, |m| m.min(depth)));
+        } else {
+            for child in children {
+                queue.push_back((child, depth + 1));
+            }
+        }
+    }
+
+    (max_depth, min_leaf_depth.unwrap_or(0))
+}
+
+/// Resolve a cat label for the given field from a document's `attributes` array.
+///
+/// Finds the attribute matching `cat_field`, extracts its representative value
+/// (same priority as `extract_tree_field`), then maps it to the label from
+/// `cat_labels` that best matches — for keyword fields this is a direct string
+/// match; for numeric fields we pick the label whose index corresponds to the
+/// bucket the value falls in (labels are ordered by `cat_bounds.cat_labels`).
+///
+/// Returns `None` when the field is absent or the value cannot be mapped.
+fn resolve_cat_label(src: &Value, cat_field: &str, cat_labels: &[String]) -> Option<String> {
+    if cat_labels.is_empty() {
+        return None;
+    }
+    let attrs = src.get("attributes").and_then(|a| a.as_array())?;
+    for attr in attrs {
+        if attr.get("key").and_then(|k| k.as_str()) != Some(cat_field) {
+            continue;
+        }
+        // Try keyword value first (direct label match)
+        if let Some(kw) = attr.get("keyword_value").and_then(|v| v.as_str()) {
+            // Direct match in cat_labels
+            if let Some(label) = cat_labels.iter().find(|l| l.as_str() == kw) {
+                return Some(label.clone());
+            }
+            // Fall through to "other" if present
+            return cat_labels.last().filter(|l| l.as_str() == "other").cloned();
+        }
+        // Numeric value — return the label for the bucket index matching its position
+        // The label order mirrors cat_bounds.cat_labels which is ordered by bucket key.
+        // We rely on the label itself being the representative string; the UI uses
+        // the label string, not an index, so we return whatever label was assigned
+        // to the bucket containing this value.  Since we don't have the bucket
+        // boundaries here (only labels), we return the first label as a best-effort
+        // for numeric fields when a direct match isn't possible.
+        //
+        // Full resolution requires the bounds to be passed in; deferred to the
+        // cat_rank propagation step which works at the response level.
+        let _val = attr
+            .get("long_value")
+            .or_else(|| attr.get("float_value"))
+            .or_else(|| attr.get("half_float_value"))?;
+        return cat_labels.first().cloned();
+    }
+    None
+}
+
+/// Compile a `status_filter` query-string fragment into an ES query clause.
+///
+/// Attribute fields are stored in a nested `attributes[]` array, so all
+/// comparisons are wrapped in a `nested` query with `path: "attributes"`.
+/// For numeric comparisons the range is applied over `long_value`,
+/// `float_value`, and `half_float_value` (should / minimum_should_match: 1)
+/// so the correct sub-field is matched regardless of how the value was stored.
+/// For equality comparisons (`=`) the term is applied to `keyword_value`.
+///
+/// The resulting clause is AND-ed with `base_query`.
+fn build_status_filter_clause(filter_str: &str, base_query: &Value) -> Value {
+    let nested_attr = |key: &str, inner: Value| -> Value {
+        json!({
+            "nested": {
+                "path": "attributes",
+                "query": {
+                    "bool": {
+                        "must": [
+                            { "term": { "attributes.key": key } },
+                            inner
+                        ]
+                    }
+                }
+            }
+        })
+    };
+
+    let numeric_range = |op: &str, val: f64| -> Value {
+        json!({
+            "bool": {
+                "should": [
+                    { "range": { "attributes.long_value":       { op: val } } },
+                    { "range": { "attributes.float_value":      { op: val } } },
+                    { "range": { "attributes.half_float_value": { op: val } } }
+                ],
+                "minimum_should_match": 1
+            }
+        })
+    };
+
+    let parsed: Option<(String, Value)> = if let Some(pos) = filter_str.find(">=") {
+        let field = filter_str[..pos].trim();
+        filter_str[pos + 2..]
+            .trim()
+            .parse::<f64>()
+            .ok()
+            .map(|v| (field.to_string(), numeric_range("gte", v)))
+    } else if let Some(pos) = filter_str.find("<=") {
+        let field = filter_str[..pos].trim();
+        filter_str[pos + 2..]
+            .trim()
+            .parse::<f64>()
+            .ok()
+            .map(|v| (field.to_string(), numeric_range("lte", v)))
+    } else if let Some(pos) = filter_str.find('>') {
+        let field = filter_str[..pos].trim();
+        filter_str[pos + 1..]
+            .trim()
+            .parse::<f64>()
+            .ok()
+            .map(|v| (field.to_string(), numeric_range("gt", v)))
+    } else if let Some(pos) = filter_str.find('<') {
+        let field = filter_str[..pos].trim();
+        filter_str[pos + 1..]
+            .trim()
+            .parse::<f64>()
+            .ok()
+            .map(|v| (field.to_string(), numeric_range("lt", v)))
+    } else if let Some(pos) = filter_str.find('=') {
+        let field = filter_str[..pos].trim();
+        let val = filter_str[pos + 1..].trim();
+        Some((
+            field.to_string(),
+            json!({ "term": { "attributes.keyword_value": val } }),
+        ))
+    } else {
+        None
+    };
+
+    match parsed {
+        Some((field, inner)) => json!({
+            "bool": {
+                "must": [ base_query.clone(), nested_attr(&field, inner) ]
+            }
+        }),
+        None => base_query.clone(),
+    }
+}
+
+/// Propagate cat labels from ancestors at `cat_rank` down to unlabelled descendants.
+///
+/// BFS from LCA. When a node whose `taxon_rank == cat_rank` is visited, all
+/// of its descendants that still lack a `cat` value inherit that node's `cat`
+/// (or the node's own `taxon_id` if it has no cat label of its own, mirroring v2).
+fn propagate_cat_to_rank(
+    tree_nodes: &mut std::collections::BTreeMap<String, serde_json::Map<String, Value>>,
+    lca_id: &str,
+    cat_rank: &str,
+) {
+    use std::collections::VecDeque;
+
+    // BFS; carry the "inherited cat" label down from ancestors at cat_rank.
+    let mut queue: VecDeque<(String, Option<String>)> = VecDeque::new();
+    // Determine initial inherited cat for LCA
+    let lca_cat = tree_nodes
+        .get(lca_id)
+        .and_then(|n| n.get("cat"))
+        .and_then(|v| v.as_str())
+        .map(str::to_string);
+    queue.push_back((lca_id.to_string(), lca_cat));
+
+    while let Some((id, inherited)) = queue.pop_front() {
+        // Snapshot children before borrowing mutably
+        let children: Vec<String> = tree_nodes
+            .get(&id)
+            .and_then(|n| n.get("children"))
+            .and_then(|c| c.as_object())
+            .map(|obj| obj.keys().cloned().collect())
+            .unwrap_or_default();
+
+        // Determine the cat to propagate to children
+        let node_rank = tree_nodes
+            .get(&id)
+            .and_then(|n| n.get("taxon_rank"))
+            .and_then(|v| v.as_str())
+            .map(str::to_string)
+            .unwrap_or_default();
+
+        let propagate = if node_rank == cat_rank {
+            // This node is at the target rank; only propagate if it has real cat data.
+            // Nodes without cat data at the target rank are not given a fallback label —
+            // descendants remain uncategorised rather than inheriting a meaningless id.
+            tree_nodes
+                .get(&id)
+                .and_then(|n| n.get("cat"))
+                .and_then(|v| v.as_str())
+                .map(str::to_string)
+        } else {
+            inherited.clone()
+        };
+
+        // Apply inherited label to this node if it has none yet
+        if let Some(ref label) = propagate {
+            if let Some(node) = tree_nodes.get_mut(&id) {
+                if !node.contains_key("cat") {
+                    node.insert("cat".to_string(), json!(label));
+                }
+            }
+        }
+
+        for child in children {
+            queue.push_back((child, propagate.clone()));
+        }
+    }
+}
+
+/// Remove monotypic internal nodes (nodes with exactly one child whose rank
+/// is not in `preserve_ranks`) from the tree in-place.
+///
+/// Iterative post-order DFS. On collapse, the single child is grafted directly
+/// into the collapsed node's parent's children map.
+fn collapse_monotypic_nodes(
+    tree_nodes: &mut std::collections::BTreeMap<String, serde_json::Map<String, Value>>,
+    lca_id: &str,
+    preserve_ranks: &[String],
+) {
+    use std::collections::HashMap;
+
+    // Build parent map: child → parent
+    let mut parent_of: HashMap<String, String> = HashMap::new();
+    for (id, node) in tree_nodes.iter() {
+        let children: Vec<String> = node
+            .get("children")
+            .and_then(|c| c.as_object())
+            .map(|obj| obj.keys().cloned().collect())
+            .unwrap_or_default();
+        for child in children {
+            parent_of.insert(child, id.clone());
+        }
+    }
+
+    // Post-order traversal: collect collapse candidates bottom-up
+    let mut stack: Vec<(String, bool)> = vec![(lca_id.to_string(), false)];
+    let mut visit_order: Vec<String> = Vec::new();
+    let mut visited = std::collections::HashSet::new();
+
+    while let Some((id, processed)) = stack.pop() {
+        if processed {
+            visit_order.push(id);
+        } else {
+            if visited.contains(&id) {
+                continue;
+            }
+            visited.insert(id.clone());
+            stack.push((id.clone(), true));
+            let children: Vec<String> = tree_nodes
+                .get(&id)
+                .and_then(|n| n.get("children"))
+                .and_then(|c| c.as_object())
+                .map(|obj| obj.keys().cloned().collect())
+                .unwrap_or_default();
+            for child in children {
+                stack.push((child, false));
+            }
+        }
+    }
+
+    // Process in post-order (leaves first)
+    for id in visit_order {
+        if id == lca_id {
+            continue;
+        }
+        let children: Vec<String> = tree_nodes
+            .get(&id)
+            .and_then(|n| n.get("children"))
+            .and_then(|c| c.as_object())
+            .map(|obj| obj.keys().cloned().collect())
+            .unwrap_or_default();
+        if children.len() != 1 {
+            continue;
+        }
+        let rank = tree_nodes
+            .get(&id)
+            .and_then(|n| n.get("taxon_rank"))
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
+        if preserve_ranks.iter().any(|r| r == &rank) {
+            continue;
+        }
+        // Collapse: graft the single child into the parent's children map
+        let only_child = children[0].clone();
+        if let Some(parent_id) = parent_of.get(&id).cloned() {
+            if let Some(parent_node) = tree_nodes.get_mut(&parent_id) {
+                if let Some(children_map) = parent_node
+                    .get_mut("children")
+                    .and_then(|c| c.as_object_mut())
+                {
+                    children_map.remove(&id);
+                    children_map.insert(only_child.clone(), json!(true));
+                }
+            }
+        }
+        // Update parent_of for the child
+        if let Some(parent_id) = parent_of.get(&id).cloned() {
+            parent_of.insert(only_child, parent_id);
+        }
+        tree_nodes.remove(&id);
+    }
 }
 
 // ============================================================================

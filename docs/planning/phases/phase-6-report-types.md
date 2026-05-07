@@ -1,7 +1,8 @@
 # Phase 6: Report Types
 
 **Depends on:** Phase 5 (AggBuilder, bounds, pipeline)
-**Blocks:** Phase 7 (arc is a distinct report sub-type; uses the route pattern from here)
+**Blocks:** Phase 6b (SDK / CLI integration)
+**Ordering note:** Phase 7 (shared filter-expression parser + arc + tree field axes) and Phase 15 (cross-query reports) both move ahead of Phase 6b, so SDK method signatures are finalised against a complete API surface before generated code is produced.
 **Estimated scope:** ~4 new files, 3 new parse functions
 
 ---
@@ -11,17 +12,19 @@
 Implement `POST /api/v3/report` — the single report endpoint that handles all
 non-arc report types:
 
-| Report               | Key                 | ES technique                                      | When                      |
-| -------------------- | ------------------- | ------------------------------------------------- | ------------------------- |
-| Histogram (1D)       | `histogram`         | histogram/date_histogram/terms agg                | always                    |
-| Histogram + cat      | `histogram` + `cat` | 2-level terms + histogram                         | when `cat:` set           |
-| 2D histogram/heatmap | `histogram` + `y`   | composite terms/histogram                         | when `y:` set             |
-| Scatter (raw)        | `scatter`           | top-N `_search` hits                              | count < scatter_threshold |
-| Scatter (grid)       | `scatter`           | 2D histogram                                      | count ≥ scatter_threshold |
-| xPerRank             | `xPerRank`          | terms agg on `taxon_rank`, nested stats           | always                    |
-| Sources              | `sources`           | terms on `source`                                 | always                    |
-| Tree                 | `tree`              | reverse_nested lineage agg → Newick serialisation | always                    |
-| Map                  | `map`               | geohash_grid agg                                  | always                    |
+| Report               | Key                           | ES technique                                                      | When                            |
+| -------------------- | ----------------------------- | ----------------------------------------------------------------- | ------------------------------- |
+| Histogram (1D)       | `histogram`                   | histogram/date_histogram/terms agg                                | always                          |
+| Histogram + cat      | `histogram` + `cat`           | 2-level terms + histogram                                         | when `cat:` set                 |
+| 2D histogram/heatmap | `histogram` + `y`             | composite terms/histogram                                         | when `y:` set                   |
+| Scatter (raw)        | `scatter`                     | top-N `_search` hits                                              | count < scatter_threshold       |
+| Scatter (grid)       | `scatter`                     | 2D histogram                                                      | count ≥ scatter_threshold       |
+| xPerRank             | `xPerRank`                    | terms agg on `taxon_rank`, nested stats                           | always                          |
+| Sources              | `sources`                     | terms on `source`                                                 | always                          |
+| Tree                 | `tree`                        | lineage nested agg (LCA) + search_after pagination + lineage walk | always                          |
+| Tree + cat           | `tree` + `cat_rank`           | as above + per-node `cat` label from ancestor at named rank       | when `cat_rank:` set            |
+| Tree (collapsed)     | `tree` + `collapse_monotypic` | as above + post-processing pass removes single-child nodes        | when `collapse_monotypic: true` |
+| Map                  | `map`                         | geohash_grid agg                                                  | always                          |
 
 Add `ReportBuilder` to `crates/genomehubs-query` and expose via PyO3/WASM/extendr.
 Add `parse_histogram_json`, `parse_tree_json`, `to_plot_dataframe` to `parse.rs`.
@@ -70,16 +73,21 @@ crates/genomehubs-query/src/report/builder.rs      — ReportBuilder SDK type
 
 `report_yaml` fields:
 
-| Key                 | Type   | Description                                                  |
-| ------------------- | ------ | ------------------------------------------------------------ |
-| `report`            | string | `histogram`, `scatter`, `xPerRank`, `sources`, `tree`, `map` |
-| `x`                 | string | X-axis field name                                            |
-| `x_opts`            | string | AxisOpts string for X                                        |
-| `y`                 | string | Optional Y-axis field (2D histogram / scatter Y)             |
-| `y_opts`            | string | AxisOpts string for Y                                        |
-| `cat`               | string | Category breakdown field                                     |
-| `cat_opts`          | string | AxisOpts string for cat                                      |
-| `scatter_threshold` | usize  | Switch to raw mode below this count (default 100)            |
+| Key                  | Type          | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| -------------------- | ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `report`             | string        | `histogram`, `scatter`, `xPerRank`, `sources`, `tree`, `map`                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| `x`                  | string        | X-axis field name                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| `x_opts`             | string        | AxisOpts string for X                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| `y`                  | string        | Optional Y-axis field (2D histogram / scatter Y)                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `y_opts`             | string        | AxisOpts string for Y                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| `cat`                | string        | Category breakdown field                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `cat_opts`           | string        | AxisOpts string for cat                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| `scatter_threshold`  | usize         | Switch to raw mode below this count (default 100)                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| `y` / `fields`       | string / list | Tree only: attribute field(s) to extract per node. `y: genome_size` is the single-field shorthand; `fields: [genome_size, c_value]` extracts multiple. **Phase 6 only shows the `median` summary value.** Controlling which summary (min / max / median) is shown per field via `y_opts`-style opts is deferred to Phase 7, where the tree field config aligns fully with the histogram `y`/`y_opts` axis format.                                                                                                     |
+| `status_filter`      | string        | Tree only: filter expression ANDed with `base_query`. Nodes whose taxon_id appears in the result set get `status=1`. When absent and `fields` is set, `status=1` if the node has any field data. **Phase 6 handles simple `field op value` expressions only** (`genome_size>3000000000`, `assembly_level=Chromosome`). Compound expressions (`min(field)<val`, `expr AND expr`) and agg-function prefixes are deferred to Phase 7 where a shared `parse_filter_string()` helper is added (used by both tree and arc). |
+| `cat_rank`           | string        | Tree only: propagation rank for cat labels. After per-node labelling from attribute data, any node with no `cat` value inherits the label of its nearest ancestor whose `taxon_rank` matches `cat_rank`. Nodes at `cat_rank` that themselves have no cat data do **not** get a fallback label — their descendants remain uncategorised.                                                                                                                                                                               |
+| `collapse_monotypic` | bool          | Tree only: when `true`, remove nodes that have exactly one child and whose `taxon_rank` is not in `preserve_rank` (species is always preserved). Default `false`.                                                                                                                                                                                                                                                                                                                                                     |
+| `preserve_rank`      | string        | Tree only: comma-separated list of ranks to keep even when they are monotypic (only meaningful when `collapse_monotypic: true`). Example: `"family,order"`.                                                                                                                                                                                                                                                                                                                                                           |
 
 ### Response envelope
 
@@ -201,6 +209,17 @@ pub async fn post_report(
 All per-type handler functions return `Result<(u64 hits, u64 took, Value report_data), String>`.
 
 #### Histogram report
+
+Histogram `cat` is **fully implemented** in `run_histogram_report`. It uses the same
+`resolve_axis_spec` + `compute_bounds` pipeline as the x-axis: `cat_spec` is built via
+`resolve_axis_spec(AxisRole::Cat, ...)`, bounds are probed via `compute_bounds`, and the
+resulting `cat_bounds.cat_labels` drive the nested aggregation structure. Both keyword
+and numeric cat axes are supported (keyword → named filter buckets; numeric → histogram
+sub-agg). The response carries `by_cat`, `cat`, and `cats` keys alongside `buckets`.
+
+The outdated pseudo-code below predates the actual implementation; see
+`crates/genomehubs-api/src/report/report_types.rs::run_histogram_report` for the
+current code.
 
 ```rust
 pub async fn run_histogram_report(
@@ -384,75 +403,156 @@ pub async fn run_sources_report(
 
 #### Tree report
 
-Uses `reverse_nested` aggregation on the lineage path to build a hierarchy, then
-serialises to Newick format.
+Builds a hierarchical taxon tree from the matched result set. Three main steps:
+
+1. **LCA detection** — nested lineage aggregation sorted by `_count desc, min_depth asc`; the deepest bucket shared by all matching taxa is the LCA.
+2. **Paginated fetch** — `search_after` on `taxon_id` (500 hits/page, capped at 100 000). Each hit's `lineage[]` array is walked to create parent-child links up to the LCA.
+3. **Field extraction + status** — see below.
+
+**Multiple fields (v2 parity):**
+
+`fields` is a YAML sequence of attribute names to extract per node:
+
+```yaml
+report: tree
+fields:
+  - genome_size
+  - c_value
+```
+
+The single-key `y` is still accepted as shorthand for `fields: [value]`. Both are read at the start of `run_tree_report`:
 
 ```rust
-pub async fn run_tree_report(
-    state: &Arc<AppState>,
-    index: &str,
-    base_query: &Value,
-    report_config: &serde_yaml::Value,
-) -> Result<(u64, u64, Value), String> {
-    let rank_field = report_config.get("rank").and_then(|v| v.as_str()).unwrap_or("phylum");
-    let depth = report_config.get("depth").and_then(|v| v.as_u64()).unwrap_or(5) as usize;
-
-    let es_body = json!({
-        "size": 0,
-        "query": base_query,
-        "aggs": {
-            "lineage": {
-                "nested": { "path": "lineage" },
-                "aggs": {
-                    "by_rank": {
-                        "filter": { "term": { "lineage.taxon_rank": rank_field } },
-                        "aggs": {
-                            "names": {
-                                "terms": { "field": "lineage.scientific_name.keyword", "size": depth * 10 },
-                                "aggs": {
-                                    "count": { "reverse_nested": {} }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    });
-
-    let resp = es_client::execute_search(&state.client, &state.es_base, index, &es_body).await?;
-    let took = resp.get("took").and_then(|t| t.as_u64()).unwrap_or(0);
-    let total = resp.pointer("/hits/total/value").and_then(|v| v.as_u64()).unwrap_or(0);
-
-    let buckets = resp
-        .pointer("/aggregations/lineage/by_rank/names/buckets")
-        .cloned()
+// Collect fields to extract, with `y` as a backwards-compat alias.
+let tree_fields: Vec<String> = {
+    let from_fields = report_config
+        .get("fields")
+        .and_then(|v| v.as_sequence())
+        .map(|seq| seq.iter().filter_map(|v| v.as_str().map(str::to_string)).collect::<Vec<_>>())
         .unwrap_or_default();
+    if from_fields.is_empty() {
+        report_config
+            .get("y")
+            .and_then(|v| v.as_str())
+            .map(|s| vec![s.to_string()])
+            .unwrap_or_default()
+    } else {
+        from_fields
+    }
+};
+```
 
-    // Serialise to Newick string
-    let newick = buckets_to_newick(&buckets);
+`extract_tree_field` is called once per entry in `tree_fields`; all results are merged into a single `fields` map on the node.
 
-    Ok((total, took, json!({ "type": "tree", "newick": newick, "buckets": buckets })))
-}
+**Status filter (v2 parity):**
 
-fn buckets_to_newick(buckets: &Value) -> String {
-    let arr = match buckets.as_array() {
-        Some(a) => a,
-        None => return "();".to_string(),
-    };
+`status_filter` is a query-string fragment in the same syntax as arc report's `x`/`y`/`z` params (`genome_size>3000000000`, `assembly_level=Chromosome`, etc.). It is compiled to an ES clause and ANDed with `base_query` to run a second paginated search. Taxon IDs that appear in those results get `status=1`; all others get `status=0`.
 
-    let nodes: Vec<String> = arr
-        .iter()
-        .map(|b| {
-            let name = b.get("key").and_then(|k| k.as_str()).unwrap_or("?");
-            let count = b.pointer("/count/doc_count").and_then(|v| v.as_u64()).unwrap_or(0);
-            format!("{name}:{count}")
-        })
-        .collect();
+```yaml
+report: tree
+fields:
+  - genome_size
+status_filter: "genome_size>3000000000"
+```
 
-    format!("({});", nodes.join(","))
+When `status_filter` is absent:
+
+- If `fields` is set: `status=1` for nodes that have any field data in `fields` (field was present in their `attributes[]`).
+- If neither is set: all nodes get `status=0`.
+
+**Phase 6 stub / Phase 7 full parser:** Phase 6 compiles `status_filter` with a minimal dispatcher (`field op value`, nested attributes query). Phase 7 (moved ahead of Phase 6b) replaces the stub with a shared `parse_filter_string()` helper that also handles `agg(field) op value` and compound `AND` expressions. The same helper is used by arc report `x`/`y`/`z`. This keeps query-string parsing in one place.
+
+**Cat axis for tree (v2 parity + v3 extension):**
+
+Tree `cat` uses the **same `resolve_axis_spec` + `compute_bounds` pipeline as histogram** `cat`. The bounds result (`cat_bounds`) is returned in the response as `catBounds` so the UI can render a colour legend.
+
+```yaml
+report: tree
+fields:
+  - genome_size
+cat: assembly_level
+cat_opts: ";;5+"
+cat_rank: order
+```
+
+Each node's `cat` value is set from its own attribute data for the cat field (same extraction path as `extract_tree_field`). The cat label is the string label from `cat_bounds.cat_labels` — the same bucket label the histogram would use.
+
+`cat_rank` is an optional propagation control: after all nodes have been labelled from their own data, any node that still has no `cat` value inherits the label from its nearest _ancestor_ whose `taxon_rank` matches `cat_rank`. This ensures internal nodes at the specified rank and above are always labelled, making the colour visible throughout the tree.
+
+```rust
+// After per-node cat extraction:
+// For each node (post-order), if cat is None and parent has a cat,
+// inherit parent's cat when parent.taxon_rank == cat_rank OR
+// when an ancestor at cat_rank was encountered walking up the lineage.
+// This mirrors the v2 logic: ancestor.taxon_rank == catRank sets
+// cat on all descendants seen so far in that lineage walk.
+if let Some(ref rank) = cat_rank {
+    // Second pass: propagate cat down from ancestor at cat_rank.
+    // Walk BFS from LCA; when a node at cat_rank is seen, stamp all
+    // descendants that still lack a cat value with its label.
 }
 ```
+
+Note: In v2, `catRank` was both the source of the label (the ancestor's `taxon_id`) and the propagation level. In v3 those roles are separated: `cat`/`cat_opts` define the field and its axis (the label comes from attribute data); `cat_rank` only controls propagation depth.
+
+`catBounds` is always included in the response when `cat` is set:
+
+```json
+"catBounds": {
+  "domain": [0, 5],
+  "labels": ["Chromosome", "Scaffold", "Contig", "other"],
+  "scale": "linear"
+}
+```
+
+**Collapse monotypic (v2 parity):**
+
+Applied as a post-processing step after the tree is fully built, before the response is assembled. Algorithm mirrors v2 `collapseNodes`:
+
+```rust
+fn collapse_monotypic_nodes(
+    tree_nodes: &mut BTreeMap<String, serde_json::Map<String, Value>>,
+    lca_id: &str,
+    preserve_ranks: &[&str],  // always includes "species"
+) -> u64 /* new max_depth */ {
+    // Iterative post-order DFS (same snapshot trick as compute_subtree_counts).
+    // A node is collapsed when:
+    //   - it has exactly 1 child
+    //   - its taxon_rank is not in preserve_ranks
+    // On collapse: remove the node from tree_nodes; add its single child
+    // directly into the parent's children map.
+    // Returns updated max depth.
+}
+```
+
+Parameters:
+
+- `collapse_monotypic: true` enables collapsing.
+- `preserve_rank: "family,order"` — comma-separated ranks to keep even if monotypic. `species` is always kept regardless.
+
+**Response shape** — `cat`, `catBounds` added when `cat` is set:
+
+````json
+{
+  "lca": { "taxon_id": "9608", "scientific_name": "Canidae", "taxon_rank": "family",
+            "count": 126, "maxDepth": 3, "minDepth": 2, "parent": "379584" },
+  "catBounds": {
+    "domain": [0, 4],
+    "labels": ["Chromosome", "Scaffold", "Contig", "other"],
+    "scale": "linear"
+  },
+  "treeNodes": {
+    "9608": {
+      "taxon_id": "9608", "scientific_name": "Canidae", "taxon_rank": "family",
+      "count": 96, "children": { "9611": true },
+      "cat": "Chromosome",
+      "fields": {
+        "genome_size": { "source": "descendant", "value": 2.5e9, "min": 1.8e9, "max": 3.2e9 }
+      },
+      "status": 0
+    }
+  }
+}
 
 #### Map report
 
@@ -488,7 +588,7 @@ pub async fn run_map_report(
 
     Ok((total, took, json!({ "type": "map", "field": geo_field, "buckets": buckets })))
 }
-```
+````
 
 ---
 
@@ -507,13 +607,18 @@ pub struct ReportBuilder {
     report_type: String,
     x: Option<String>,
     x_opts: Option<String>,
-    y: Option<String>,
+    y: Option<String>,         // shorthand for tree fields: [y]; kept for backwards compat
     y_opts: Option<String>,
     cat: Option<String>,
     cat_opts: Option<String>,
     scatter_threshold: Option<usize>,
     rank: Option<String>,
     depth: Option<usize>,
+    fields: Option<Vec<String>>,        // tree: attribute fields to extract per node
+    status_filter: Option<String>,      // tree: query string determining status=1
+    cat_rank: Option<String>,           // tree: propagation rank for cat labels
+    collapse_monotypic: bool,           // tree: remove monotypic internal nodes
+    preserve_rank: Option<String>,      // tree: comma-sep ranks to keep when collapsing
 }
 
 impl ReportBuilder {
@@ -530,6 +635,23 @@ impl ReportBuilder {
     pub fn set_scatter_threshold(mut self, n: usize) -> Self { self.scatter_threshold = Some(n); self }
     pub fn set_rank(mut self, rank: impl Into<String>) -> Self { self.rank = Some(rank.into()); self }
     pub fn set_depth(mut self, depth: usize) -> Self { self.depth = Some(depth); self }
+    pub fn set_fields(mut self, fields: Vec<impl Into<String>>) -> Self {
+        self.fields = Some(fields.into_iter().map(Into::into).collect());
+        self
+    }
+    pub fn set_status_filter(mut self, filter: impl Into<String>) -> Self {
+        self.status_filter = Some(filter.into());
+        self
+    }
+    pub fn set_cat_rank(mut self, rank: impl Into<String>) -> Self {
+        self.cat_rank = Some(rank.into());
+        self
+    }
+    pub fn set_collapse_monotypic(mut self, preserve_rank: Option<impl Into<String>>) -> Self {
+        self.collapse_monotypic = true;
+        self.preserve_rank = preserve_rank.map(Into::into);
+        self
+    }
 
     /// Serialise to YAML for use in the `report_yaml` request field.
     pub fn to_report_yaml(&self) -> String {
@@ -544,6 +666,16 @@ impl ReportBuilder {
         if let Some(st) = self.scatter_threshold { doc.insert("scatter_threshold".into(), st.into()); }
         if let Some(r) = &self.rank { doc.insert("rank".into(), r.clone().into()); }
         if let Some(d) = self.depth { doc.insert("depth".into(), d.into()); }
+        if let Some(fields) = &self.fields {
+            let seq: serde_yaml::Value = serde_yaml::Value::Sequence(
+                fields.iter().map(|f| serde_yaml::Value::String(f.clone())).collect(),
+            );
+            doc.insert("fields".into(), seq);
+        }
+        if let Some(sf) = &self.status_filter { doc.insert("status_filter".into(), sf.clone().into()); }
+        if let Some(cr) = &self.cat_rank { doc.insert("cat_rank".into(), cr.clone().into()); }
+        if self.collapse_monotypic { doc.insert("collapse_monotypic".into(), true.into()); }
+        if let Some(pr) = &self.preserve_rank { doc.insert("preserve_rank".into(), pr.clone().into()); }
         serde_yaml::to_string(&serde_yaml::Value::Mapping(doc)).unwrap_or_default()
     }
 }
@@ -568,17 +700,39 @@ pub fn parse_histogram_json(raw: &str) -> Result<String, String> {
     serde_json::to_string(&buckets).map_err(|e| format!("serialisation error: {e}"))
 }
 
-/// Parse tree report Newick string from a raw `/report` response.
+/// Parse a tree report response into a flat node list.
 ///
-/// Returns just the Newick string, or an error if the report field is absent.
+/// Returns a JSON array of node objects, one per entry in `treeNodes`, with
+/// `taxon_id`, `scientific_name`, `taxon_rank`, `count`, `status`,
+/// `parent_id` (derived from the node's position in the tree), and a flattened
+/// `fields` map. Useful for building data frames in Python/R SDK code.
 pub fn parse_tree_json(raw: &str) -> Result<String, String> {
     let envelope: serde_json::Value = serde_json::from_str(raw)
         .map_err(|e| format!("invalid JSON: {e}"))?;
-    envelope
-        .pointer("/report/newick")
-        .and_then(|v| v.as_str())
-        .map(|s| s.to_string())
-        .ok_or_else(|| "missing /report/newick in response".to_string())
+    let nodes = envelope
+        .pointer("/report/treeNodes")
+        .and_then(|v| v.as_object())
+        .ok_or_else(|| "missing /report/treeNodes in response".to_string())?;
+    let rows: Vec<serde_json::Value> = nodes
+        .iter()
+        .map(|(id, node)| {
+            let mut row = serde_json::json!({
+                "taxon_id": id,
+                "scientific_name": node.get("scientific_name"),
+                "taxon_rank": node.get("taxon_rank"),
+                "count": node.get("count"),
+                "status": node.get("status"),
+            });
+            // Flatten fields map into top-level keys prefixed with the field name
+            if let Some(fields) = node.get("fields").and_then(|f| f.as_object()) {
+                for (field, data) in fields {
+                    row[field] = data.get("value").cloned().unwrap_or(serde_json::Value::Null);
+                }
+            }
+            row
+        })
+        .collect();
+    serde_json::to_string(&rows).map_err(|e| format!("serialisation error: {e}"))
 }
 
 /// Convert a parsed histogram bucket list to a long-format (tidy) data frame.
@@ -650,12 +804,41 @@ def scatter(self, x: str, y: str | None = None, *, threshold: int = 100,
     if y: report_yaml += f"y: {y}\n"
     return self._run_report(report_yaml, api_base, api_version, _parse)
 
-def tree(self, rank: str = "phylum", depth: int = 5,
-         *, api_base: str = "https://goat.genomehubs.org/api",
-         api_version: str = "v3") -> str:
-    """Run a tree report and return Newick string."""
+def tree(
+    self,
+    fields: list[str] | None = None,
+    status_filter: str | None = None,
+    cat: str | None = None,
+    cat_opts: str = "",
+    cat_rank: str | None = None,
+    collapse_monotypic: bool = False,
+    preserve_rank: str | None = None,
+    rank: str = "phylum",
+    *,
+    api_base: str = "https://goat.genomehubs.org/api",
+    api_version: str = "v3",
+) -> list[dict[str, Any]]:
+    """Run a tree report and return a flat node list.
+
+    Each element has taxon_id, scientific_name, taxon_rank, count, status,
+    and one key per entry in `fields` containing that field's value.
+    If cat is set, each element also has a `cat` key with the label for that
+    field (same bucket labels as histogram cat). The response also includes
+    a `catBounds` object for building a colour legend.
+    cat_rank controls how far up the tree cat labels are propagated.
+    """
     from . import parse_tree_json as _parse
-    report_yaml = f"report: tree\nrank: {rank}\ndepth: {depth}\n"
+    report_yaml = "report: tree\n"
+    if rank: report_yaml += f"rank: {rank}\n"
+    if fields:
+        report_yaml += "fields:\n" + "".join(f"  - {f}\n" for f in fields)
+    if status_filter: report_yaml += f"status_filter: \"{status_filter}\"\n"
+    if cat: report_yaml += f"cat: {cat}\n"
+    if cat_opts: report_yaml += f"cat_opts: \"{cat_opts}\"\n"
+    if cat_rank: report_yaml += f"cat_rank: {cat_rank}\n"
+    if collapse_monotypic:
+        report_yaml += "collapse_monotypic: true\n"
+        if preserve_rank: report_yaml += f"preserve_rank: \"{preserve_rank}\"\n"
     return self._run_report(report_yaml, api_base, api_version, _parse)
 
 def map(self, geo_field: str = "location", precision: int = 4,
@@ -687,6 +870,23 @@ def _run_report(
         raw = resp.read().decode()
     return json.loads(parse_fn(raw))
 ```
+
+---
+
+## Deferred to post-Phase 15
+
+The following are related to tree decoration but require design work beyond Phase 6
+and are captured here to avoid losing the intent.
+
+| Item                                                        | Notes                                                                                                                                                                                                                                                                                                                                                                   |
+| ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Node-based reports** (histogram per tree node)            | E.g. histogram of species genome sizes per family. Requires a new report shape where each tree node carries a mini-report payload rather than a scalar field value. Rough idea: `node_report: histogram` + `node_report_field: genome_size` in `report_yaml`; response adds `nodeReports: { id: {buckets:[...]} }`. Overlaps with Phase 15 custom histogram boundaries. |
+| **Tree rank collapsing** (`rank` param, v2 `collapseNodes`) | v2 also supported collapsing nodes below a specific rank (not the same as monotypic collapse). Not yet needed; revisit when UI tree view is ported.                                                                                                                                                                                                                     |
+| **`status_filter` compound expressions**                    | `min(field)<val`, `expr AND expr` — deferred to Phase 7 shared `parse_filter_string()` helper.                                                                                                                                                                                                                                                                          |
+| **`fields` summary-value control**                          | Selecting min/max/median per field via `y_opts`-style opts — deferred to Phase 7 where tree field config aligns fully with histogram `y`/`y_opts` axis format.                                                                                                                                                                                                          |
+| **`status_filter` combined query optimisation**             | Current plan runs a second paginated search for `status_filter`. A more efficient alternative: combine into a single aggregation (e.g. `filter` sub-agg per node). Defer until query volume warrants it.                                                                                                                                                                |
+| **Newick serialisation**                                    | v2 could return Newick for export. Omitted in v3 until a use case arises.                                                                                                                                                                                                                                                                                               |
+| **`fields` on non-tree reports**                            | Concept of per-result field extraction is currently tree-only. Could generalise to scatter raw mode (attach extra fields per point).                                                                                                                                                                                                                                    |
 
 ---
 

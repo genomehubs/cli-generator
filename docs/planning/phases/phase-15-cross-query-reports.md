@@ -1,7 +1,8 @@
 # Phase 15: Cross-Query Reports
 
-**Depends on:** Phase 5 (es_client, AggBuilder), Phase 7 (arc reports)
-**Blocks:** nothing downstream
+**Depends on:** Phase 5 (es_client, AggBuilder), Phase 7 (arc + shared filter-expression parser)
+**Precedes:** Phase 6b (SDK / CLI integration) — cross-query support must be available before SDK method signatures are finalised
+**Blocks:** nothing downstream beyond Phase 6b
 **Estimated scope:** 1 new Rust module, extensions to Phase 7 arc, extensions to Phase 5 query builder
 
 ---

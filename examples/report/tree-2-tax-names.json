@@ -1,15 +1,14 @@
 {
   "query": {
     "index": "taxon",
-    "taxa": ["Canidae"],
-    "taxon_filter_type": "tree"
+    "taxa": ["Canis lupus", "Vulpes vulpes"],
+    "taxon_filter_type": "name"
   },
   "params": {
     "taxonomy": "ncbi"
   },
   "report": {
     "report": "tree",
-    "rank": "genus",
-    "y": "genome_size"
+    "rank": "species"
   }
 }

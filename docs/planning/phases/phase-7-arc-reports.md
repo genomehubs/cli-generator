@@ -1,59 +1,220 @@
-# Phase 7: Arc Reports
+# Phase 7: Shared Filter-Expression Parser + Arc Reports + Tree Field Axes
 
-**Depends on:** Phase 5 (es_client), Phase 6 (`/report` route pattern established)
-**Blocks:** nothing downstream
-**Estimated scope:** ~1 new Rust file, 1 small helper, SDK method additions
+**Depends on:** Phase 6a (report types implemented)
+**Precedes:** Phase 6b (SDK / CLI integration) — Phase 7 moves ahead of 6b so the
+full query-string config is pinned before CLI/SDK method signatures are finalised.
+**Estimated scope:** ~1 new Rust module (`filter_expr.rs`), arc report file, minor
+updates to tree report, SDK method additions
 
 ---
 
 ## Goal
 
-Implement arc reports: a report type that counts document overlap between two or three
-query string conditions. Arc reports answer questions like "How many taxa have both
-a chromosome-level genome AND genome_size > 1 GB?"
+Three things that share a common foundation and must be specced together:
 
-Arc is architecturally distinct from other reports:
+1. **Shared filter-expression parser** — `parse_filter_string()` compiles a compact
+   query-string expression (`genome_size>3e9`, `min(c_value)<3`, `country=BR`,
+   `genome_size>1e9 AND assembly_level=Chromosome`) into a nested-attributes ES clause.
+   Used by: arc report `x`/`y`/`z`, tree `status_filter`, and any future filter param.
+   Phase 6 ships a minimal stub; this phase replaces it with the real thing.
 
-- X, Y, Z are **query strings** (filter expressions), not field names
-- No aggregation — just 3 (or 2) parallel count queries
-- The response is scalar counts, not bucket arrays
+2. **Tree field axes** — align tree `y`/`y_opts` (and multi-field `fields`) with the
+   histogram axis config so the same SDK method opts control which summary value is
+   shown (min / max / median / mean). This pins the tree SDK method signature before
+   Phase 6b integration.
+
+3. **Arc report** — count document overlap between two or three filter expressions.
+   Now uses the shared parser rather than its own stub.
 
 ---
 
-## `report_yaml` format
+## Ordering rationale
+
+Phase 6b (SDK integration: `tree()`, `histogram()`, `arc()` methods + CLI flags)
+requires stable method signatures. The `tree()` signature depends on whether `fields`
+accepts simple strings or axis-style objects with opts. Resolving this in Phase 7
+before 6b avoids a breaking change to generated SDK code.
+
+---
+
+## 1. Shared filter-expression parser
+
+### Grammar
+
+```
+expr     := term (AND term)*
+term     := agg_term | simple_term
+agg_term := AGG_FN '(' field ')' OP value        # e.g. min(genome_size)<2000000000
+simple_term := field OP value                     # e.g. genome_size>3000000000
+            | field '=' value                     # e.g. assembly_level=Chromosome
+AGG_FN   := 'min' | 'max' | 'mean' | 'median'
+OP       := '>' | '>=' | '<' | '<='
+```
+
+`AND` is case-insensitive. Whitespace around operators is ignored. A single term
+with no `AND` is valid. `OR` and parentheses are deferred.
+
+### ES mapping
+
+All attribute fields live in a `nested` path (`attributes[]`). Every compiled term
+becomes a `nested` query:
+
+```json
+{
+  "nested": {
+    "path": "attributes",
+    "query": {
+      "bool": {
+        "must": [
+          { "term": { "attributes.key": "<field>" } },
+          <value_clause>
+        ]
+      }
+    }
+  }
+}
+```
+
+`<value_clause>` depends on the term type:
+
+| Term                 | `<value_clause>`                                                                                                                                                                                     |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `field>val`          | `{"bool":{"should":[{"range":{"attributes.long_value":{"gt":val}}},{"range":{"attributes.float_value":{"gt":val}}},{"range":{"attributes.half_float_value":{"gt":val}}}],"minimum_should_match":1}}` |
+| `field=val` (string) | `{"term":{"attributes.keyword_value":val}}`                                                                                                                                                          |
+| `min(field)<val`     | `{"range":{"attributes.min":{"lt":val}}}`                                                                                                                                                            |
+| `max(field)>val`     | `{"range":{"attributes.max":{"gt":val}}}`                                                                                                                                                            |
+| `median(field)<val`  | `{"range":{"attributes.median":{"lt":val}}}` (uses the `median` sub-field stored on each attribute entry)                                                                                            |
+
+Multiple `AND` terms are wrapped in `{"bool":{"must":[...]}}` together with
+`base_query`.
+
+### New file
+
+`crates/genomehubs-api/src/report/filter_expr.rs`
+
+```rust
+/// Parsed representation of a single filter term.
+pub enum FilterTerm {
+    /// `field op value` — applies to numeric sub-fields (long_value, float_value, half_float_value)
+    NumericRange { field: String, op: &'static str, value: f64 },
+    /// `agg(field) op value` — applies to the named summary sub-field (min / max / median / mean)
+    AggRange { field: String, agg: String, op: &'static str, value: f64 },
+    /// `field=value` — applies to keyword_value
+    KeywordMatch { field: String, value: String },
+}
+
+/// Parse a filter expression string into a list of terms (AND-separated).
+pub fn parse_filter_string(expr: &str) -> Result<Vec<FilterTerm>, String> { ... }
+
+/// Compile a list of filter terms into an ES nested-attributes clause.
+pub fn build_nested_attribute_query(terms: &[FilterTerm]) -> serde_json::Value { ... }
+
+/// Convenience: parse + compile in one step, ANDed with `base_query`.
+pub fn filter_expr_to_es_query(expr: &str, base_query: &serde_json::Value)
+    -> Result<serde_json::Value, String> { ... }
+```
+
+### Migration
+
+- `build_status_filter_clause` in `report_types.rs` is replaced by
+  `filter_expr_to_es_query(filter_str, base_query)`.
+- `build_term_filter` in `arc.rs` is replaced by the same helper.
+
+---
+
+## 2. Tree field axes
+
+### Config alignment with histogram
+
+Tree report `y` / `y_opts` follows exactly the same convention as histogram:
+
+```yaml
+report: tree
+y: genome_size # single field, median value shown (default)
+y_opts: ";;min" # show min value instead of median
+```
+
+Multiple fields use the sequence form (the `fields` key is a lower-level alias):
+
+```yaml
+report: tree
+y:
+  - genome_size
+  - c_value
+y_opts: ";;min" # applies to all fields (same opts for each)
+```
+
+The opts string uses the same `;;scale;transform` positional format as histogram
+x/y opts. For tree the only slot that matters is position 3 (summary function):
+`min`, `max`, `mean`, `median` (default). Other positions are accepted and ignored.
+
+### Implementation
+
+`extract_tree_field` gains a `summary: SummaryFn` parameter (`Min | Max | Mean | Median`).
+The `run_tree_report` function parses the summary slot from `y_opts` (falling back to
+`Median`) and passes it through.
+
+### Node field response shape
+
+Each field entry in `fields` gains a `display_value` key set to the selected summary,
+keeping the full `{ value, min, max, source }` shape intact for other consumers:
+
+```json
+"genome_size": {
+  "value": 2.5e9,       // median (always)
+  "display_value": 2.1e9, // min (selected by y_opts)
+  "min": 1.8e9,
+  "max": 3.2e9,
+  "source": "descendant"
+}
+```
+
+### SDK method signature revision
+
+The `tree()` method gains `y_opts` and drops the ambiguous `fields` positional arg:
+
+```python
+def tree(
+    self,
+    y: str | list[str] | None = None,
+    y_opts: str = "",
+    status_filter: str | None = None,
+    cat: str | None = None,
+    cat_opts: str = "",
+    cat_rank: str | None = None,
+    collapse_monotypic: bool = False,
+    preserve_rank: str | None = None,
+    rank: str = "phylum",
+    *,
+    api_base: str = "https://goat.genomehubs.org/api",
+    api_version: str = "v3",
+) -> list[dict[str, Any]]:
+```
+
+`y` replaces `fields`. When `y` is a list, it maps to the `fields` YAML sequence.
+`fields` in `report_yaml` is kept as the internal key so the API is stable; the SDK
+method just translates.
+
+`ReportBuilder` gains `set_y_opts` (already present) and the internal `fields` field
+is driven from `y` only — `set_fields` becomes the backing store for both.
+
+---
+
+## 3. Arc report
+
+Unchanged from the original Phase 7 spec except `build_term_filter` is replaced by
+`filter_expr_to_es_query` from `filter_expr.rs`.
+
+### `report_yaml` format
 
 ```yaml
 report: arc
 x: "country=BR"
 y: "genome_size>1000000"
-z: "gc_percent>45" # optional; defaults to y if absent
+z: "gc_percent>45" # optional
 ```
 
-`x`, `y`, `z` are query string fragments in the same syntax as the `taxa`/`attributes`
-filter string used by the v2 URL API. They are ANDed with the main query from `query_yaml`.
-
----
-
-## Files to Create
-
-| File                                      | Purpose          |
-| ----------------------------------------- | ---------------- |
-| `crates/genomehubs-api/src/report/arc.rs` | Arc report logic |
-
-## Files to Modify
-
-| File                                         | Change                           |
-| -------------------------------------------- | -------------------------------- |
-| `crates/genomehubs-api/src/report/mod.rs`    | `pub mod arc;`                   |
-| `crates/genomehubs-api/src/routes/report.rs` | Add `"arc"` dispatch branch      |
-| `python/cli_generator/query.py`              | `arc()` method on `QueryBuilder` |
-| `templates/python/query.py.tera`             | Mirror `arc()` method            |
-| `templates/js/query.js`                      | `arc()` method                   |
-| `templates/r/query.R`                        | `arc()` method                   |
-
----
-
-## Response Shape
+### Arc response shape
 
 ```json
 {
@@ -68,38 +229,35 @@ filter string used by the v2 URL API. They are ANDed with the main query from `q
     "xTerm": "country=BR",
     "yTerm": "genome_size>1000000",
     "zTerm": "gc_percent>45",
-    "xQuery": "...",
-    "yQuery": "...",
-    "queryString": "..."
+    "queryString": "country=BR AND genome_size>1000000"
   }
 }
 ```
 
-| Field         | Description                                           |
-| ------------- | ----------------------------------------------------- |
-| `arc`         | Count matching X AND Y (and Z if provided)            |
-| `arc2`        | Count matching X AND Z (only if Z provided and Z ≠ Y) |
-| `x`           | Count matching X                                      |
-| `y`           | Count matching Y                                      |
-| `z`           | Count matching Z (only if Z provided)                 |
-| `xTerm`       | Original X query string                               |
-| `yTerm`       | Original Y query string                               |
-| `zTerm`       | Original Z query string (only if provided)            |
-| `xQuery`      | Full URL-encoded query string used for X count        |
-| `yQuery`      | Full URL-encoded query string used for Y count        |
-| `queryString` | Full combined query string for arc count              |
+---
+
+## Files to Create / Modify
+
+| File                                               | Change                                                                                                                |
+| -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `crates/genomehubs-api/src/report/filter_expr.rs`  | New: shared filter-expression parser                                                                                  |
+| `crates/genomehubs-api/src/report/arc.rs`          | New: arc report logic (uses filter_expr)                                                                              |
+| `crates/genomehubs-api/src/report/mod.rs`          | Add `pub mod filter_expr; pub mod arc;`                                                                               |
+| `crates/genomehubs-api/src/report/report_types.rs` | Replace `build_status_filter_clause` stub with `filter_expr_to_es_query`; add `display_value` to `extract_tree_field` |
+| `crates/genomehubs-api/src/routes/report.rs`       | Add `"arc"` dispatch branch                                                                                           |
+| `python/cli_generator/query.py`                    | Revise `tree()` signature (`y`/`y_opts`); add `arc()`                                                                 |
+| `templates/python/query.py.tera`                   | Mirror same changes                                                                                                   |
+| `templates/js/query.js`                            | `tree()` + `arc()` methods                                                                                            |
+| `templates/r/query.R`                              | `tree()` + `arc()` methods                                                                                            |
 
 ---
 
-## Implementation
+## Arc report implementation
 
 ### `crates/genomehubs-api/src/report/arc.rs`
 
-```rust
-use reqwest::Client;
-use serde_json::{json, Value};
-
-use crate::es_client;
+Replace the old `build_term_filter` stub with `filter_expr::filter_expr_to_es_query`.
+All other arc logic is unchanged.
 
 /// Combine two query strings with AND, returning a merged query string.
 ///
@@ -107,68 +265,68 @@ use crate::es_client;
 /// Simple concatenation with a space separator; the query parser in
 /// `genomehubs-query` treats space as AND.
 pub fn combine_queries(a: &str, b: &str) -> String {
-    if a.is_empty() {
-        return b.to_string();
-    }
-    if b.is_empty() {
-        return a.to_string();
-    }
-    format!("{a} AND {b}")
+if a.is_empty() {
+return b.to_string();
+}
+if b.is_empty() {
+return a.to_string();
+}
+format!("{a} AND {b}")
 }
 
 /// Count documents matching a query against an ES index.
 async fn count_matching(
-    client: &Client,
-    es_base: &str,
-    index: &str,
-    query: &Value,
+client: &Client,
+es_base: &str,
+index: &str,
+query: &Value,
 ) -> Result<u64, String> {
-    let url = format!("{es_base}/{index}/_count");
-    let body = json!({ "query": query });
-    let resp = client
-        .post(&url)
-        .json(&body)
-        .send()
-        .await
-        .map_err(|e| format!("count request failed: {e}"))?;
-    let data: Value = resp.json().await.map_err(|e| format!("parse error: {e}"))?;
-    Ok(data.get("count").and_then(|v| v.as_u64()).unwrap_or(0))
+let url = format!("{es_base}/{index}/\_count");
+let body = json!({ "query": query });
+let resp = client
+.post(&url)
+.json(&body)
+.send()
+.await
+.map_err(|e| format!("count request failed: {e}"))?;
+let data: Value = resp.json().await.map_err(|e| format!("parse error: {e}"))?;
+Ok(data.get("count").and_then(|v| v.as_u64()).unwrap_or(0))
 }
 
 /// Arc report config parsed from `report_yaml`.
 pub struct ArcConfig {
-    pub x_term: String,
-    pub y_term: String,
-    pub z_term: Option<String>,
+pub x_term: String,
+pub y_term: String,
+pub z_term: Option<String>,
 }
 
 impl ArcConfig {
-    pub fn from_yaml(config: &serde_yaml::Value) -> Result<Self, String> {
-        let x = config.get("x").and_then(|v| v.as_str())
-            .ok_or("arc report requires 'x' query string")?
-            .to_string();
-        let y = config.get("y").and_then(|v| v.as_str())
-            .ok_or("arc report requires 'y' query string")?
-            .to_string();
-        let z = config.get("z").and_then(|v| v.as_str()).map(|s| s.to_string());
-        Ok(Self { x_term: x, y_term: y, z_term: z })
-    }
+pub fn from_yaml(config: &serde_yaml::Value) -> Result<Self, String> {
+let x = config.get("x").and_then(|v| v.as_str())
+.ok_or("arc report requires 'x' query string")?
+.to_string();
+let y = config.get("y").and_then(|v| v.as_str())
+.ok_or("arc report requires 'y' query string")?
+.to_string();
+let z = config.get("z").and_then(|v| v.as_str()).map(|s| s.to_string());
+Ok(Self { x_term: x, y_term: y, z_term: z })
+}
 }
 
 /// Run an arc report: issue 3 (or 5) parallel count queries.
 ///
 /// Returns `(total_hits, took_ms, report_data)`.
 pub async fn run_arc_report(
-    client: &Client,
-    es_base: &str,
-    index: &str,
-    base_query: &Value,
-    config: &ArcConfig,
+client: &Client,
+es_base: &str,
+index: &str,
+base_query: &Value,
+config: &ArcConfig,
 ) -> Result<(u64, u64, Value), String> {
-    // Build filter queries for each term
-    // Terms are plain query strings; parse them into ES filter clauses
-    let x_filter = build_term_filter(&config.x_term);
-    let y_filter = build_term_filter(&config.y_term);
+// Build filter queries for each term
+// Terms are plain query strings; parse them into ES filter clauses
+let x_filter = build_term_filter(&config.x_term);
+let y_filter = build_term_filter(&config.y_term);
 
     // Compose AND queries
     let xy_filter = json!({ "bool": { "must": [&base_query, &x_filter, &y_filter] } });
@@ -222,6 +380,7 @@ pub async fn run_arc_report(
 
         Ok((xy_count, took, report_data))
     }
+
 }
 
 /// Build an ES filter clause from a plain query string term.
@@ -235,7 +394,7 @@ pub async fn run_arc_report(
 /// `genomehubs_query::query` module once it supports this format.
 /// For now, handle the patterns seen in production arc reports.
 fn build_term_filter(term: &str) -> Value {
-    let term = term.trim();
+let term = term.trim();
 
     // Range operators: >, <, >=, <=
     if let Some((field, op, raw_val)) = parse_range_term(term) {
@@ -263,23 +422,24 @@ fn build_term_filter(term: &str) -> Value {
 
     // Fallback: treat as a query_string expression
     json!({ "query_string": { "query": term } })
+
 }
 
 /// Parse a range term like `"genome_size>1000000"` into (field, op, value).
 fn parse_range_term(term: &str) -> Option<(&str, &str, &str)> {
-    for op in &[">=", "<=", ">", "<"] {
-        if let Some(pos) = term.find(op) {
-            let field = term[..pos].trim();
-            let value = term[pos + op.len()..].trim();
-            return Some((field, op, value));
-        }
-    }
-    None
+for op in &[">=", "<=", ">", "<"] {
+if let Some(pos) = term.find(op) {
+let field = term[..pos].trim();
+let value = term[pos + op.len()..].trim();
+return Some((field, op, value));
+}
+}
+None
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+use super::\*;
 
     #[test]
     fn combine_queries_with_both_terms() {
@@ -310,8 +470,10 @@ mod tests {
         assert_eq!(op, ">=");
         assert_eq!(val, "1000");
     }
+
 }
-```
+
+````
 
 ---
 
@@ -329,7 +491,7 @@ Add to the `match report_type` block (Phase 6):
         &state.client, &state.es_base, &idx, &base_query, &arc_config,
     ).await
 }
-```
+````
 
 ---
 
@@ -448,17 +610,16 @@ curl -s -X POST http://localhost:3000/api/v3/report \
 
 ## Completion Checklist
 
-- [ ] `crates/genomehubs-api/src/report/arc.rs` created
-- [ ] `combine_queries` + `build_term_filter` + `parse_range_term` implemented
-- [ ] `run_arc_report` issues parallel counts via `tokio::try_join!`
-- [ ] Unit tests for `combine_queries`, `build_term_filter`, `parse_range_term`
-- [ ] `"arc"` branch added to dispatch in `routes/report.rs`
-- [ ] `pub mod arc` in `report/mod.rs`
-- [ ] `arc()` method in `python/cli_generator/query.py` + `templates/python/query.py.tera`
-- [ ] `arc()` method in `templates/js/query.js`
-- [ ] `arc()` method in `templates/r/query.R`
+- [ ] `filter_expr.rs` created: `parse_filter_string`, `build_nested_attribute_query`, `filter_expr_to_es_query`
+- [ ] Unit tests: numeric range, agg-function range, keyword match, compound AND
+- [ ] `build_status_filter_clause` stub in `report_types.rs` replaced by `filter_expr_to_es_query`
+- [ ] `extract_tree_field` gains `summary: SummaryFn` parameter; `display_value` in response
+- [ ] `tree()` SDK method revised: `y`/`y_opts` replaces `fields`; three-language parity
+- [ ] `crates/genomehubs-api/src/report/arc.rs` created; uses `filter_expr_to_es_query`
+- [ ] `"arc"` dispatch branch in `routes/report.rs`
+- [ ] `arc()` method in Python, JS, R
 - [ ] `cargo test -p genomehubs-api` passes
-- [ ] Smoke test returns correct `arc`, `x`, `y` counts
+- [ ] Smoke tests: `min(genome_size)<2e9`, `genome_size>3e9 AND assembly_level=Chromosome`, arc `x`/`y` counts
 
 ---
 
