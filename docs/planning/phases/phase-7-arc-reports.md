@@ -459,3 +459,237 @@ curl -s -X POST http://localhost:3000/api/v3/report \
 - [ ] `arc()` method in `templates/r/query.R`
 - [ ] `cargo test -p genomehubs-api` passes
 - [ ] Smoke test returns correct `arc`, `x`, `y` counts
+
+---
+
+# Phase 7b: V2 Report Response Parity
+
+**Depends on:** Phase 6 + Phase 7 (all report types implemented)
+**Blocks:** Phase 8 (sign-off gates user testing)
+**Estimated scope:** 1 collection script, 1 translation module, 1 parity test file, fixture JSON
+
+---
+
+## Goal
+
+Verify that the v3 report API produces responses that contain all information
+required to render the current GoaT site report suite, validated against real
+v2 fixtures from the live production instance.
+
+"Parity" does not mean byte-for-byte identical responses. The v3 API intentionally
+diverges in field names, request format, and some edge-case behaviour. Parity
+means: the v3 response contains all data a UI component needs to render, counts
+are plausible, and the overall structure is credible for user testing.
+
+---
+
+## Step 1 — Extract real v2 API calls from GoaT server logs
+
+The GoaT nginx access log (or application container log) records every
+`/api/v2/report` request. Filter for unique `(report_type, params)` combinations
+that are actually made by the live site:
+
+```bash
+# From nginx access log
+grep "GET /api/v2/report" /var/log/nginx/access.log \
+  | awk '{print $7}' | sort -u > /tmp/v2-report-calls.txt
+
+# From Kubernetes container log
+kubectl logs <goat-api-pod> --since=7d 2>&1 \
+  | grep "GET /api/v2/report" \
+  | awk -F'"' '{print $2}' | sort -u > /tmp/v2-report-calls.txt
+```
+
+If access logs are unavailable, extract calls from the GoaT site config
+(dashboard panels, report definitions) and hand-craft the URL list. Keep one
+entry per unique `report` type + `x`/`cat` combination — avoid duplicate
+parameterisations.
+
+---
+
+## Step 2 — Collect v2 fixture responses
+
+Script: `scripts/collect_parity_fixtures.py`
+
+- Reads the URL list from Step 1
+- Fetches each against `https://goat.genomehubs.org/api/v2/`
+- Saves the JSON response to `tests/fixtures/parity/v2/{report_type}/{slug}.json`
+- Saves the request URL alongside as `tests/fixtures/parity/v2/{report_type}/{slug}.url`
+- Skips already-saved fixtures (idempotent reruns)
+
+```
+tests/fixtures/parity/
+├── v2/
+│   ├── histogram/
+│   │   ├── genome_size_mammalia.json
+│   │   ├── genome_size_mammalia.url
+│   │   └── ...
+│   ├── scatter/
+│   ├── arc/
+│   ├── tree/
+│   └── ...
+├── screenshots/
+│   ├── genome_size_mammalia.png
+│   └── ...
+└── README.md   ← known divergences + sign-off log
+```
+
+At minimum, collect at least one fixture per implemented report type
+(histogram, scatter, arc, tree, map, xPerRank, sources), and at least one
+fixture with a `cat` breakdown.
+
+---
+
+## Step 3 — Capture UI screenshots for visual reference
+
+The GoaT UI URL for each API call is the API URL with `/api/v2` stripped:
+
+```
+API: https://goat.genomehubs.org/api/v2/report?report=histogram&x=genome_size&...
+UI:  https://goat.genomehubs.org/report?report=histogram&x=genome_size&...
+```
+
+Screenshots can be captured manually (paste URL into browser, screenshot) or
+automatically via Playwright:
+
+```python
+# scripts/capture_parity_screenshots.py (optional automation)
+from playwright.sync_api import sync_playwright
+
+def capture(api_url: str, out_path: str) -> None:
+    ui_url = api_url.replace("https://goat.genomehubs.org/api/v2/", "https://goat.genomehubs.org/")
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        page = browser.new_page(viewport={"width": 1280, "height": 900})
+        page.goto(ui_url, wait_until="networkidle")
+        page.screenshot(path=out_path)
+        browser.close()
+```
+
+Screenshots are stored in `tests/fixtures/parity/screenshots/` and used for
+human sign-off only — they are not asserted programmatically.
+
+---
+
+## Step 4 — V2 → V3 request translation
+
+v2 uses GET query strings; v3 uses a JSON POST body. The translation module
+`tests/parity/translate.py` maps them:
+
+| v2 GET param        | v3 JSON location           | Notes                    |
+| ------------------- | -------------------------- | ------------------------ |
+| `report`            | `report.report`            | Direct map               |
+| `x`, `y`, `z`       | `report.x/y/z`             | Direct map               |
+| `x_opts`, `y_opts`  | `report.x_opts/y_opts`     | Direct map               |
+| `cat`, `cat_opts`   | `report.cat/cat_opts`      | Direct map               |
+| `result`            | `query.index`              | `"taxon"` / `"assembly"` |
+| `rank`              | `query.rank`               | Direct map               |
+| `includeEstimates`  | `params.include_estimates` | snake_case rename        |
+| `taxonomy`          | `params.taxonomy`          | Direct map               |
+| `query` (taxa/attr) | `query.taxa`               | Wrap in array            |
+| `fields`            | `query.fields`             | Direct map               |
+
+v2 also passes `report`, `size`, `offset`, and some rendering hints that v3 does
+not need — these are dropped during translation.
+
+---
+
+## Step 5 — Parity test harness
+
+`tests/parity/test_report_parity.py` — parametrised over all v2 fixtures:
+
+```python
+@pytest.mark.parametrize("fixture_path", collect_v2_fixture_paths())
+def test_report_parity(fixture_path: Path, local_v3_base: str) -> None:
+    v2_response = json.loads(fixture_path.read_text())
+    request_url = fixture_path.with_suffix(".url").read_text().strip()
+    v3_body = translate_v2_url_to_v3_body(request_url)
+
+    v3_response = httpx.post(f"{local_v3_base}/api/v3/report", json=v3_body).json()
+
+    assert_structural_parity(
+        v2_report=v2_response.get("report", {}),
+        v3_report=v3_response.get("report", {}),
+    )
+```
+
+`assert_structural_parity` checks (defined in `tests/parity/assertions.py`):
+
+1. `type` field matches between v2 and v3 response.
+2. All required rendering keys for that type are present and non-null in v3.
+3. Where v2 has a non-empty array, v3 has a non-empty array of the same structure.
+4. Where v2 returns a count > 0, v3 returns a count > 0 (values need not match —
+   the live dataset grows over time).
+5. `by_cat` present in v3 whenever `cat` was in the v2 request.
+
+Required keys per report type:
+
+| Type        | Required v3 keys                                                              |
+| ----------- | ----------------------------------------------------------------------------- |
+| `histogram` | `type`, `x.field`, `x.domain`, `buckets`, `allValues`                         |
+| `scatter`   | `type`, `x`, `y`, `buckets`, `allValues`, `yBuckets`, `allYValues`, `zDomain` |
+| `arc`       | `type`, `arc`, `x`, `y`, `xTerm`, `yTerm`                                     |
+| `tree`      | `type`, `tree` (Newick string or node array)                                  |
+| `map`       | `type`, `map` or equivalent location array                                    |
+| `xPerRank`  | `type`, `ranks` or equivalent rank-keyed object                               |
+| `sources`   | `type`, `sources`                                                             |
+
+When `cat` is present, additionally assert `by_cat` and `cats`.
+
+---
+
+## Allowed divergences
+
+Document each known divergence in `tests/fixtures/parity/README.md` and mark
+the corresponding test with `@pytest.mark.xfail(reason="…")` rather than
+leaving it as a hard failure.
+
+| Divergence class         | Detail                                                     |
+| ------------------------ | ---------------------------------------------------------- |
+| Status envelope shape    | v2 uses `status.success`; v3 uses `status.hits`/`took`     |
+| Field renames            | Document case-by-case                                      |
+| Numeric precision        | Bounds/interval values may differ ±epsilon                 |
+| Unimplemented type in v3 | Mark fixture as `xfail`; do not fail the suite             |
+| Count growth             | v2 fixture counts are historical; v3 live counts will be ≥ |
+| Extra v3 fields          | `rawData` on scatter, `allValues` on histogram — permitted |
+
+---
+
+## Sign-off criteria
+
+The phase is complete — and report work is cleared for user testing — when:
+
+- [ ] At least one fixture per implemented report type collected
+- [ ] At least one categorised histogram fixture (`cat` + `cat_opts`) collected
+- [ ] UI screenshots reviewed: rendered output looks visually equivalent to the current GoaT site
+- [ ] All non-xfail parity tests pass against local v3 server
+- [ ] All xfail divergences documented with rationale in `tests/fixtures/parity/README.md`
+- [ ] Developer sign-off statement added to `tests/fixtures/parity/README.md`
+
+---
+
+## Files to Create
+
+| File                                    | Purpose                                    |
+| --------------------------------------- | ------------------------------------------ |
+| `scripts/collect_parity_fixtures.py`    | Fetch v2 fixtures from live GoaT API       |
+| `scripts/capture_parity_screenshots.py` | Optional: Playwright screenshot automation |
+| `tests/parity/__init__.py`              | Package marker                             |
+| `tests/parity/translate.py`             | v2 GET params → v3 JSON body               |
+| `tests/parity/assertions.py`            | Per-type structural assertion helpers      |
+| `tests/parity/test_report_parity.py`    | Parametrised parity tests                  |
+| `tests/fixtures/parity/README.md`       | Known divergences + sign-off log           |
+
+---
+
+## Completion Checklist
+
+- [ ] `scripts/collect_parity_fixtures.py` fetches and saves v2 fixtures idempotently
+- [ ] At least one fixture per implemented report type
+- [ ] At least one fixture with `cat` breakdown
+- [ ] UI screenshots captured for all fixtures
+- [ ] `tests/parity/translate.py` handles all v2 param combinations in collected fixtures
+- [ ] `tests/parity/test_report_parity.py` runs with `pytest tests/parity/ -v`
+- [ ] All non-xfail tests pass against local v3 server
+- [ ] All xfail divergences documented with rationale
+- [ ] Developer sign-off in `tests/fixtures/parity/README.md`

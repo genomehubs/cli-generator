@@ -3,9 +3,9 @@ use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::Value;
 use std::sync::Arc;
 
+use cli_generator::core::query_builder;
 use genomehubs_query::query::{QueryParams, SearchQuery};
 use genomehubs_query::report::axis::AxisOpts;
-use cli_generator::core::query_builder;
 
 use crate::{index_name, report::report_types, routes::ApiStatus, AppState};
 
@@ -33,12 +33,12 @@ impl<'de> Deserialize<'de> for ReportRequest {
         };
 
         // Get query from either "query" or "query_yaml" field
-        let query_yaml =
-            if let Some(query_val) = map.get("query").or_else(|| map.get("query_yaml")) {
-                to_yaml(query_val)?
-            } else {
-                return Err(de::Error::missing_field("query or query_yaml"));
-            };
+        let query_yaml = if let Some(query_val) = map.get("query").or_else(|| map.get("query_yaml"))
+        {
+            to_yaml(query_val)?
+        } else {
+            return Err(de::Error::missing_field("query or query_yaml"));
+        };
 
         // Get params from either "params" or "params_yaml" field
         let params_yaml =
@@ -125,7 +125,7 @@ pub async fn post_report(
 
     // Dispatch to appropriate report handler
     let result = match report_type {
-        "histogram" | "scatter" => {
+        "histogram" => {
             report_types::run_histogram_report(
                 &state,
                 &idx,
@@ -136,7 +136,20 @@ pub async fn post_report(
             )
             .await
         }
-        "xPerRank" => report_types::run_x_per_rank_report(&state, &idx, &base_query, &report_config).await,
+        "scatter" => {
+            report_types::run_scatter_report(
+                &state,
+                &idx,
+                &search_query,
+                &params,
+                &report_config,
+                &base_query,
+            )
+            .await
+        }
+        "xPerRank" => {
+            report_types::run_x_per_rank_report(&state, &idx, &base_query, &report_config).await
+        }
         "sources" => report_types::run_sources_report(&state, &idx, &base_query).await,
         "tree" => report_types::run_tree_report(&state, &idx, &base_query, &report_config).await,
         "map" => report_types::run_map_report(&state, &idx, &base_query, &report_config).await,
@@ -181,19 +194,9 @@ fn build_report_query(
         .map(|f| f.name.as_str())
         .collect();
 
-    let name_strs: Vec<&str> = query
-        .attributes
-        .names
-        .iter()
-        .map(|s| s.as_str())
-        .collect();
+    let name_strs: Vec<&str> = query.attributes.names.iter().map(|s| s.as_str()).collect();
 
-    let rank_strs: Vec<&str> = query
-        .attributes
-        .ranks
-        .iter()
-        .map(|s| s.as_str())
-        .collect();
+    let rank_strs: Vec<&str> = query.attributes.ranks.iter().map(|s| s.as_str()).collect();
 
     // Determine group from index
     let group = match query.index {
@@ -205,17 +208,29 @@ fn build_report_query(
     // Build full search body using query builder
     let body = cli_generator::core::query_builder::build_search_body(
         Some(&taxa_query),
-        if field_names.is_empty() { None } else { Some(field_names.as_slice()) },
+        if field_names.is_empty() {
+            None
+        } else {
+            Some(field_names.as_slice())
+        },
         None,
         Some(&query.attributes.attributes),
         query.identifiers.rank.as_deref(),
-        if name_strs.is_empty() { None } else { Some(name_strs.as_slice()) },
-        if rank_strs.is_empty() { None } else { Some(rank_strs.as_slice()) },
+        if name_strs.is_empty() {
+            None
+        } else {
+            Some(name_strs.as_slice())
+        },
+        if rank_strs.is_empty() {
+            None
+        } else {
+            Some(rank_strs.as_slice())
+        },
         None,
         None,
-        1,      // size: only use for structuring query, not actual size
-        0,      // offset
-        None,   // types_map
+        1,    // size: only use for structuring query, not actual size
+        0,    // offset
+        None, // types_map
         Some(group),
     )
     .map_err(|e| format!("query builder error: {e}"))?;

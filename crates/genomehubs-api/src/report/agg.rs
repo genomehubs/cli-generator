@@ -322,6 +322,249 @@ fn get_attribute_value_field(
     Err(format!("field '{}' not found in metadata", field))
 }
 
+/// Build the `yHistograms` sub-aggregation used inside each x-histogram bucket.
+///
+/// Escapes nested context via `reverse_nested`, re-enters attributes, and runs a histogram
+/// on the y-field value. Supports log/sqrt scale transforms via ES script.
+///
+/// ```text
+/// yHistograms: reverse_nested
+///   by_attribute: nested(attributes)
+///     {y_field}: filter(y_field)
+///       histogram: histogram(y_value_field)
+/// ```
+fn build_y_histogram_sub_agg(
+    y_field: &str,
+    y_value_field: &str,
+    y_scale: Scale,
+    y_domain_min: f64,
+    y_domain_max: f64,
+    y_ticks: usize,
+) -> Value {
+    let (hist_min, hist_max, script_opt) = match y_scale {
+        Scale::Log | Scale::Log10 => {
+            let mn = y_domain_min.max(1.0).log10();
+            let mx = y_domain_max.max(1.0).log10();
+            (mn, mx, Some("Math.log10(_value)".to_string()))
+        }
+        Scale::Log2 => {
+            let mn = y_domain_min.max(1.0).log2();
+            let mx = y_domain_max.max(1.0).log2();
+            (
+                mn,
+                mx,
+                Some("Math.max(Math.log(_value)/Math.log(2), 0)".to_string()),
+            )
+        }
+        Scale::Sqrt => {
+            let mn = y_domain_min.max(0.0).sqrt();
+            let mx = y_domain_max.sqrt();
+            (mn, mx, None)
+        }
+        _ => (y_domain_min, y_domain_max, None),
+    };
+
+    let interval = (hist_max - hist_min) / y_ticks.max(1) as f64;
+
+    let mut hist_params = json!({
+        "field": y_value_field,
+        "interval": interval,
+        "extended_bounds": { "min": hist_min, "max": hist_max },
+        "offset": hist_min,
+        "min_doc_count": 0
+    });
+    if let Some(script) = script_opt {
+        hist_params["script"] = Value::String(script);
+    }
+
+    let mut y_field_agg = serde_json::Map::new();
+    y_field_agg.insert(
+        y_field.to_string(),
+        json!({
+            "filter": { "term": { "attributes.key": y_field } },
+            "aggs": { "histogram": { "histogram": hist_params } }
+        }),
+    );
+
+    json!({
+        "reverse_nested": {},
+        "aggs": {
+            "by_attribute": {
+                "nested": { "path": "attributes" },
+                "aggs": Value::Object(y_field_agg)
+            }
+        }
+    })
+}
+
+/// Build a complete scatter (2-axis) aggregation for nested attributes, optionally with categories.
+///
+/// Extends the `categoryHistograms` pattern from `build_nested_attribute_histogram_with_categories`
+/// to add per-bucket y-histograms (`yHistograms`) nested inside both the main x-histogram and each
+/// per-category x-histogram. This produces all the data needed for the scatter or 3-way binned plot.
+///
+/// # Aggregation structure
+/// ```text
+/// {agg_name}: nested(attributes)
+///   by_key: filter(x_field)
+///     histogram (x-axis)
+///       aggs:
+///         yHistograms: reverse_nested → nested → y_field filter → y histogram
+///     categoryHistograms (when cat_labels non-empty): reverse_nested
+///       by_attribute: nested(attributes)
+///         by_cat: filter(cat_field)
+///           by_value: filters(one per cat_label)
+///             histogram: reverse_nested
+///               by_attribute: nested(attributes)
+///                 {x_field}: filter(x_field)
+///                   histogram (per-cat x-axis)
+///                     aggs:
+///                       yHistograms: same as above
+/// ```
+pub fn build_nested_attribute_scatter_agg(
+    agg_name: &str,
+    x_field: &str,
+    x_bounds: &BoundsResult,
+    x_scale: Scale,
+    y_field: &str,
+    y_bounds: &BoundsResult,
+    y_scale: Scale,
+    cat_field: Option<&str>,
+    cat_labels: &[String],
+    show_other: bool,
+    cache: &Option<Arc<tokio::sync::RwLock<MetadataCache>>>,
+) -> Result<Value, String> {
+    let x_value_field = get_attribute_value_field(x_field, cache)?;
+    let y_value_field = get_attribute_value_field(y_field, cache)?;
+
+    let [x_domain_min, x_domain_max] = x_bounds.domain.unwrap_or([0.0, 1.0]);
+    let (x_hist_min, x_hist_max, x_script_opt) = match x_scale {
+        Scale::Log | Scale::Log10 => {
+            let mn = x_domain_min.max(1.0).log10();
+            let mx = x_domain_max.max(1.0).log10();
+            (mn, mx, Some("Math.log10(_value)".to_string()))
+        }
+        Scale::Log2 => {
+            let mn = x_domain_min.max(1.0).log2();
+            let mx = x_domain_max.max(1.0).log2();
+            (
+                mn,
+                mx,
+                Some("Math.max(Math.log(_value)/Math.log(2), 0)".to_string()),
+            )
+        }
+        Scale::Sqrt => (x_domain_min.max(0.0).sqrt(), x_domain_max.sqrt(), None),
+        _ => (x_domain_min, x_domain_max, None),
+    };
+    let x_interval = (x_hist_max - x_hist_min) / x_bounds.tick_count.max(1) as f64;
+
+    let mut x_hist_params = json!({
+        "field": &x_value_field,
+        "interval": x_interval,
+        "extended_bounds": { "min": x_hist_min, "max": x_hist_max },
+        "offset": x_hist_min,
+        "min_doc_count": 0
+    });
+    if let Some(script) = x_script_opt {
+        x_hist_params["script"] = Value::String(script);
+    }
+
+    let [y_domain_min, y_domain_max] = y_bounds.domain.unwrap_or([0.0, 1.0]);
+    let y_histogram_sub_agg = build_y_histogram_sub_agg(
+        y_field,
+        &y_value_field,
+        y_scale,
+        y_domain_min,
+        y_domain_max,
+        y_bounds.tick_count,
+    );
+
+    // Main x histogram with nested y-histograms.
+    let x_histogram_with_y = json!({
+        "histogram": x_hist_params.clone(),
+        "aggs": { "yHistograms": y_histogram_sub_agg.clone() }
+    });
+
+    // Category histograms (optional).
+    let category_histograms_opt = if let Some(cat) = cat_field {
+        if cat_labels.is_empty() {
+            None
+        } else {
+            let cat_value_field = get_attribute_value_field(cat, cache)?;
+
+            let mut filters = serde_json::Map::new();
+            for label in cat_labels {
+                filters.insert(
+                    label.clone(),
+                    json!({ "term": { &cat_value_field: label } }),
+                );
+            }
+            let mut filters_agg = json!({ "filters": Value::Object(filters) });
+            if show_other {
+                filters_agg["other_bucket_key"] = json!("other");
+            }
+
+            let mut cat_x_field_agg = serde_json::Map::new();
+            cat_x_field_agg.insert(
+                x_field.to_string(),
+                json!({
+                    "filter": { "term": { "attributes.key": x_field } },
+                    "aggs": { "histogram": x_histogram_with_y.clone() }
+                }),
+            );
+
+            Some(json!({
+                "reverse_nested": {},
+                "aggs": {
+                    "by_attribute": {
+                        "nested": { "path": "attributes" },
+                        "aggs": {
+                            "by_cat": {
+                                "filter": { "term": { "attributes.key": cat } },
+                                "aggs": {
+                                    "by_value": {
+                                        "filters": filters_agg,
+                                        "aggs": {
+                                            "histogram": {
+                                                "reverse_nested": {},
+                                                "aggs": {
+                                                    "by_attribute": {
+                                                        "nested": { "path": "attributes" },
+                                                        "aggs": Value::Object(cat_x_field_agg)
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }))
+        }
+    } else {
+        None
+    };
+
+    let mut by_key_aggs = json!({ "histogram": x_histogram_with_y });
+    if let Some(cat_hist) = category_histograms_opt {
+        by_key_aggs["categoryHistograms"] = cat_hist;
+    }
+
+    Ok(json!({
+        agg_name: {
+            "nested": { "path": "attributes" },
+            "aggs": {
+                "by_key": {
+                    "filter": { "term": { "attributes.key": x_field } },
+                    "aggs": by_key_aggs
+                }
+            }
+        }
+    }))
+}
+
 /// Build a complete nested-attribute histogram aggregation with per-category sub-histograms.
 ///
 /// Uses the v2 API's proven `categoryHistograms` pattern: a `filters` aggregation with one
