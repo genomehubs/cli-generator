@@ -12,19 +12,19 @@
 Implement `POST /api/v3/report` — the single report endpoint that handles all
 non-arc report types:
 
-| Report               | Key                           | ES technique                                                      | When                            |
-| -------------------- | ----------------------------- | ----------------------------------------------------------------- | ------------------------------- |
-| Histogram (1D)       | `histogram`                   | histogram/date_histogram/terms agg                                | always                          |
-| Histogram + cat      | `histogram` + `cat`           | 2-level terms + histogram                                         | when `cat:` set                 |
-| 2D histogram/heatmap | `histogram` + `y`             | composite terms/histogram                                         | when `y:` set                   |
-| Scatter (raw)        | `scatter`                     | top-N `_search` hits                                              | count < scatter_threshold       |
-| Scatter (grid)       | `scatter`                     | 2D histogram                                                      | count ≥ scatter_threshold       |
-| xPerRank             | `xPerRank`                    | terms agg on `taxon_rank`, nested stats                           | always                          |
-| Sources              | `sources`                     | terms on `source`                                                 | always                          |
-| Tree                 | `tree`                        | lineage nested agg (LCA) + search_after pagination + lineage walk | always                          |
-| Tree + cat           | `tree` + `cat_rank`           | as above + per-node `cat` label from ancestor at named rank       | when `cat_rank:` set            |
-| Tree (collapsed)     | `tree` + `collapse_monotypic` | as above + post-processing pass removes single-child nodes        | when `collapse_monotypic: true` |
-| Map                  | `map`                         | geohash_grid agg                                                  | always                          |
+| Report               | Key                           | ES technique                                                          | When                            |
+| -------------------- | ----------------------------- | --------------------------------------------------------------------- | ------------------------------- |
+| Histogram (1D)       | `histogram`                   | histogram/date_histogram/terms agg                                    | always                          |
+| Histogram + cat      | `histogram` + `cat`           | 2-level terms + histogram                                             | when `cat:` set                 |
+| 2D histogram/heatmap | `histogram` + `y`             | composite terms/histogram                                             | when `y:` set                   |
+| Scatter (raw)        | `scatter`                     | top-N `_search` hits                                                  | count < scatter_threshold       |
+| Scatter (grid)       | `scatter`                     | 2D histogram                                                          | count ≥ scatter_threshold       |
+| xPerRank             | `xPerRank`                    | terms agg on `taxon_rank`, nested stats                               | always                          |
+| Sources              | `sources`                     | terms on `source`                                                     | always                          |
+| Tree                 | `tree`                        | lineage nested agg (LCA) + search_after pagination + lineage walk     | always                          |
+| Tree + cat           | `tree` + `cat_rank`           | as above + per-node `cat` label from ancestor at named rank           | when `cat_rank:` set            |
+| Tree (collapsed)     | `tree` + `collapse_monotypic` | as above + post-processing pass removes single-child nodes            | when `collapse_monotypic: true` |
+| Map                  | `map`                         | nested terms agg on `attributes.hexbin{N}` + optional raw point fetch | always                          |
 
 Add `ReportBuilder` to `crates/genomehubs-query` and expose via PyO3/WASM/extendr.
 Add `parse_histogram_json`, `parse_tree_json`, `to_plot_dataframe` to `parse.rs`.
@@ -556,39 +556,70 @@ Parameters:
 
 #### Map report
 
-```rust
-pub async fn run_map_report(
-    state: &Arc<AppState>,
-    index: &str,
-    base_query: &Value,
-    report_config: &serde_yaml::Value,
-) -> Result<(u64, u64, Value), String> {
-    let geo_field = report_config.get("x").and_then(|v| v.as_str()).unwrap_or("location");
-    let size = report_config.get("size").and_then(|v| v.as_u64()).unwrap_or(500) as usize;
-    let precision = report_config.get("precision").and_then(|v| v.as_u64()).unwrap_or(4) as u8;
+Geo-point data in GoaT is stored in nested `attributes[]` entries, not as top-level
+fields. Location attribute entries carry:
+- `geo_point_value` — raw lat/lon string (or array of strings for multi-value taxa)
+- `hexbin1`–`hexbin6` — pre-computed H3 cell IDs at each resolution
 
-    let es_body = json!({
-        "size": 0,
-        "query": base_query,
-        "aggs": {
-            "geo_grid": {
-                "geohash_grid": {
-                    "field": geo_field,
-                    "precision": precision,
-                    "size": size
-                }
-            }
-        }
-    });
+The map report produces two complementary data shapes, mirroring v2:
 
-    let resp = es_client::execute_search(&state.client, &state.es_base, index, &es_body).await?;
-    let took = resp.get("took").and_then(|t| t.as_u64()).unwrap_or(0);
-    let total = resp.pointer("/hits/total/value").and_then(|v| v.as_u64()).unwrap_or(0);
-    let buckets = resp.pointer("/aggregations/geo_grid/buckets").cloned().unwrap_or_default();
+**`rawData`** — per-taxon point records grouped by cat label (or `"all taxa"` when no
+`cat` is set). Only populated when the count of taxa with location data is ≤
+`map_threshold`. Each entry: `{scientific_name, taxonId, coords, aggregation_source, cat}`.
 
-    Ok((total, took, json!({ "type": "map", "field": geo_field, "buckets": buckets })))
+**`hexBinCounts`** — `{h3_cell_id: count}` from a `terms` aggregation on
+`attributes.hexbin{N}`. Always returned regardless of threshold. Resolution 1–6,
+default 3.
+
+**Config keys:**
+
+| Key | Type | Description |
+| --- | ---- | ----------- |
+| `location_field` | string | Attribute key for geo-point data (default `"sample_location"`). Also accepted as `x` for backwards compat. |
+| `hex_resolution` | integer | H3 resolution 1–6 (default 3) |
+| `map_threshold` | integer | Max point count for raw-data mode (default 2000) |
+| `cat` / `cat_opts` | string | Category field; same `resolve_axis_spec` + `compute_bounds` pipeline as histogram. `catBounds` returned in response when set. |
+
+**Response shape:**
+
+```json
+{
+  "type": "map",
+  "locationField": "sample_location",
+  "hexResolution": 3,
+  "rawData": {
+    "Chromosome": [
+      { "scientific_name": "Canis lupus", "taxonId": "9612",
+        "coords": "77.785278,-70.631389", "aggregation_source": "direct", "cat": "Chromosome" }
+    ],
+    "all taxa": [ ... ]
+  },
+  "hexBinCounts": {
+    "830264fffffffff": 1,
+    "831958fffffffff": 2
+  },
+  "catBounds": {
+    "field": "assembly_level",
+    "labels": ["Scaffold", "Chromosome"],
+    "domain": null,
+    "scale": "linear"
+  }
 }
-````
+```
+
+ES approach: three queries issued sequentially.
+1. Nested count query (`must: [base_query, nested{key=location_field}]`) to get location count.
+2. Nested `terms` agg on `attributes.hexbin{N}` filtered by `attributes.key = location_field`.
+3. Top-N `_search` (only when count ≤ threshold) to retrieve raw `_source` for point extraction.
+
+```rust
+// Hexbin aggregation structure (step 2):
+{
+  "location_attr": { "nested": {"path": "attributes"},
+    "aggs": { "by_key": { "filter": {"term": {"attributes.key": location_field}},
+      "aggs": { "hexbins": { "terms": { "field": "attributes.hexbin3", "size": 50000 } } } } } }
+}
+```
 
 ---
 
@@ -841,10 +872,11 @@ def tree(
         if preserve_rank: report_yaml += f"preserve_rank: \"{preserve_rank}\"\n"
     return self._run_report(report_yaml, api_base, api_version, _parse)
 
-def map(self, geo_field: str = "location", precision: int = 4,
+def map(self, location_field: str = "sample_location", hex_resolution: int = 3,
+        map_threshold: int = 2000, cat: str | None = None, cat_opts: str = "",
         *, api_base: str = "https://goat.genomehubs.org/api",
-        api_version: str = "v3") -> list[dict[str, Any]]:
-    """Run a map report and return geohash bucket list."""
+        api_version: str = "v3") -> dict[str, Any]:
+    """Run a map report. Returns rawData (per-point records) and hexBinCounts (H3 cells)."""
     from . import parse_histogram_json as _parse
     report_yaml = f"report: map\nx: {geo_field}\nprecision: {precision}\n"
     return self._run_report(report_yaml, api_base, api_version, _parse)
@@ -921,3 +953,4 @@ curl -s -X POST http://localhost:3000/api/v3/report \
 - [ ] `cargo test -p genomehubs-api` passes
 - [ ] `pytest tests/python/ -v` passes
 - [ ] Smoke test for each report type passes
+````

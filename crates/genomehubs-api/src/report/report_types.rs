@@ -743,57 +743,262 @@ pub async fn run_tree_report(
 }
 
 /// Run a map report (geohash grid).
+/// Run a map report.
+///
+/// Produces two complementary data shapes, mirroring v2:
+///
+/// - **`rawData`**: individual point records `{scientific_name, taxonId, coords, aggregation_source, cat}`
+///   grouped by cat label (or `"all taxa"` when no cat is set). Only populated when the
+///   count of taxa with location data is ≤ `map_threshold`.
+///
+/// - **`hexBinCounts`**: `{h3_cell_id: count}` map from a `terms` aggregation on
+///   `attributes.hexbin{N}` (pre-computed H3 cells stored on each location attribute entry).
+///   Resolution is controlled by `hex_resolution` (1–6, default 3).
+///
+/// **Config keys:**
+/// - `location_field` (default `"sample_location"`) — attribute key for geo-point data
+/// - `hex_resolution` (1–6, default 3) — H3 resolution for hexbin aggregation
+/// - `map_threshold` (default 2000) — switch from raw-point to hex-only mode
+/// - `cat` / `cat_opts` — category field; uses the same resolve_axis_spec pipeline as histogram
 pub async fn run_map_report(
     state: &Arc<AppState>,
     index: &str,
     base_query: &Value,
     report_config: &serde_yaml::Value,
 ) -> Result<(u64, u64, Value), String> {
-    let geo_field = report_config
-        .get("x")
+    let location_field = report_config
+        .get("location_field")
+        .or_else(|| report_config.get("x"))
         .and_then(|v| v.as_str())
-        .unwrap_or("location");
-    let size = report_config
-        .get("size")
-        .and_then(|v| v.as_u64())
-        .unwrap_or(500) as usize;
-    let precision = report_config
-        .get("precision")
-        .and_then(|v| v.as_u64())
-        .unwrap_or(4) as u8;
+        .unwrap_or("sample_location");
 
-    let es_body = json!({
+    let hex_resolution = report_config
+        .get("hex_resolution")
+        .and_then(|v| v.as_u64())
+        .unwrap_or(3)
+        .clamp(1, 6) as u8;
+
+    let map_threshold = report_config
+        .get("map_threshold")
+        .and_then(|v| v.as_u64())
+        .unwrap_or(2000);
+
+    let hexbin_field = format!("hexbin{hex_resolution}");
+
+    // --- Cat axis (optional) ---
+    let cat_spec_opt = resolve_axis_spec(AxisRole::Cat, report_config, state);
+    let cat_bounds_opt = if let Some(ref spec) = cat_spec_opt {
+        match compute_bounds(
+            &state.client,
+            &state.es_base,
+            index,
+            spec,
+            base_query,
+            &state.cache,
+        )
+        .await
+        {
+            Ok(b) => Some(b),
+            Err(_) => None,
+        }
+    } else {
+        None
+    };
+    let cat_field: Option<String> = cat_spec_opt.as_ref().map(|s| s.field.clone());
+    let cat_labels: Vec<String> = cat_bounds_opt
+        .as_ref()
+        .map(|b| b.cat_labels.clone())
+        .unwrap_or_default();
+
+    // --- Step 1: Count taxa that have location data ---
+    let count_body = json!({
+        "size": 0,
+        "query": {
+            "bool": {
+                "must": [
+                    base_query.clone(),
+                    {
+                        "nested": {
+                            "path": "attributes",
+                            "query": { "term": { "attributes.key": location_field } }
+                        }
+                    }
+                ]
+            }
+        }
+    });
+    let count_resp =
+        es_client::execute_search(&state.client, &state.es_base, index, &count_body).await?;
+    let location_count = count_resp
+        .pointer("/hits/total/value")
+        .and_then(|v| v.as_u64())
+        .unwrap_or(0);
+    let mut took_total = count_resp.get("took").and_then(|t| t.as_u64()).unwrap_or(0);
+
+    // --- Step 2: Hexbin aggregation (always) ---
+    let hex_body = json!({
         "size": 0,
         "query": base_query,
         "aggs": {
-            "geo_grid": {
-                "geohash_grid": {
-                    "field": geo_field,
-                    "precision": precision,
-                    "size": size
+            "location_attr": {
+                "nested": { "path": "attributes" },
+                "aggs": {
+                    "by_key": {
+                        "filter": { "term": { "attributes.key": location_field } },
+                        "aggs": {
+                            "hexbins": {
+                                "terms": {
+                                    "field": format!("attributes.{hexbin_field}"),
+                                    "size": 50000
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
     });
+    let hex_resp =
+        es_client::execute_search(&state.client, &state.es_base, index, &hex_body).await?;
+    took_total += hex_resp.get("took").and_then(|t| t.as_u64()).unwrap_or(0);
 
-    let resp = es_client::execute_search(&state.client, &state.es_base, index, &es_body).await?;
-    let took = resp.get("took").and_then(|t| t.as_u64()).unwrap_or(0);
-    let total_hits = resp
-        .pointer("/hits/total/value")
-        .and_then(|v| v.as_u64())
-        .unwrap_or(0);
-    let buckets = resp
-        .pointer("/aggregations/geo_grid/buckets")
-        .cloned()
-        .unwrap_or_default();
+    let mut hex_bin_counts: serde_json::Map<String, Value> = serde_json::Map::new();
+    if let Some(buckets) = hex_resp
+        .pointer("/aggregations/location_attr/by_key/hexbins/buckets")
+        .and_then(|v| v.as_array())
+    {
+        for bucket in buckets {
+            if let (Some(key), Some(count)) = (
+                bucket.get("key").and_then(|k| k.as_str()),
+                bucket.get("doc_count").and_then(|c| c.as_u64()),
+            ) {
+                hex_bin_counts.insert(key.to_string(), json!(count));
+            }
+        }
+    }
 
-    let report_data = json!({
+    // --- Step 3: Raw point data (when below threshold) ---
+    let mut raw_data: serde_json::Map<String, Value> = serde_json::Map::new();
+
+    if location_count > 0 && location_count <= map_threshold {
+        let raw_body = json!({
+            "size": location_count.min(10_000),
+            "query": {
+                "bool": {
+                    "must": [
+                        base_query.clone(),
+                        {
+                            "nested": {
+                                "path": "attributes",
+                                "query": { "term": { "attributes.key": location_field } }
+                            }
+                        }
+                    ]
+                }
+            },
+            "_source": ["taxon_id", "scientific_name", "attributes"]
+        });
+        let raw_resp =
+            es_client::execute_search(&state.client, &state.es_base, index, &raw_body).await?;
+        took_total += raw_resp.get("took").and_then(|t| t.as_u64()).unwrap_or(0);
+
+        let hits = raw_resp
+            .pointer("/hits/hits")
+            .and_then(|h| h.as_array())
+            .cloned()
+            .unwrap_or_default();
+
+        let empty_attrs: Vec<Value> = vec![];
+        for hit in &hits {
+            let src = match hit.get("_source") {
+                Some(s) => s,
+                None => continue,
+            };
+            let taxon_id = src
+                .get("taxon_id")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
+            let sci_name = src
+                .get("scientific_name")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
+            let attrs = src
+                .get("attributes")
+                .and_then(|v| v.as_array())
+                .unwrap_or(&empty_attrs);
+
+            // Find the location attribute entry
+            let loc_attr = attrs
+                .iter()
+                .find(|a| a.get("key").and_then(|k| k.as_str()) == Some(location_field));
+            let Some(loc) = loc_attr else {
+                continue;
+            };
+
+            // Collect all coords from the attribute (may be a list or single value)
+            let coords_list: Vec<String> =
+                if let Some(arr) = loc.get("geo_point_value").and_then(|v| v.as_array()) {
+                    arr.iter()
+                        .filter_map(|v| v.as_str().map(str::to_string))
+                        .collect()
+                } else if let Some(s) = loc.get("geo_point_value").and_then(|v| v.as_str()) {
+                    vec![s.to_string()]
+                } else {
+                    continue;
+                };
+
+            let aggregation_source = loc
+                .get("aggregation_source")
+                .and_then(|v| v.as_str())
+                .unwrap_or("direct");
+
+            // Resolve cat label for this taxon
+            let cat_label: String = if let Some(ref cf) = cat_field {
+                resolve_cat_label(src, cf, &cat_labels).unwrap_or_else(|| "other".to_string())
+            } else {
+                "all taxa".to_string()
+            };
+
+            let points = raw_data
+                .entry(cat_label.clone())
+                .or_insert_with(|| json!([]))
+                .as_array_mut()
+                .expect("cat entry is always an array");
+
+            for coords in coords_list {
+                points.push(json!({
+                    "scientific_name": sci_name,
+                    "taxonId": taxon_id,
+                    "coords": coords,
+                    "aggregation_source": aggregation_source,
+                    "cat": cat_label,
+                }));
+            }
+        }
+    }
+
+    // --- Assemble response ---
+    let total_hits = location_count;
+    let mut report_data = json!({
         "type": "map",
-        "field": geo_field,
-        "buckets": buckets
+        "locationField": location_field,
+        "hexResolution": hex_resolution,
+        "rawData": raw_data,
+        "hexBinCounts": hex_bin_counts
     });
 
-    Ok((total_hits, took, report_data))
+    if let (Some(ref spec), Some(ref bounds)) = (cat_spec_opt, cat_bounds_opt) {
+        report_data["catBounds"] = json!({
+            "field": spec.field,
+            "labels": bounds.cat_labels,
+            "domain": bounds.domain,
+            "scale": "linear"
+        });
+    }
+
+    Ok((total_hits, took_total, report_data))
 }
 
 // ============================================================================

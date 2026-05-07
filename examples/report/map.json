@@ -1,15 +1,19 @@
 {
   "query": {
     "index": "taxon",
-    "taxa": ["Mammalia"],
-    "taxon_filter_type": "tree"
+    "taxa": ["Canidae"],
+    "taxon_filter_type": "tree",
+    "rank": "species"
   },
   "params": {
     "taxonomy": "ncbi"
   },
   "report": {
     "report": "map",
-    "x": "location",
-    "precision": 4
+    "location_field": "sample_location",
+    "hex_resolution": 3,
+    "map_threshold": 2000,
+    "cat": "assembly_level",
+    "cat_opts": ";;5+"
   }
 }
