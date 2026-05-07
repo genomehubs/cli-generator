@@ -153,6 +153,15 @@ pub async fn post_report(
         "sources" => report_types::run_sources_report(&state, &idx, &base_query).await,
         "tree" => report_types::run_tree_report(&state, &idx, &base_query, &report_config).await,
         "map" => report_types::run_map_report(&state, &idx, &base_query, &report_config).await,
+        "arc" => {
+            use crate::report::arc::{run_arc_report, ArcConfig};
+            match ArcConfig::from_yaml(&report_config) {
+                Ok(cfg) => {
+                    run_arc_report(&state.client, &state.es_base, &idx, &base_query, &cfg).await
+                }
+                Err(e) => Err(e),
+            }
+        }
         unknown => Err(format!("unknown report type: {unknown}")),
     };
 

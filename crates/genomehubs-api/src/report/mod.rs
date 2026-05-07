@@ -9,6 +9,7 @@
 //! Report route handlers (Phase 6) wire these together into complete report workflows.
 
 pub mod agg;
+pub mod arc;
 pub mod bounds;
 pub mod filter_expr;
 pub mod pipeline;

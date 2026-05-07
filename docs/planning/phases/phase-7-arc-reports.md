@@ -243,34 +243,43 @@ scale, callers use the `axes` array via raw YAML.
 
 ## 3. Arc report
 
-Unchanged from the original Phase 7 spec except `build_term_filter` is replaced by
-`filter_expr_to_es_query` from `filter_expr.rs`.
+### Semantics
+
+`arc` and `arc2` are **fractions**:
+
+- `feature_count` = count(feature AND reference within base query) — the intersection
+- `reference_count` = count(reference within base query)
+- `context_count` = count(context within base query) (when provided)
+- `arc` = feature_count / reference_count — proportion of reference that satisfies feature
+- `arc2` = reference_count / context_count — how reference relates to the broader context (can exceed 1)
+
+This requires only **2 queries** for the 2-term case and **3 queries** for the 3-term case.
 
 ### `report_yaml` format
 
 ```yaml
 report: arc
-x: "country=BR"
-y: "genome_size>1000000"
-z: "gc_percent>45" # optional
+feature: "genome_size>3000000000" # the specific filter being investigated
+reference: "genome_size>1000000000" # the denominator group to measure against
+context: "assembly_level=Chromosome" # optional: broader backdrop; enables arc2
 ```
 
-### Arc response shape
+### Response shape
 
 ```json
 {
-  "status": { "success": true, "hits": 5432, "took": 18 },
+  "status": { "success": true, "hits": 16, "took": 5 },
   "report": {
     "type": "arc",
-    "arc": 120,
-    "arc2": 85,
-    "x": 1500,
-    "y": 400,
-    "z": 200,
-    "xTerm": "country=BR",
-    "yTerm": "genome_size>1000000",
-    "zTerm": "gc_percent>45",
-    "queryString": "country=BR AND genome_size>1000000"
+    "arc": 0.127,
+    "arc2": 18.0,
+    "feature_count": 16,
+    "reference_count": 126,
+    "context_count": 7,
+    "featureTerm": "genome_size>3000000000",
+    "referenceTerm": "genome_size>1000000000",
+    "contextTerm": "assembly_level=Chromosome",
+    "queryString": "genome_size>3000000000 AND genome_size>1000000000"
   }
 }
 ```
