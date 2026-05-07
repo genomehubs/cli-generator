@@ -334,12 +334,45 @@ pub async fn run_sources_report(
     index: &str,
     base_query: &Value,
 ) -> Result<(u64, u64, Value), String> {
+    // Aggregate attributes (nested) -> fields -> sources, collecting metadata per source.
+    // This mirrors the v2 implementation to extract field associations, URLs, and dates.
     let es_body = json!({
         "size": 0,
         "query": base_query,
         "aggs": {
-            "sources": {
-                "terms": { "field": "sources.keyword", "size": 50 }
+            "attributes": {
+                "nested": { "path": "attributes" },
+                "aggs": {
+                    "direct": {
+                        "filter": { "match": { "attributes.aggregation_source": "direct" } },
+                        "aggs": {
+                            "fields": {
+                                "terms": { "field": "attributes.key", "size": 200 },
+                                "aggs": {
+                                    "summary": {
+                                        "nested": { "path": "attributes.values" },
+                                        "aggs": {
+                                            "terms": {
+                                                "terms": { "field": "attributes.values.source.raw", "size": 200 },
+                                                "aggs": {
+                                                    "min_date": {
+                                                        "min": { "field": "attributes.values.source_date", "format": "yyyy-MM-dd" }
+                                                    },
+                                                    "max_date": {
+                                                        "max": { "field": "attributes.values.source_date", "format": "yyyy-MM-dd" }
+                                                    },
+                                                    "url": {
+                                                        "terms": { "field": "attributes.values.source_url", "size": 1 }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     });
@@ -350,14 +383,97 @@ pub async fn run_sources_report(
         .pointer("/hits/total/value")
         .and_then(|v| v.as_u64())
         .unwrap_or(0);
-    let buckets = resp
-        .pointer("/aggregations/sources/buckets")
-        .cloned()
-        .unwrap_or_default();
+
+    // Extract nested aggregation structure and build sources object.
+    // For each field, iterate through sources and build: {source_name: {count, attributes, url, date}}
+    let mut sources_map: std::collections::BTreeMap<String, serde_json::Map<String, Value>> =
+        std::collections::BTreeMap::new();
+
+    if let Some(fields_agg) = resp.pointer("/aggregations/attributes/direct/fields/buckets") {
+        if let Some(field_buckets) = fields_agg.as_array() {
+            for field_bucket in field_buckets {
+                let field_name = field_bucket
+                    .get("key")
+                    .and_then(|k| k.as_str())
+                    .unwrap_or("unknown");
+
+                // Navigate into summary -> terms buckets
+                if let Some(source_buckets) = field_bucket.pointer("/summary/terms/buckets") {
+                    if let Some(sources) = source_buckets.as_array() {
+                        for source_bucket in sources {
+                            let source_name = source_bucket
+                                .get("key")
+                                .and_then(|k| k.as_str())
+                                .unwrap_or("unknown")
+                                .to_string();
+                            let count = source_bucket
+                                .get("doc_count")
+                                .and_then(|c| c.as_u64())
+                                .unwrap_or(0);
+
+                            // Get or create source entry
+                            let entry = sources_map
+                                .entry(source_name.clone())
+                                .or_insert_with(serde_json::Map::new);
+
+                            // Update count
+                            if let Some(existing_count) =
+                                entry.get("count").and_then(|c| c.as_u64())
+                            {
+                                entry.insert("count".to_string(), json!(existing_count + count));
+                            } else {
+                                entry.insert("count".to_string(), json!(count));
+                            }
+
+                            // Add field to attributes list
+                            let attrs = entry
+                                .entry("attributes".to_string())
+                                .or_insert_with(|| json!(Vec::<String>::new()));
+                            if let Some(arr) = attrs.as_array_mut() {
+                                if !arr.iter().any(|v| v.as_str() == Some(field_name)) {
+                                    arr.push(json!(field_name));
+                                }
+                            }
+
+                            // Extract and set URL if present
+                            if let Some(url_agg) = source_bucket.pointer("/url/buckets") {
+                                if let Some(url_buckets) = url_agg.as_array() {
+                                    if let Some(first_url) = url_buckets.first() {
+                                        if let Some(url) = first_url.get("key") {
+                                            entry.insert("url".to_string(), url.clone());
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Extract date range (use min as date if available)
+                            if let Some(min_date) = source_bucket
+                                .pointer("/min_date/value_as_string")
+                                .and_then(|v| v.as_str())
+                            {
+                                entry.insert("date".to_string(), json!(min_date));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Convert BTreeMap to regular JSON object
+    let mut sources_obj = serde_json::Map::new();
+    for (source_name, mut source_data) in sources_map {
+        // Ensure attributes is sorted for consistency
+        if let Some(attrs) = source_data.get_mut("attributes") {
+            if let Some(arr) = attrs.as_array_mut() {
+                arr.sort_by(|a, b| a.as_str().unwrap_or("").cmp(b.as_str().unwrap_or("")));
+            }
+        }
+        sources_obj.insert(source_name, Value::Object(source_data));
+    }
 
     let report_data = json!({
-        "type": "sources",
-        "buckets": buckets
+        "sources": sources_obj
     });
 
     Ok((total_hits, took, report_data))
