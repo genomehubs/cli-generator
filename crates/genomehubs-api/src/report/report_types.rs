@@ -4,16 +4,16 @@
 //! and returns structured report data.
 
 use genomehubs_query::query::{QueryParams, SearchQuery};
-use genomehubs_query::report::axis::{AxisRole, AxisSpec, AxisSummary, ValueType};
+use genomehubs_query::report::axis::{AxisInput, AxisRole, AxisSpec, AxisSummary, ValueType};
 use serde_json::{json, Value};
 use std::sync::Arc;
 
 use crate::es_client;
-use crate::report::bounds::compute_bounds;
 use crate::report::agg::{
     agg_builder_for, build_nested_attribute_histogram_with_categories,
-    build_nested_attribute_scatter_agg,
+    build_nested_attribute_scatter_agg, x_bucket_agg_name,
 };
+use crate::report::bounds::compute_bounds;
 use crate::report::pipeline::{Pipeline, ReportContext, ScaleStep};
 use crate::AppState;
 
@@ -28,9 +28,11 @@ fn extract_cat_histograms(
     resp: &Value,
     agg_name: &str,
     x_field: &str,
+    x_bucket_agg: &str,
     main_bucket_count: usize,
     cat_labels: &[String],
     show_other: bool,
+    cat_is_numeric: bool,
     main_counts: &[u64],
 ) -> Value {
     let base = format!(
@@ -43,43 +45,88 @@ fn extract_cat_histograms(
     }
 
     let mut by_cat = serde_json::Map::new();
-    let mut named_sums: Vec<Vec<u64>> = Vec::with_capacity(cat_labels.len());
 
-    for label in cat_labels {
-        let hist_path = format!("{}/{}/histogram/by_attribute/{}/histogram/buckets", base, label, x_field);
-        let mut counts: Vec<u64> = resp
-            .pointer(&hist_path)
+    if cat_is_numeric {
+        // by_value uses a histogram agg — buckets is an array of { key, histogram: {…} }.
+        let cat_buckets = resp
+            .pointer(&base)
             .and_then(|b| b.as_array())
-            .map(|buckets| {
-                buckets
-                    .iter()
-                    .map(|b| b.get("doc_count").and_then(|c| c.as_u64()).unwrap_or(0))
-                    .collect()
-            })
+            .cloned()
             .unwrap_or_default();
-        counts.resize(main_bucket_count, 0);
-        named_sums.push(counts.clone());
-        by_cat.insert(label.clone(), json!(counts));
-    }
-
-    if show_other {
-        let other_path = format!("{}/other/histogram/by_attribute/{}/histogram/buckets", base, x_field);
-        let other_counts: Vec<u64> = if let Some(buckets) = resp.pointer(&other_path).and_then(|b| b.as_array()) {
-            let mut v: Vec<u64> = buckets
-                .iter()
-                .map(|b| b.get("doc_count").and_then(|c| c.as_u64()).unwrap_or(0))
-                .collect();
-            v.resize(main_bucket_count, 0);
-            v
-        } else {
-            (0..main_bucket_count)
-                .map(|i| {
-                    let cat_sum: u64 = named_sums.iter().map(|c| c.get(i).copied().unwrap_or(0)).sum();
-                    main_counts.get(i).copied().unwrap_or(0).saturating_sub(cat_sum)
+        for bucket in &cat_buckets {
+            let key = bucket.get("key").and_then(|k| k.as_f64()).unwrap_or(0.0);
+            let label = key.to_string();
+            let hist_path = format!(
+                "/histogram/by_attribute/{}/{}/buckets",
+                x_field, x_bucket_agg
+            );
+            let mut counts: Vec<u64> = bucket
+                .pointer(&hist_path)
+                .and_then(|b| b.as_array())
+                .map(|buckets| {
+                    buckets
+                        .iter()
+                        .map(|b| b.get("doc_count").and_then(|c| c.as_u64()).unwrap_or(0))
+                        .collect()
                 })
-                .collect()
-        };
-        by_cat.insert("other".to_string(), json!(other_counts));
+                .unwrap_or_default();
+            counts.resize(main_bucket_count, 0);
+            by_cat.insert(label, json!(counts));
+        }
+    } else {
+        // by_value uses a filters agg — buckets is an object keyed by label.
+        let mut named_sums: Vec<Vec<u64>> = Vec::with_capacity(cat_labels.len());
+
+        for label in cat_labels {
+            let hist_path = format!(
+                "{}/{}/histogram/by_attribute/{}/{}/buckets",
+                base, label, x_field, x_bucket_agg
+            );
+            let mut counts: Vec<u64> = resp
+                .pointer(&hist_path)
+                .and_then(|b| b.as_array())
+                .map(|buckets| {
+                    buckets
+                        .iter()
+                        .map(|b| b.get("doc_count").and_then(|c| c.as_u64()).unwrap_or(0))
+                        .collect()
+                })
+                .unwrap_or_default();
+            counts.resize(main_bucket_count, 0);
+            named_sums.push(counts.clone());
+            by_cat.insert(label.clone(), json!(counts));
+        }
+
+        if show_other {
+            let other_path = format!(
+                "{}/other/histogram/by_attribute/{}/{}/buckets",
+                base, x_field, x_bucket_agg
+            );
+            let other_counts: Vec<u64> =
+                if let Some(buckets) = resp.pointer(&other_path).and_then(|b| b.as_array()) {
+                    let mut v: Vec<u64> = buckets
+                        .iter()
+                        .map(|b| b.get("doc_count").and_then(|c| c.as_u64()).unwrap_or(0))
+                        .collect();
+                    v.resize(main_bucket_count, 0);
+                    v
+                } else {
+                    (0..main_bucket_count)
+                        .map(|i| {
+                            let cat_sum: u64 = named_sums
+                                .iter()
+                                .map(|c| c.get(i).copied().unwrap_or(0))
+                                .sum();
+                            main_counts
+                                .get(i)
+                                .copied()
+                                .unwrap_or(0)
+                                .saturating_sub(cat_sum)
+                        })
+                        .collect()
+                };
+            by_cat.insert("other".to_string(), json!(other_counts));
+        }
     }
 
     if by_cat.is_empty() {
@@ -100,50 +147,59 @@ pub async fn run_histogram_report(
     report_config: &serde_yaml::Value,
     base_query: &Value,
 ) -> Result<(u64, u64, Value), String> {
-    let x_field = report_config
-        .get("x")
-        .and_then(|v| v.as_str())
-        .ok_or("report_yaml missing 'x' field")?;
-    let x_opts_str = report_config
-        .get("x_opts")
-        .and_then(|v| v.as_str())
-        .unwrap_or("");
-    let cat_field = report_config.get("cat").and_then(|v| v.as_str());
+    let x_spec = resolve_axis_spec(AxisRole::X, report_config, state)
+        .ok_or("report config missing 'x' axis (set 'x' field or use 'axes')")?;
+    let x_field = x_spec.field.clone();
+    let cat_spec_opt = resolve_axis_spec(AxisRole::Cat, report_config, state);
 
-    let x_value_type = infer_value_type(x_field, &state.cache);
-    let x_spec = AxisSpec {
-        field: x_field.to_string(),
-        role: AxisRole::X,
-        summary: AxisSummary::default(),
-        value_type: x_value_type,
-        opts: x_opts_str.parse().unwrap_or_default(),
-    };
-
-    let x_bounds = compute_bounds(&state.client, &state.es_base, index, &x_spec, base_query, &state.cache).await?;
+    let x_bounds = compute_bounds(
+        &state.client,
+        &state.es_base,
+        index,
+        &x_spec,
+        base_query,
+        &state.cache,
+    )
+    .await?;
 
     let agg_name = "x_agg";
 
-    // Build aggregation — categorized path uses v2-pattern categoryHistograms.
-    let (final_agg, cat_labels, show_other_cat) = if let Some(cat) = cat_field {
-        let cat_spec = build_cat_spec(cat, report_config, state);
-        let cat_bounds =
-            compute_bounds(&state.client, &state.es_base, index, &cat_spec, base_query, &state.cache).await?;
-        let labels = cat_bounds.cat_labels.clone();
-        let show_other = cat_spec.opts.show_other;
-        let agg = build_nested_attribute_histogram_with_categories(
-            agg_name,
-            x_field,
-            &x_bounds,
-            cat,
-            &labels,
-            show_other,
-            &state.cache,
-        )?;
-        (agg, labels, show_other)
-    } else {
-        let x_agg = agg_builder_for(&x_spec, &x_bounds, &state.cache)?;
-        (x_agg.build(agg_name), vec![], false)
-    };
+    let x_inner_agg = x_bucket_agg_name(x_spec.value_type);
+
+    // Build aggregation — categorized path supports both keyword (filters) and numeric (histogram) cat.
+    let (final_agg, cat_labels, show_other_cat, cat_is_numeric) =
+        if let Some(ref cat_spec) = cat_spec_opt {
+            let cat_bounds = compute_bounds(
+                &state.client,
+                &state.es_base,
+                index,
+                cat_spec,
+                base_query,
+                &state.cache,
+            )
+            .await?;
+            let labels = cat_bounds.cat_labels.clone();
+            let show_other = cat_spec.opts.show_other;
+            let is_numeric = !matches!(
+                cat_spec.value_type,
+                ValueType::Keyword | ValueType::TaxonRank
+            );
+            let agg = build_nested_attribute_histogram_with_categories(
+                agg_name,
+                &x_spec,
+                &x_bounds,
+                cat_spec.field.as_str(),
+                cat_spec.value_type,
+                &cat_bounds,
+                &labels,
+                show_other,
+                &state.cache,
+            )?;
+            (agg, labels, show_other, is_numeric)
+        } else {
+            let x_agg = agg_builder_for(&x_spec, &x_bounds, &state.cache)?;
+            (x_agg.build(agg_name), vec![], false, false)
+        };
 
     let es_body = json!({ "size": 0, "query": base_query, "aggs": final_agg });
     let resp = es_client::execute_search(&state.client, &state.es_base, index, &es_body).await?;
@@ -163,14 +219,16 @@ pub async fn run_histogram_report(
         .map(|b| b.get("doc_count").and_then(|c| c.as_u64()).unwrap_or(0))
         .collect();
 
-    let by_cat = if cat_field.is_some() && !cat_labels.is_empty() {
+    let by_cat = if !cat_labels.is_empty() || cat_is_numeric {
         extract_cat_histograms(
             &resp,
             agg_name,
-            x_field,
+            x_field.as_str(),
+            x_inner_agg,
             raw_buckets.len(),
             &cat_labels,
             show_other_cat,
+            cat_is_numeric,
             &main_counts,
         )
     } else {
@@ -194,7 +252,7 @@ pub async fn run_histogram_report(
     let mut report_data = json!({
         "type": "histogram",
         "x": {
-            "field": x_field,
+            "field": &x_field,
             "scale": format!("{:?}", x_spec.opts.scale).to_lowercase(),
             "domain": x_bounds.domain,
             "tickCount": x_bounds.tick_count
@@ -205,7 +263,7 @@ pub async fn run_histogram_report(
 
     if !by_cat.is_null() {
         report_data["by_cat"] = by_cat;
-        report_data["cat"] = json!(cat_field);
+        report_data["cat"] = json!(cat_spec_opt.as_ref().map(|s| s.field.as_str()));
         report_data["cats"] = json!(cat_labels);
     }
 
@@ -415,7 +473,10 @@ pub async fn run_map_report(
 
 /// Infer the ValueType of a field from metadata cache.
 /// Defaults to Numeric if not found or cache unavailable.
-fn infer_value_type(field: &str, cache: &Option<Arc<tokio::sync::RwLock<crate::es_metadata::MetadataCache>>>) -> ValueType {
+fn infer_value_type(
+    field: &str,
+    cache: &Option<Arc<tokio::sync::RwLock<crate::es_metadata::MetadataCache>>>,
+) -> ValueType {
     // Check if it's a rank in the metadata
     if let Some(cache_lock) = cache {
         if let Ok(c) = cache_lock.try_read() {
@@ -429,11 +490,15 @@ fn infer_value_type(field: &str, cache: &Option<Arc<tokio::sync::RwLock<crate::e
                     if let serde_json::Value::Object(fields) = group {
                         if let Some(field_meta) = fields.get(field) {
                             if let serde_json::Value::Object(meta_obj) = field_meta {
-                                if let Some(type_str) = meta_obj.get("type").and_then(|v| v.as_str()) {
+                                if let Some(type_str) =
+                                    meta_obj.get("type").and_then(|v| v.as_str())
+                                {
                                     return match type_str {
                                         "date" => ValueType::Date,
                                         "keyword" => ValueType::Keyword,
-                                        "long" | "integer" | "float" | "double" => ValueType::Numeric,
+                                        "long" | "integer" | "float" | "double" => {
+                                            ValueType::Numeric
+                                        }
                                         "geo_point" => ValueType::GeoPoint,
                                         _ => ValueType::Keyword,
                                     };
@@ -449,20 +514,55 @@ fn infer_value_type(field: &str, cache: &Option<Arc<tokio::sync::RwLock<crate::e
     ValueType::Numeric
 }
 
-/// Build an AxisSpec for a category field.
-fn build_cat_spec(cat: &str, report_config: &serde_yaml::Value, state: &Arc<AppState>) -> AxisSpec {
-    let cat_opts_str = report_config
-        .get("cat_opts")
+/// Resolve an [`AxisSpec`] for the given role from a report config.
+///
+/// Checks the structured `axes` array first. Falls back to legacy flat keys
+/// (`x`/`x_opts`, `y`/`y_opts`, `cat`/`cat_opts`) so existing request bodies
+/// continue to work unchanged.
+fn resolve_axis_spec(
+    role: AxisRole,
+    report_config: &serde_yaml::Value,
+    state: &Arc<AppState>,
+) -> Option<AxisSpec> {
+    let role_str = match role {
+        AxisRole::X => "x",
+        AxisRole::Y => "y",
+        AxisRole::Z => "z",
+        AxisRole::Cat => "cat",
+    };
+
+    // Structured `axes` array (preferred v3 format)
+    if let Some(axes) = report_config.get("axes").and_then(|a| a.as_sequence()) {
+        for entry in axes {
+            if entry.get("position").and_then(|p| p.as_str()) != Some(role_str) {
+                continue;
+            }
+            if let Ok(input) = serde_yaml::from_value::<AxisInput>(entry.clone()) {
+                let inferred = infer_value_type(&input.field, &state.cache);
+                return Some(input.into_spec(inferred));
+            }
+        }
+    }
+
+    // Legacy flat keys fallback (`x`, `x_opts`, `cat`, `cat_opts`, …)
+    let field = report_config.get(role_str).and_then(|v| v.as_str())?;
+    let opts_key = if role == AxisRole::Cat {
+        "cat_opts".to_string()
+    } else {
+        format!("{}_opts", role_str)
+    };
+    let opts_str = report_config
+        .get(&opts_key)
         .and_then(|v| v.as_str())
         .unwrap_or("");
-
-    AxisSpec {
-        field: cat.to_string(),
-        role: AxisRole::Cat,
+    let value_type = infer_value_type(field, &state.cache);
+    Some(AxisSpec {
+        field: field.to_string(),
+        role,
         summary: AxisSummary::default(),
-        value_type: infer_value_type(cat, &state.cache),
-        opts: cat_opts_str.parse().unwrap_or_default(),
-    }
+        value_type,
+        opts: opts_str.parse().unwrap_or_default(),
+    })
 }
 
 /// Serialize taxonomy hierarchy to Newick format.
@@ -511,7 +611,11 @@ fn find_attr_keyword(attrs: &[Value], field: &str) -> Option<String> {
     attrs
         .iter()
         .find(|a| a.get("key").and_then(|k| k.as_str()) == Some(field))
-        .and_then(|a| a.get("keyword_value").and_then(|v| v.as_str()).map(String::from))
+        .and_then(|a| {
+            a.get("keyword_value")
+                .and_then(|v| v.as_str())
+                .map(String::from)
+        })
 }
 
 /// Extract per-category per-x-bucket counts and per-x-bucket y-counts from a scatter response.
@@ -523,11 +627,13 @@ fn extract_scatter_by_cat(
     resp: &Value,
     agg_name: &str,
     x_field: &str,
+    x_bucket_agg: &str,
     y_field: &str,
     x_bucket_count: usize,
     y_bucket_count: usize,
     cat_labels: &[String],
     show_other: bool,
+    cat_is_numeric: bool,
     main_counts: &[u64],
 ) -> (Value, Value) {
     let base = format!(
@@ -541,68 +647,118 @@ fn extract_scatter_by_cat(
 
     let mut by_cat = serde_json::Map::new();
     let mut y_values_by_cat = serde_json::Map::new();
-    let mut named_x_sums: Vec<Vec<u64>> = Vec::new();
 
-    let all_labels: Vec<&str> = {
-        let mut v: Vec<&str> = cat_labels.iter().map(String::as_str).collect();
-        if show_other {
-            v.push("other");
-        }
-        v
-    };
-
-    for label in &all_labels {
-        let x_hist_path = format!(
-            "{}/{}/histogram/by_attribute/{}/histogram/buckets",
-            base, label, x_field
-        );
-
-        let x_buckets = resp
-            .pointer(&x_hist_path)
+    if cat_is_numeric {
+        // by_value uses a histogram agg — buckets is an array of { key, histogram: {…} }.
+        let cat_buckets = resp
+            .pointer(&base)
             .and_then(|b| b.as_array())
             .cloned()
             .unwrap_or_default();
-
-        let mut x_counts: Vec<u64> = Vec::with_capacity(x_bucket_count);
-        let mut y_counts_per_x: Vec<Vec<u64>> = Vec::with_capacity(x_bucket_count);
-
-        for x_bucket in &x_buckets {
-            x_counts.push(x_bucket.get("doc_count").and_then(|c| c.as_u64()).unwrap_or(0));
-
-            let y_hist_path = format!("/yHistograms/by_attribute/{}/histogram/buckets", y_field);
-            let y_counts: Vec<u64> = x_bucket
-                .pointer(&y_hist_path)
+        for bucket in &cat_buckets {
+            let key = bucket.get("key").and_then(|k| k.as_f64()).unwrap_or(0.0);
+            let label = key.to_string();
+            let x_path = format!(
+                "/histogram/by_attribute/{}/{}/buckets",
+                x_field, x_bucket_agg
+            );
+            let x_buckets_inner = bucket
+                .pointer(&x_path)
                 .and_then(|b| b.as_array())
-                .map(|ybuckets| {
-                    ybuckets
-                        .iter()
-                        .map(|b| b.get("doc_count").and_then(|c| c.as_u64()).unwrap_or(0))
-                        .collect()
-                })
-                .unwrap_or_else(|| vec![0; y_bucket_count]);
-            y_counts_per_x.push(y_counts);
+                .cloned()
+                .unwrap_or_default();
+            let mut x_counts: Vec<u64> = Vec::with_capacity(x_bucket_count);
+            let mut y_counts_per_x: Vec<Vec<u64>> = Vec::with_capacity(x_bucket_count);
+            for x_bucket in &x_buckets_inner {
+                x_counts.push(
+                    x_bucket
+                        .get("doc_count")
+                        .and_then(|c| c.as_u64())
+                        .unwrap_or(0),
+                );
+                let y_path = format!("/yHistograms/by_attribute/{}/histogram/buckets", y_field);
+                let y_counts = x_bucket
+                    .pointer(&y_path)
+                    .and_then(|b| b.as_array())
+                    .map(|yb| {
+                        yb.iter()
+                            .map(|b| b.get("doc_count").and_then(|c| c.as_u64()).unwrap_or(0))
+                            .collect()
+                    })
+                    .unwrap_or_else(|| vec![0; y_bucket_count]);
+                y_counts_per_x.push(y_counts);
+            }
+            x_counts.resize(x_bucket_count, 0);
+            y_counts_per_x.resize(x_bucket_count, vec![0; y_bucket_count]);
+            by_cat.insert(label.clone(), json!(x_counts));
+            y_values_by_cat.insert(label, json!(y_counts_per_x));
         }
+    } else {
+        let mut named_x_sums: Vec<Vec<u64>> = Vec::new();
+        let all_labels: Vec<&str> = {
+            let mut v: Vec<&str> = cat_labels.iter().map(String::as_str).collect();
+            if show_other {
+                v.push("other");
+            }
+            v
+        };
 
-        x_counts.resize(x_bucket_count, 0);
-        y_counts_per_x.resize(x_bucket_count, vec![0; y_bucket_count]);
+        for label in &all_labels {
+            let x_hist_path = format!(
+                "{}/{}/histogram/by_attribute/{}/{}/buckets",
+                base, label, x_field, x_bucket_agg
+            );
+            let x_buckets = resp
+                .pointer(&x_hist_path)
+                .and_then(|b| b.as_array())
+                .cloned()
+                .unwrap_or_default();
+            let mut x_counts: Vec<u64> = Vec::with_capacity(x_bucket_count);
+            let mut y_counts_per_x: Vec<Vec<u64>> = Vec::with_capacity(x_bucket_count);
 
-        // For "other" computed from category data, fallback to subtracting named sums if missing.
-        if *label == "other" && x_counts.iter().all(|&c| c == 0) {
-            x_counts = (0..x_bucket_count)
-                .map(|i| {
-                    let cat_sum: u64 = named_x_sums
-                        .iter()
-                        .map(|c| c.get(i).copied().unwrap_or(0))
-                        .sum();
-                    main_counts.get(i).copied().unwrap_or(0).saturating_sub(cat_sum)
-                })
-                .collect();
-        } else {
-            named_x_sums.push(x_counts.clone());
+            for x_bucket in &x_buckets {
+                x_counts.push(
+                    x_bucket
+                        .get("doc_count")
+                        .and_then(|c| c.as_u64())
+                        .unwrap_or(0),
+                );
+                let y_hist_path =
+                    format!("/yHistograms/by_attribute/{}/histogram/buckets", y_field);
+                let y_counts = x_bucket
+                    .pointer(&y_hist_path)
+                    .and_then(|b| b.as_array())
+                    .map(|yb| {
+                        yb.iter()
+                            .map(|b| b.get("doc_count").and_then(|c| c.as_u64()).unwrap_or(0))
+                            .collect()
+                    })
+                    .unwrap_or_else(|| vec![0; y_bucket_count]);
+                y_counts_per_x.push(y_counts);
+            }
+            x_counts.resize(x_bucket_count, 0);
+            y_counts_per_x.resize(x_bucket_count, vec![0; y_bucket_count]);
+
+            if *label == "other" && x_counts.iter().all(|&c| c == 0) {
+                x_counts = (0..x_bucket_count)
+                    .map(|i| {
+                        let cat_sum: u64 = named_x_sums
+                            .iter()
+                            .map(|c| c.get(i).copied().unwrap_or(0))
+                            .sum();
+                        main_counts
+                            .get(i)
+                            .copied()
+                            .unwrap_or(0)
+                            .saturating_sub(cat_sum)
+                    })
+                    .collect();
+            } else {
+                named_x_sums.push(x_counts.clone());
+            }
+            by_cat.insert(label.to_string(), json!(x_counts));
+            y_values_by_cat.insert(label.to_string(), json!(y_counts_per_x));
         }
-
-        by_cat.insert(label.to_string(), json!(x_counts));
-        y_values_by_cat.insert(label.to_string(), json!(y_counts_per_x));
     }
 
     (Value::Object(by_cat), Value::Object(y_values_by_cat))
@@ -648,7 +804,8 @@ async fn fetch_raw_point_data(
         "_source": ["scientific_name", "taxon_id", "attributes"]
     });
 
-    let resp = match es_client::execute_search(&state.client, &state.es_base, index, &es_body).await {
+    let resp = match es_client::execute_search(&state.client, &state.es_base, index, &es_body).await
+    {
         Ok(r) => r,
         Err(_) => return Value::Null,
     };
@@ -659,8 +816,7 @@ async fn fetch_raw_point_data(
         .cloned()
         .unwrap_or_default();
 
-    let cat_set: std::collections::HashSet<&str> =
-        cat_labels.iter().map(String::as_str).collect();
+    let cat_set: std::collections::HashSet<&str> = cat_labels.iter().map(String::as_str).collect();
 
     let mut raw_data: std::collections::BTreeMap<String, Vec<Value>> =
         std::collections::BTreeMap::new();
@@ -674,7 +830,11 @@ async fn fetch_raw_point_data(
             .to_string();
         let taxon_id = src
             .get("taxon_id")
-            .and_then(|v| v.as_str().map(String::from).or_else(|| v.as_u64().map(|n| n.to_string())))
+            .and_then(|v| {
+                v.as_str()
+                    .map(String::from)
+                    .or_else(|| v.as_u64().map(|n| n.to_string()))
+            })
             .unwrap_or_default();
 
         let attrs: Vec<Value> = src
@@ -738,81 +898,80 @@ pub async fn run_scatter_report(
     report_config: &serde_yaml::Value,
     base_query: &Value,
 ) -> Result<(u64, u64, Value), String> {
-    let x_field = report_config
-        .get("x")
-        .and_then(|v| v.as_str())
-        .ok_or("report_yaml missing 'x' field")?;
-    let y_field = report_config
-        .get("y")
-        .and_then(|v| v.as_str())
-        .ok_or("scatter report requires 'y' field")?;
-    let x_opts_str = report_config.get("x_opts").and_then(|v| v.as_str()).unwrap_or("");
-    let y_opts_str = report_config.get("y_opts").and_then(|v| v.as_str()).unwrap_or("");
-    let cat_field = report_config.get("cat").and_then(|v| v.as_str());
+    let x_spec = resolve_axis_spec(AxisRole::X, report_config, state)
+        .ok_or("report config missing 'x' axis (set 'x' field or use 'axes')")?;
+    let y_spec = resolve_axis_spec(AxisRole::Y, report_config, state)
+        .ok_or("scatter report requires 'y' axis (set 'y' field or use 'axes')")?;
+    let x_field = x_spec.field.clone();
+    let y_field = y_spec.field.clone();
+    let cat_spec_opt = resolve_axis_spec(AxisRole::Cat, report_config, state);
     let scatter_threshold = report_config
         .get("scatter_threshold")
         .and_then(|v| v.as_u64())
         .unwrap_or(1000) as usize;
 
-    let x_value_type = infer_value_type(x_field, &state.cache);
-    let y_value_type = infer_value_type(y_field, &state.cache);
+    let x_bounds = compute_bounds(
+        &state.client,
+        &state.es_base,
+        index,
+        &x_spec,
+        base_query,
+        &state.cache,
+    )
+    .await?;
+    let y_bounds = compute_bounds(
+        &state.client,
+        &state.es_base,
+        index,
+        &y_spec,
+        base_query,
+        &state.cache,
+    )
+    .await?;
 
-    let x_spec = AxisSpec {
-        field: x_field.to_string(),
-        role: AxisRole::X,
-        summary: AxisSummary::default(),
-        value_type: x_value_type,
-        opts: x_opts_str.parse().unwrap_or_default(),
-    };
-    let y_spec = AxisSpec {
-        field: y_field.to_string(),
-        role: AxisRole::Y,
-        summary: AxisSummary::default(),
-        value_type: y_value_type,
-        opts: y_opts_str.parse().unwrap_or_default(),
-    };
-
-    let x_bounds =
-        compute_bounds(&state.client, &state.es_base, index, &x_spec, base_query, &state.cache)
+    let (cat_labels, show_other_cat, cat_is_numeric, cat_bounds_opt) =
+        if let Some(ref cat_spec) = cat_spec_opt {
+            let cat_bounds = compute_bounds(
+                &state.client,
+                &state.es_base,
+                index,
+                cat_spec,
+                base_query,
+                &state.cache,
+            )
             .await?;
-    let y_bounds =
-        compute_bounds(&state.client, &state.es_base, index, &y_spec, base_query, &state.cache)
-            .await?;
+            let labels = cat_bounds.cat_labels.clone();
+            let show_other = cat_spec.opts.show_other;
+            let is_numeric = !matches!(
+                cat_spec.value_type,
+                ValueType::Keyword | ValueType::TaxonRank
+            );
+            (labels, show_other, is_numeric, Some(cat_bounds))
+        } else {
+            (vec![], false, false, None)
+        };
 
-    let (cat_labels, show_other_cat) = if let Some(cat) = cat_field {
-        let cat_spec = build_cat_spec(cat, report_config, state);
-        let cat_bounds = compute_bounds(
-            &state.client,
-            &state.es_base,
-            index,
-            &cat_spec,
-            base_query,
-            &state.cache,
-        )
-        .await?;
-        (cat_bounds.cat_labels.clone(), cat_spec.opts.show_other)
-    } else {
-        (vec![], false)
-    };
+    let x_inner_agg = x_bucket_agg_name(x_spec.value_type);
 
     let agg_name = "x_agg";
+    let cat_field_str = cat_spec_opt.as_ref().map(|s| s.field.as_str());
     let scatter_agg = build_nested_attribute_scatter_agg(
         agg_name,
-        x_field,
+        &x_spec,
         &x_bounds,
-        x_spec.opts.scale,
-        y_field,
+        y_field.as_str(),
         &y_bounds,
         y_spec.opts.scale,
-        cat_field,
+        cat_field_str,
+        cat_spec_opt.as_ref().map(|s| s.value_type),
+        cat_bounds_opt.as_ref(),
         &cat_labels,
         show_other_cat,
         &state.cache,
     )?;
 
     let es_body = json!({ "size": 0, "query": base_query, "aggs": scatter_agg });
-    let resp =
-        es_client::execute_search(&state.client, &state.es_base, index, &es_body).await?;
+    let resp = es_client::execute_search(&state.client, &state.es_base, index, &es_body).await?;
 
     let took = resp.get("took").and_then(|t| t.as_u64()).unwrap_or(0);
     let total_hits = resp
@@ -820,8 +979,8 @@ pub async fn run_scatter_report(
         .and_then(|v| v.as_u64())
         .unwrap_or(0);
 
-    // ---- Extract main x-histogram buckets ----
-    let x_hist_path = format!("/aggregations/{}/by_key/histogram/buckets", agg_name);
+    // ---- Extract main x buckets (histogram or terms depending on x type) ----
+    let x_hist_path = format!("/aggregations/{}/by_key/{}/buckets", agg_name, x_inner_agg);
     let x_raw_buckets = resp
         .pointer(&x_hist_path)
         .and_then(|b| b.as_array())
@@ -829,9 +988,10 @@ pub async fn run_scatter_report(
         .unwrap_or_default();
     let x_bucket_count = x_raw_buckets.len();
 
-    let x_bucket_keys: Vec<f64> = x_raw_buckets
+    // Keys may be numeric (histogram) or string (terms) — collect as raw JSON Values.
+    let x_bucket_keys: Vec<Value> = x_raw_buckets
         .iter()
-        .filter_map(|b| b.get("key").and_then(|k| k.as_f64()))
+        .filter_map(|b| b.get("key").cloned())
         .collect();
 
     let all_values: Vec<u64> = x_raw_buckets
@@ -845,8 +1005,7 @@ pub async fn run_scatter_report(
     let mut y_bucket_keys: Vec<f64> = Vec::new();
 
     for x_bucket in &x_raw_buckets {
-        let y_hist_path =
-            format!("/yHistograms/by_attribute/{}/histogram/buckets", y_field);
+        let y_hist_path = format!("/yHistograms/by_attribute/{}/histogram/buckets", y_field);
         let y_buckets_opt = x_bucket.pointer(&y_hist_path).and_then(|b| b.as_array());
 
         if let Some(ybuckets) = y_buckets_opt {
@@ -870,16 +1029,18 @@ pub async fn run_scatter_report(
     let z_domain = compute_z_domain(&all_y_values);
 
     // ---- Extract per-category data ----
-    let (by_cat, y_values_by_cat) = if cat_field.is_some() && !cat_labels.is_empty() {
+    let (by_cat, y_values_by_cat) = if !cat_labels.is_empty() || cat_is_numeric {
         extract_scatter_by_cat(
             &resp,
             agg_name,
-            x_field,
-            y_field,
+            x_field.as_str(),
+            x_inner_agg,
+            y_field.as_str(),
             x_bucket_count,
             y_bucket_count,
             &cat_labels,
             show_other_cat,
+            cat_is_numeric,
             &all_values,
         )
     } else {
@@ -892,9 +1053,9 @@ pub async fn run_scatter_report(
             state,
             index,
             base_query,
-            x_field,
-            y_field,
-            cat_field,
+            x_field.as_str(),
+            y_field.as_str(),
+            cat_field_str,
             &cat_labels,
             show_other_cat,
             scatter_threshold,
@@ -926,7 +1087,7 @@ pub async fn run_scatter_report(
     if !by_cat.is_null() {
         report_data["by_cat"] = by_cat;
         report_data["yValuesByCat"] = y_values_by_cat;
-        report_data["cat"] = json!(cat_field);
+        report_data["cat"] = json!(cat_spec_opt.as_ref().map(|s| s.field.as_str()));
         report_data["cats"] = json!(cat_labels);
     }
 

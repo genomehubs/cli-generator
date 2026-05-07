@@ -373,10 +373,129 @@ impl AxisSpec {
     ///
     /// `AxisOpts::from_str` can override this with an explicit scale segment.
     pub fn default_scale(&self) -> Scale {
-        match self.value_type {
-            ValueType::Keyword | ValueType::TaxonRank => Scale::Ordinal,
-            ValueType::Date => Scale::Date,
-            _ => Scale::Linear,
+        default_scale_for(effective_value_type(self.value_type, self.summary))
+    }
+}
+
+/// Compute the effective value type after applying a summary function.
+///
+/// Some summaries change the data type of the result:
+/// - `Length` counts entries in a list → always `Numeric`
+/// - `Count` counts non-null values → always `Numeric`
+/// - `Mean`, `Median`, `Min`, `Max` aggregate numerically → `Numeric`
+/// - `Value` preserves the field's natural type unchanged
+pub fn effective_value_type(field_type: ValueType, summary: AxisSummary) -> ValueType {
+    match summary {
+        AxisSummary::Length
+        | AxisSummary::Count
+        | AxisSummary::Mean
+        | AxisSummary::Median
+        | AxisSummary::Min
+        | AxisSummary::Max => ValueType::Numeric,
+        AxisSummary::Value => field_type,
+    }
+}
+
+/// Return the default scale for a given value type.
+///
+/// Pass the *effective* type (after [`effective_value_type`]) so that a
+/// `length` summary on a keyword list defaults to `linear`, not `ordinal`.
+pub fn default_scale_for(effective: ValueType) -> Scale {
+    match effective {
+        ValueType::Keyword | ValueType::TaxonRank => Scale::Ordinal,
+        ValueType::Date => Scale::Date,
+        _ => Scale::Linear,
+    }
+}
+
+/// One entry in the `values` list of an [`AxisInput`].
+///
+/// Accepts either a bare string `"Chromosome"` or an explicit
+/// `{ "value": "chromosome", "label": "Chromosome-level" }` object.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(untagged)]
+pub enum AxisValueInput {
+    /// A bare string used as both value and display label.
+    Simple(String),
+    /// An explicit value with an optional display label override.
+    Labeled {
+        value: String,
+        label: Option<String>,
+    },
+}
+
+/// One axis entry from the structured `axes` array in a POST report body.
+///
+/// Convert to [`AxisSpec`] via [`AxisInput::into_spec`], supplying the
+/// metadata-inferred value type for the field.
+#[derive(Debug, Clone, Deserialize)]
+pub struct AxisInput {
+    /// Attribute name or taxon rank field.
+    pub field: String,
+    /// Role in the report layout: `x`, `y`, `z`, or `cat`.
+    pub position: AxisRole,
+    /// Value type override. Inferred from metadata when absent.
+    #[serde(rename = "type")]
+    pub value_type: Option<ValueType>,
+    /// Scale for axis rendering. Defaults based on effective value type.
+    pub scale: Option<Scale>,
+    /// Number of histogram bins (numeric) or top-N categories (keyword/rank).
+    pub bin_count: Option<usize>,
+    /// Include an "other" bucket for categories not in the top N.
+    pub show_other: Option<bool>,
+    /// Domain minimum clamp (string to preserve decimal precision).
+    pub min: Option<String>,
+    /// Domain maximum clamp.
+    pub max: Option<String>,
+    /// Sort mode for categorical axes.
+    pub sort: Option<SortMode>,
+    /// Calendar interval for date axes.
+    pub interval: Option<DateInterval>,
+    /// Summary statistic when a field has multiple values per record.
+    pub summary: Option<AxisSummary>,
+    /// Explicit category values (categorical/rank axes).
+    pub values: Option<Vec<AxisValueInput>>,
+}
+
+impl AxisInput {
+    /// Convert to [`AxisSpec`] using `inferred_type` when `type` is not set.
+    ///
+    /// The *effective* type (after applying `summary`) drives the default scale:
+    /// a `length` summary on a keyword list becomes numeric, so it defaults to
+    /// `linear` rather than `ordinal`. The raw `field_type` is stored in
+    /// `AxisSpec.value_type` so aggregation builders can still select the correct
+    /// ES field path (e.g. `attributes.keyword_value` for keyword fields).
+    pub fn into_spec(self, inferred_type: ValueType) -> AxisSpec {
+        let field_type = self.value_type.unwrap_or(inferred_type);
+        let summary = self.summary.unwrap_or_default();
+        let effective = effective_value_type(field_type, summary);
+        let scale = self.scale.unwrap_or_else(|| default_scale_for(effective));
+
+        let fixed_values = self
+            .values
+            .unwrap_or_default()
+            .into_iter()
+            .map(|v| match v {
+                AxisValueInput::Simple(s) => (s.clone(), s),
+                AxisValueInput::Labeled { value, label } => (value.clone(), label.unwrap_or(value)),
+            })
+            .collect();
+
+        AxisSpec {
+            field: self.field,
+            role: self.position,
+            summary,
+            value_type: field_type,
+            opts: AxisOpts {
+                min: self.min,
+                max: self.max,
+                fixed_values,
+                size: self.bin_count.unwrap_or(10),
+                show_other: self.show_other.unwrap_or(false),
+                scale,
+                sort: self.sort.unwrap_or_default(),
+                interval: self.interval,
+            },
         }
     }
 }
@@ -633,5 +752,143 @@ mod tests {
         assert_eq!(restored.field, spec.field);
         assert_eq!(restored.role, spec.role);
         assert_eq!(restored.value_type, spec.value_type);
+    }
+
+    // ── effective_value_type ──
+
+    #[test]
+    fn effective_type_preserves_keyword_for_value_summary() {
+        assert_eq!(
+            effective_value_type(ValueType::Keyword, AxisSummary::Value),
+            ValueType::Keyword
+        );
+    }
+
+    #[test]
+    fn effective_type_coerces_keyword_to_numeric_for_length() {
+        assert_eq!(
+            effective_value_type(ValueType::Keyword, AxisSummary::Length),
+            ValueType::Numeric
+        );
+    }
+
+    #[test]
+    fn effective_type_coerces_any_type_for_count_and_aggregates() {
+        for summary in [
+            AxisSummary::Count,
+            AxisSummary::Mean,
+            AxisSummary::Median,
+            AxisSummary::Min,
+            AxisSummary::Max,
+        ] {
+            assert_eq!(
+                effective_value_type(ValueType::Keyword, summary),
+                ValueType::Numeric,
+                "failed for summary {:?}",
+                summary
+            );
+        }
+    }
+
+    // ── default_scale_for ──
+
+    #[test]
+    fn default_scale_for_numeric_is_linear() {
+        assert_eq!(default_scale_for(ValueType::Numeric), Scale::Linear);
+    }
+
+    #[test]
+    fn default_scale_for_keyword_is_ordinal() {
+        assert_eq!(default_scale_for(ValueType::Keyword), Scale::Ordinal);
+    }
+
+    #[test]
+    fn default_scale_for_date_is_date() {
+        assert_eq!(default_scale_for(ValueType::Date), Scale::Date);
+    }
+
+    // ── AxisInput::into_spec ──
+
+    #[test]
+    fn axis_input_numeric_field_defaults_to_linear() {
+        let input: AxisInput =
+            serde_json::from_str(r#"{"field":"genome_size","position":"x"}"#).unwrap();
+        let spec = input.into_spec(ValueType::Numeric);
+        assert_eq!(spec.opts.scale, Scale::Linear);
+        assert_eq!(spec.role, AxisRole::X);
+    }
+
+    #[test]
+    fn axis_input_keyword_field_defaults_to_ordinal() {
+        let input: AxisInput =
+            serde_json::from_str(r#"{"field":"assembly_level","position":"cat"}"#).unwrap();
+        let spec = input.into_spec(ValueType::Keyword);
+        assert_eq!(spec.opts.scale, Scale::Ordinal);
+        assert_eq!(spec.role, AxisRole::Cat);
+    }
+
+    #[test]
+    fn axis_input_length_summary_on_keyword_gives_linear_scale() {
+        let input: AxisInput =
+            serde_json::from_str(r#"{"field":"common_names","position":"x","summary":"length"}"#)
+                .unwrap();
+        let spec = input.into_spec(ValueType::Keyword);
+        // effective type is Numeric → default scale is Linear, not Ordinal
+        assert_eq!(spec.opts.scale, Scale::Linear);
+        // stored value_type is still Keyword for correct ES field path selection
+        assert_eq!(spec.value_type, ValueType::Keyword);
+    }
+
+    #[test]
+    fn axis_input_explicit_scale_overrides_summary_default() {
+        let input: AxisInput = serde_json::from_str(
+            r#"{"field":"common_names","position":"x","summary":"length","scale":"log10"}"#,
+        )
+        .unwrap();
+        let spec = input.into_spec(ValueType::Keyword);
+        assert_eq!(spec.opts.scale, Scale::Log10);
+    }
+
+    #[test]
+    fn axis_input_bin_count_and_show_other() {
+        let input: AxisInput = serde_json::from_str(
+            r#"{"field":"assembly_level","position":"cat","bin_count":3,"show_other":true}"#,
+        )
+        .unwrap();
+        let spec = input.into_spec(ValueType::Keyword);
+        assert_eq!(spec.opts.size, 3);
+        assert!(spec.opts.show_other);
+    }
+
+    #[test]
+    fn axis_input_simple_values_list() {
+        let input: AxisInput = serde_json::from_str(
+            r#"{"field":"assembly_level","position":"cat","values":["Chromosome","Scaffold"]}"#,
+        )
+        .unwrap();
+        let spec = input.into_spec(ValueType::Keyword);
+        assert_eq!(spec.opts.fixed_values.len(), 2);
+        assert_eq!(
+            spec.opts.fixed_values[0],
+            ("Chromosome".to_string(), "Chromosome".to_string())
+        );
+    }
+
+    #[test]
+    fn axis_input_labeled_values_list() {
+        let input: AxisInput = serde_json::from_str(
+            r#"{"field":"assembly_level","position":"cat",
+               "values":[{"value":"chromosome","label":"Chromosome-level"},{"value":"scaffold"}]}"#,
+        )
+        .unwrap();
+        let spec = input.into_spec(ValueType::Keyword);
+        assert_eq!(
+            spec.opts.fixed_values[0],
+            ("chromosome".to_string(), "Chromosome-level".to_string())
+        );
+        assert_eq!(
+            spec.opts.fixed_values[1],
+            ("scaffold".to_string(), "scaffold".to_string())
+        );
     }
 }

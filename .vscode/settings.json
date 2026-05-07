@@ -57,7 +57,8 @@
     "/^python -m pyright python/ tests/python/ 2>&1$/": {
       "approve": true,
       "matchCommandLine": true
-    }
+    },
+    "cargo build": true
   },
   "python-envs.defaultEnvManager": "ms-python.python:conda",
   "python-envs.defaultPackageManager": "ms-python.python:conda"

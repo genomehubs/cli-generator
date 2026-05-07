@@ -9,10 +9,16 @@
   },
   "report": {
     "report": "scatter",
-    "x": "genome_size",
-    "y": "assembly_span",
     "scatter_threshold": 10000,
-    "cat": "assembly_level",
-    "cat_opts": ";;2+"
+    "axes": [
+      { "field": "genome_size", "position": "cat", "scale": "log10" },
+      { "field": "assembly_span", "position": "y", "scale": "log10" },
+      {
+        "field": "assembly_level",
+        "position": "x",
+        "bin_count": 2,
+        "show_other": true
+      }
+    ]
   }
 }
