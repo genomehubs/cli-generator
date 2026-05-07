@@ -47,6 +47,7 @@ impl ApiStatus {
     }
 }
 
+pub mod chain_executor;
 pub mod count;
 pub mod countBatch;
 pub mod deserialize_helpers;

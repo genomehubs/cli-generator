@@ -6,10 +6,12 @@
 //! This crate has no I/O dependencies and compiles to WebAssembly.
 
 pub mod attributes;
+pub mod chain;
 pub mod identifiers;
 pub mod url;
 
 pub use attributes::{Attribute, AttributeOperator, AttributeSet, AttributeValue, Field, Modifier};
+pub use chain::{ChainError, ChainRef, NamedQuerySpec};
 pub use identifiers::{Identifiers, TaxaIdentifier, TaxonFilterType};
 pub use url::{build_query_url, build_ui_url};
 
@@ -72,6 +74,12 @@ pub struct SearchQuery {
     /// How to combine multiple queries: AND or OR (default: AND).
     #[serde(default)]
     pub combine_with: CombineStrategy,
+    /// Named sub-queries for chain substitution.
+    ///
+    /// Values in `attributes` may reference these using dot notation:
+    /// `value: queryA.field` or `value: queryA.summary(field)`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub named_queries: Option<std::collections::HashMap<String, chain::NamedQuerySpec>>,
 }
 
 /// Strategy for combining multiple queries.
@@ -302,6 +310,7 @@ taxa: []
             identifiers: Identifiers::default(),
             attributes: AttributeSet::default(),
             queries: None,
+            named_queries: None,
             combine_with: Default::default(),
         };
         let yaml = query.to_yaml().expect("serialize");
@@ -315,6 +324,7 @@ taxa: []
             identifiers: Identifiers::default(),
             attributes: AttributeSet::default(),
             queries: None,
+            named_queries: None,
             combine_with: Default::default(),
         };
         assert_eq!(query.index, SearchIndex::Assembly);

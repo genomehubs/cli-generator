@@ -509,6 +509,7 @@ mod tests {
             },
             attributes: AttributeSet::default(),
             queries: None,
+            named_queries: None,
             combine_with: CombineStrategy::AND,
         }
     }
@@ -569,6 +570,7 @@ mod tests {
                 ..Default::default()
             },
             queries: None,
+            named_queries: None,
             combine_with: CombineStrategy::AND,
         };
         let url = build_query_url(
@@ -607,6 +609,7 @@ mod tests {
                 ..Default::default()
             },
             queries: None,
+            named_queries: None,
             combine_with: CombineStrategy::AND,
         };
         let url = build_query_url(
@@ -637,6 +640,7 @@ mod tests {
                 ..Default::default()
             },
             queries: None,
+            named_queries: None,
             combine_with: CombineStrategy::AND,
         };
         let url = build_query_url(
@@ -670,6 +674,7 @@ mod tests {
                 ..Default::default()
             },
             queries: None,
+            named_queries: None,
             combine_with: CombineStrategy::AND,
         };
         let url = build_query_url(
@@ -702,6 +707,7 @@ mod tests {
                 ..Default::default()
             },
             queries: None,
+            named_queries: None,
             combine_with: CombineStrategy::AND,
         };
         let url = build_query_url(
@@ -761,6 +767,7 @@ mod tests {
             identifiers: Identifiers::default(),
             attributes: AttributeSet::default(),
             queries: None,
+            named_queries: None,
             combine_with: CombineStrategy::AND,
         };
         let url = build_query_url(
@@ -816,6 +823,7 @@ mod tests {
                 ..Default::default()
             },
             queries: None,
+            named_queries: None,
             combine_with: CombineStrategy::AND,
         };
         let url = build_query_url(
@@ -842,6 +850,7 @@ mod tests {
             },
             attributes: AttributeSet::default(),
             queries: None,
+            named_queries: None,
             combine_with: CombineStrategy::AND,
         };
         let url = build_query_url(
@@ -889,6 +898,7 @@ mod tests {
                         },
                         attributes: AttributeSet::default(),
                         queries: None,
+            named_queries: None,
                         combine_with: CombineStrategy::AND,
                     }
                 })
@@ -946,6 +956,7 @@ mod tests {
                     },
                     attributes: AttributeSet::default(),
                     queries: None,
+            named_queries: None,
                     combine_with: CombineStrategy::AND,
                 };
                 let url = build_query_url(
@@ -968,6 +979,7 @@ mod tests {
                     identifiers: Identifiers::default(),
                     attributes: AttributeSet::default(),
                     queries: None,
+            named_queries: None,
                     combine_with: Default::default(),
                 };
                 let url = build_query_url(

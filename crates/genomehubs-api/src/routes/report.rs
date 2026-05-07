@@ -4,6 +4,7 @@ use serde_json::Value;
 use std::sync::Arc;
 
 use cli_generator::core::query_builder;
+use genomehubs_query::query::chain::{collect_chain_refs, resolve_chain_refs};
 use genomehubs_query::query::{QueryParams, SearchQuery};
 use genomehubs_query::report::axis::AxisOpts;
 
@@ -91,7 +92,7 @@ pub async fn post_report(
     }
 
     // Parse query YAML
-    let search_query = match SearchQuery::from_yaml(&req.query_yaml) {
+    let mut search_query = match SearchQuery::from_yaml(&req.query_yaml) {
         Ok(q) => q,
         Err(e) => bail!(format!("invalid query_yaml: {e}")),
     };
@@ -110,6 +111,33 @@ pub async fn post_report(
 
     // Resolve index name from search_query
     let idx = index_name::resolve_index(&search_query.index, &state);
+
+    // Chain substitution: if the query has named_queries, execute them and
+    // substitute values into attribute filters before building the ES query.
+    if let Some(named_queries) = &search_query.named_queries.clone() {
+        let chain_refs = collect_chain_refs(&search_query.attributes.attributes);
+        if !chain_refs.is_empty() {
+            let resolved = match crate::routes::chain_executor::execute_named_queries(
+                named_queries,
+                &chain_refs,
+                &idx,
+                &Value::Object(Default::default()),
+                &state,
+            )
+            .await
+            {
+                Ok(r) => r,
+                Err(e) => bail!(format!("chain query failed: {e}")),
+            };
+            if let Err(e) = resolve_chain_refs(
+                &mut search_query.attributes.attributes,
+                &resolved,
+                named_queries,
+            ) {
+                bail!(format!("chain resolution failed: {e}"));
+            }
+        }
+    }
 
     // Extract report type (default to "histogram")
     let report_type = report_config
