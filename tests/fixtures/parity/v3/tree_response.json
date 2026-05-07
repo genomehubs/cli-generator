@@ -1,0 +1,28 @@
+{
+  "status": {
+    "success": true,
+    "hits": 1,
+    "took": 15
+  },
+  "report": {
+    "lca": {
+      "count": 1,
+      "maxDepth": 0,
+      "minDepth": 0,
+      "parent": null,
+      "scientific_name": "root",
+      "taxon_id": "1",
+      "taxon_rank": "no rank"
+    },
+    "treeNodes": {
+      "1": {
+        "children": {},
+        "count": 1,
+        "scientific_name": "root",
+        "status": 0,
+        "taxon_id": "1",
+        "taxon_rank": "no rank"
+      }
+    }
+  }
+}

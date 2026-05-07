@@ -1,0 +1,1 @@
+https://goat.genomehubs.org/api/v2/report?report=histogram&x=genome_size&rank=species&cat=kingdom&includeEstimates=true&excludeAncestral%5B0%5D=genome_size&excludeMissing%5B0%5D=genome_size&caption=Frequency%20distribution%20of%20species%20genome%20sizes%20by%20kingdom&taxonomy=ncbi&result=taxon&queryId=13e310c8ae

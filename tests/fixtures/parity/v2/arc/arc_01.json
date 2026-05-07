@@ -1,0 +1,239 @@
+{
+  "status": {
+    "success": true
+  },
+  "report": {
+    "status": {
+      "success": true
+    },
+    "report": {
+      "arc": [
+        {
+          "arc": 0.8717948717948718,
+          "arc2": 1,
+          "x": 68,
+          "y": 78,
+          "xTerm": "assembly_span",
+          "rank": "phylum",
+          "xQuery": {
+            "result": "taxon",
+            "query": "assembly_span AND tax_rank(phylum)",
+            "taxonomy": "ncbi",
+            "includeEstimates": true,
+            "excludeMissing": [
+              "assembly_span"
+            ],
+            "excludeAncestral": [
+              "assembly_span"
+            ],
+            "excludeDirect": [],
+            "excludeDescendant": [],
+            "nullFields": [],
+            "fields": "assembly_span"
+          },
+          "yQuery": {
+            "result": "taxon",
+            "query": "tax_rank(phylum)",
+            "taxonomy": "ncbi",
+            "includeEstimates": true,
+            "excludeMissing": [],
+            "excludeAncestral": [],
+            "excludeDirect": [],
+            "excludeDescendant": [],
+            "nullFields": [],
+            "fields": "assembly_span"
+          },
+          "queryString": "report=arc&x=assembly_span&rank=phylum%2Cclass%2Corder%2Cfamily%2Cgenus%2Cspecies&includeEstimates=true&caption=Taxa%20with%20assemblies%20out%20of%20all%20INSDC%20Eukaryotic%20taxa&taxonomy=ncbi&result=taxon&queryId=c0104db9b8&excludeAncestral%5B0%5D=assembly_span&excludeMissing%5B0%5D=assembly_span&geoBinResolution=3"
+        },
+        {
+          "arc": 0.7745098039215687,
+          "arc2": 1,
+          "x": 237,
+          "y": 306,
+          "xTerm": "assembly_span",
+          "rank": "class",
+          "xQuery": {
+            "result": "taxon",
+            "query": "assembly_span AND tax_rank(class)",
+            "taxonomy": "ncbi",
+            "includeEstimates": true,
+            "excludeMissing": [
+              "assembly_span"
+            ],
+            "excludeAncestral": [
+              "assembly_span"
+            ],
+            "excludeDirect": [],
+            "excludeDescendant": [],
+            "nullFields": [],
+            "fields": "assembly_span"
+          },
+          "yQuery": {
+            "result": "taxon",
+            "query": "tax_rank(class)",
+            "taxonomy": "ncbi",
+            "includeEstimates": true,
+            "excludeMissing": [],
+            "excludeAncestral": [],
+            "excludeDirect": [],
+            "excludeDescendant": [],
+            "nullFields": [],
+            "fields": "assembly_span"
+          },
+          "queryString": "report=arc&x=assembly_span&rank=phylum%2Cclass%2Corder%2Cfamily%2Cgenus%2Cspecies&includeEstimates=true&caption=Taxa%20with%20assemblies%20out%20of%20all%20INSDC%20Eukaryotic%20taxa&taxonomy=ncbi&result=taxon&queryId=c0104db9b8&excludeAncestral%5B0%5D=assembly_span&excludeMissing%5B0%5D=assembly_span&geoBinResolution=3"
+        },
+        {
+          "arc": 0.5917678812415654,
+          "arc2": 1,
+          "x": 877,
+          "y": 1482,
+          "xTerm": "assembly_span",
+          "rank": "order",
+          "xQuery": {
+            "result": "taxon",
+            "query": "assembly_span AND tax_rank(order)",
+            "taxonomy": "ncbi",
+            "includeEstimates": true,
+            "excludeMissing": [
+              "assembly_span"
+            ],
+            "excludeAncestral": [
+              "assembly_span"
+            ],
+            "excludeDirect": [],
+            "excludeDescendant": [],
+            "nullFields": [],
+            "fields": "assembly_span"
+          },
+          "yQuery": {
+            "result": "taxon",
+            "query": "tax_rank(order)",
+            "taxonomy": "ncbi",
+            "includeEstimates": true,
+            "excludeMissing": [],
+            "excludeAncestral": [],
+            "excludeDirect": [],
+            "excludeDescendant": [],
+            "nullFields": [],
+            "fields": "assembly_span"
+          },
+          "queryString": "report=arc&x=assembly_span&rank=phylum%2Cclass%2Corder%2Cfamily%2Cgenus%2Cspecies&includeEstimates=true&caption=Taxa%20with%20assemblies%20out%20of%20all%20INSDC%20Eukaryotic%20taxa&taxonomy=ncbi&result=taxon&queryId=c0104db9b8&excludeAncestral%5B0%5D=assembly_span&excludeMissing%5B0%5D=assembly_span&geoBinResolution=3"
+        },
+        {
+          "arc": 0.30451274071192375,
+          "arc2": 1,
+          "x": 3131,
+          "y": 10282,
+          "xTerm": "assembly_span",
+          "rank": "family",
+          "xQuery": {
+            "result": "taxon",
+            "query": "assembly_span AND tax_rank(family)",
+            "taxonomy": "ncbi",
+            "includeEstimates": true,
+            "excludeMissing": [
+              "assembly_span"
+            ],
+            "excludeAncestral": [
+              "assembly_span"
+            ],
+            "excludeDirect": [],
+            "excludeDescendant": [],
+            "nullFields": [],
+            "fields": "assembly_span"
+          },
+          "yQuery": {
+            "result": "taxon",
+            "query": "tax_rank(family)",
+            "taxonomy": "ncbi",
+            "includeEstimates": true,
+            "excludeMissing": [],
+            "excludeAncestral": [],
+            "excludeDirect": [],
+            "excludeDescendant": [],
+            "nullFields": [],
+            "fields": "assembly_span"
+          },
+          "queryString": "report=arc&x=assembly_span&rank=phylum%2Cclass%2Corder%2Cfamily%2Cgenus%2Cspecies&includeEstimates=true&caption=Taxa%20with%20assemblies%20out%20of%20all%20INSDC%20Eukaryotic%20taxa&taxonomy=ncbi&result=taxon&queryId=c0104db9b8&excludeAncestral%5B0%5D=assembly_span&excludeMissing%5B0%5D=assembly_span&geoBinResolution=3"
+        },
+        {
+          "arc": 0.07809209857539101,
+          "arc2": 1,
+          "x": 10755,
+          "y": 137722,
+          "xTerm": "assembly_span",
+          "rank": "genus",
+          "xQuery": {
+            "result": "taxon",
+            "query": "assembly_span AND tax_rank(genus)",
+            "taxonomy": "ncbi",
+            "includeEstimates": true,
+            "excludeMissing": [
+              "assembly_span"
+            ],
+            "excludeAncestral": [
+              "assembly_span"
+            ],
+            "excludeDirect": [],
+            "excludeDescendant": [],
+            "nullFields": [],
+            "fields": "assembly_span"
+          },
+          "yQuery": {
+            "result": "taxon",
+            "query": "tax_rank(genus)",
+            "taxonomy": "ncbi",
+            "includeEstimates": true,
+            "excludeMissing": [],
+            "excludeAncestral": [],
+            "excludeDirect": [],
+            "excludeDescendant": [],
+            "nullFields": [],
+            "fields": "assembly_span"
+          },
+          "queryString": "report=arc&x=assembly_span&rank=phylum%2Cclass%2Corder%2Cfamily%2Cgenus%2Cspecies&includeEstimates=true&caption=Taxa%20with%20assemblies%20out%20of%20all%20INSDC%20Eukaryotic%20taxa&taxonomy=ncbi&result=taxon&queryId=c0104db9b8&excludeAncestral%5B0%5D=assembly_span&excludeMissing%5B0%5D=assembly_span&geoBinResolution=3"
+        },
+        {
+          "arc": 0.013044467006710653,
+          "arc2": 1,
+          "x": 25927,
+          "y": 1987586,
+          "xTerm": "assembly_span",
+          "rank": "species",
+          "xQuery": {
+            "result": "taxon",
+            "query": "assembly_span AND tax_rank(species)",
+            "taxonomy": "ncbi",
+            "includeEstimates": true,
+            "excludeMissing": [
+              "assembly_span"
+            ],
+            "excludeAncestral": [
+              "assembly_span"
+            ],
+            "excludeDirect": [],
+            "excludeDescendant": [],
+            "nullFields": [],
+            "fields": "assembly_span"
+          },
+          "yQuery": {
+            "result": "taxon",
+            "query": "tax_rank(species)",
+            "taxonomy": "ncbi",
+            "includeEstimates": true,
+            "excludeMissing": [],
+            "excludeAncestral": [],
+            "excludeDirect": [],
+            "excludeDescendant": [],
+            "nullFields": [],
+            "fields": "assembly_span"
+          },
+          "queryString": "report=arc&x=assembly_span&rank=phylum%2Cclass%2Corder%2Cfamily%2Cgenus%2Cspecies&includeEstimates=true&caption=Taxa%20with%20assemblies%20out%20of%20all%20INSDC%20Eukaryotic%20taxa&taxonomy=ncbi&result=taxon&queryId=c0104db9b8&excludeAncestral%5B0%5D=assembly_span&excludeMissing%5B0%5D=assembly_span&geoBinResolution=3"
+        }
+      ],
+      "queryString": "report=arc&x=assembly_span&rank=phylum%2Cclass%2Corder%2Cfamily%2Cgenus%2Cspecies&includeEstimates=true&caption=Taxa%20with%20assemblies%20out%20of%20all%20INSDC%20Eukaryotic%20taxa&taxonomy=ncbi&result=taxon&queryId=c0104db9b8&excludeAncestral%5B0%5D=assembly_span&excludeMissing%5B0%5D=assembly_span&geoBinResolution=3",
+      "caption": "taxa with assembly_span out of all taxa"
+    },
+    "name": "arc"
+  }
+}

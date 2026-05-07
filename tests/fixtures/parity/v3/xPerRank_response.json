@@ -1,0 +1,15 @@
+{
+  "status": {
+    "success": true,
+    "hits": 1,
+    "took": 0
+  },
+  "report": {
+    "buckets": [
+      {
+        "count": 1,
+        "rank": "no rank"
+      }
+    ]
+  }
+}

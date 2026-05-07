@@ -1,0 +1,399 @@
+{
+  "status": {
+    "success": true
+  },
+  "report": {
+    "status": {
+      "success": true
+    },
+    "report": {
+      "histogram": {
+        "histograms": {
+          "buckets": [
+            2000000,
+            6140601.6,
+            18853494,
+            57885899,
+            177727120,
+            545675730,
+            1675388600,
+            5143947100,
+            15793465000,
+            48490688000,
+            148881000000
+          ],
+          "allValues": [
+            7,
+            55,
+            721,
+            501,
+            2505,
+            6611,
+            3786,
+            1764,
+            949,
+            102,
+            0
+          ],
+          "byCat": {
+            "4751": [
+              7,
+              49,
+              693,
+              231,
+              35,
+              10,
+              2,
+              0,
+              0,
+              0,
+              0
+            ],
+            "33090": [
+              0,
+              4,
+              10,
+              93,
+              1705,
+              3993,
+              2269,
+              1500,
+              793,
+              65,
+              0
+            ],
+            "33208": [
+              0,
+              0,
+              16,
+              161,
+              639,
+              2539,
+              1515,
+              264,
+              156,
+              37,
+              0
+            ]
+          },
+          "valueType": "integer",
+          "summary": "value",
+          "zDomain": [
+            7,
+            6611
+          ],
+          "params": {
+            "result": "taxon",
+            "query": "genome_size AND tax_rank(species)",
+            "taxonomy": "ncbi",
+            "includeEstimates": true,
+            "excludeMissing": [],
+            "excludeAncestral": [
+              "genome_size"
+            ],
+            "excludeDirect": [],
+            "excludeDescendant": [],
+            "nullFields": [],
+            "queryId": "13e310c8ae",
+            "size": 0,
+            "aggs": {
+              "aggregations": {
+                "nested": {
+                  "path": "attributes"
+                },
+                "aggs": {
+                  "genome_size": {
+                    "filter": {
+                      "term": {
+                        "attributes.key": "genome_size"
+                      }
+                    },
+                    "aggs": {
+                      "histogram": {
+                        "histogram": {
+                          "field": "attributes.long_value",
+                          "script": "Math.log10(_value)",
+                          "interval": 0.4871809281526323,
+                          "extended_bounds": {
+                            "min": 6.301029995663981,
+                            "max": 11.172839277190304
+                          },
+                          "offset": 6.301029995663981
+                        },
+                        "aggs": {}
+                      },
+                      "categoryHistograms": {
+                        "reverse_nested": {},
+                        "aggs": {
+                          "by_lineage": {
+                            "nested": {
+                              "path": "lineage"
+                            },
+                            "aggs": {
+                              "at_rank": {
+                                "filters": {
+                                  "filters": {
+                                    "4751": {
+                                      "term": {
+                                        "lineage.taxon_id": "4751"
+                                      }
+                                    },
+                                    "33090": {
+                                      "term": {
+                                        "lineage.taxon_id": "33090"
+                                      }
+                                    },
+                                    "33208": {
+                                      "term": {
+                                        "lineage.taxon_id": "33208"
+                                      }
+                                    }
+                                  }
+                                },
+                                "aggs": {
+                                  "histogram": {
+                                    "reverse_nested": {},
+                                    "aggs": {
+                                      "by_attribute": {
+                                        "nested": {
+                                          "path": "attributes"
+                                        },
+                                        "aggs": {
+                                          "genome_size": {
+                                            "filter": {
+                                              "term": {
+                                                "attributes.key": "genome_size"
+                                              }
+                                            },
+                                            "aggs": {
+                                              "histogram": {
+                                                "histogram": {
+                                                  "field": "attributes.long_value",
+                                                  "script": "Math.log10(_value)",
+                                                  "interval": 0.4871809281526323,
+                                                  "extended_bounds": {
+                                                    "min": 6.301029995663981,
+                                                    "max": 11.172839277190304
+                                                  },
+                                                  "offset": 6.301029995663981
+                                                },
+                                                "aggs": {}
+                                              }
+                                            }
+                                          }
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "categoryHistograms": {
+                    "reverse_nested": {},
+                    "aggs": {
+                      "by_lineage": {
+                        "nested": {
+                          "path": "lineage"
+                        },
+                        "aggs": {
+                          "at_rank": {
+                            "filters": {
+                              "filters": {
+                                "4751": {
+                                  "term": {
+                                    "lineage.taxon_id": "4751"
+                                  }
+                                },
+                                "33090": {
+                                  "term": {
+                                    "lineage.taxon_id": "33090"
+                                  }
+                                },
+                                "33208": {
+                                  "term": {
+                                    "lineage.taxon_id": "33208"
+                                  }
+                                }
+                              }
+                            },
+                            "aggs": {
+                              "histogram": {
+                                "reverse_nested": {},
+                                "aggs": {
+                                  "by_attribute": {
+                                    "nested": {
+                                      "path": "attributes"
+                                    },
+                                    "aggs": {
+                                      "genome_size": {
+                                        "filter": {
+                                          "term": {
+                                            "attributes.key": "genome_size"
+                                          }
+                                        },
+                                        "aggs": {
+                                          "histogram": {
+                                            "histogram": {
+                                              "field": "attributes.long_value",
+                                              "script": "Math.log10(_value)",
+                                              "interval": 0.4871809281526323,
+                                              "extended_bounds": {
+                                                "min": 6.301029995663981,
+                                                "max": 11.172839277190304
+                                              },
+                                              "offset": 6.301029995663981
+                                            },
+                                            "aggs": {}
+                                          }
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "fields": [
+            "genome_size",
+            "assembly_level",
+            "assembly_span",
+            "chromosome_number",
+            "haploid_number"
+          ],
+          "ranks": [
+            "kingdom"
+          ],
+          "xLabel": "genome_size"
+        },
+        "field": "genome_size",
+        "summary": "value",
+        "scale": "log10",
+        "query": "genome_size AND tax_rank(species)",
+        "stats": {
+          "count": 17001,
+          "min": 2190000,
+          "max": 148880940000,
+          "avg": 3861275190.960473,
+          "sum": 65645539521519
+        },
+        "type": "long",
+        "domain": [
+          2000000,
+          148881000000
+        ],
+        "tickCount": 11,
+        "cat": "kingdom",
+        "cats": [
+          {
+            "key": "33090",
+            "doc_count": 10432,
+            "label": "Viridiplantae"
+          },
+          {
+            "key": "33208",
+            "doc_count": 5327,
+            "label": "Metazoa"
+          },
+          {
+            "key": "4751",
+            "doc_count": 1027,
+            "label": "Fungi"
+          }
+        ],
+        "by": "lineage",
+        "showOther": false,
+        "catCount": 11,
+        "bounds": {
+          "field": "genome_size",
+          "summary": "value",
+          "scale": "log10",
+          "query": "genome_size AND tax_rank(species)",
+          "stats": {
+            "count": 17001,
+            "min": 2190000,
+            "max": 148880940000,
+            "avg": 3861275190.960473,
+            "sum": 65645539521519
+          },
+          "type": "long",
+          "domain": [
+            2000000,
+            148881000000
+          ],
+          "tickCount": 11,
+          "cat": "kingdom",
+          "cats": [
+            {
+              "key": "33090",
+              "doc_count": 10432,
+              "label": "Viridiplantae"
+            },
+            {
+              "key": "33208",
+              "doc_count": 5327,
+              "label": "Metazoa"
+            },
+            {
+              "key": "4751",
+              "doc_count": 1027,
+              "label": "Fungi"
+            }
+          ],
+          "by": "lineage",
+          "showOther": false,
+          "catCount": 11
+        },
+        "xQuery": {
+          "result": "taxon",
+          "query": "genome_size AND tax_rank(species)",
+          "taxonomy": "ncbi",
+          "includeEstimates": false,
+          "excludeMissing": [
+            "genome_size"
+          ],
+          "excludeAncestral": [],
+          "excludeDirect": [],
+          "excludeDescendant": [],
+          "nullFields": [],
+          "fields": "genome_size,assembly_level,assembly_span,chromosome_number,haploid_number",
+          "ranks": [
+            "species",
+            "kingdom"
+          ]
+        },
+        "x": 17001
+      },
+      "xQuery": {
+        "result": "taxon",
+        "query": "genome_size AND tax_rank(species)",
+        "taxonomy": "ncbi",
+        "includeEstimates": false,
+        "excludeMissing": [
+          "genome_size"
+        ],
+        "excludeAncestral": [],
+        "excludeDirect": [],
+        "excludeDescendant": [],
+        "nullFields": []
+      },
+      "xLabel": "genome_size",
+      "yLabel": "Count of species",
+      "queryString": "report=histogram&x=genome_size&rank=species&cat=kingdom&includeEstimates=true&caption=Frequency%20distribution%20of%20species%20genome%20sizes%20by%20kingdom&taxonomy=ncbi&result=taxon&queryId=13e310c8ae&excludeAncestral%5B0%5D=genome_size&excludeMissing%5B0%5D=genome_size&geoBinResolution=3",
+      "caption": "Frequency distribution of species with genome_size by kingdom including ancestrally derived estimates"
+    },
+    "name": "histogram"
+  }
+}

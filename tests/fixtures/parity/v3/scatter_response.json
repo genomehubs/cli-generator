@@ -1,0 +1,95 @@
+{
+  "status": {
+    "success": true,
+    "hits": 1,
+    "took": 0
+  },
+  "report": {
+    "allValues": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "allYValues": [
+      [
+        0,
+        0
+      ],
+      [
+        0,
+        0
+      ],
+      [
+        0,
+        0
+      ],
+      [
+        0,
+        0
+      ],
+      [
+        0,
+        0
+      ],
+      [
+        0,
+        0
+      ],
+      [
+        0,
+        0
+      ],
+      [
+        0,
+        0
+      ],
+      [
+        0,
+        0
+      ],
+      [
+        0,
+        0
+      ]
+    ],
+    "buckets": [
+      " 3",
+      "-",
+      "10+Xyp",
+      "1000GCH",
+      "11+XY",
+      "12+XY",
+      "18+Xyp",
+      "1KFG",
+      "25GP",
+      "5.6"
+    ],
+    "rawData": {},
+    "type": "scatter",
+    "x": {
+      "domain": null,
+      "field": "assembly_level",
+      "scale": "linear"
+    },
+    "y": {
+      "domain": null,
+      "field": "gc_percent",
+      "scale": "linear"
+    },
+    "yBuckets": [
+      0.0,
+      1.0
+    ],
+    "zDomain": [
+      0,
+      0
+    ]
+  }
+}

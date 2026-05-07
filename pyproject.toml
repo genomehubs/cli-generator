@@ -57,8 +57,11 @@ src_paths = ["python", "tests/python"]
 # pytest
 # ---------------------------------------------------------------------------
 [tool.pytest.ini_options]
-testpaths = ["tests/python"]
+testpaths = ["tests/python", "tests/parity"]
 addopts = ["-ra", "--strict-markers"]
+markers = [
+    "integration: marks tests as integration tests requiring live API",
+]
 
 # ---------------------------------------------------------------------------
 # coverage.py

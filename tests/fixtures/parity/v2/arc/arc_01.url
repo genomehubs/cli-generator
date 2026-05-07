@@ -1,0 +1,1 @@
+https://goat.genomehubs.org/api/v2/report?report=arc&x=assembly_span&rank=phylum%2Cclass%2Corder%2Cfamily%2Cgenus%2Cspecies&includeEstimates=true&excludeAncestral%5B0%5D=assembly_span&excludeMissing%5B0%5D=assembly_span&caption=Taxa%20with%20assemblies%20out%20of%20all%20INSDC%20Eukaryotic%20taxa&taxonomy=ncbi&result=taxon&queryId=c0104db9b8

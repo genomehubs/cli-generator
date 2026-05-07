@@ -1,0 +1,89 @@
+{
+  "status": {
+    "success": true,
+    "hits": 1,
+    "took": 0
+  },
+  "report": {
+    "allValues": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "buckets": [
+      {
+        "doc_count": 0,
+        "key": 0.0,
+        "key_scaled": 0.0
+      },
+      {
+        "doc_count": 0,
+        "key": 0.1,
+        "key_scaled": 0.1
+      },
+      {
+        "doc_count": 0,
+        "key": 0.2,
+        "key_scaled": 0.2
+      },
+      {
+        "doc_count": 0,
+        "key": 0.30000000000000004,
+        "key_scaled": 0.30000000000000004
+      },
+      {
+        "doc_count": 0,
+        "key": 0.4,
+        "key_scaled": 0.4
+      },
+      {
+        "doc_count": 0,
+        "key": 0.5,
+        "key_scaled": 0.5
+      },
+      {
+        "doc_count": 0,
+        "key": 0.6000000000000001,
+        "key_scaled": 0.6000000000000001
+      },
+      {
+        "doc_count": 0,
+        "key": 0.7000000000000001,
+        "key_scaled": 0.7000000000000001
+      },
+      {
+        "doc_count": 0,
+        "key": 0.8,
+        "key_scaled": 0.8
+      },
+      {
+        "doc_count": 0,
+        "key": 0.9,
+        "key_scaled": 0.9
+      },
+      {
+        "doc_count": 0,
+        "key": 1.0,
+        "key_scaled": 1.0
+      }
+    ],
+    "type": "histogram",
+    "x": {
+      "domain": [
+        0.0,
+        1.0
+      ],
+      "field": "genome_size",
+      "scale": "linear",
+      "tickCount": 10
+    }
+  }
+}

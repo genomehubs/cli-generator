@@ -1,0 +1,54 @@
+{
+  "status": {
+    "success": true,
+    "hits": 0,
+    "took": 0
+  },
+  "report": {
+    "arc": [
+      {
+        "arc": 0.0,
+        "featureTerm": "assembly_span",
+        "feature_count": 0,
+        "label": "phylum",
+        "rank": "phylum",
+        "referenceTerm": "",
+        "reference_count": 0,
+        "ring": 0
+      },
+      {
+        "arc": 0.0,
+        "featureTerm": "assembly_span",
+        "feature_count": 0,
+        "label": "class",
+        "rank": "class",
+        "referenceTerm": "",
+        "reference_count": 0,
+        "ring": 1
+      },
+      {
+        "arc": 0.0,
+        "featureTerm": "assembly_span",
+        "feature_count": 0,
+        "label": "order",
+        "rank": "order",
+        "referenceTerm": "",
+        "reference_count": 0,
+        "ring": 2
+      },
+      {
+        "arc": 0.0,
+        "featureTerm": "assembly_span",
+        "feature_count": 0,
+        "label": "family",
+        "rank": "family",
+        "referenceTerm": "",
+        "reference_count": 0,
+        "ring": 3
+      }
+    ],
+    "featureTerm": "assembly_span",
+    "referenceTerm": "",
+    "type": "arc"
+  }
+}

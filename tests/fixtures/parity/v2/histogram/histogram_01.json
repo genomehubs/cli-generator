@@ -1,0 +1,545 @@
+{
+  "status": {
+    "success": true
+  },
+  "report": {
+    "status": {
+      "success": true
+    },
+    "report": {
+      "histogram": {
+        "histograms": {
+          "buckets": [
+            978307200000,
+            1009843200000,
+            1041379200000,
+            1072915200000,
+            1104537600000,
+            1136073600000,
+            1167609600000,
+            1199145600000,
+            1230768000000,
+            1262304000000,
+            1293840000000,
+            1325376000000,
+            1356998400000,
+            1388534400000,
+            1420070400000,
+            1451606400000,
+            1483228800000,
+            1514764800000,
+            1546300800000,
+            1577836800000,
+            1609459200000,
+            1640995200000,
+            1672531200000,
+            1704067200000,
+            1735689600000,
+            1767225600000,
+            1798761600000
+          ],
+          "allValues": [
+            1,
+            0,
+            0,
+            1,
+            3,
+            1,
+            5,
+            10,
+            6,
+            16,
+            36,
+            38,
+            87,
+            164,
+            208,
+            312,
+            345,
+            612,
+            793,
+            1558,
+            2129,
+            2775,
+            4812,
+            4595,
+            4534,
+            2864,
+            0
+          ],
+          "byCat": {
+            "scaffold": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              1,
+              1,
+              9,
+              2,
+              12,
+              18,
+              23,
+              62,
+              97,
+              164,
+              244,
+              263,
+              484,
+              529,
+              1159,
+              737,
+              1438,
+              2675,
+              2267,
+              1422,
+              1341,
+              0
+            ],
+            "chromosome": [
+              1,
+              0,
+              0,
+              0,
+              2,
+              0,
+              3,
+              1,
+              3,
+              2,
+              9,
+              5,
+              10,
+              22,
+              9,
+              28,
+              26,
+              44,
+              136,
+              220,
+              466,
+              759,
+              1230,
+              1597,
+              2389,
+              1041,
+              0
+            ],
+            "contig": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              2,
+              4,
+              8,
+              13,
+              41,
+              33,
+              33,
+              49,
+              72,
+              109,
+              149,
+              890,
+              525,
+              836,
+              637,
+              581,
+              400,
+              0
+            ],
+            "complete genome": [
+              0,
+              0,
+              0,
+              1,
+              1,
+              0,
+              1,
+              0,
+              1,
+              0,
+              5,
+              2,
+              2,
+              4,
+              2,
+              7,
+              7,
+              12,
+              19,
+              30,
+              36,
+              53,
+              71,
+              94,
+              142,
+              82,
+              0
+            ]
+          },
+          "valueType": "date",
+          "summary": "value",
+          "zDomain": [
+            1,
+            4812
+          ],
+          "params": {
+            "result": "taxon",
+            "query": "assembly_date AND tax_rank(species) AND assembly_level=scaffold,chromosome,contig,complete genome",
+            "taxonomy": "ncbi",
+            "includeEstimates": true,
+            "excludeMissing": [],
+            "excludeAncestral": [
+              "assembly_span"
+            ],
+            "excludeDirect": [],
+            "excludeDescendant": [],
+            "nullFields": [],
+            "queryId": "f0999f4a1b",
+            "size": 0,
+            "aggs": {
+              "aggregations": {
+                "nested": {
+                  "path": "attributes"
+                },
+                "aggs": {
+                  "assembly_date": {
+                    "filter": {
+                      "term": {
+                        "attributes.key": "assembly_date"
+                      }
+                    },
+                    "aggs": {
+                      "histogram": {
+                        "date_histogram": {
+                          "field": "attributes.date_value",
+                          "calendar_interval": "1y",
+                          "extended_bounds": {
+                            "min": 988243200000,
+                            "max": 1798761600000
+                          }
+                        },
+                        "aggs": {}
+                      },
+                      "categoryHistograms": {
+                        "reverse_nested": {},
+                        "aggs": {
+                          "by_attribute": {
+                            "nested": {
+                              "path": "attributes"
+                            },
+                            "aggs": {
+                              "by_cat": {
+                                "filter": {
+                                  "term": {
+                                    "attributes.key": "assembly_level"
+                                  }
+                                },
+                                "aggs": {
+                                  "by_value": {
+                                    "filters": {
+                                      "filters": {
+                                        "scaffold": {
+                                          "term": {
+                                            "attributes.keyword_value": "scaffold"
+                                          }
+                                        },
+                                        "chromosome": {
+                                          "term": {
+                                            "attributes.keyword_value": "chromosome"
+                                          }
+                                        },
+                                        "contig": {
+                                          "term": {
+                                            "attributes.keyword_value": "contig"
+                                          }
+                                        },
+                                        "complete genome": {
+                                          "term": {
+                                            "attributes.keyword_value": "complete genome"
+                                          }
+                                        }
+                                      }
+                                    },
+                                    "aggs": {
+                                      "histogram": {
+                                        "reverse_nested": {},
+                                        "aggs": {
+                                          "by_attribute": {
+                                            "nested": {
+                                              "path": "attributes"
+                                            },
+                                            "aggs": {
+                                              "assembly_date": {
+                                                "filter": {
+                                                  "term": {
+                                                    "attributes.key": "assembly_date"
+                                                  }
+                                                },
+                                                "aggs": {
+                                                  "histogram": {
+                                                    "date_histogram": {
+                                                      "field": "attributes.date_value",
+                                                      "calendar_interval": "1y",
+                                                      "extended_bounds": {
+                                                        "min": 988243200000,
+                                                        "max": 1798761600000
+                                                      }
+                                                    },
+                                                    "aggs": {}
+                                                  }
+                                                }
+                                              }
+                                            }
+                                          }
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "categoryHistograms": {
+                    "reverse_nested": {},
+                    "aggs": {
+                      "by_attribute": {
+                        "nested": {
+                          "path": "attributes"
+                        },
+                        "aggs": {
+                          "by_cat": {
+                            "filter": {
+                              "term": {
+                                "attributes.key": "assembly_level"
+                              }
+                            },
+                            "aggs": {
+                              "by_value": {
+                                "filters": {
+                                  "filters": {
+                                    "scaffold": {
+                                      "term": {
+                                        "attributes.keyword_value": "scaffold"
+                                      }
+                                    },
+                                    "chromosome": {
+                                      "term": {
+                                        "attributes.keyword_value": "chromosome"
+                                      }
+                                    },
+                                    "contig": {
+                                      "term": {
+                                        "attributes.keyword_value": "contig"
+                                      }
+                                    },
+                                    "complete genome": {
+                                      "term": {
+                                        "attributes.keyword_value": "complete genome"
+                                      }
+                                    }
+                                  }
+                                },
+                                "aggs": {
+                                  "histogram": {
+                                    "reverse_nested": {},
+                                    "aggs": {
+                                      "by_attribute": {
+                                        "nested": {
+                                          "path": "attributes"
+                                        },
+                                        "aggs": {
+                                          "assembly_date": {
+                                            "filter": {
+                                              "term": {
+                                                "attributes.key": "assembly_date"
+                                              }
+                                            },
+                                            "aggs": {
+                                              "histogram": {
+                                                "date_histogram": {
+                                                  "field": "attributes.date_value",
+                                                  "calendar_interval": "1y",
+                                                  "extended_bounds": {
+                                                    "min": 988243200000,
+                                                    "max": 1798761600000
+                                                  }
+                                                },
+                                                "aggs": {}
+                                              }
+                                            }
+                                          }
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "fields": [
+            "assembly_date",
+            "genome_size",
+            "assembly_level",
+            "assembly_span",
+            "chromosome_number",
+            "haploid_number"
+          ],
+          "xLabel": "assembly_date"
+        },
+        "field": "assembly_date",
+        "summary": "value",
+        "scale": "linear",
+        "query": "assembly_date AND tax_rank(species)",
+        "stats": {
+          "count": 25905,
+          "min": 988243200000,
+          "max": 1777852800000,
+          "avg": 1680609041343.37,
+          "sum": 43536177216000000,
+          "min_as_string": "2001-04-26T00:00:00.000Z",
+          "max_as_string": "2026-05-04T00:00:00.000Z",
+          "avg_as_string": "2023-04-04T11:50:41.343Z",
+          "sum_as_string": "+1381576-07-15T00:00:00.000Z"
+        },
+        "type": "date",
+        "domain": [
+          988243200000,
+          1798761600000
+        ],
+        "tickCount": 11,
+        "cat": "assembly_level",
+        "catType": "ordered_keyword",
+        "cats": [
+          {
+            "key": "scaffold",
+            "label": "scaffold",
+            "doc_count": 12948
+          },
+          {
+            "key": "chromosome",
+            "label": "chromosome",
+            "doc_count": 8003
+          },
+          {
+            "key": "contig",
+            "label": "contig",
+            "doc_count": 4382
+          },
+          {
+            "key": "complete genome",
+            "label": "complete genome",
+            "doc_count": 572
+          }
+        ],
+        "by": "attribute",
+        "showOther": false,
+        "bounds": {
+          "field": "assembly_date",
+          "summary": "value",
+          "scale": "linear",
+          "query": "assembly_date AND tax_rank(species)",
+          "stats": {
+            "count": 25905,
+            "min": 988243200000,
+            "max": 1777852800000,
+            "avg": 1680609041343.37,
+            "sum": 43536177216000000,
+            "min_as_string": "2001-04-26T00:00:00.000Z",
+            "max_as_string": "2026-05-04T00:00:00.000Z",
+            "avg_as_string": "2023-04-04T11:50:41.343Z",
+            "sum_as_string": "+1381576-07-15T00:00:00.000Z"
+          },
+          "type": "date",
+          "domain": [
+            988243200000,
+            1798761600000
+          ],
+          "tickCount": 11,
+          "cat": "assembly_level",
+          "catType": "ordered_keyword",
+          "cats": [
+            {
+              "key": "scaffold",
+              "label": "scaffold",
+              "doc_count": 12948
+            },
+            {
+              "key": "chromosome",
+              "label": "chromosome",
+              "doc_count": 8003
+            },
+            {
+              "key": "contig",
+              "label": "contig",
+              "doc_count": 4382
+            },
+            {
+              "key": "complete genome",
+              "label": "complete genome",
+              "doc_count": 572
+            }
+          ],
+          "by": "attribute",
+          "showOther": false
+        },
+        "xQuery": {
+          "result": "taxon",
+          "query": "assembly_date AND tax_rank(species)",
+          "taxonomy": "ncbi",
+          "includeEstimates": false,
+          "excludeMissing": [
+            "assembly_date"
+          ],
+          "excludeAncestral": [],
+          "excludeDirect": [],
+          "excludeDescendant": [],
+          "nullFields": [],
+          "fields": "assembly_date,genome_size,assembly_level,assembly_span,chromosome_number,haploid_number,assembly_level",
+          "ranks": [
+            "species"
+          ]
+        },
+        "x": 25905
+      },
+      "xQuery": {
+        "result": "taxon",
+        "query": "assembly_date AND tax_rank(species)",
+        "taxonomy": "ncbi",
+        "includeEstimates": false,
+        "excludeMissing": [
+          "assembly_date"
+        ],
+        "excludeAncestral": [],
+        "excludeDirect": [],
+        "excludeDescendant": [],
+        "nullFields": []
+      },
+      "xLabel": "assembly_date",
+      "yLabel": "Count of species",
+      "queryString": "report=histogram&x=assembly_date&rank=species&cat=assembly_level&includeEstimates=true&caption=Progress%20of%20genome%20assemblies%20published%20on%20INSDC%20over%20time%2C%20by%20assembly%20level&taxonomy=ncbi&result=taxon&queryId=f0999f4a1b&excludeAncestral%5B0%5D=assembly_span&excludeMissing%5B0%5D=assembly_span&geoBinResolution=3",
+      "caption": "Frequency distribution of species with assembly_date by assembly_level including ancestrally derived estimates"
+    },
+    "name": "histogram"
+  }
+}

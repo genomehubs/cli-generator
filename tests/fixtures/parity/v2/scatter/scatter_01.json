@@ -1,0 +1,1762 @@
+{
+  "status": {
+    "success": true
+  },
+  "report": {
+    "status": {
+      "success": true
+    },
+    "report": {
+      "scatter": {
+        "histograms": {
+          "buckets": [
+            "dtol",
+            "vgp",
+            "og",
+            "atlasea",
+            "psyche",
+            "b10k",
+            "phyloalps",
+            "canbp",
+            "culi",
+            "bat1k",
+            "aegis",
+            "959ng",
+            "asg",
+            "1000gch",
+            "1kfg",
+            "erga-bge",
+            "beenome100",
+            "gbb",
+            "loewe-tbg",
+            "metainvert",
+            "ebpn",
+            "cbp",
+            "ag100pest",
+            "ccgp",
+            "gaga",
+            "zoonomia",
+            "erga-pil",
+            "cgp",
+            "i5k",
+            "ebphk",
+            "erga-ch",
+            "giga",
+            "ein",
+            "r2k",
+            "other",
+            "africabp",
+            "ogg",
+            "squalomix",
+            "prgp",
+            "canseq150",
+            "tsi",
+            "ygg",
+            "eurofish",
+            "arg",
+            "cfgp",
+            "erga-com",
+            "omg",
+            "erga",
+            "gbr",
+            "lmgp",
+            "ilebp",
+            "pgp",
+            "gap",
+            "huntomics",
+            "bpa",
+            null
+          ],
+          "allValues": [
+            70876,
+            68922,
+            18766,
+            14175,
+            11079,
+            9043,
+            4672,
+            2555,
+            1505,
+            1404,
+            1358,
+            1093,
+            637,
+            405,
+            351,
+            300,
+            266,
+            243,
+            211,
+            202,
+            180,
+            170,
+            160,
+            146,
+            135,
+            126,
+            96,
+            95,
+            91,
+            75,
+            73,
+            63,
+            53,
+            52,
+            2,
+            37,
+            35,
+            35,
+            34,
+            31,
+            31,
+            29,
+            24,
+            21,
+            18,
+            17,
+            15,
+            14,
+            11,
+            10,
+            9,
+            9,
+            8,
+            8,
+            6
+          ],
+          "valueType": "keyword",
+          "summary": "value",
+          "yBuckets": [
+            "sample_collected",
+            "sample_acquired",
+            "in_progress",
+            "insdc_open",
+            "data_generation",
+            null
+          ],
+          "yValueType": "keyword",
+          "ySummary": "value",
+          "allYValues": [
+            [
+              2095,
+              2561,
+              637,
+              5480,
+              2991
+            ],
+            [
+              217,
+              139,
+              1385,
+              5563,
+              135
+            ],
+            [
+              9,
+              128,
+              141,
+              1307,
+              12
+            ],
+            [
+              103,
+              1092,
+              384,
+              800,
+              459
+            ],
+            [
+              1080,
+              198,
+              87,
+              795,
+              353
+            ],
+            [
+              183,
+              5,
+              1250,
+              1675,
+              3
+            ],
+            [
+              0,
+              3496,
+              29,
+              548,
+              270
+            ],
+            [
+              37,
+              58,
+              23,
+              597,
+              193
+            ],
+            [
+              2,
+              0,
+              0,
+              62,
+              3
+            ],
+            [
+              3,
+              0,
+              25,
+              92,
+              115
+            ],
+            [
+              26,
+              135,
+              39,
+              407,
+              135
+            ],
+            [
+              0,
+              36,
+              144,
+              266,
+              3
+            ],
+            [
+              1,
+              9,
+              58,
+              277,
+              118
+            ],
+            [
+              7,
+              1,
+              1,
+              30,
+              2
+            ],
+            [
+              0,
+              0,
+              128,
+              214,
+              5
+            ],
+            [
+              0,
+              0,
+              1,
+              243,
+              29
+            ],
+            [
+              1,
+              6,
+              0,
+              45,
+              4
+            ],
+            [
+              18,
+              0,
+              19,
+              47,
+              0
+            ],
+            [
+              1,
+              0,
+              0,
+              21,
+              124
+            ],
+            [
+              0,
+              0,
+              12,
+              182,
+              1
+            ],
+            [
+              3,
+              10,
+              38,
+              88,
+              4
+            ],
+            [
+              42,
+              20,
+              51,
+              43,
+              2
+            ],
+            [
+              1,
+              8,
+              33,
+              85,
+              4
+            ],
+            [
+              0,
+              0,
+              5,
+              125,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              110,
+              2
+            ],
+            [
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              2,
+              0,
+              33,
+              34,
+              1
+            ],
+            [
+              1,
+              0,
+              0,
+              12,
+              2
+            ],
+            [
+              0,
+              0,
+              0,
+              86,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              44,
+              0
+            ],
+            [
+              0,
+              1,
+              39,
+              29,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              35,
+              0
+            ],
+            [
+              0,
+              4,
+              0,
+              1,
+              1
+            ],
+            [
+              11,
+              1,
+              19,
+              11,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              1,
+              0
+            ],
+            [
+              9,
+              1,
+              5,
+              16,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              17,
+              1
+            ],
+            [
+              0,
+              3,
+              10,
+              16,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              28,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              29,
+              0
+            ],
+            [
+              0,
+              0,
+              8,
+              15,
+              0
+            ],
+            [
+              0,
+              0,
+              9,
+              15,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              14,
+              1
+            ],
+            [
+              0,
+              0,
+              11,
+              7,
+              0
+            ],
+            [
+              0,
+              0,
+              13,
+              4,
+              0
+            ],
+            [
+              1,
+              0,
+              0,
+              4,
+              3
+            ],
+            [
+              0,
+              0,
+              4,
+              11,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              3,
+              0
+            ],
+            [
+              0,
+              0,
+              4,
+              5,
+              0
+            ],
+            [
+              0,
+              0,
+              4,
+              4,
+              0
+            ],
+            [
+              0,
+              0,
+              1,
+              8,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              5,
+              1
+            ],
+            [
+              0,
+              0,
+              1,
+              4,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              8,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              6,
+              0
+            ]
+          ],
+          "zDomain": [
+            0,
+            5563
+          ],
+          "params": {
+            "result": "taxon",
+            "query": "tax_tree(2759) AND long_list AND tax_rank(species)",
+            "taxonomy": "ncbi",
+            "includeEstimates": false,
+            "excludeMissing": [],
+            "excludeAncestral": [],
+            "excludeDirect": [],
+            "excludeDescendant": [],
+            "nullFields": [],
+            "queryId": "2e02886756",
+            "size": 0,
+            "aggs": {
+              "aggregations": {
+                "nested": {
+                  "path": "attributes"
+                },
+                "aggs": {
+                  "long_list": {
+                    "filter": {
+                      "term": {
+                        "attributes.key": "long_list"
+                      }
+                    },
+                    "aggs": {
+                      "histogram": {
+                        "reverse_nested": {},
+                        "aggs": {
+                          "by_attribute": {
+                            "nested": {
+                              "path": "attributes"
+                            },
+                            "aggs": {
+                              "by_cat": {
+                                "filter": {
+                                  "term": {
+                                    "attributes.key": "long_list"
+                                  }
+                                },
+                                "aggs": {
+                                  "by_value": {
+                                    "filters": {
+                                      "other_bucket_key": "other",
+                                      "filters": {
+                                        "dtol": {
+                                          "term": {
+                                            "attributes.keyword_value": "dtol"
+                                          }
+                                        },
+                                        "vgp": {
+                                          "term": {
+                                            "attributes.keyword_value": "vgp"
+                                          }
+                                        },
+                                        "og": {
+                                          "term": {
+                                            "attributes.keyword_value": "og"
+                                          }
+                                        },
+                                        "atlasea": {
+                                          "term": {
+                                            "attributes.keyword_value": "atlasea"
+                                          }
+                                        },
+                                        "psyche": {
+                                          "term": {
+                                            "attributes.keyword_value": "psyche"
+                                          }
+                                        },
+                                        "b10k": {
+                                          "term": {
+                                            "attributes.keyword_value": "b10k"
+                                          }
+                                        },
+                                        "phyloalps": {
+                                          "term": {
+                                            "attributes.keyword_value": "phyloalps"
+                                          }
+                                        },
+                                        "canbp": {
+                                          "term": {
+                                            "attributes.keyword_value": "canbp"
+                                          }
+                                        },
+                                        "culi": {
+                                          "term": {
+                                            "attributes.keyword_value": "culi"
+                                          }
+                                        },
+                                        "bat1k": {
+                                          "term": {
+                                            "attributes.keyword_value": "bat1k"
+                                          }
+                                        },
+                                        "aegis": {
+                                          "term": {
+                                            "attributes.keyword_value": "aegis"
+                                          }
+                                        },
+                                        "959ng": {
+                                          "term": {
+                                            "attributes.keyword_value": "959ng"
+                                          }
+                                        },
+                                        "asg": {
+                                          "term": {
+                                            "attributes.keyword_value": "asg"
+                                          }
+                                        },
+                                        "1000gch": {
+                                          "term": {
+                                            "attributes.keyword_value": "1000gch"
+                                          }
+                                        },
+                                        "1kfg": {
+                                          "term": {
+                                            "attributes.keyword_value": "1kfg"
+                                          }
+                                        },
+                                        "erga-bge": {
+                                          "term": {
+                                            "attributes.keyword_value": "erga-bge"
+                                          }
+                                        },
+                                        "beenome100": {
+                                          "term": {
+                                            "attributes.keyword_value": "beenome100"
+                                          }
+                                        },
+                                        "gbb": {
+                                          "term": {
+                                            "attributes.keyword_value": "gbb"
+                                          }
+                                        },
+                                        "loewe-tbg": {
+                                          "term": {
+                                            "attributes.keyword_value": "loewe-tbg"
+                                          }
+                                        },
+                                        "metainvert": {
+                                          "term": {
+                                            "attributes.keyword_value": "metainvert"
+                                          }
+                                        },
+                                        "ebpn": {
+                                          "term": {
+                                            "attributes.keyword_value": "ebpn"
+                                          }
+                                        },
+                                        "cbp": {
+                                          "term": {
+                                            "attributes.keyword_value": "cbp"
+                                          }
+                                        },
+                                        "ag100pest": {
+                                          "term": {
+                                            "attributes.keyword_value": "ag100pest"
+                                          }
+                                        },
+                                        "ccgp": {
+                                          "term": {
+                                            "attributes.keyword_value": "ccgp"
+                                          }
+                                        },
+                                        "gaga": {
+                                          "term": {
+                                            "attributes.keyword_value": "gaga"
+                                          }
+                                        },
+                                        "zoonomia": {
+                                          "term": {
+                                            "attributes.keyword_value": "zoonomia"
+                                          }
+                                        },
+                                        "erga-pil": {
+                                          "term": {
+                                            "attributes.keyword_value": "erga-pil"
+                                          }
+                                        },
+                                        "cgp": {
+                                          "term": {
+                                            "attributes.keyword_value": "cgp"
+                                          }
+                                        },
+                                        "i5k": {
+                                          "term": {
+                                            "attributes.keyword_value": "i5k"
+                                          }
+                                        },
+                                        "ebphk": {
+                                          "term": {
+                                            "attributes.keyword_value": "ebphk"
+                                          }
+                                        },
+                                        "erga-ch": {
+                                          "term": {
+                                            "attributes.keyword_value": "erga-ch"
+                                          }
+                                        },
+                                        "giga": {
+                                          "term": {
+                                            "attributes.keyword_value": "giga"
+                                          }
+                                        },
+                                        "ein": {
+                                          "term": {
+                                            "attributes.keyword_value": "ein"
+                                          }
+                                        },
+                                        "r2k": {
+                                          "term": {
+                                            "attributes.keyword_value": "r2k"
+                                          }
+                                        },
+                                        "other": {
+                                          "term": {
+                                            "attributes.keyword_value": "other"
+                                          }
+                                        },
+                                        "africabp": {
+                                          "term": {
+                                            "attributes.keyword_value": "africabp"
+                                          }
+                                        },
+                                        "ogg": {
+                                          "term": {
+                                            "attributes.keyword_value": "ogg"
+                                          }
+                                        },
+                                        "squalomix": {
+                                          "term": {
+                                            "attributes.keyword_value": "squalomix"
+                                          }
+                                        },
+                                        "prgp": {
+                                          "term": {
+                                            "attributes.keyword_value": "prgp"
+                                          }
+                                        },
+                                        "canseq150": {
+                                          "term": {
+                                            "attributes.keyword_value": "canseq150"
+                                          }
+                                        },
+                                        "tsi": {
+                                          "term": {
+                                            "attributes.keyword_value": "tsi"
+                                          }
+                                        },
+                                        "ygg": {
+                                          "term": {
+                                            "attributes.keyword_value": "ygg"
+                                          }
+                                        },
+                                        "eurofish": {
+                                          "term": {
+                                            "attributes.keyword_value": "eurofish"
+                                          }
+                                        },
+                                        "arg": {
+                                          "term": {
+                                            "attributes.keyword_value": "arg"
+                                          }
+                                        },
+                                        "cfgp": {
+                                          "term": {
+                                            "attributes.keyword_value": "cfgp"
+                                          }
+                                        },
+                                        "erga-com": {
+                                          "term": {
+                                            "attributes.keyword_value": "erga-com"
+                                          }
+                                        },
+                                        "omg": {
+                                          "term": {
+                                            "attributes.keyword_value": "omg"
+                                          }
+                                        },
+                                        "erga": {
+                                          "term": {
+                                            "attributes.keyword_value": "erga"
+                                          }
+                                        },
+                                        "gbr": {
+                                          "term": {
+                                            "attributes.keyword_value": "gbr"
+                                          }
+                                        },
+                                        "lmgp": {
+                                          "term": {
+                                            "attributes.keyword_value": "lmgp"
+                                          }
+                                        },
+                                        "ilebp": {
+                                          "term": {
+                                            "attributes.keyword_value": "ilebp"
+                                          }
+                                        },
+                                        "pgp": {
+                                          "term": {
+                                            "attributes.keyword_value": "pgp"
+                                          }
+                                        },
+                                        "gap": {
+                                          "term": {
+                                            "attributes.keyword_value": "gap"
+                                          }
+                                        },
+                                        "huntomics": {
+                                          "term": {
+                                            "attributes.keyword_value": "huntomics"
+                                          }
+                                        },
+                                        "bpa": {
+                                          "term": {
+                                            "attributes.keyword_value": "bpa"
+                                          }
+                                        }
+                                      }
+                                    },
+                                    "aggs": {
+                                      "cats": {
+                                        "terms": {
+                                          "field": "attributes.keyword_value",
+                                          "size": "55"
+                                        },
+                                        "aggs": {
+                                          "yHistograms": {
+                                            "reverse_nested": {},
+                                            "aggs": {
+                                              "by_attribute": {
+                                                "nested": {
+                                                  "path": "attributes"
+                                                },
+                                                "aggs": {
+                                                  "sequencing_status": {
+                                                    "filter": {
+                                                      "term": {
+                                                        "attributes.key": "sequencing_status"
+                                                      }
+                                                    },
+                                                    "aggs": {
+                                                      "histogram": {
+                                                        "reverse_nested": {},
+                                                        "aggs": {
+                                                          "by_attribute": {
+                                                            "nested": {
+                                                              "path": "attributes"
+                                                            },
+                                                            "aggs": {
+                                                              "by_cat": {
+                                                                "filter": {
+                                                                  "term": {
+                                                                    "attributes.key": "sequencing_status"
+                                                                  }
+                                                                },
+                                                                "aggs": {
+                                                                  "by_value": {
+                                                                    "filters": {
+                                                                      "other_bucket_key": "other",
+                                                                      "filters": {
+                                                                        "sample_collected": {
+                                                                          "term": {
+                                                                            "attributes.keyword_value": "sample_collected"
+                                                                          }
+                                                                        },
+                                                                        "sample_acquired": {
+                                                                          "term": {
+                                                                            "attributes.keyword_value": "sample_acquired"
+                                                                          }
+                                                                        },
+                                                                        "in_progress": {
+                                                                          "term": {
+                                                                            "attributes.keyword_value": "in_progress"
+                                                                          }
+                                                                        },
+                                                                        "insdc_open": {
+                                                                          "term": {
+                                                                            "attributes.keyword_value": "insdc_open"
+                                                                          }
+                                                                        },
+                                                                        "data_generation": {
+                                                                          "term": {
+                                                                            "attributes.keyword_value": "data_generation"
+                                                                          }
+                                                                        }
+                                                                      }
+                                                                    }
+                                                                  },
+                                                                  "more_values": {
+                                                                    "terms": {
+                                                                      "field": "attributes.keyword_value",
+                                                                      "size": 5
+                                                                    }
+                                                                  }
+                                                                }
+                                                              }
+                                                            }
+                                                          }
+                                                        }
+                                                      }
+                                                    }
+                                                  }
+                                                }
+                                              }
+                                            }
+                                          }
+                                        }
+                                      }
+                                    }
+                                  },
+                                  "more_values": {
+                                    "terms": {
+                                      "field": "attributes.keyword_value",
+                                      "size": "55"
+                                    },
+                                    "aggs": {
+                                      "yHistograms": {
+                                        "reverse_nested": {},
+                                        "aggs": {
+                                          "by_attribute": {
+                                            "nested": {
+                                              "path": "attributes"
+                                            },
+                                            "aggs": {
+                                              "sequencing_status": {
+                                                "filter": {
+                                                  "term": {
+                                                    "attributes.key": "sequencing_status"
+                                                  }
+                                                },
+                                                "aggs": {
+                                                  "histogram": {
+                                                    "reverse_nested": {},
+                                                    "aggs": {
+                                                      "by_attribute": {
+                                                        "nested": {
+                                                          "path": "attributes"
+                                                        },
+                                                        "aggs": {
+                                                          "by_cat": {
+                                                            "filter": {
+                                                              "term": {
+                                                                "attributes.key": "sequencing_status"
+                                                              }
+                                                            },
+                                                            "aggs": {
+                                                              "by_value": {
+                                                                "filters": {
+                                                                  "other_bucket_key": "other",
+                                                                  "filters": {
+                                                                    "sample_collected": {
+                                                                      "term": {
+                                                                        "attributes.keyword_value": "sample_collected"
+                                                                      }
+                                                                    },
+                                                                    "sample_acquired": {
+                                                                      "term": {
+                                                                        "attributes.keyword_value": "sample_acquired"
+                                                                      }
+                                                                    },
+                                                                    "in_progress": {
+                                                                      "term": {
+                                                                        "attributes.keyword_value": "in_progress"
+                                                                      }
+                                                                    },
+                                                                    "insdc_open": {
+                                                                      "term": {
+                                                                        "attributes.keyword_value": "insdc_open"
+                                                                      }
+                                                                    },
+                                                                    "data_generation": {
+                                                                      "term": {
+                                                                        "attributes.keyword_value": "data_generation"
+                                                                      }
+                                                                    }
+                                                                  }
+                                                                }
+                                                              },
+                                                              "more_values": {
+                                                                "terms": {
+                                                                  "field": "attributes.keyword_value",
+                                                                  "size": 5
+                                                                }
+                                                              }
+                                                            }
+                                                          }
+                                                        }
+                                                      }
+                                                    }
+                                                  }
+                                                }
+                                              }
+                                            }
+                                          }
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      },
+                      "yHistograms": {
+                        "reverse_nested": {},
+                        "aggs": {
+                          "by_attribute": {
+                            "nested": {
+                              "path": "attributes"
+                            },
+                            "aggs": {
+                              "sequencing_status": {
+                                "filter": {
+                                  "term": {
+                                    "attributes.key": "sequencing_status"
+                                  }
+                                },
+                                "aggs": {
+                                  "histogram": {
+                                    "reverse_nested": {},
+                                    "aggs": {
+                                      "by_attribute": {
+                                        "nested": {
+                                          "path": "attributes"
+                                        },
+                                        "aggs": {
+                                          "by_cat": {
+                                            "filter": {
+                                              "term": {
+                                                "attributes.key": "sequencing_status"
+                                              }
+                                            },
+                                            "aggs": {
+                                              "by_value": {
+                                                "filters": {
+                                                  "other_bucket_key": "other",
+                                                  "filters": {
+                                                    "sample_collected": {
+                                                      "term": {
+                                                        "attributes.keyword_value": "sample_collected"
+                                                      }
+                                                    },
+                                                    "sample_acquired": {
+                                                      "term": {
+                                                        "attributes.keyword_value": "sample_acquired"
+                                                      }
+                                                    },
+                                                    "in_progress": {
+                                                      "term": {
+                                                        "attributes.keyword_value": "in_progress"
+                                                      }
+                                                    },
+                                                    "insdc_open": {
+                                                      "term": {
+                                                        "attributes.keyword_value": "insdc_open"
+                                                      }
+                                                    },
+                                                    "data_generation": {
+                                                      "term": {
+                                                        "attributes.keyword_value": "data_generation"
+                                                      }
+                                                    }
+                                                  }
+                                                }
+                                              },
+                                              "more_values": {
+                                                "terms": {
+                                                  "field": "attributes.keyword_value",
+                                                  "size": 5
+                                                }
+                                              }
+                                            }
+                                          }
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "yHistograms": {
+                    "reverse_nested": {},
+                    "aggs": {
+                      "by_attribute": {
+                        "nested": {
+                          "path": "attributes"
+                        },
+                        "aggs": {
+                          "sequencing_status": {
+                            "filter": {
+                              "term": {
+                                "attributes.key": "sequencing_status"
+                              }
+                            },
+                            "aggs": {
+                              "histogram": {
+                                "reverse_nested": {},
+                                "aggs": {
+                                  "by_attribute": {
+                                    "nested": {
+                                      "path": "attributes"
+                                    },
+                                    "aggs": {
+                                      "by_cat": {
+                                        "filter": {
+                                          "term": {
+                                            "attributes.key": "sequencing_status"
+                                          }
+                                        },
+                                        "aggs": {
+                                          "by_value": {
+                                            "filters": {
+                                              "other_bucket_key": "other",
+                                              "filters": {
+                                                "sample_collected": {
+                                                  "term": {
+                                                    "attributes.keyword_value": "sample_collected"
+                                                  }
+                                                },
+                                                "sample_acquired": {
+                                                  "term": {
+                                                    "attributes.keyword_value": "sample_acquired"
+                                                  }
+                                                },
+                                                "in_progress": {
+                                                  "term": {
+                                                    "attributes.keyword_value": "in_progress"
+                                                  }
+                                                },
+                                                "insdc_open": {
+                                                  "term": {
+                                                    "attributes.keyword_value": "insdc_open"
+                                                  }
+                                                },
+                                                "data_generation": {
+                                                  "term": {
+                                                    "attributes.keyword_value": "data_generation"
+                                                  }
+                                                }
+                                              }
+                                            }
+                                          },
+                                          "more_values": {
+                                            "terms": {
+                                              "field": "attributes.keyword_value",
+                                              "size": 5
+                                            }
+                                          }
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "fields": [
+            "long_list",
+            "genome_size",
+            "assembly_level",
+            "assembly_span",
+            "chromosome_number",
+            "haploid_number",
+            "sequencing_status"
+          ],
+          "xLabel": "long_list",
+          "yLabel": "sequencing_status"
+        },
+        "field": "long_list",
+        "summary": "value",
+        "scale": "ordinal",
+        "query": "tax_tree(2759) AND long_list AND tax_rank(species)",
+        "stats": {
+          "cats": [
+            {
+              "key": "dtol",
+              "label": "dtol"
+            },
+            {
+              "key": "vgp",
+              "label": "vgp"
+            },
+            {
+              "key": "og",
+              "label": "og"
+            },
+            {
+              "key": "atlasea",
+              "label": "atlasea"
+            },
+            {
+              "key": "psyche",
+              "label": "psyche"
+            },
+            {
+              "key": "b10k",
+              "label": "b10k"
+            },
+            {
+              "key": "phyloalps",
+              "label": "phyloalps"
+            },
+            {
+              "key": "canbp",
+              "label": "canbp"
+            },
+            {
+              "key": "culi",
+              "label": "culi"
+            },
+            {
+              "key": "bat1k",
+              "label": "bat1k"
+            },
+            {
+              "key": "aegis",
+              "label": "aegis"
+            },
+            {
+              "key": "959ng",
+              "label": "959ng"
+            },
+            {
+              "key": "asg",
+              "label": "asg"
+            },
+            {
+              "key": "1000gch",
+              "label": "1000gch"
+            },
+            {
+              "key": "1kfg",
+              "label": "1kfg"
+            },
+            {
+              "key": "erga-bge",
+              "label": "erga-bge"
+            },
+            {
+              "key": "beenome100",
+              "label": "beenome100"
+            },
+            {
+              "key": "gbb",
+              "label": "gbb"
+            },
+            {
+              "key": "loewe-tbg",
+              "label": "loewe-tbg"
+            },
+            {
+              "key": "metainvert",
+              "label": "metainvert"
+            },
+            {
+              "key": "ebpn",
+              "label": "ebpn"
+            },
+            {
+              "key": "cbp",
+              "label": "cbp"
+            },
+            {
+              "key": "ag100pest",
+              "label": "ag100pest"
+            },
+            {
+              "key": "ccgp",
+              "label": "ccgp"
+            },
+            {
+              "key": "gaga",
+              "label": "gaga"
+            },
+            {
+              "key": "zoonomia",
+              "label": "zoonomia"
+            },
+            {
+              "key": "erga-pil",
+              "label": "erga-pil"
+            },
+            {
+              "key": "cgp",
+              "label": "cgp"
+            },
+            {
+              "key": "i5k",
+              "label": "i5k"
+            },
+            {
+              "key": "ebphk",
+              "label": "ebphk"
+            },
+            {
+              "key": "erga-ch",
+              "label": "erga-ch"
+            },
+            {
+              "key": "giga",
+              "label": "giga"
+            },
+            {
+              "key": "ein",
+              "label": "ein"
+            },
+            {
+              "key": "r2k",
+              "label": "r2k"
+            },
+            {
+              "key": "other",
+              "label": "other"
+            },
+            {
+              "key": "africabp",
+              "label": "africabp"
+            },
+            {
+              "key": "ogg",
+              "label": "ogg"
+            },
+            {
+              "key": "squalomix",
+              "label": "squalomix"
+            },
+            {
+              "key": "prgp",
+              "label": "prgp"
+            },
+            {
+              "key": "canseq150",
+              "label": "canseq150"
+            },
+            {
+              "key": "tsi",
+              "label": "tsi"
+            },
+            {
+              "key": "ygg",
+              "label": "ygg"
+            },
+            {
+              "key": "eurofish",
+              "label": "eurofish"
+            },
+            {
+              "key": "arg",
+              "label": "arg"
+            },
+            {
+              "key": "cfgp",
+              "label": "cfgp"
+            },
+            {
+              "key": "erga-com",
+              "label": "erga-com"
+            },
+            {
+              "key": "omg",
+              "label": "omg"
+            },
+            {
+              "key": "erga",
+              "label": "erga"
+            },
+            {
+              "key": "gbr",
+              "label": "gbr"
+            },
+            {
+              "key": "lmgp",
+              "label": "lmgp"
+            },
+            {
+              "key": "ilebp",
+              "label": "ilebp"
+            },
+            {
+              "key": "pgp",
+              "label": "pgp"
+            },
+            {
+              "key": "gap",
+              "label": "gap"
+            },
+            {
+              "key": "huntomics",
+              "label": "huntomics"
+            },
+            {
+              "key": "bpa",
+              "label": "bpa"
+            }
+          ],
+          "by": "attribute",
+          "count": 162327,
+          "size": "55"
+        },
+        "type": "keyword",
+        "tickCount": 55,
+        "showOther": false,
+        "bounds": {
+          "field": "long_list",
+          "summary": "value",
+          "scale": "ordinal",
+          "query": "tax_tree(2759) AND long_list AND tax_rank(species)",
+          "stats": {
+            "cats": [
+              {
+                "key": "dtol",
+                "label": "dtol"
+              },
+              {
+                "key": "vgp",
+                "label": "vgp"
+              },
+              {
+                "key": "og",
+                "label": "og"
+              },
+              {
+                "key": "atlasea",
+                "label": "atlasea"
+              },
+              {
+                "key": "psyche",
+                "label": "psyche"
+              },
+              {
+                "key": "b10k",
+                "label": "b10k"
+              },
+              {
+                "key": "phyloalps",
+                "label": "phyloalps"
+              },
+              {
+                "key": "canbp",
+                "label": "canbp"
+              },
+              {
+                "key": "culi",
+                "label": "culi"
+              },
+              {
+                "key": "bat1k",
+                "label": "bat1k"
+              },
+              {
+                "key": "aegis",
+                "label": "aegis"
+              },
+              {
+                "key": "959ng",
+                "label": "959ng"
+              },
+              {
+                "key": "asg",
+                "label": "asg"
+              },
+              {
+                "key": "1000gch",
+                "label": "1000gch"
+              },
+              {
+                "key": "1kfg",
+                "label": "1kfg"
+              },
+              {
+                "key": "erga-bge",
+                "label": "erga-bge"
+              },
+              {
+                "key": "beenome100",
+                "label": "beenome100"
+              },
+              {
+                "key": "gbb",
+                "label": "gbb"
+              },
+              {
+                "key": "loewe-tbg",
+                "label": "loewe-tbg"
+              },
+              {
+                "key": "metainvert",
+                "label": "metainvert"
+              },
+              {
+                "key": "ebpn",
+                "label": "ebpn"
+              },
+              {
+                "key": "cbp",
+                "label": "cbp"
+              },
+              {
+                "key": "ag100pest",
+                "label": "ag100pest"
+              },
+              {
+                "key": "ccgp",
+                "label": "ccgp"
+              },
+              {
+                "key": "gaga",
+                "label": "gaga"
+              },
+              {
+                "key": "zoonomia",
+                "label": "zoonomia"
+              },
+              {
+                "key": "erga-pil",
+                "label": "erga-pil"
+              },
+              {
+                "key": "cgp",
+                "label": "cgp"
+              },
+              {
+                "key": "i5k",
+                "label": "i5k"
+              },
+              {
+                "key": "ebphk",
+                "label": "ebphk"
+              },
+              {
+                "key": "erga-ch",
+                "label": "erga-ch"
+              },
+              {
+                "key": "giga",
+                "label": "giga"
+              },
+              {
+                "key": "ein",
+                "label": "ein"
+              },
+              {
+                "key": "r2k",
+                "label": "r2k"
+              },
+              {
+                "key": "other",
+                "label": "other"
+              },
+              {
+                "key": "africabp",
+                "label": "africabp"
+              },
+              {
+                "key": "ogg",
+                "label": "ogg"
+              },
+              {
+                "key": "squalomix",
+                "label": "squalomix"
+              },
+              {
+                "key": "prgp",
+                "label": "prgp"
+              },
+              {
+                "key": "canseq150",
+                "label": "canseq150"
+              },
+              {
+                "key": "tsi",
+                "label": "tsi"
+              },
+              {
+                "key": "ygg",
+                "label": "ygg"
+              },
+              {
+                "key": "eurofish",
+                "label": "eurofish"
+              },
+              {
+                "key": "arg",
+                "label": "arg"
+              },
+              {
+                "key": "cfgp",
+                "label": "cfgp"
+              },
+              {
+                "key": "erga-com",
+                "label": "erga-com"
+              },
+              {
+                "key": "omg",
+                "label": "omg"
+              },
+              {
+                "key": "erga",
+                "label": "erga"
+              },
+              {
+                "key": "gbr",
+                "label": "gbr"
+              },
+              {
+                "key": "lmgp",
+                "label": "lmgp"
+              },
+              {
+                "key": "ilebp",
+                "label": "ilebp"
+              },
+              {
+                "key": "pgp",
+                "label": "pgp"
+              },
+              {
+                "key": "gap",
+                "label": "gap"
+              },
+              {
+                "key": "huntomics",
+                "label": "huntomics"
+              },
+              {
+                "key": "bpa",
+                "label": "bpa"
+              }
+            ],
+            "by": "attribute",
+            "count": 162327,
+            "size": "55"
+          },
+          "type": "keyword",
+          "tickCount": 55,
+          "showOther": false
+        },
+        "yBounds": {
+          "field": "sequencing_status",
+          "summary": "value",
+          "scale": "ordinal",
+          "query": "sequencing_status AND tax_tree(2759) AND long_list AND tax_rank(species) AND tax_rank(species)",
+          "stats": {
+            "cats": [
+              {
+                "key": "sample_collected",
+                "label": "sample_collected"
+              },
+              {
+                "key": "sample_acquired",
+                "label": "sample_acquired"
+              },
+              {
+                "key": "in_progress",
+                "label": "in_progress"
+              },
+              {
+                "key": "insdc_open",
+                "label": "insdc_open"
+              },
+              {
+                "key": "data_generation",
+                "label": "data_generation"
+              }
+            ],
+            "by": "attribute",
+            "count": 29495,
+            "size": 5
+          },
+          "type": "keyword",
+          "tickCount": 11,
+          "showOther": false
+        },
+        "xQuery": {
+          "result": "taxon",
+          "query": "tax_tree(2759) AND long_list AND tax_rank(species)",
+          "taxonomy": "ncbi",
+          "includeEstimates": false,
+          "excludeMissing": [
+            "long_list"
+          ],
+          "excludeAncestral": [],
+          "excludeDirect": [],
+          "excludeDescendant": [],
+          "nullFields": [],
+          "fields": "long_list,genome_size,assembly_level,assembly_span,chromosome_number,haploid_number,sequencing_status",
+          "ranks": [
+            "species"
+          ]
+        },
+        "x": 209982
+      },
+      "xQuery": {
+        "result": "taxon",
+        "query": "tax_tree(2759) AND long_list AND tax_rank(species)",
+        "taxonomy": "ncbi",
+        "includeEstimates": false,
+        "excludeMissing": [
+          "long_list"
+        ],
+        "excludeAncestral": [],
+        "excludeDirect": [],
+        "excludeDescendant": [],
+        "nullFields": []
+      },
+      "yQuery": {
+        "query": "sequencing_status"
+      },
+      "xLabel": "long_list",
+      "yLabel": "sequencing_status",
+      "queryString": "report=scatter&x=tax_tree%282759%29%20AND%20long_list&y=sequencing_status&result=taxon&rank=species&xOpts=%2C%2C55&yOpts=sample_collected%2Csample_acquired%2Cin_progress%2Cinsdc_open%3B%3B&includeEstimates=false&scatterThreshold=10&caption=Distribution%20of%20sequencing%20status%20for%20target%20species%20across%20EBP%20affiliated%20projects.%20Note%20that%20for%20species%20present%20in%20multiple%20long_lists%20the%20most%20advanced%20stage%20among%20all%20projects%20will%20be%20used%20to%20retrieve%20the%20counts%20for%20each%20project&taxonomy=ncbi&queryId=2e02886756&geoBinResolution=3",
+      "caption": "Distribution of sequencing_status with tax_tree(2759) AND long_list"
+    },
+    "name": "scatter"
+  }
+}

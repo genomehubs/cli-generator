@@ -1,0 +1,5 @@
+{
+  "query_yaml": "index: taxon\ntaxa: [root]\n",
+  "params_yaml": "taxonomy: ncbi\n",
+  "report_yaml": "report: tree\nx: assembly_date\ny: genome_size\n"
+}

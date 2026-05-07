@@ -1,0 +1,1 @@
+https://goat.genomehubs.org/api/v2/report?report=arc&x=chromosome_number&rank=Family&includeEstimates=true&excludeAncestral%5B0%5D=chromosome_number&excludeMissing%5B0%5D=chromosome_number&caption=Total%20number%20of%20families%20with%20direct%20values%20of%20chromosome%20number&taxonomy=ncbi&result=taxon&queryId=7b6f7c9718

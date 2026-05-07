@@ -1,0 +1,197 @@
+{
+  "status": {
+    "success": true
+  },
+  "report": {
+    "status": {
+      "success": true
+    },
+    "report": {
+      "xPerRank": [
+        {
+          "x": 1,
+          "xTerm": "long_list=DTOL",
+          "rank": "domains",
+          "xQuery": {
+            "result": "taxon",
+            "query": "long_list=DTOL AND tax_rank(domain)",
+            "taxonomy": "ncbi",
+            "includeEstimates": true,
+            "excludeMissing": [
+              "long_list"
+            ],
+            "excludeAncestral": [],
+            "excludeDirect": [],
+            "excludeDescendant": [],
+            "nullFields": [],
+            "fields": "long_list"
+          },
+          "fields": "long_list"
+        },
+        {
+          "x": 3,
+          "xTerm": "long_list=DTOL",
+          "rank": "kingdoms",
+          "xQuery": {
+            "result": "taxon",
+            "query": "long_list=DTOL AND tax_rank(kingdom)",
+            "taxonomy": "ncbi",
+            "includeEstimates": true,
+            "excludeMissing": [
+              "long_list"
+            ],
+            "excludeAncestral": [],
+            "excludeDirect": [],
+            "excludeDescendant": [],
+            "nullFields": [],
+            "fields": "long_list"
+          },
+          "fields": "long_list"
+        },
+        {
+          "x": 63,
+          "xTerm": "long_list=DTOL",
+          "rank": "phyla",
+          "xQuery": {
+            "result": "taxon",
+            "query": "long_list=DTOL AND tax_rank(phylum)",
+            "taxonomy": "ncbi",
+            "includeEstimates": true,
+            "excludeMissing": [
+              "long_list"
+            ],
+            "excludeAncestral": [],
+            "excludeDirect": [],
+            "excludeDescendant": [],
+            "nullFields": [],
+            "fields": "long_list"
+          },
+          "fields": "long_list"
+        },
+        {
+          "x": 215,
+          "xTerm": "long_list=DTOL",
+          "rank": "classes",
+          "xQuery": {
+            "result": "taxon",
+            "query": "long_list=DTOL AND tax_rank(class)",
+            "taxonomy": "ncbi",
+            "includeEstimates": true,
+            "excludeMissing": [
+              "long_list"
+            ],
+            "excludeAncestral": [],
+            "excludeDirect": [],
+            "excludeDescendant": [],
+            "nullFields": [],
+            "fields": "long_list"
+          },
+          "fields": "long_list"
+        },
+        {
+          "x": 920,
+          "xTerm": "long_list=DTOL",
+          "rank": "orders",
+          "xQuery": {
+            "result": "taxon",
+            "query": "long_list=DTOL AND tax_rank(order)",
+            "taxonomy": "ncbi",
+            "includeEstimates": true,
+            "excludeMissing": [
+              "long_list"
+            ],
+            "excludeAncestral": [],
+            "excludeDirect": [],
+            "excludeDescendant": [],
+            "nullFields": [],
+            "fields": "long_list"
+          },
+          "fields": "long_list"
+        },
+        {
+          "x": 4229,
+          "xTerm": "long_list=DTOL",
+          "rank": "families",
+          "xQuery": {
+            "result": "taxon",
+            "query": "long_list=DTOL AND tax_rank(family)",
+            "taxonomy": "ncbi",
+            "includeEstimates": true,
+            "excludeMissing": [
+              "long_list"
+            ],
+            "excludeAncestral": [],
+            "excludeDirect": [],
+            "excludeDescendant": [],
+            "nullFields": [],
+            "fields": "long_list"
+          },
+          "fields": "long_list"
+        },
+        {
+          "x": 19779,
+          "xTerm": "long_list=DTOL",
+          "rank": "genera",
+          "xQuery": {
+            "result": "taxon",
+            "query": "long_list=DTOL AND tax_rank(genus)",
+            "taxonomy": "ncbi",
+            "includeEstimates": true,
+            "excludeMissing": [
+              "long_list"
+            ],
+            "excludeAncestral": [],
+            "excludeDirect": [],
+            "excludeDescendant": [],
+            "nullFields": [],
+            "fields": "long_list"
+          },
+          "fields": "long_list"
+        },
+        {
+          "x": 70876,
+          "xTerm": "long_list=DTOL",
+          "rank": "species",
+          "xQuery": {
+            "result": "taxon",
+            "query": "long_list=DTOL AND tax_rank(species)",
+            "taxonomy": "ncbi",
+            "includeEstimates": true,
+            "excludeMissing": [
+              "long_list"
+            ],
+            "excludeAncestral": [],
+            "excludeDirect": [],
+            "excludeDescendant": [],
+            "nullFields": [],
+            "fields": "long_list"
+          },
+          "fields": "long_list"
+        },
+        {
+          "x": 17,
+          "xTerm": "long_list=DTOL",
+          "rank": "subspecies",
+          "xQuery": {
+            "result": "taxon",
+            "query": "long_list=DTOL AND tax_rank(subspecies)",
+            "taxonomy": "ncbi",
+            "includeEstimates": true,
+            "excludeMissing": [
+              "long_list"
+            ],
+            "excludeAncestral": [],
+            "excludeDirect": [],
+            "excludeDescendant": [],
+            "nullFields": [],
+            "fields": "long_list"
+          },
+          "fields": "long_list"
+        }
+      ],
+      "queryString": "report=xPerRank&x=long_list%3DDTOL&includeEstimates=true&caption=%2A%2ACounts%20of%20taxa%20targeted%20by%20DTOL%2A%2A%3A%20All%20summary%20reports%20on%20GoaT%20are%20based%20on%20these%20counts&taxonomy=ncbi&result=taxon&queryId=a74bfa2f07&geoBinResolution=3",
+      "caption": "Counts of taxa with long_list=DTOL"
+    },
+    "name": "xPerRank"
+  }
+}

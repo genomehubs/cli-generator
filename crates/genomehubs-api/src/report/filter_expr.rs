@@ -42,6 +42,9 @@ pub enum FilterTerm {
     },
     /// `field=value` — matched against `keyword_value`.
     KeywordMatch { field: String, value: String },
+    /// `field` — bare field name, matches any document that has this attribute.
+    /// Mirrors V2's implicit `excludeMissing` behaviour when `x` is a bare field.
+    Exists { field: String },
 }
 
 // ─── Public API ──────────────────────────────────────────────────────────────
@@ -214,6 +217,18 @@ fn parse_simple_term(term: &str) -> Result<FilterTerm, String> {
         return Ok(FilterTerm::KeywordMatch { field, value });
     }
 
+    // Bare field name (no operator): match any document that has this attribute.
+    // Mirrors V2's auto-excludeMissing when x is a bare field like `assembly_span`.
+    let is_bare_identifier = !term.is_empty()
+        && term
+            .chars()
+            .all(|c| c.is_alphanumeric() || c == '_' || c == '-');
+    if is_bare_identifier {
+        return Ok(FilterTerm::Exists {
+            field: term.to_string(),
+        });
+    }
+
     Err(format!("could not parse filter term: '{term}'"))
 }
 
@@ -268,6 +283,17 @@ fn term_to_nested_query(term: &FilterTerm) -> Value {
         FilterTerm::KeywordMatch { field, value } => {
             let inner = json!({ "term": { "attributes.keyword_value": value } });
             nested_attr_query(field, inner)
+        }
+        FilterTerm::Exists { field } => {
+            // Just match on the key — any document that has this attribute.
+            json!({
+                "nested": {
+                    "path": "attributes",
+                    "query": {
+                        "term": { "attributes.key": field }
+                    }
+                }
+            })
         }
     }
 }
@@ -419,5 +445,35 @@ mod tests {
         // Two terms → wrapped in bool.must
         let inner = clause["bool"]["must"].as_array().unwrap();
         assert_eq!(inner.len(), 2);
+    }
+
+    #[test]
+    fn test_parse_bare_field_name() {
+        let terms = parse_filter_string("assembly_span").unwrap();
+        assert_eq!(terms.len(), 1);
+        assert!(matches!(
+            &terms[0],
+            FilterTerm::Exists { field } if field == "assembly_span"
+        ));
+    }
+
+    #[test]
+    fn test_bare_field_nested_query() {
+        let terms = parse_filter_string("assembly_span").unwrap();
+        let clause = build_nested_attribute_query(&terms);
+        assert_eq!(clause["nested"]["path"], "attributes");
+        assert_eq!(
+            clause["nested"]["query"]["term"]["attributes.key"],
+            "assembly_span"
+        );
+    }
+
+    #[test]
+    fn test_bare_field_with_hyphen() {
+        let terms = parse_filter_string("chromosome-number").unwrap();
+        assert!(matches!(
+            &terms[0],
+            FilterTerm::Exists { field } if field == "chromosome-number"
+        ));
     }
 }

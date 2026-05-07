@@ -1,0 +1,5 @@
+{
+  "query_yaml": "index: taxon\ntaxa: [root]\n",
+  "params_yaml": "taxonomy: ncbi\n",
+  "report_yaml": "report: scatter\nx: assembly_level\ny: gc_percent\n"
+}

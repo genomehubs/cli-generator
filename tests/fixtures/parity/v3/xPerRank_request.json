@@ -1,0 +1,5 @@
+{
+  "query_yaml": "index: taxon\ntaxa: [root]\n",
+  "params_yaml": "taxonomy: ncbi\n",
+  "report_yaml": "report: xPerRank\nx: genome_size\n"
+}

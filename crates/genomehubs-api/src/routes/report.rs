@@ -215,13 +215,12 @@ fn build_report_query(
     _params: &QueryParams,
     _default_taxonomy: &str,
 ) -> Result<Value, String> {
-    // Build taxa query expression from search query
-    let taxa_query = query
+    // Build taxa query expression from search query (None → match_all base)
+    let taxa_query: Option<String> = query
         .identifiers
         .taxa
         .as_ref()
-        .map(|t| format!("{}({})", t.filter_type.api_function(), t.names.join(",")))
-        .ok_or("query missing taxa filter")?;
+        .map(|t| format!("{}({})", t.filter_type.api_function(), t.names.join(",")));
 
     // Extract vectors for query builder
     let field_names: Vec<&str> = query
@@ -244,7 +243,7 @@ fn build_report_query(
 
     // Build full search body using query builder
     let body = cli_generator::core::query_builder::build_search_body(
-        Some(&taxa_query),
+        taxa_query.as_deref(),
         if field_names.is_empty() {
             None
         } else {

@@ -1,0 +1,5 @@
+{
+  "query_yaml": "index: taxon\ntaxa: [root]\n",
+  "params_yaml": "taxonomy: ncbi\n",
+  "report_yaml": "report: arc\nfeature: assembly_span\nranks: [phylum, class, order, family]\n"
+}

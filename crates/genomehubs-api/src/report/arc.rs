@@ -120,7 +120,7 @@ impl ArcConfig {
         let reference = config
             .get("reference")
             .and_then(|v| v.as_str())
-            .ok_or("arc report requires 'reference' query string")?
+            .unwrap_or("")
             .to_string();
         let context = config
             .get("context")

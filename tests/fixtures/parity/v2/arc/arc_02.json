@@ -1,0 +1,52 @@
+{
+  "status": {
+    "success": true
+  },
+  "report": {
+    "status": {
+      "success": true
+    },
+    "report": {
+      "arc": {
+        "arc": 0.14919276405368606,
+        "arc2": 1,
+        "x": 1534,
+        "y": 10282,
+        "xTerm": "chromosome_number",
+        "rank": "Family",
+        "xQuery": {
+          "result": "taxon",
+          "query": "chromosome_number AND tax_rank(Family)",
+          "taxonomy": "ncbi",
+          "includeEstimates": true,
+          "excludeMissing": [
+            "chromosome_number"
+          ],
+          "excludeAncestral": [
+            "chromosome_number"
+          ],
+          "excludeDirect": [],
+          "excludeDescendant": [],
+          "nullFields": [],
+          "fields": "chromosome_number"
+        },
+        "yQuery": {
+          "result": "taxon",
+          "query": "tax_rank(Family)",
+          "taxonomy": "ncbi",
+          "includeEstimates": true,
+          "excludeMissing": [],
+          "excludeAncestral": [],
+          "excludeDirect": [],
+          "excludeDescendant": [],
+          "nullFields": [],
+          "fields": "chromosome_number"
+        },
+        "queryString": "report=arc&x=chromosome_number&rank=Family&includeEstimates=true&caption=Total%20number%20of%20families%20with%20direct%20values%20of%20chromosome%20number&taxonomy=ncbi&result=taxon&queryId=7b6f7c9718&excludeAncestral%5B0%5D=chromosome_number&excludeMissing%5B0%5D=chromosome_number&geoBinResolution=3"
+      },
+      "queryString": "report=arc&x=chromosome_number&rank=Family&includeEstimates=true&caption=Total%20number%20of%20families%20with%20direct%20values%20of%20chromosome%20number&taxonomy=ncbi&result=taxon&queryId=7b6f7c9718&excludeAncestral%5B0%5D=chromosome_number&excludeMissing%5B0%5D=chromosome_number&geoBinResolution=3",
+      "caption": "families with chromosome_number out of all families"
+    },
+    "name": "arc"
+  }
+}

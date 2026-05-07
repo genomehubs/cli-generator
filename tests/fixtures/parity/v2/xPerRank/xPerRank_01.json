@@ -1,0 +1,197 @@
+{
+  "status": {
+    "success": true
+  },
+  "report": {
+    "status": {
+      "success": true
+    },
+    "report": {
+      "xPerRank": [
+        {
+          "x": 1,
+          "xTerm": "bioproject=PRJNA533106",
+          "rank": "domains",
+          "xQuery": {
+            "result": "taxon",
+            "query": "bioproject=PRJNA533106 AND tax_rank(domain)",
+            "taxonomy": "ncbi",
+            "includeEstimates": true,
+            "excludeMissing": [
+              "bioproject"
+            ],
+            "excludeAncestral": [],
+            "excludeDirect": [],
+            "excludeDescendant": [],
+            "nullFields": [],
+            "fields": "bioproject"
+          },
+          "fields": "bioproject"
+        },
+        {
+          "x": 3,
+          "xTerm": "bioproject=PRJNA533106",
+          "rank": "kingdoms",
+          "xQuery": {
+            "result": "taxon",
+            "query": "bioproject=PRJNA533106 AND tax_rank(kingdom)",
+            "taxonomy": "ncbi",
+            "includeEstimates": true,
+            "excludeMissing": [
+              "bioproject"
+            ],
+            "excludeAncestral": [],
+            "excludeDirect": [],
+            "excludeDescendant": [],
+            "nullFields": [],
+            "fields": "bioproject"
+          },
+          "fields": "bioproject"
+        },
+        {
+          "x": 31,
+          "xTerm": "bioproject=PRJNA533106",
+          "rank": "phyla",
+          "xQuery": {
+            "result": "taxon",
+            "query": "bioproject=PRJNA533106 AND tax_rank(phylum)",
+            "taxonomy": "ncbi",
+            "includeEstimates": true,
+            "excludeMissing": [
+              "bioproject"
+            ],
+            "excludeAncestral": [],
+            "excludeDirect": [],
+            "excludeDescendant": [],
+            "nullFields": [],
+            "fields": "bioproject"
+          },
+          "fields": "bioproject"
+        },
+        {
+          "x": 116,
+          "xTerm": "bioproject=PRJNA533106",
+          "rank": "classes",
+          "xQuery": {
+            "result": "taxon",
+            "query": "bioproject=PRJNA533106 AND tax_rank(class)",
+            "taxonomy": "ncbi",
+            "includeEstimates": true,
+            "excludeMissing": [
+              "bioproject"
+            ],
+            "excludeAncestral": [],
+            "excludeDirect": [],
+            "excludeDescendant": [],
+            "nullFields": [],
+            "fields": "bioproject"
+          },
+          "fields": "bioproject"
+        },
+        {
+          "x": 459,
+          "xTerm": "bioproject=PRJNA533106",
+          "rank": "orders",
+          "xQuery": {
+            "result": "taxon",
+            "query": "bioproject=PRJNA533106 AND tax_rank(order)",
+            "taxonomy": "ncbi",
+            "includeEstimates": true,
+            "excludeMissing": [
+              "bioproject"
+            ],
+            "excludeAncestral": [],
+            "excludeDirect": [],
+            "excludeDescendant": [],
+            "nullFields": [],
+            "fields": "bioproject"
+          },
+          "fields": "bioproject"
+        },
+        {
+          "x": 1549,
+          "xTerm": "bioproject=PRJNA533106",
+          "rank": "families",
+          "xQuery": {
+            "result": "taxon",
+            "query": "bioproject=PRJNA533106 AND tax_rank(family)",
+            "taxonomy": "ncbi",
+            "includeEstimates": true,
+            "excludeMissing": [
+              "bioproject"
+            ],
+            "excludeAncestral": [],
+            "excludeDirect": [],
+            "excludeDescendant": [],
+            "nullFields": [],
+            "fields": "bioproject"
+          },
+          "fields": "bioproject"
+        },
+        {
+          "x": 4158,
+          "xTerm": "bioproject=PRJNA533106",
+          "rank": "genera",
+          "xQuery": {
+            "result": "taxon",
+            "query": "bioproject=PRJNA533106 AND tax_rank(genus)",
+            "taxonomy": "ncbi",
+            "includeEstimates": true,
+            "excludeMissing": [
+              "bioproject"
+            ],
+            "excludeAncestral": [],
+            "excludeDirect": [],
+            "excludeDescendant": [],
+            "nullFields": [],
+            "fields": "bioproject"
+          },
+          "fields": "bioproject"
+        },
+        {
+          "x": 6254,
+          "xTerm": "bioproject=PRJNA533106",
+          "rank": "species",
+          "xQuery": {
+            "result": "taxon",
+            "query": "bioproject=PRJNA533106 AND tax_rank(species)",
+            "taxonomy": "ncbi",
+            "includeEstimates": true,
+            "excludeMissing": [
+              "bioproject"
+            ],
+            "excludeAncestral": [],
+            "excludeDirect": [],
+            "excludeDescendant": [],
+            "nullFields": [],
+            "fields": "bioproject"
+          },
+          "fields": "bioproject"
+        },
+        {
+          "x": 54,
+          "xTerm": "bioproject=PRJNA533106",
+          "rank": "subspecies",
+          "xQuery": {
+            "result": "taxon",
+            "query": "bioproject=PRJNA533106 AND tax_rank(subspecies)",
+            "taxonomy": "ncbi",
+            "includeEstimates": true,
+            "excludeMissing": [
+              "bioproject"
+            ],
+            "excludeAncestral": [],
+            "excludeDirect": [],
+            "excludeDescendant": [],
+            "nullFields": [],
+            "fields": "bioproject"
+          },
+          "fields": "bioproject"
+        }
+      ],
+      "queryString": "report=xPerRank&x=bioproject%3DPRJNA533106&includeEstimates=true&caption=%2A%2ACounts%20of%20taxa%20sequenced%20under%20the%20EBP%20Umbrella.%2A%2A%20Contribution%20of%20Affiliated%20Projects%20under%20EBP%20Umbrella%20Bioproject%20Id%20PRJNA533106&taxonomy=ncbi&result=taxon&queryId=0aa7970472&geoBinResolution=3",
+      "caption": "Counts of taxa with bioproject=PRJNA533106"
+    },
+    "name": "xPerRank"
+  }
+}
