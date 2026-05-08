@@ -478,3 +478,43 @@ def validate_report_yaml(report_yaml: str, field_meta_json: str) -> str:
         JSON array of error strings.
     """
     ...
+
+def query_yaml_from_url_params(url: str) -> tuple[str, str]:
+    """Parse a v2 API or UI URL into ``(query_yaml, params_yaml)``.
+
+    Reconstructs a ``SearchQuery`` and ``QueryParams`` from the URL query
+    string.  Handles both structured params (``tax_name=``, ``fields=``,
+    ``result=``, …) and the composite ``query=`` fragment form.
+
+    Args:
+        url: A full v2 API URL, e.g.
+            ``"https://goat.genomehubs.org/api/v2/search?tax_name=Primates&fields=genome_size"``
+            or a UI URL such as
+            ``"https://goat.genomehubs.org/search?tax_name=Primates"``.
+
+    Returns:
+        A ``(query_yaml, params_yaml)`` tuple of YAML strings.
+
+    Raises:
+        ValueError: On YAML serialisation failure (extremely unlikely).
+    """
+    ...
+
+def report_yaml_from_url_params(url: str) -> tuple[str, str, str]:
+    """Parse a v2 report URL into ``(query_yaml, params_yaml, report_yaml)``.
+
+    Handles both API report URLs (``/api/v2/report?…``) and UI report URLs
+    (``/report?…``).
+
+    Args:
+        url: A full v2 report URL, e.g.
+            ``"https://goat.genomehubs.org/api/v2/report?report=histogram&x=genome_size&result=taxon"``.
+
+    Returns:
+        A ``(query_yaml, params_yaml, report_yaml)`` triple of YAML strings.
+
+    Raises:
+        ValueError: When the URL does not contain a ``report=`` parameter,
+            or on serialisation failure.
+    """
+    ...

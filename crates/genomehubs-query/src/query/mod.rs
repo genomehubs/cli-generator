@@ -226,6 +226,354 @@ fn default_taxonomy() -> String {
     "ncbi".to_string()
 }
 
+// ── URL parsing ───────────────────────────────────────────────────────────────
+
+/// Parse a URL query string into a multi-map of decoded `key → Vec<value>`.
+///
+/// Handles both full URLs (`https://…?key=val`) and bare query strings.
+/// `+` signs are treated as spaces; all values are percent-decoded.
+pub(crate) fn parse_url_query_string(url: &str) -> std::collections::HashMap<String, Vec<String>> {
+    let qs = if let Some(pos) = url.find('?') {
+        &url[pos + 1..]
+    } else {
+        url
+    };
+    let qs = qs.split('#').next().unwrap_or(qs);
+
+    let mut map: std::collections::HashMap<String, Vec<String>> = std::collections::HashMap::new();
+    for part in qs.split('&') {
+        if part.is_empty() {
+            continue;
+        }
+        let (raw_key, raw_val) = match part.find('=') {
+            Some(pos) => (&part[..pos], &part[pos + 1..]),
+            None => (part, ""),
+        };
+        let key = decode_url_component(raw_key);
+        let val = decode_url_component(raw_val);
+        map.entry(key).or_default().push(val);
+    }
+    map
+}
+
+/// Percent-decode a URL component and replace `+` with space.
+fn decode_url_component(s: &str) -> String {
+    let replaced = s.replace('+', " ");
+    percent_encoding::percent_decode_str(&replaced)
+        .decode_utf8_lossy()
+        .into_owned()
+}
+
+/// Return `true` if the URL refers to a report endpoint.
+///
+/// Checks whether the path ends with `/report` or the query string contains
+/// a `report=` parameter.
+pub fn url_is_report(url: &str) -> bool {
+    let path = url.split('?').next().unwrap_or(url);
+    let path = path.split('#').next().unwrap_or(path);
+    if path.ends_with("/report") || path.ends_with("/report/") {
+        return true;
+    }
+    parse_url_query_string(url).contains_key("report")
+}
+
+/// Parse a v2 API or UI URL into `(query_yaml, params_yaml)`.
+///
+/// Reconstructs a [`SearchQuery`] and [`QueryParams`] from the URL query
+/// string.  Handles structured params (`tax_name=`, `fields=`, `result=`, …)
+/// and the composite `query=` fragment form produced by the GoaT API.
+///
+/// Returns `Err` only when YAML serialisation fails (extremely unlikely).
+pub fn query_yaml_from_url_params(url: &str) -> Result<(String, String), String> {
+    let params = parse_url_query_string(url);
+
+    let result_str = params
+        .get("result")
+        .and_then(|v| v.first())
+        .map(|s| s.as_str())
+        .unwrap_or("taxon");
+
+    let mut query = SearchQuery {
+        index: parse_result_index(result_str),
+        ..Default::default()
+    };
+    let mut qparams = QueryParams::default();
+
+    apply_taxa_params(&params, &mut query);
+
+    if let Some(rank) = params.get("rank").and_then(|v| v.first()) {
+        if !rank.is_empty() {
+            query.identifiers.rank = Some(rank.clone());
+        }
+    }
+
+    if let Some(fields_str) = params.get("fields").and_then(|v| v.first()) {
+        for raw in fields_str.split(',') {
+            let name = raw.trim().to_string();
+            if !name.is_empty() {
+                query.attributes.fields.push(attributes::Field {
+                    name,
+                    modifier: Vec::new(),
+                });
+            }
+        }
+    }
+
+    if let Some(fragment) = params.get("query").and_then(|v| v.first()) {
+        apply_query_fragment(fragment, &mut query);
+    }
+
+    if let Some(size_str) = params.get("size").and_then(|v| v.first()) {
+        if let Ok(n) = size_str.parse::<usize>() {
+            if n > 0 {
+                qparams.size = n;
+            }
+        }
+    }
+    if let Some(offset_str) = params.get("offset").and_then(|v| v.first()) {
+        if let Ok(offset) = offset_str.parse::<usize>() {
+            qparams.page = offset / qparams.size + 1;
+        }
+    }
+    if let Some(sort) = params.get("sortBy").and_then(|v| v.first()) {
+        if !sort.is_empty() {
+            qparams.sort_by = Some(sort.clone());
+        }
+    }
+    if let Some(order) = params
+        .get("sortOrder")
+        .or_else(|| params.get("sortorder"))
+        .and_then(|v| v.first())
+    {
+        qparams.sort_order = match order.to_lowercase().as_str() {
+            "desc" => SortOrder::Desc,
+            _ => SortOrder::Asc,
+        };
+    }
+    if let Some(ie) = params.get("includeEstimates").and_then(|v| v.first()) {
+        qparams.include_estimates = ie.to_lowercase() != "false" && ie != "0";
+    }
+    if let Some(tax) = params.get("taxonomy").and_then(|v| v.first()) {
+        if !tax.is_empty() {
+            qparams.taxonomy = tax.clone();
+        }
+    }
+
+    let query_yaml = query.to_yaml().map_err(|e| e.to_string())?;
+    let params_yaml = serde_yaml::to_string(&qparams).map_err(|e| e.to_string())?;
+    Ok((query_yaml, params_yaml))
+}
+
+/// Parse the `result=` URL param into a [`SearchIndex`].
+fn parse_result_index(result: &str) -> SearchIndex {
+    match result {
+        "assembly" => SearchIndex::Assembly,
+        "sample" => SearchIndex::Sample,
+        _ => SearchIndex::Taxon,
+    }
+}
+
+/// Apply `tax_name=`, `tax_tree=`, and `tax_lineage=` params to a query.
+///
+/// Only the first matching key is applied; structured params take priority
+/// over the `query=` fragment for taxon identity.
+fn apply_taxa_params(
+    params: &std::collections::HashMap<String, Vec<String>>,
+    query: &mut SearchQuery,
+) {
+    for (key, filter_type) in [
+        ("tax_name", identifiers::TaxonFilterType::Name),
+        ("tax_tree", identifiers::TaxonFilterType::Tree),
+        ("tax_lineage", identifiers::TaxonFilterType::Lineage),
+    ] {
+        if let Some(vals) = params.get(key) {
+            let names: Vec<String> = vals
+                .iter()
+                .flat_map(|v| v.split(','))
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty())
+                .collect();
+            if !names.is_empty() {
+                query.identifiers.taxa = Some(identifiers::TaxaIdentifier { names, filter_type });
+                return;
+            }
+        }
+    }
+}
+
+/// Parse the `query=` fragment and merge taxa / attributes into `query`.
+///
+/// Only sets taxa from the fragment when the query does not already have taxa
+/// from structured params (`tax_name=`, etc.).
+fn apply_query_fragment(fragment: &str, query: &mut SearchQuery) {
+    let mut taxa_names: Vec<String> = Vec::new();
+    let mut taxa_filter_type = identifiers::TaxonFilterType::Name;
+    let mut found_taxa = false;
+
+    for part in split_on_and(fragment) {
+        let part = part.trim();
+        if part.is_empty() {
+            continue;
+        }
+        if let Some(inner) = extract_fn_arg(part, "tax_name") {
+            taxa_names.extend(
+                inner
+                    .split(',')
+                    .map(|s| s.trim().to_string())
+                    .filter(|s| !s.is_empty()),
+            );
+            taxa_filter_type = identifiers::TaxonFilterType::Name;
+            found_taxa = true;
+        } else if let Some(inner) = extract_fn_arg(part, "tax_tree") {
+            taxa_names.extend(
+                inner
+                    .split(',')
+                    .map(|s| s.trim().to_string())
+                    .filter(|s| !s.is_empty()),
+            );
+            taxa_filter_type = identifiers::TaxonFilterType::Tree;
+            found_taxa = true;
+        } else if let Some(inner) = extract_fn_arg(part, "tax_lineage") {
+            taxa_names.extend(
+                inner
+                    .split(',')
+                    .map(|s| s.trim().to_string())
+                    .filter(|s| !s.is_empty()),
+            );
+            taxa_filter_type = identifiers::TaxonFilterType::Lineage;
+            found_taxa = true;
+        } else if let Some(rank) = extract_fn_arg(part, "tax_rank") {
+            let rank = rank.trim().to_string();
+            if !rank.is_empty() && query.identifiers.rank.is_none() {
+                query.identifiers.rank = Some(rank);
+            }
+        } else if let Some(ids_str) = part.strip_prefix("assembly_id=") {
+            query.identifiers.assemblies.extend(
+                ids_str
+                    .split(',')
+                    .map(|s| s.trim().to_string())
+                    .filter(|s| !s.is_empty()),
+            );
+        } else if let Some(ids_str) = part.strip_prefix("sample_id=") {
+            query.identifiers.samples.extend(
+                ids_str
+                    .split(',')
+                    .map(|s| s.trim().to_string())
+                    .filter(|s| !s.is_empty()),
+            );
+        } else if let Some(attr) = parse_attribute_fragment(part) {
+            query.attributes.attributes.push(attr);
+        }
+    }
+
+    if found_taxa && query.identifiers.taxa.is_none() && !taxa_names.is_empty() {
+        query.identifiers.taxa = Some(identifiers::TaxaIdentifier {
+            names: taxa_names,
+            filter_type: taxa_filter_type,
+        });
+    }
+}
+
+/// Split a query fragment on ` AND ` (case-insensitive).
+fn split_on_and(fragment: &str) -> Vec<&str> {
+    let upper = fragment.to_uppercase();
+    let sep = " AND ";
+    let mut result: Vec<&str> = Vec::new();
+    let mut start = 0;
+    let mut i = 0;
+    while i + sep.len() <= upper.len() {
+        if upper[i..].starts_with(sep) {
+            result.push(&fragment[start..i]);
+            start = i + sep.len();
+            i = start;
+        } else {
+            i += 1;
+        }
+    }
+    result.push(&fragment[start..]);
+    result
+}
+
+/// Extract the argument from `func_name(arg)`.  Returns `None` otherwise.
+fn extract_fn_arg<'a>(s: &'a str, func_name: &str) -> Option<&'a str> {
+    let prefix = format!("{func_name}(");
+    if s.starts_with(prefix.as_str()) && s.ends_with(')') {
+        Some(&s[prefix.len()..s.len() - 1])
+    } else {
+        None
+    }
+}
+
+/// Parse a single attribute fragment such as `genome_size>=1000000000` or
+/// `min(genome_size)>=1G` into an [`Attribute`].
+///
+/// Operators are tried longest-first to avoid prefix collisions.
+/// A bare field name with no operator is treated as an `exists` test.
+fn parse_attribute_fragment(s: &str) -> Option<attributes::Attribute> {
+    const OPERATORS: &[(&str, attributes::AttributeOperator)] = &[
+        (">=", attributes::AttributeOperator::Ge),
+        ("<=", attributes::AttributeOperator::Le),
+        ("!=", attributes::AttributeOperator::Ne),
+        (">", attributes::AttributeOperator::Gt),
+        ("<", attributes::AttributeOperator::Lt),
+        ("=", attributes::AttributeOperator::Eq),
+    ];
+
+    for (op_str, op) in OPERATORS {
+        if let Some(pos) = s.find(op_str) {
+            let lhs = s[..pos].trim();
+            let rhs = s[pos + op_str.len()..].trim().to_string();
+            if rhs.is_empty() {
+                continue;
+            }
+            let (field_name, summary_modifier) = parse_attribute_lhs(lhs);
+            if field_name.is_empty() {
+                continue;
+            }
+            let modifier = summary_modifier.into_iter().collect();
+            return Some(attributes::Attribute {
+                name: field_name,
+                operator: Some(op.clone()),
+                value: Some(attributes::AttributeValue::Single(rhs)),
+                modifier,
+            });
+        }
+    }
+
+    // No operator — treat as `exists` (bare field name only, no parens)
+    let s = s.trim();
+    if !s.is_empty() && !s.contains('(') && !s.contains(')') {
+        return Some(attributes::Attribute {
+            name: s.to_string(),
+            operator: Some(attributes::AttributeOperator::Exists),
+            value: None,
+            modifier: Vec::new(),
+        });
+    }
+    None
+}
+
+/// Parse a LHS like `min(genome_size)` into `(field_name, optional_modifier)`.
+fn parse_attribute_lhs(lhs: &str) -> (String, Option<attributes::Modifier>) {
+    const SUMMARY_FNS: &[(&str, attributes::Modifier)] = &[
+        ("min", attributes::Modifier::Min),
+        ("max", attributes::Modifier::Max),
+        ("mean", attributes::Modifier::Mean),
+        ("median", attributes::Modifier::Median),
+        ("sum", attributes::Modifier::Sum),
+        ("list", attributes::Modifier::List),
+        ("length", attributes::Modifier::Length),
+    ];
+    for (fn_name, modifier) in SUMMARY_FNS {
+        let prefix = format!("{fn_name}(");
+        if lhs.starts_with(prefix.as_str()) && lhs.ends_with(')') {
+            let field = lhs[prefix.len()..lhs.len() - 1].trim().to_string();
+            return (field, Some(modifier.clone()));
+        }
+    }
+    (lhs.to_string(), None)
+}
+
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 #[cfg(test)]
@@ -413,5 +761,70 @@ taxa: []
             ..Default::default()
         };
         assert!(!params.include_estimates);
+    }
+
+    #[test]
+    fn url_is_report_path() {
+        assert!(url_is_report(
+            "https://goat.genomehubs.org/api/v2/report?report=histogram&x=genome_size&result=taxon"
+        ));
+        assert!(url_is_report(
+            "https://goat.genomehubs.org/report?report=histogram"
+        ));
+        assert!(!url_is_report(
+            "https://goat.genomehubs.org/api/v2/search?tax_name=Primates"
+        ));
+    }
+
+    #[test]
+    fn url_is_report_param() {
+        assert!(url_is_report(
+            "https://example.org/api?report=scatter&result=taxon"
+        ));
+    }
+
+    #[test]
+    fn query_yaml_from_url_params_structured() {
+        let url = "https://goat.genomehubs.org/api/v2/search?tax_name=Primates&fields=genome_size&result=taxon&size=20";
+        let (qy, py) = query_yaml_from_url_params(url).unwrap();
+        let q: SearchQuery = serde_yaml::from_str(&qy).unwrap();
+        assert_eq!(q.index, SearchIndex::Taxon);
+        let taxa = q.identifiers.taxa.unwrap();
+        assert_eq!(taxa.names, vec!["Primates"]);
+        assert_eq!(taxa.filter_type, identifiers::TaxonFilterType::Name);
+        assert_eq!(q.attributes.fields[0].name, "genome_size");
+        let p: QueryParams = serde_yaml::from_str(&py).unwrap();
+        assert_eq!(p.size, 20);
+    }
+
+    #[test]
+    fn query_yaml_from_url_params_query_fragment() {
+        let url = "https://goat.genomehubs.org/api/v2/search?query=tax_name(Mammalia)%20AND%20genome_size%3E%3D1000000000&result=taxon";
+        let (qy, _py) = query_yaml_from_url_params(url).unwrap();
+        let q: SearchQuery = serde_yaml::from_str(&qy).unwrap();
+        let taxa = q.identifiers.taxa.unwrap();
+        assert_eq!(taxa.names, vec!["Mammalia"]);
+        assert_eq!(q.attributes.attributes[0].name, "genome_size");
+    }
+
+    #[test]
+    fn query_yaml_from_url_params_assembly_index() {
+        let url = "https://example.org/search?result=assembly&tax_tree=Mammalia";
+        let (qy, _) = query_yaml_from_url_params(url).unwrap();
+        let q: SearchQuery = serde_yaml::from_str(&qy).unwrap();
+        assert_eq!(q.index, SearchIndex::Assembly);
+        let taxa = q.identifiers.taxa.unwrap();
+        assert_eq!(taxa.filter_type, identifiers::TaxonFilterType::Tree);
+    }
+
+    #[test]
+    fn query_yaml_from_url_params_sort_and_taxonomy() {
+        let url = "https://example.org/search?result=taxon&sortBy=genome_size&sortOrder=desc&taxonomy=ott&includeEstimates=false";
+        let (_qy, py) = query_yaml_from_url_params(url).unwrap();
+        let p: QueryParams = serde_yaml::from_str(&py).unwrap();
+        assert_eq!(p.sort_by, Some("genome_size".to_string()));
+        assert_eq!(p.sort_order, SortOrder::Desc);
+        assert_eq!(p.taxonomy, "ott");
+        assert!(!p.include_estimates);
     }
 }

@@ -466,6 +466,7 @@ class TestSDKParity:
                 "field_names",
                 "field_info",
                 "combine",
+                "from_v2_url",
                 "search_df",
                 "search_polars",
                 "search_all",

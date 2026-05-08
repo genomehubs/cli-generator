@@ -72,6 +72,9 @@ class QueryBuilder:
         self._include_estimates: bool = True
         self._tidy: bool = False
         self._taxonomy: str = "ncbi"
+        # Pre-parsed YAML overrides (set by from_v2_url; take priority in to_*_yaml)
+        self._query_yaml_override: str | None = None
+        self._params_yaml_override: str | None = None
 
     # ── Identifiers ──────────────────────────────────────────────────────────
 
@@ -376,6 +379,9 @@ class QueryBuilder:
 
     def to_query_yaml(self) -> str:
         """Serialise the query into a YAML string for :func:`build_url`."""
+        if self._query_yaml_override is not None:
+            return self._query_yaml_override
+
         import yaml  # type: ignore[import-untyped]
 
         doc: dict[str, Any] = {"index": self._index}
@@ -411,6 +417,9 @@ class QueryBuilder:
 
     def to_params_yaml(self) -> str:
         """Serialise the execution parameters into a YAML string."""
+        if self._params_yaml_override is not None:
+            return self._params_yaml_override
+
         import yaml  # type: ignore[import-untyped]
 
         doc: dict[str, Any] = {
@@ -448,6 +457,98 @@ class QueryBuilder:
         )
         with urllib.request.urlopen(req) as resp:
             return json.loads(resp.read().decode("utf-8"))
+
+    @classmethod
+    def from_v2_url(cls, url: str) -> "QueryBuilder | ReportBuilder":
+        """Reconstruct a builder from a v2 API or UI URL.
+
+        Detects whether the URL is a search or report URL and returns the
+        appropriate builder type.  Report URLs (path ends in ``/report`` or
+        the query string contains ``report=``) return a :class:`ReportBuilder`
+        with an embedded query so that :meth:`ReportBuilder.run` can be called
+        without supplying a separate :class:`QueryBuilder`.
+
+        Args:
+            url: A full v2 API or UI URL, e.g.
+                ``"https://goat.genomehubs.org/api/v2/search?tax_name=Primates&fields=genome_size"``
+                or
+                ``"https://goat.genomehubs.org/report?report=histogram&x=genome_size&result=taxon"``.
+
+        Returns:
+            A populated :class:`QueryBuilder` for search URLs, or a
+            :class:`ReportBuilder` (with an embedded query) for report URLs.
+
+        Raises:
+            ValueError: If URL parsing or YAML serialisation fails.
+        """
+        import urllib.parse
+
+        from . import query_yaml_from_url_params as _parse_search
+        from . import report_yaml_from_url_params as _parse_report
+
+        parsed = urllib.parse.urlparse(url)
+        qs = urllib.parse.parse_qs(parsed.query)
+        is_report = "report" in qs or parsed.path.rstrip("/").endswith("/report")
+
+        if is_report:
+            query_yaml, params_yaml, report_yaml = _parse_report(url)
+            # Build the embedded QueryBuilder
+            qb: QueryBuilder = cls.__new__(cls)
+            qb._index = "taxon"
+            qb._taxa = []
+            qb._assemblies = []
+            qb._samples = []
+            qb._rank = None
+            qb._taxon_filter_type = "name"
+            qb._attributes = []
+            qb._fields = []
+            qb._names = []
+            qb._ranks = []
+            qb._exclude_ancestral = []
+            qb._exclude_descendant = []
+            qb._exclude_direct = []
+            qb._exclude_missing = []
+            qb._size = 10
+            qb._page = 1
+            qb._sort_by = None
+            qb._sort_order = "asc"
+            qb._include_estimates = True
+            qb._tidy = False
+            qb._taxonomy = "ncbi"
+            qb._query_yaml_override = query_yaml
+            qb._params_yaml_override = params_yaml
+            rb = ReportBuilder.__new__(ReportBuilder)
+            rb._doc = {}
+            rb._report_yaml_override = report_yaml
+            rb._embedded_query_builder = qb
+            return rb
+
+        query_yaml, params_yaml = _parse_search(url)
+        qb = cls.__new__(cls)
+        qb._index = "taxon"
+        qb._taxa = []
+        qb._assemblies = []
+        qb._samples = []
+        qb._rank = None
+        qb._taxon_filter_type = "name"
+        qb._attributes = []
+        qb._fields = []
+        qb._names = []
+        qb._ranks = []
+        qb._exclude_ancestral = []
+        qb._exclude_descendant = []
+        qb._exclude_direct = []
+        qb._exclude_missing = []
+        qb._size = 10
+        qb._page = 1
+        qb._sort_by = None
+        qb._sort_order = "asc"
+        qb._include_estimates = True
+        qb._tidy = False
+        qb._taxonomy = "ncbi"
+        qb._query_yaml_override = query_yaml
+        qb._params_yaml_override = params_yaml
+        return qb
 
     def to_v2_url(
         self,
@@ -1220,6 +1321,11 @@ class ReportBuilder:
 
     def __init__(self, report_type: str) -> None:
         self._doc: dict[str, Any] = {"report": report_type}
+        # Set by from_v2_url; takes priority in to_report_yaml() when set.
+        self._report_yaml_override: str | None = None
+        # Set by QueryBuilder.from_v2_url() for report URLs; used by run() when
+        # no explicit query_builder is passed.
+        self._embedded_query_builder: "QueryBuilder | None" = None
 
     def set_x(self, field: str, opts: str = "") -> "ReportBuilder":
         """Set the X-axis field (histogram, scatter, arc reports)."""
@@ -1309,6 +1415,9 @@ class ReportBuilder:
 
     def to_report_yaml(self) -> str:
         """Return the report configuration as a YAML string."""
+        if self._report_yaml_override is not None:
+            return self._report_yaml_override
+
         import yaml  # type: ignore[import-untyped]
 
         return yaml.safe_dump(self._doc, sort_keys=False)
@@ -1332,18 +1441,33 @@ class ReportBuilder:
 
     def run(
         self,
-        query_builder: "QueryBuilder",
+        query_builder: "QueryBuilder | None" = None,
         api_base: str = "https://goat.genomehubs.org/api",
         api_version: str = "v3",
     ) -> Any:
-        """Execute this report against the given :class:`QueryBuilder`'s query.
+        """Execute this report against a :class:`QueryBuilder`'s query.
+
+        When this ``ReportBuilder`` was created via
+        :meth:`QueryBuilder.from_v2_url`, the query is embedded and
+        ``query_builder`` may be omitted.
 
         Args:
-            query_builder: Query that defines the search scope.
+            query_builder: Query that defines the search scope.  May be
+                ``None`` when the builder was produced by
+                :meth:`QueryBuilder.from_v2_url`.
             api_base: Base URL of the API.
             api_version: API version string (default: ``"v3"``).
 
         Returns:
             Raw ``report`` dict from the response.
+
+        Raises:
+            ValueError: When ``query_builder`` is ``None`` and no embedded
+                query is available.
         """
-        return query_builder.report(self, api_base=api_base, api_version=api_version)
+        qb = query_builder if query_builder is not None else self._embedded_query_builder
+        if qb is None:
+            raise ValueError(
+                "run() requires a QueryBuilder argument or a ReportBuilder " "created via QueryBuilder.from_v2_url()"
+            )
+        return qb.report(self, api_base=api_base, api_version=api_version)

@@ -251,8 +251,10 @@ from .{} import (
     search,
     split_source_columns,
     to_tidy_records,
+    query_yaml_from_url_params,
     validate_query_json,
     validate_report_yaml,
+    report_yaml_from_url_params,
     values_only,
 )
 from .query import QueryBuilder
@@ -272,7 +274,9 @@ __all__ = [
     "parse_search_json",
     "parse_tree_json",
     "QueryBuilder",
+    "query_yaml_from_url_params",
     "render_snippet",
+    "report_yaml_from_url_params",
     "search",
     "split_source_columns",
     "to_tidy_records",
@@ -392,22 +396,28 @@ fn copy_embedded_modules(repo_dir: &Path) -> Result<()> {
     }
 
     // Copy parse.rs and validation.rs from the subcrate root (not the query subdirectory).
-    // These modules are self-contained and need no path rewriting.
+    // These modules need crate:: paths rewritten to crate::embedded::core:: for the embedded context.
     let subcrate_src =
         std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("crates/genomehubs-query/src");
     let parse_src = subcrate_src.join("parse.rs");
     let parse_dest = embedded_dir.join("core/parse.rs");
     if parse_src.exists() {
-        std::fs::copy(&parse_src, &parse_dest).context("copying subcrate parse.rs")?;
+        let content = std::fs::read_to_string(&parse_src)
+            .context("reading subcrate parse.rs")?
+            .replace("crate::", "crate::embedded::core::");
+        std::fs::write(&parse_dest, content).context("writing parse.rs")?;
     }
     let validation_src = subcrate_src.join("validation.rs");
     let validation_dest = embedded_dir.join("core/validation.rs");
     if validation_src.exists() {
-        std::fs::copy(&validation_src, &validation_dest)
-            .context("copying subcrate validation.rs")?;
+        let content = std::fs::read_to_string(&validation_src)
+            .context("reading subcrate validation.rs")?
+            .replace("crate::", "crate::embedded::core::");
+        std::fs::write(&validation_dest, content).context("writing validation.rs")?;
     }
 
     // Copy the report/ directory (report/mod.rs + supporting files).
+    // Files in report also need crate:: path rewriting for the embedded context.
     let report_src_dir = subcrate_src.join("report");
     let report_dest_dir = embedded_dir.join("core/report");
     if report_src_dir.is_dir() {
@@ -417,9 +427,17 @@ fn copy_embedded_modules(repo_dir: &Path) -> Result<()> {
             let path = entry.path();
             if let Some(file_name) = path.file_name() {
                 let dest_file = report_dest_dir.join(file_name);
-                std::fs::copy(&path, &dest_file).with_context(|| {
+                let content = std::fs::read_to_string(&path)
+                    .with_context(|| {
+                        format!(
+                            "reading report/{}",
+                            path.file_name().unwrap_or_default().to_string_lossy()
+                        )
+                    })?
+                    .replace("crate::", "crate::embedded::core::");
+                std::fs::write(&dest_file, content).with_context(|| {
                     format!(
-                        "copying report/{}",
+                        "writing report/{}",
                         path.file_name().unwrap_or_default().to_string_lossy()
                     )
                 })?;

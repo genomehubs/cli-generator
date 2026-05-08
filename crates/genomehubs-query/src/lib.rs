@@ -472,3 +472,38 @@ pub fn validate_query_json(
 pub fn validate_report_yaml(report_yaml: &str, field_meta_json: &str) -> String {
     validation::validate_report_yaml(report_yaml, field_meta_json)
 }
+
+/// Parse a v2 API or UI URL into `(query_yaml, params_yaml)` as a JSON pair.
+///
+/// Returns a JSON array `[query_yaml, params_yaml]` on success, or
+/// `{"error":"..."}` on failure.
+///
+/// Handles both structured params (`tax_name=`, `fields=`, …) and the
+/// composite `query=` fragment form.
+#[cfg_attr(feature = "wasm", wasm_bindgen)]
+pub fn query_yaml_from_url_params(url: &str) -> String {
+    match query::query_yaml_from_url_params(url) {
+        Ok((qy, py)) => {
+            let pair = serde_json::json!([qy, py]);
+            pair.to_string()
+        }
+        Err(e) => format!(r#"{{"error":{e:?}}}"#),
+    }
+}
+
+/// Parse a v2 report URL into `(query_yaml, params_yaml, report_yaml)` as a JSON triple.
+///
+/// Returns a JSON array `[query_yaml, params_yaml, report_yaml]` on success,
+/// or `{"error":"..."}` on failure.
+///
+/// The URL must contain a `report=` parameter.
+#[cfg_attr(feature = "wasm", wasm_bindgen)]
+pub fn report_yaml_from_url_params(url: &str) -> String {
+    match report::report_yaml_from_url_params(url) {
+        Ok((qy, py, ry)) => {
+            let triple = serde_json::json!([qy, py, ry]);
+            triple.to_string()
+        }
+        Err(e) => format!(r#"{{"error":{e:?}}}"#),
+    }
+}

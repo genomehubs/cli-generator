@@ -369,6 +369,33 @@ fn validate_report_yaml(report_yaml: &str, field_meta_json: &str) -> String {
     genomehubs_query::validation::validate_report_yaml(report_yaml, field_meta_json)
 }
 
+/// Parse a v2 API or UI URL into `(query_yaml, params_yaml)`.
+///
+/// Handles both structured params (`tax_name=`, `fields=`, `result=`, …) and
+/// the composite `query=` fragment form produced by the GoaT API.
+///
+/// Returns a `(query_yaml, params_yaml)` tuple, both as YAML strings.
+///
+/// Raises `ValueError` on parse or serialisation failure.
+#[cfg(feature = "extension-module")]
+#[pyfunction]
+fn query_yaml_from_url_params(url: &str) -> PyResult<(String, String)> {
+    genomehubs_query::query::query_yaml_from_url_params(url).map_err(|e| PyValueError::new_err(e))
+}
+
+/// Parse a v2 report URL into `(query_yaml, params_yaml, report_yaml)`.
+///
+/// The URL must contain a `report=` parameter or have a `/report` path suffix.
+///
+/// Returns a `(query_yaml, params_yaml, report_yaml)` triple, all as YAML strings.
+///
+/// Raises `ValueError` when the `report=` parameter is absent or serialisation fails.
+#[cfg(feature = "extension-module")]
+#[pyfunction]
+fn report_yaml_from_url_params(url: &str) -> PyResult<(String, String, String)> {
+    genomehubs_query::report::report_yaml_from_url_params(url).map_err(|e| PyValueError::new_err(e))
+}
+
 /// Python module definition for `cli_generator`.
 
 #[cfg(feature = "extension-module")]
@@ -394,5 +421,7 @@ fn cli_generator(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(parse_lookup_json, m)?)?;
     m.add_function(wrap_pyfunction!(parse_histogram_json, m)?)?;
     m.add_function(wrap_pyfunction!(parse_tree_json, m)?)?;
+    m.add_function(wrap_pyfunction!(query_yaml_from_url_params, m)?)?;
+    m.add_function(wrap_pyfunction!(report_yaml_from_url_params, m)?)?;
     Ok(())
 }
