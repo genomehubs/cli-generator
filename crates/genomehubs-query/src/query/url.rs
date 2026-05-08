@@ -898,7 +898,7 @@ mod tests {
                         },
                         attributes: AttributeSet::default(),
                         queries: None,
-            named_queries: None,
+                        named_queries: None,
                         combine_with: CombineStrategy::AND,
                     }
                 })

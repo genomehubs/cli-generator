@@ -78,7 +78,14 @@ pub fn transform_es_hit(
     // Build result from _source identity fields only
     let mut result = serde_json::Map::new();
     if let Some(src) = hit.get("_source").and_then(|v| v.as_object()) {
-        for key in &["taxon_id", "assembly_id", "sample_id", "scientific_name", "taxon_rank", "parent"] {
+        for key in &[
+            "taxon_id",
+            "assembly_id",
+            "sample_id",
+            "scientific_name",
+            "taxon_rank",
+            "parent",
+        ] {
             if let Some(v) = src.get(*key) {
                 result.insert(key.to_string(), v.clone());
             }
@@ -112,7 +119,8 @@ pub fn transform_es_hit(
                         None => continue,
                     };
                     // key is always a single-element array from docvalue_fields
-                    let name = match dv.get("attributes.key")
+                    let name = match dv
+                        .get("attributes.key")
                         .and_then(|v| v.as_array())
                         .and_then(|a| a.first())
                         .and_then(|v| v.as_str())
@@ -123,13 +131,19 @@ pub fn transform_es_hit(
                     let mut field = serde_json::Map::new();
                     for (dv_key, dv_val) in dv {
                         // Strip "attributes." prefix
-                        let short = dv_key.strip_prefix("attributes.").unwrap_or(dv_key.as_str());
+                        let short = dv_key
+                            .strip_prefix("attributes.")
+                            .unwrap_or(dv_key.as_str());
                         if short == "key" {
                             continue;
                         }
                         // Unwrap single-element arrays (ES docvalue_fields format)
                         let scalar = if let Some(arr) = dv_val.as_array() {
-                            if arr.len() == 1 { arr[0].clone() } else { dv_val.clone() }
+                            if arr.len() == 1 {
+                                arr[0].clone()
+                            } else {
+                                dv_val.clone()
+                            }
                         } else {
                             dv_val.clone()
                         };
@@ -148,7 +162,9 @@ pub fn transform_es_hit(
                         // e.g. long_value is null for a half_float attribute).
                         if out_key == "value" {
                             match field.entry(out_key) {
-                                serde_json::map::Entry::Vacant(e) => { e.insert(scalar); }
+                                serde_json::map::Entry::Vacant(e) => {
+                                    e.insert(scalar);
+                                }
                                 serde_json::map::Entry::Occupied(mut e) => {
                                     if e.get().is_null() && !scalar.is_null() {
                                         *e.get_mut() = scalar;

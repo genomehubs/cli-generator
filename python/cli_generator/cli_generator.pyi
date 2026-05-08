@@ -394,6 +394,41 @@ def parse_lookup_json(raw: str) -> str:
     """
     ...
 
+def parse_histogram_json(raw: str) -> str:
+    """Extract histogram buckets from a raw ``/report`` JSON response.
+
+    Returns a compact JSON array of bucket objects.  Categorised histograms
+    retain their ``by_cat`` entries on each bucket.
+
+    Args:
+        raw: Raw JSON string from the ``/report`` API endpoint.
+
+    Returns:
+        JSON array string of bucket objects, or ``{"error":"..."}`` on failure.
+
+    Raises:
+        ValueError: If the input is not valid JSON or ``report.buckets`` is absent.
+    """
+    ...
+
+def parse_tree_json(raw: str) -> str:
+    """Flatten a tree report's ``treeNodes`` map into a JSON array.
+
+    Each element contains ``taxon_id``, ``scientific_name``, ``taxon_rank``,
+    ``count``, ``descendant_count`` (null when absent), ``status``, ``cat``,
+    ``children`` (sorted taxon_id array), and ``fields``.
+
+    Args:
+        raw: Raw JSON string from the ``/report`` API endpoint (tree report).
+
+    Returns:
+        JSON array string, one element per node, or ``{"error":"..."}`` on failure.
+
+    Raises:
+        ValueError: If the input is not valid JSON or ``report.treeNodes`` is absent.
+    """
+    ...
+
 def validate_query_json(
     query_yaml: str,
     field_metadata_json: str,

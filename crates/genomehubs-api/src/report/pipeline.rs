@@ -109,14 +109,8 @@ pub struct TopBucketsStep {
 impl PipelineStep for TopBucketsStep {
     fn apply(&self, mut input: RawBuckets, _ctx: &ReportContext) -> RawBuckets {
         input.sort_by(|a, b| {
-            let a_count = a
-                .get("doc_count")
-                .and_then(|v| v.as_u64())
-                .unwrap_or(0);
-            let b_count = b
-                .get("doc_count")
-                .and_then(|v| v.as_u64())
-                .unwrap_or(0);
+            let a_count = a.get("doc_count").and_then(|v| v.as_u64()).unwrap_or(0);
+            let b_count = b.get("doc_count").and_then(|v| v.as_u64()).unwrap_or(0);
             b_count.cmp(&a_count)
         });
         input.truncate(self.limit);

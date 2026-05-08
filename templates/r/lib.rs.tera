@@ -277,6 +277,26 @@ fn parse_lookup_json(raw: &str) -> String {
     }
 }
 
+/// Extract histogram buckets from a raw `/report` JSON response.
+#[extendr]
+fn parse_histogram_json(raw: &str) -> String {
+    use crate::embedded::core::parse;
+    match parse::parse_histogram_json(raw) {
+        Ok(buckets) => buckets,
+        Err(e) => format!("{{\"error\": \"{}\"}}", e),
+    }
+}
+
+/// Flatten a tree report's `treeNodes` map into a JSON array.
+#[extendr]
+fn parse_tree_json(raw: &str) -> String {
+    use crate::embedded::core::parse;
+    match parse::parse_tree_json(raw) {
+        Ok(nodes) => nodes,
+        Err(e) => format!("{{\"error\": \"{}\"}}", e),
+    }
+}
+
 // Register all exported functions with R.
 extendr_module! {
     mod {% endraw %}{{ r_package_name }}{% raw %};
@@ -295,5 +315,7 @@ extendr_module! {
     fn parse_paginated_json;
     fn parse_record_json;
     fn parse_lookup_json;
+    fn parse_histogram_json;
+    fn parse_tree_json;
 }
 {% endraw %}

@@ -24,10 +24,12 @@ const {
   build_url_for_endpoint: _buildUrlForEndpoint,
   describe_query: _describeQuery,
   parse_batch_json: _parseBatchJson,
+  parse_histogram_json: _parseHistogramJson,
   parse_lookup_json: _parseLookupJson,
   parse_paginated_json: _parsePaginatedJson,
   parse_record_json: _parseRecordJson,
   parse_search_json: _parseSearchJson,
+  parse_tree_json: _parseTreeJson,
   render_snippet: _renderSnippet,
   split_source_columns: _splitSourceColumns,
   to_tidy_records: _toTidyRecords,
@@ -48,6 +50,20 @@ function parseSearchJson(raw) {
 function parseResponseStatus(raw) {
   const str = typeof raw === "string" ? raw : JSON.stringify(raw);
   return JSON.parse(parse_response_status(str));
+}
+
+/** Extract histogram buckets from a raw `/report` JSON response. Returns an array of bucket objects. */
+function parseHistogramJson(raw) {
+  const str = typeof raw === "string" ? raw : JSON.stringify(raw);
+  const result = _parseHistogramJson(str);
+  return JSON.parse(result);
+}
+
+/** Flatten a tree report's `treeNodes` map into an array of node objects. */
+function parseTreeJson(raw) {
+  const str = typeof raw === "string" ? raw : JSON.stringify(raw);
+  const result = _parseTreeJson(str);
+  return JSON.parse(result);
 }
 
 /** Add `{field}__label` columns. mode: "all" | "non_direct" | "ancestral_only" */
@@ -1161,6 +1177,8 @@ export {
   QueryBuilder,
   parseSearchJson,
   parseResponseStatus,
+  parseHistogramJson,
+  parseTreeJson,
   annotateSourceLabels,
   splitSourceColumns,
   valuesOnly,

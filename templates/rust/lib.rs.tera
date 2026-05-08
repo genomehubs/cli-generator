@@ -218,6 +218,31 @@ fn parse_paginated_json(raw: &str) -> String {
     }
 }
 
+/// Extract histogram buckets from a raw `/report` JSON response.
+///
+/// Returns a compact JSON array of bucket objects.  Categorised histograms
+/// retain their `by_cat` entries on each bucket.
+/// Returns `{"error":"..."}` if the input is not valid JSON or `report.buckets` is absent.
+#[cfg(feature = "extension-module")]
+#[pyfunction]
+fn parse_histogram_json(raw: &str) -> String {
+    use crate::embedded::core::parse;
+    parse::parse_histogram_json(raw).unwrap_or_else(|e| {% raw %}format!(r#"{{"error":{e:?}}}"#){% endraw %})
+}
+
+/// Flatten a tree report's `treeNodes` map into a JSON array.
+///
+/// Each element contains `taxon_id`, `scientific_name`, `taxon_rank`, `count`,
+/// `descendant_count` (null when absent), `status`, `cat`, `children` (sorted
+/// taxon_id array), and `fields`.
+/// Returns `{"error":"..."}` if the input is not valid JSON or `report.treeNodes` is absent.
+#[cfg(feature = "extension-module")]
+#[pyfunction]
+fn parse_tree_json(raw: &str) -> String {
+    use crate::embedded::core::parse;
+    parse::parse_tree_json(raw).unwrap_or_else(|e| {% raw %}format!(r#"{{"error":{e:?}}}"#){% endraw %})
+}
+
 /// Validate a query against field metadata and configuration.
 ///
 /// Returns a JSON array of error strings. An empty array means the query is valid.
@@ -259,6 +284,8 @@ fn {{ sdk_name }}(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(annotated_values, m)?)?;
     m.add_function(wrap_pyfunction!(to_tidy_records, m)?)?;
     m.add_function(wrap_pyfunction!(parse_paginated_json, m)?)?;
+    m.add_function(wrap_pyfunction!(parse_histogram_json, m)?)?;
+    m.add_function(wrap_pyfunction!(parse_tree_json, m)?)?;
     m.add_function(wrap_pyfunction!(validate_query_json, m)?)?;
     Ok(())
 }

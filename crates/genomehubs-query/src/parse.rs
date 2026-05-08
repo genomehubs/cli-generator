@@ -1887,3 +1887,145 @@ mod tests {
         assert!(parse_lookup_json("not json").is_err());
     }
 }
+
+// ── Report parse functions ────────────────────────────────────────────────────
+
+/// Extract histogram buckets from a raw `/report` JSON response.
+///
+/// Returns a compact JSON array of bucket objects.  When the report contains
+/// categorised data, each bucket retains its `by_cat` entries.
+///
+/// Returns `Err` if the input is not valid JSON or `report.buckets` is absent.
+pub fn parse_histogram_json(raw: &str) -> Result<String, String> {
+    let envelope: serde_json::Value =
+        serde_json::from_str(raw).map_err(|e| format!("invalid JSON: {e}"))?;
+
+    let buckets = envelope
+        .pointer("/report/buckets")
+        .ok_or_else(|| "missing /report/buckets in response".to_string())?
+        .clone();
+
+    serde_json::to_string(&buckets).map_err(|e| format!("serialisation error: {e}"))
+}
+
+/// Flatten a tree report's `treeNodes` map into a JSON array.
+///
+/// Each element contains the node's identity fields, status, count,
+/// descendant_count (when present), cat label, and fields map.
+/// `children` is serialised as a sorted array of taxon_id strings.
+///
+/// Returns `Err` if the input is not valid JSON or `report.treeNodes` is absent.
+pub fn parse_tree_json(raw: &str) -> Result<String, String> {
+    let envelope: serde_json::Value =
+        serde_json::from_str(raw).map_err(|e| format!("invalid JSON: {e}"))?;
+
+    let nodes = envelope
+        .pointer("/report/treeNodes")
+        .and_then(|v| v.as_object())
+        .ok_or_else(|| "missing /report/treeNodes in response".to_string())?;
+
+    let mut rows: Vec<serde_json::Value> = nodes
+        .iter()
+        .map(|(id, node)| {
+            let children: Vec<String> = node
+                .get("children")
+                .and_then(|c| c.as_object())
+                .map(|obj| {
+                    let mut keys: Vec<String> = obj.keys().cloned().collect();
+                    keys.sort();
+                    keys
+                })
+                .unwrap_or_default();
+
+            serde_json::json!({
+                "taxon_id":         id,
+                "scientific_name":  node.get("scientific_name").cloned().unwrap_or(serde_json::Value::Null),
+                "taxon_rank":       node.get("taxon_rank").cloned().unwrap_or(serde_json::Value::Null),
+                "count":            node.get("count").cloned().unwrap_or(serde_json::json!(0)),
+                "descendant_count": node.get("descendant_count").cloned().unwrap_or(serde_json::Value::Null),
+                "status":           node.get("status").cloned().unwrap_or(serde_json::json!(0)),
+                "cat":              node.get("cat").cloned().unwrap_or(serde_json::Value::Null),
+                "children":         children,
+                "fields":           node.get("fields").cloned().unwrap_or(serde_json::json!({})),
+            })
+        })
+        .collect();
+
+    // Sort by taxon_id for deterministic output
+    rows.sort_by(|a, b| {
+        a.get("taxon_id")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .cmp(b.get("taxon_id").and_then(|v| v.as_str()).unwrap_or(""))
+    });
+
+    serde_json::to_string(&rows).map_err(|e| format!("serialisation error: {e}"))
+}
+
+#[cfg(test)]
+mod report_parse_tests {
+    use super::*;
+
+    #[test]
+    fn parse_histogram_json_basic() {
+        let raw = r#"{"status":{"hits":100},"report":{"buckets":[{"key":1000000,"count":5},{"key":2000000,"count":3}]}}"#;
+        let out = parse_histogram_json(raw).unwrap();
+        let buckets: Vec<serde_json::Value> = serde_json::from_str(&out).unwrap();
+        assert_eq!(buckets.len(), 2);
+        assert_eq!(buckets[0]["key"], 1000000);
+        assert_eq!(buckets[1]["count"], 3);
+    }
+
+    #[test]
+    fn parse_histogram_json_missing_buckets_returns_err() {
+        let raw = r#"{"status":{"hits":0},"report":{}}"#;
+        assert!(parse_histogram_json(raw).is_err());
+    }
+
+    #[test]
+    fn parse_histogram_json_invalid_json_returns_err() {
+        assert!(parse_histogram_json("not json").is_err());
+    }
+
+    #[test]
+    fn parse_tree_json_basic() {
+        let raw = r#"{
+            "status":{"hits":2},
+            "report":{
+                "treeNodes":{
+                    "9608":{"scientific_name":"Canidae","taxon_rank":"family","count":5,"status":0,"children":{"9611":true}},
+                    "9611":{"scientific_name":"Canis","taxon_rank":"genus","count":3,"status":1,"children":{}}
+                }
+            }
+        }"#;
+        let out = parse_tree_json(raw).unwrap();
+        let rows: Vec<serde_json::Value> = serde_json::from_str(&out).unwrap();
+        assert_eq!(rows.len(), 2);
+        // sorted by taxon_id: "9608" < "9611"
+        assert_eq!(rows[0]["taxon_id"], "9608");
+        assert_eq!(rows[0]["children"], serde_json::json!(["9611"]));
+        assert_eq!(rows[1]["taxon_id"], "9611");
+        assert_eq!(rows[1]["children"], serde_json::json!([]));
+    }
+
+    #[test]
+    fn parse_tree_json_missing_nodes_returns_err() {
+        let raw = r#"{"status":{"hits":0},"report":{}}"#;
+        assert!(parse_tree_json(raw).is_err());
+    }
+
+    #[test]
+    fn parse_tree_json_includes_descendant_count_when_present() {
+        let raw = r#"{
+            "status":{"hits":1},
+            "report":{
+                "treeNodes":{
+                    "9608":{"scientific_name":"Canidae","taxon_rank":"family","count":5,"descendant_count":63,"status":0,"children":{}}
+                }
+            }
+        }"#;
+        let out = parse_tree_json(raw).unwrap();
+        let rows: Vec<serde_json::Value> = serde_json::from_str(&out).unwrap();
+        assert_eq!(rows[0]["descendant_count"], 63);
+    }
+}

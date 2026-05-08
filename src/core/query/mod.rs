@@ -9,8 +9,8 @@
 
 pub use genomehubs_query::query::{
     attributes, build_query_url, build_ui_url, identifiers, url, Attribute, AttributeOperator,
-    AttributeSet, AttributeValue, Field, Identifiers, Modifier, QueryParams, SearchIndex,
-    SearchQuery, SortOrder, TaxaIdentifier, TaxonFilterType,
+    AttributeSet, AttributeValue, CombineStrategy, Field, Identifiers, Modifier, QueryParams,
+    SearchIndex, SearchQuery, SortOrder, TaxaIdentifier, TaxonFilterType,
 };
 
 pub mod adapter;

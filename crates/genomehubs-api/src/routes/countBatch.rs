@@ -3,8 +3,8 @@ use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::Value;
 use std::sync::Arc;
 
-use crate::{index_name, routes::ApiStatus, AppState};
 use super::deserialize_helpers;
+use crate::{index_name, routes::ApiStatus, AppState};
 
 /// Combine multiple ES query bodies using bool.should (OR) or bool.must (AND).
 fn combine_es_bodies(

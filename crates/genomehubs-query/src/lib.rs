@@ -292,6 +292,29 @@ pub fn parse_lookup_json(raw: &str) -> String {
     parse::parse_lookup_json(raw).unwrap_or_else(|e| format!(r#"{{"error":{e:?}}}"#))
 }
 
+/// Extract histogram buckets from a raw `/report` JSON response.
+///
+/// Returns a compact JSON array of bucket objects.  Categorised histograms
+/// retain their `by_cat` entries on each bucket.
+///
+/// Returns `{"error":"..."}` if the input is not valid JSON or `report.buckets` is absent.
+#[cfg_attr(feature = "wasm", wasm_bindgen)]
+pub fn parse_histogram_json(raw: &str) -> String {
+    parse::parse_histogram_json(raw).unwrap_or_else(|e| format!(r#"{{"error":{e:?}}}"#))
+}
+
+/// Flatten a tree report's `treeNodes` map into a JSON array.
+///
+/// Each element contains `taxon_id`, `scientific_name`, `taxon_rank`, `count`,
+/// `descendant_count` (null when absent), `status`, `cat`, `children` (sorted
+/// taxon_id array), and `fields`.
+///
+/// Returns `{"error":"..."}` if the input is not valid JSON or `report.treeNodes` is absent.
+#[cfg_attr(feature = "wasm", wasm_bindgen)]
+pub fn parse_tree_json(raw: &str) -> String {
+    parse::parse_tree_json(raw).unwrap_or_else(|e| format!(r#"{{"error":{e:?}}}"#))
+}
+
 /// Describe a query in human-readable form.
 ///
 /// Generates a concise or verbose prose description of a genomehubs query,

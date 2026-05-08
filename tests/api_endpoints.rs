@@ -471,7 +471,7 @@ fn api_searchbatch_invalid_yaml() {
 }
 
 #[test]
-fn api_countBatch_multiple_queries() {
+fn api_count_batch_multiple_queries() {
     let _cfg = match load_es_config() {
         Some(c) => c,
         None => return,
@@ -531,15 +531,15 @@ fn api_countBatch_multiple_queries() {
                     "result[{}].count should be a number",
                     i
                 );
-                let count = result["count"].as_u64().unwrap_or(0);
-                assert!(count >= 0, "result[{}].count should be non-negative", i);
+                let _count = result["count"].as_u64().unwrap_or(0);
+                // u64 is always non-negative; the is_number() assertion above is sufficient
             }
         }
     });
 }
 
 #[test]
-fn api_countBatch_max_queries_limit() {
+fn api_count_batch_max_queries_limit() {
     let _cfg = match load_es_config() {
         Some(c) => c,
         None => return,
@@ -581,7 +581,7 @@ fn api_countBatch_max_queries_limit() {
 }
 
 #[test]
-fn api_countBatch_invalid_yaml() {
+fn api_count_batch_invalid_yaml() {
     let _cfg = match load_es_config() {
         Some(c) => c,
         None => return,
@@ -747,7 +747,7 @@ fn api_search_multi_query_max_limit() {
 }
 
 #[test]
-fn api_countBatch_multi_query_per_item() {
+fn api_count_batch_multi_query_per_item() {
     let _cfg = match load_es_config() {
         Some(c) => c,
         None => return,

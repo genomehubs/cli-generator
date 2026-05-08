@@ -305,6 +305,31 @@ fn parse_lookup_json(raw: &str) -> String {
     genomehubs_query::parse_lookup_json(raw)
 }
 
+/// Extract histogram buckets from a raw `/report` JSON response.
+///
+/// Returns a compact JSON array of bucket objects.
+/// Each bucket retains its `by_cat` entries when categorised data is present.
+///
+/// Returns `{"error":"..."}` if the input is not valid JSON or `report.buckets` is absent.
+#[cfg(feature = "extension-module")]
+#[pyfunction]
+fn parse_histogram_json(raw: &str) -> String {
+    genomehubs_query::parse_histogram_json(raw)
+}
+
+/// Flatten a tree report's `treeNodes` map into a JSON array.
+///
+/// Each element contains `taxon_id`, `scientific_name`, `taxon_rank`, `count`,
+/// `descendant_count` (null when absent), `status`, `cat`, `children` (sorted
+/// taxon_id array), and `fields`.
+///
+/// Returns `{"error":"..."}` if the input is not valid JSON or `report.treeNodes` is absent.
+#[cfg(feature = "extension-module")]
+#[pyfunction]
+fn parse_tree_json(raw: &str) -> String {
+    genomehubs_query::parse_tree_json(raw)
+}
+
 /// Validate a query against field metadata and configuration.
 ///
 /// Accepts YAML representations of the query and field metadata as JSON, and
@@ -356,5 +381,7 @@ fn cli_generator(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(parse_batch_json, m)?)?;
     m.add_function(wrap_pyfunction!(parse_record_json, m)?)?;
     m.add_function(wrap_pyfunction!(parse_lookup_json, m)?)?;
+    m.add_function(wrap_pyfunction!(parse_histogram_json, m)?)?;
+    m.add_function(wrap_pyfunction!(parse_tree_json, m)?)?;
     Ok(())
 }

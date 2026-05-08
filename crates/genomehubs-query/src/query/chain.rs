@@ -166,7 +166,7 @@ impl ChainRef {
 
         // Key must start with a lowercase letter and be purely alphanumeric.
         let mut key_chars = key.chars();
-        if !key_chars.next().map_or(false, |c| c.is_ascii_lowercase()) {
+        if !key_chars.next().is_some_and(|c| c.is_ascii_lowercase()) {
             return None;
         }
         if !key_chars.all(|c| c.is_ascii_alphanumeric()) {
@@ -285,7 +285,7 @@ pub fn collect_chain_refs(
 /// in `resolved`, or [`ChainError::TooManyHits`] if the resolved value list
 /// for a key exceeds the spec's configured limit.
 pub fn resolve_chain_refs(
-    attributes: &mut Vec<super::super::query::attributes::Attribute>,
+    attributes: &mut [super::super::query::attributes::Attribute],
     resolved: &HashMap<String, Vec<String>>,
     specs: &HashMap<String, NamedQuerySpec>,
 ) -> Result<(), ChainError> {
@@ -376,7 +376,8 @@ mod tests {
 
     #[test]
     fn named_query_spec_parses_cross_index() {
-        let spec = NamedQuerySpec::from_legacy_string("assembly--assembly_span>1000000000").unwrap();
+        let spec =
+            NamedQuerySpec::from_legacy_string("assembly--assembly_span>1000000000").unwrap();
         assert_eq!(spec.index, Some(SearchIndex::Assembly));
         assert_eq!(spec.filter_expr, "assembly_span>1000000000");
     }
@@ -475,7 +476,12 @@ mod tests {
         let specs = HashMap::new();
 
         let err = resolve_chain_refs(&mut attrs, &resolved, &specs).unwrap_err();
-        assert_eq!(err, ChainError::UndefinedQuery { key: "queryZ".to_string() });
+        assert_eq!(
+            err,
+            ChainError::UndefinedQuery {
+                key: "queryZ".to_string()
+            }
+        );
     }
 
     #[test]

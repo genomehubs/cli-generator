@@ -3,8 +3,8 @@ use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::Value;
 use std::sync::Arc;
 
-use crate::{index_name, routes::ApiStatus, AppState};
 use super::deserialize_helpers;
+use crate::{index_name, routes::ApiStatus, AppState};
 
 #[derive(utoipa::ToSchema)]
 pub struct SearchBatchItem {

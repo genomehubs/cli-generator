@@ -62,10 +62,7 @@ pub async fn execute_named_queries(
     let mut by_index: HashMap<String, Vec<&str>> = HashMap::new();
     for (key, spec) in named_queries {
         let target_index = resolve_index(spec, parent_index, state);
-        by_index
-            .entry(target_index)
-            .or_default()
-            .push(key.as_str());
+        by_index.entry(target_index).or_default().push(key.as_str());
     }
 
     // For each index group, batch the queries via _msearch.
@@ -158,7 +155,11 @@ async fn execute_batch(
                 json!({ "match_all": {} })
             }
         } else {
-            let scope = if inherit { base_query } else { &json!({ "match_all": {} }) };
+            let scope = if inherit {
+                base_query
+            } else {
+                &json!({ "match_all": {} })
+            };
             filter_expr_to_es_query(&spec.filter_expr, scope).map_err(|e| {
                 ChainError::SubQueryFailed {
                     key: key.to_string(),
@@ -205,15 +206,15 @@ async fn execute_batch(
         message: format!("msearch response parse error: {e}"),
     })?;
 
-    let responses = data["responses"].as_array().ok_or_else(|| {
-        ChainError::SubQueryFailed {
+    let responses = data["responses"]
+        .as_array()
+        .ok_or_else(|| ChainError::SubQueryFailed {
             key: key_specs
                 .first()
                 .map(|(k, _)| (*k).to_string())
                 .unwrap_or_default(),
             message: "msearch response missing 'responses' array".to_string(),
-        }
-    })?;
+        })?;
 
     // Extract field values from each response.
     let mut result: HashMap<String, Vec<String>> = HashMap::new();
@@ -224,7 +225,10 @@ async fn execute_batch(
                 message: format!("ES error: {error}"),
             });
         }
-        let hits = response["hits"]["hits"].as_array().cloned().unwrap_or_default();
+        let hits = response["hits"]["hits"]
+            .as_array()
+            .cloned()
+            .unwrap_or_default();
         let values: Vec<String> = hits
             .iter()
             .filter_map(|hit| hit["_source"].get(field.as_str()))

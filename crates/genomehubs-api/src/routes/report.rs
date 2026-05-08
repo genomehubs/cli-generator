@@ -156,7 +156,12 @@ pub async fn post_report(
         };
 
     // Build base query from search parameters
-    let base_query = match build_report_query(&search_query, &params, &state.default_taxonomy, types_map.as_ref()) {
+    let base_query = match build_report_query(
+        &search_query,
+        &params,
+        &state.default_taxonomy,
+        types_map.as_ref(),
+    ) {
         Ok(q) => q,
         Err(e) => bail!(e),
     };
@@ -275,8 +280,8 @@ fn build_report_query(
         },
         None,
         None,
-        1,    // size: only use for structuring query, not actual size
-        0,    // offset
+        1, // size: only use for structuring query, not actual size
+        0, // offset
         types_map,
         Some(group),
     )

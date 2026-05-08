@@ -5,6 +5,8 @@
 use anyhow::{Context, Result};
 
 const API_BASE: &str = super::super::cli_meta::API_BASE;
+const API_BASE_URL: &str = super::super::cli_meta::API_BASE_URL;
+const API_VERSION: &str = super::super::cli_meta::API_VERSION;
 const UI_BASE_URL: &str = super::super::cli_meta::UI_BASE_URL;
 
 /// Percent-encode a string using RFC 3986 unreserved characters.
@@ -21,6 +23,79 @@ fn pct_encode(s: &str) -> String {
             _ => format!("%{b:02X}"),
         })
         .collect()
+}
+
+/// Return true if the configured API version is v3.
+#[inline]
+fn is_v3() -> bool {
+    API_VERSION == "v3"
+}
+
+/// POST a JSON body to `url` and return the response body as a string.
+fn post_json(url: &str, body: &serde_json::Value) -> Result<String> {
+    let client = reqwest::blocking::Client::new();
+    client
+        .post(url)
+        .header("Content-Type", "application/json")
+        .header("Accept", "application/json")
+        .json(body)
+        .send()
+        .with_context(|| format!("HTTP POST {url}"))?
+        .error_for_status()
+        .with_context(|| format!("non-2xx response from {url}"))?
+        .text()
+        .context("reading response body")
+}
+
+/// Build the v3 POST body for a search or count request.
+///
+/// `search_after` is the opaque cursor from a previous `/search` response.
+fn build_search_post_body(
+    index: super::indexes::Index,
+    query: &str,
+    fields: &[&str],
+    size: usize,
+    include_estimates: bool,
+    opts: &SearchOptions,
+    search_after: Option<&serde_json::Value>,
+) -> serde_json::Value {
+    let query_obj = serde_json::json!({
+        "index": index.as_str(),
+        "query": query,
+        "fields": fields,
+        "size": size,
+    });
+
+    let mut params_obj = serde_json::json!({
+        "taxonomy": opts.taxonomy,
+        "include_estimates": include_estimates,
+        "sort_order": opts.sort_order,
+    });
+    if let Some(ref sort_by) = opts.sort_by {
+        params_obj["sort_by"] = serde_json::Value::String(sort_by.clone());
+    }
+    let offset = opts.page.saturating_sub(1) * size;
+    if offset > 0 {
+        params_obj["offset"] = serde_json::json!(offset);
+    }
+    if !opts.exclude_ancestral.is_empty() {
+        params_obj["exclude_ancestral"] = serde_json::json!(opts.exclude_ancestral);
+    }
+    if !opts.exclude_descendant.is_empty() {
+        params_obj["exclude_descendant"] = serde_json::json!(opts.exclude_descendant);
+    }
+    if !opts.exclude_direct.is_empty() {
+        params_obj["exclude_direct"] = serde_json::json!(opts.exclude_direct);
+    }
+    if !opts.exclude_missing.is_empty() {
+        params_obj["exclude_missing"] = serde_json::json!(opts.exclude_missing);
+    }
+
+    let mut body = serde_json::json!({ "query": query_obj, "params": params_obj });
+    if let Some(sa) = search_after {
+        body["search_after"] = sa.clone();
+    }
+    body
 }
 
 /// Optional parameters that supplement the core search query.
@@ -70,8 +145,10 @@ impl Default for SearchOptions {
 
 /// Perform a search query against the {{ site_display_name }} API.
 ///
-/// Returns the raw response body as a string (TSV, JSON, or CSV depending
-/// on the `Accept` header set by the caller).
+/// When the configured `API_VERSION` is `"v3"`, POSTs to `/v3/search` and
+/// returns a JSON flat-records array (suitable for `output::print_records`).
+/// Otherwise falls back to a v2 GET request and returns the raw API response
+/// body (TSV, JSON, or CSV per the `Accept` header).
 pub fn search(
     index: super::indexes::Index,
     query: &str,
@@ -81,17 +158,26 @@ pub fn search(
     accept: &str,
     opts: &SearchOptions,
 ) -> Result<String> {
-    let url = search_url(index, query, fields, size, include_estimates, opts);
-    let client = reqwest::blocking::Client::new();
-    client
-        .get(&url)
-        .header("Accept", accept)
-        .send()
-        .with_context(|| format!("HTTP GET {url}"))?
-        .error_for_status()
-        .with_context(|| format!("non-2xx response from {url}"))?
-        .text()
-        .context("reading response body")
+    if is_v3() {
+        let body = build_search_post_body(index, query, fields, size, include_estimates, opts, None);
+        let url = format!("{API_BASE_URL}/v3/search");
+        let raw = post_json(&url, &body)?;
+        // parse_search_json returns a JSON flat-records array
+        crate::embedded::core::parse::parse_search_json(&raw)
+            .map_err(|e| anyhow::anyhow!("{e}"))
+    } else {
+        let url = search_url(index, query, fields, size, include_estimates, opts);
+        let client = reqwest::blocking::Client::new();
+        client
+            .get(&url)
+            .header("Accept", accept)
+            .send()
+            .with_context(|| format!("HTTP GET {url}"))?
+            .error_for_status()
+            .with_context(|| format!("non-2xx response from {url}"))?
+            .text()
+            .context("reading response body")
+    }
 }
 
 /// Build the search URL without performing an HTTP request.
@@ -193,8 +279,35 @@ pub fn ui_url(
 
 /// Perform a count query against the {{ site_display_name }} API.
 ///
-/// Returns the hit count as a `u64`.
+/// Uses v3 POST when the configured `API_VERSION` is `"v3"`, otherwise falls
+/// back to a v2 GET request.  Returns the hit count as a `u64`.
 pub fn count(index: super::indexes::Index, query: &str) -> Result<u64> {
+    if is_v3() {
+        count_v3(index, query)
+    } else {
+        count_v2(index, query)
+    }
+}
+
+/// Count using the v3 POST `/count` endpoint.
+fn count_v3(index: super::indexes::Index, query: &str) -> Result<u64> {
+    let url = format!("{API_BASE_URL}/v3/count");
+    let body = serde_json::json!({
+        "query": {
+            "index": index.as_str(),
+            "query": query,
+            "size": 0,
+        },
+        "params": {},
+    });
+    let raw = post_json(&url, &body)?;
+    let status = crate::embedded::core::parse::parse_response_status(&raw)
+        .map_err(|e| anyhow::anyhow!("{e}"))?;
+    Ok(status.hits)
+}
+
+/// Count using the legacy v2 GET `/count` endpoint.
+fn count_v2(index: super::indexes::Index, query: &str) -> Result<u64> {
     let url = format!(
         "{API_BASE}/count?query={}&result={}",
         pct_encode(query),
@@ -228,21 +341,88 @@ pub fn lookup(index: super::indexes::Index, search_term: &str, size: usize) -> R
         .context("reading response body")
 }
 
-/// Fetch all matching records using the `/searchPaginated` cursor endpoint.
+/// Fetch all matching records using cursor-based pagination.
 ///
-/// Drives a blocking fetch loop with a fixed chunk size of 1 000 records per
-/// page.  Continues until the API signals `hasMore: false` or until
-/// `max_records` have been accumulated (pass `usize::MAX` for unbounded).
+/// When the configured `API_VERSION` is `"v3"`, drives a loop of POST
+/// requests to `/v3/search` using the `search_after` cursor from each
+/// response.  Otherwise falls back to repeated GET requests against the
+/// legacy `/searchPaginated` endpoint.
 ///
-/// Returns a flat JSON array (as a `String`) containing every record in the
-/// same format as a single `search()` response, ready to pass to
-/// `parse_search_json` in the embedded parse module.
+/// Continues until no more pages exist or until `max_records` have been
+/// accumulated (pass `usize::MAX` for unbounded).
 ///
-/// Each page is fetched synchronously; the caller can print progress using
-/// `on_page(fetched, total_hits)` which is called after each page with the
-/// running count of records accumulated so far and the total hit count from
-/// the API's `status` block.
+/// Returns a flat `Vec<Value>` of records — same shape as `parse_search_json`
+/// output.  Each page calls `on_page(fetched, total_hits)` for progress
+/// reporting.
 pub fn search_all(
+    index: super::indexes::Index,
+    query: &str,
+    fields: &[&str],
+    include_estimates: bool,
+    opts: &SearchOptions,
+    max_records: usize,
+    on_page: impl Fn(usize, u64),
+) -> Result<Vec<serde_json::Value>> {
+    if is_v3() {
+        search_all_v3(index, query, fields, include_estimates, opts, max_records, on_page)
+    } else {
+        search_all_v2(index, query, fields, include_estimates, opts, max_records, on_page)
+    }
+}
+
+/// Fetch all records via repeated v3 POST `/search` with `search_after` cursor.
+fn search_all_v3(
+    index: super::indexes::Index,
+    query: &str,
+    fields: &[&str],
+    include_estimates: bool,
+    opts: &SearchOptions,
+    max_records: usize,
+    on_page: impl Fn(usize, u64),
+) -> Result<Vec<serde_json::Value>> {
+    use crate::embedded::core::parse::parse_search_json;
+
+    const CHUNK_SIZE: usize = 1_000;
+    let fetch_size = CHUNK_SIZE.min(max_records);
+
+    let mut all_records: Vec<serde_json::Value> = Vec::new();
+    let mut search_after: Option<serde_json::Value> = None;
+    let url = format!("{API_BASE_URL}/v3/search");
+
+    loop {
+        let body = build_search_post_body(index, query, fields, fetch_size, include_estimates, opts, search_after.as_ref());
+        let raw = post_json(&url, &body)?;
+
+        // Extract total hits and next cursor from the envelope before parsing
+        let envelope: serde_json::Value = serde_json::from_str(&raw)
+            .context("parsing v3 search envelope")?;
+        let total_hits = envelope
+            .pointer("/status/hits")
+            .and_then(|v| v.as_u64())
+            .unwrap_or(0);
+        let next_cursor = envelope.get("search_after").cloned();
+
+        let records_json = parse_search_json(&raw).map_err(|e| anyhow::anyhow!("{e}"))?;
+        let records: Vec<serde_json::Value> =
+            serde_json::from_str(&records_json).context("parsing flat records")?;
+
+        let remaining = max_records.saturating_sub(all_records.len());
+        let is_last_page = records.len() < fetch_size || next_cursor.is_none();
+        let take = remaining.min(records.len());
+        all_records.extend(records.into_iter().take(take));
+        on_page(all_records.len(), total_hits);
+
+        if is_last_page || all_records.len() >= max_records {
+            break;
+        }
+        search_after = next_cursor;
+    }
+
+    Ok(all_records)
+}
+
+/// Fetch all records via the legacy v2 GET `/searchPaginated` endpoint.
+fn search_all_v2(
     index: super::indexes::Index,
     query: &str,
     fields: &[&str],
@@ -288,6 +468,7 @@ pub fn search_all(
 
     Ok(all_records)
 }
+
 
 /// Build a `/searchPaginated` URL.
 fn paginated_url(
@@ -422,5 +603,120 @@ pub fn msearch(
     }
 
     Ok(all_results)
+}
+
+/// Configuration for a `/report` request.
+///
+/// All optional fields default to `None` / sensible values.  Set only the
+/// fields your report type requires.
+#[derive(Debug, Default)]
+pub struct ReportOptions {
+    /// X-axis field name (histogram, scatter, xPerRank, tree, map, arc).
+    pub x: Option<String>,
+    /// X-axis modifiers (e.g. `"count"`, `"min"`, `"max"`).
+    pub x_opts: Option<String>,
+    /// Y-axis field name or field list (scatter only).
+    pub y: Option<String>,
+    /// Y-axis modifiers.
+    pub y_opts: Option<String>,
+    /// Category field for colour splits.
+    pub cat: Option<String>,
+    /// Category modifiers.
+    pub cat_opts: Option<String>,
+    /// Taxonomic rank to restrict results to.
+    pub rank: Option<String>,
+    /// Fields to include on each result node.
+    pub fields: Vec<String>,
+    /// Filter on status field (e.g. `"0"` for any value).
+    pub status_filter: Option<String>,
+    /// Rank used for `by_cat` category aggregation.
+    pub cat_rank: Option<String>,
+    /// Collapse monotypic nodes in tree reports.
+    pub collapse_monotypic: bool,
+    /// Minimum rank to preserve when collapsing.
+    pub preserve_rank: Option<String>,
+    /// Rank to count descendants for in tree reports (e.g. `"species"`).
+    pub count_rank: Option<String>,
+    /// Field used for map/arc sample locations.
+    pub location_field: Option<String>,
+    /// H3 resolution for hexagonal maps.
+    pub hex_resolution: Option<u32>,
+    /// Result count threshold above which the report switches to map mode.
+    pub map_threshold: Option<u32>,
+    /// Result count threshold above which the report switches to scatter mode.
+    pub scatter_threshold: Option<u32>,
+}
+
+/// Run a report query against the v3 `/report` endpoint.
+///
+/// `report_type` must be one of `histogram`, `scatter`, `xPerRank`, `sources`,
+/// `tree`, `map`, or `arc`.  The query + params are the same as for `search`.
+/// Returns the raw JSON string from the API (the full `{status, report}` envelope).
+///
+/// Only available when `API_VERSION == "v3"`.
+pub fn report(
+    index: super::indexes::Index,
+    query: &str,
+    report_type: &str,
+    opts: &SearchOptions,
+    report_opts: &ReportOptions,
+) -> Result<String> {
+    let url = format!("{API_BASE_URL}/v3/report");
+
+    let mut report_cfg = serde_json::json!({
+        "report": report_type,
+    });
+    let cfg = report_cfg.as_object_mut().unwrap();
+    if let Some(ref x) = report_opts.x {
+        cfg.insert("x".to_string(), serde_json::Value::String(x.clone()));
+    }
+    if let Some(ref x_opts) = report_opts.x_opts {
+        cfg.insert("xOpts".to_string(), serde_json::Value::String(x_opts.clone()));
+    }
+    if let Some(ref y) = report_opts.y {
+        cfg.insert("y".to_string(), serde_json::Value::String(y.clone()));
+    }
+    if let Some(ref y_opts) = report_opts.y_opts {
+        cfg.insert("yOpts".to_string(), serde_json::Value::String(y_opts.clone()));
+    }
+    if let Some(ref cat) = report_opts.cat {
+        cfg.insert("cat".to_string(), serde_json::Value::String(cat.clone()));
+    }
+    if let Some(ref cat_opts) = report_opts.cat_opts {
+        cfg.insert("catOpts".to_string(), serde_json::Value::String(cat_opts.clone()));
+    }
+    if let Some(ref rank) = report_opts.rank {
+        cfg.insert("rank".to_string(), serde_json::Value::String(rank.clone()));
+    }
+    if !report_opts.fields.is_empty() {
+        cfg.insert("fields".to_string(), serde_json::json!(report_opts.fields));
+    }
+    if let Some(ref cat_rank) = report_opts.cat_rank {
+        cfg.insert("catRank".to_string(), serde_json::Value::String(cat_rank.clone()));
+    }
+    if report_opts.collapse_monotypic {
+        cfg.insert("collapseMonotypic".to_string(), serde_json::Value::Bool(true));
+    }
+    if let Some(ref preserve_rank) = report_opts.preserve_rank {
+        cfg.insert("preserveRank".to_string(), serde_json::Value::String(preserve_rank.clone()));
+    }
+    if let Some(ref count_rank) = report_opts.count_rank {
+        cfg.insert("countRank".to_string(), serde_json::Value::String(count_rank.clone()));
+    }
+
+    let query_obj = serde_json::json!({
+        "index": index.as_str(),
+        "query": query,
+    });
+    let params_obj = serde_json::json!({
+        "taxonomy": opts.taxonomy,
+    });
+    let body = serde_json::json!({
+        "query": query_obj,
+        "params": params_obj,
+        "report": report_cfg,
+    });
+
+    post_json(&url, &body)
 }
 

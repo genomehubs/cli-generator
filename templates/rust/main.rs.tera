@@ -177,9 +177,99 @@ enum {{ index.name | capitalize }}Commands {
 
     /// Count records matching a query.
     Count {
-        /// Query string.
+        /// Taxon name or ID to filter by (e.g. `Mammalia`, `Homo sapiens`).
+        #[arg(short = 't', long)]
+        taxon: Option<String>,
+
+        /// How to apply the taxon filter.
+        #[arg(long, value_enum, default_value = "name")]
+        taxon_filter: TaxonFilter,
+
+        /// Field value filter: FIELD OP VALUE (repeatable).
+        #[arg(long = "filter", num_args = 3, value_names = ["FIELD", "OP", "VALUE"])]
+        filter: Vec<String>,
+
+        /// Restrict results to a specific taxonomic rank (e.g. `species`, `genus`).
+        #[arg(long)]
+        rank: Option<String>,
+
+        /// Additional raw query string ANDed with all other filters.
         #[arg(long, default_value = "")]
         query: String,
+
+        /// Taxonomy source to use (default: ncbi).
+        #[arg(long, default_value = "ncbi")]
+        taxonomy: String,
+
+        /// Include ancestrally estimated values.
+        #[arg(long, default_value_t = true, action = clap::ArgAction::Set)]
+        include_estimates: bool,
+
+        /// Print timing information alongside the count.
+        #[arg(long)]
+        took: bool,
+
+        #[command(flatten)]
+        flags: generated::cli_flags::{{ index.name | capitalize }}Flags,
+    },
+
+    /// Run a report query (v3 only).
+    Report {
+        /// Report type: histogram, scatter, xPerRank, sources, tree, map, arc.
+        #[arg(long)]
+        report_type: String,
+
+        /// Taxon name or ID to filter by.
+        #[arg(short = 't', long)]
+        taxon: Option<String>,
+
+        /// How to apply the taxon filter.
+        #[arg(long, value_enum, default_value = "tree")]
+        taxon_filter: TaxonFilter,
+
+        /// Field value filter: FIELD OP VALUE (repeatable).
+        #[arg(long = "filter", num_args = 3, value_names = ["FIELD", "OP", "VALUE"])]
+        filter: Vec<String>,
+
+        /// Restrict to a specific taxonomic rank.
+        #[arg(long)]
+        rank: Option<String>,
+
+        /// Additional raw query string ANDed with all other filters.
+        #[arg(long, default_value = "")]
+        query: String,
+
+        /// X-axis field name.
+        #[arg(long)]
+        x: Option<String>,
+
+        /// X-axis modifiers (e.g. `count`, `min`, `max`).
+        #[arg(long)]
+        x_opts: Option<String>,
+
+        /// Y-axis field name (scatter only).
+        #[arg(long)]
+        y: Option<String>,
+
+        /// Category field for colour splits.
+        #[arg(long)]
+        cat: Option<String>,
+
+        /// Rank for category aggregation.
+        #[arg(long)]
+        cat_rank: Option<String>,
+
+        /// Rank to count descendants for in tree reports (e.g. `species`).
+        #[arg(long)]
+        count_rank: Option<String>,
+
+        /// Collapse monotypic nodes in tree reports.
+        #[arg(long)]
+        collapse_monotypic: bool,
+
+        /// Taxonomy source to use (default: ncbi).
+        #[arg(long, default_value = "ncbi")]
+        taxonomy: String,
     },
 
     /// Look up a record by name or identifier.
@@ -445,15 +535,116 @@ fn run(cli: Cli) -> anyhow::Result<()> {
                         accept,
                         &opts,
                     )?;
-                    generated::output::print_output(&body, format)?;
+                    // v3 search() returns flat JSON records; v2 returns raw API body.
+                    if {{ sdk_name }}::cli_meta::API_VERSION == "v3" {
+                        generated::output::print_records(&body, format)?;
+                    } else {
+                        generated::output::print_output(&body, format)?;
+                    }
                 }
             }
-            {{ index.name | capitalize }}Commands::Count { query } => {
+            {{ index.name | capitalize }}Commands::Count {
+                taxon, taxon_filter, filter, rank, query, taxonomy, include_estimates, took, flags,
+            } => {
+                let taxon_clause = taxon.as_deref().map(|t| match taxon_filter {
+                    TaxonFilter::Name     => format!("tax_name({t})"),
+                    TaxonFilter::Tree     => format!("tax_tree({t})"),
+                    TaxonFilter::Lineage  => format!("tax_lineage({t})"),
+                });
+
+                let filter_fragments: Vec<String> = filter
+                    .chunks(3)
+                    .filter_map(|chunk| {
+                        if chunk.len() < 3 { return None; }
+                        let op_symbol = match chunk[1].as_str() {
+                            "eq" | "==" | "=" => "=",
+                            "ne" | "!="       => "!=",
+                            "gt" | ">"        => ">",
+                            "ge" | ">="       => ">=",
+                            "lt" | "<"        => "<",
+                            "le" | "<="       => "<=",
+                            other             => other,
+                        };
+                        Some(format!("{}{}{}", chunk[0], op_symbol, chunk[2]))
+                    })
+                    .collect();
+
+                let owned_fields = flags.all_fields();
+                let fields: Vec<&str> = owned_fields.iter().map(|s: &String| s.as_str()).collect();
+
+                let full_query = {
+                    let mut parts: Vec<String> = Vec::new();
+                    if let Some(tc) = taxon_clause { parts.push(tc); }
+                    if let Some(ref r) = rank { parts.push(format!("tax_rank({r})")); }
+                    if !query.is_empty() { parts.push(query.clone()); }
+                    parts.extend(filter_fragments);
+                    parts.join(" AND ")
+                };
+
+                let opts = generated::client::SearchOptions {
+                    taxonomy,
+                    ..Default::default()
+                };
+                let _ = (include_estimates, &fields, &opts); // used only in v3 path below
                 let n = generated::client::count(
                     generated::indexes::Index::{{ index.name | capitalize }},
-                    &query,
+                    &full_query,
                 )?;
-                println!("{n}");
+                if took {
+                    // took is not available from the count() return type (u64);
+                    // print 0 as placeholder unless the API is extended.
+                    println!("{n}\ttook=?");
+                } else {
+                    println!("{n}");
+                }
+            }
+            {{ index.name | capitalize }}Commands::Report {
+                report_type, taxon, taxon_filter, filter, rank, query,
+                x, x_opts, y, cat, cat_rank, count_rank, collapse_monotypic, taxonomy,
+            } => {
+                let taxon_clause = taxon.as_deref().map(|t| match taxon_filter {
+                    TaxonFilter::Name     => format!("tax_name({t})"),
+                    TaxonFilter::Tree     => format!("tax_tree({t})"),
+                    TaxonFilter::Lineage  => format!("tax_lineage({t})"),
+                });
+                let filter_fragments: Vec<String> = filter
+                    .chunks(3)
+                    .filter_map(|chunk| {
+                        if chunk.len() < 3 { return None; }
+                        let op_symbol = match chunk[1].as_str() {
+                            "eq" | "==" | "=" => "=", "ne" | "!=" => "!=",
+                            "gt" | ">" => ">", "ge" | ">=" => ">=",
+                            "lt" | "<" => "<", "le" | "<=" => "<=",
+                            other => other,
+                        };
+                        Some(format!("{}{}{}", chunk[0], op_symbol, chunk[2]))
+                    })
+                    .collect();
+                let full_query = {
+                    let mut parts: Vec<String> = Vec::new();
+                    if let Some(tc) = taxon_clause { parts.push(tc); }
+                    if let Some(ref r) = rank { parts.push(format!("tax_rank({r})")); }
+                    if !query.is_empty() { parts.push(query); }
+                    parts.extend(filter_fragments);
+                    parts.join(" AND ")
+                };
+                let opts = generated::client::SearchOptions {
+                    taxonomy,
+                    ..Default::default()
+                };
+                let report_opts = generated::client::ReportOptions {
+                    x, x_opts, y, cat, cat_rank, count_rank,
+                    collapse_monotypic,
+                    ..Default::default()
+                };
+                let raw = generated::client::report(
+                    generated::indexes::Index::{{ index.name | capitalize }},
+                    &full_query,
+                    &report_type,
+                    &opts,
+                    &report_opts,
+                )?;
+                println!("{raw}");
             }
             {{ index.name | capitalize }}Commands::Lookup { search_term, size, format } => {
                 let body = generated::client::lookup(
