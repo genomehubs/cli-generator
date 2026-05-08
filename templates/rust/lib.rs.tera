@@ -204,6 +204,29 @@ fn to_tidy_records(records_json: &str) -> String {
     }
 }
 
+/// Parse the `results` array from a raw `/lookup` API response.
+///
+/// Returns a JSON array of candidate dicts with id, name, rank, and reason.
+/// Returns `{"error":"..."}` on failure.
+#[cfg(feature = "extension-module")]
+#[pyfunction]
+fn parse_lookup_json(raw: &str) -> String {
+    use crate::embedded::core::parse;
+    parse::parse_lookup_json(raw).unwrap_or_else(|e| {% raw %}format!(r#"{{"error":{e:?}}}"#){% endraw %})
+}
+
+/// Parse a `/record` API response into a flat JSON array of record dicts.
+///
+/// Returns a JSON array string of flat record dicts with all `_source` fields
+/// merged with envelope fields (`recordId`, `result`).
+/// Returns `{"error":"..."}` on failure.
+#[cfg(feature = "extension-module")]
+#[pyfunction]
+fn parse_record_json(raw: &str) -> String {
+    use crate::embedded::core::parse;
+    parse::parse_record_json(raw).unwrap_or_else(|e| {% raw %}format!(r#"{{"error":{e:?}}}"#){% endraw %})
+}
+
 /// Parse one page from a `/searchPaginated` response.
 ///
 /// Returns a JSON object with `"records"` (flat), `"hasMore"` (bool),
@@ -263,6 +286,17 @@ fn validate_query_json(
     )
 }
 
+/// Validate a report YAML string against known report type rules.
+///
+/// Returns a JSON array of error strings (empty array `[]` if valid).
+/// Pass `"{}"` for `field_meta_json` to skip field-name validation.
+#[cfg(feature = "extension-module")]
+#[pyfunction]
+fn validate_report_yaml(report_yaml: &str, field_meta_json: &str) -> String {
+    use crate::embedded::core::validation;
+    validation::validate_report_yaml(report_yaml, field_meta_json)
+}
+
 /// Python module for {{ site_display_name }}.
 #[cfg(feature = "extension-module")]
 #[pymodule]
@@ -283,9 +317,12 @@ fn {{ sdk_name }}(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(values_only, m)?)?;
     m.add_function(wrap_pyfunction!(annotated_values, m)?)?;
     m.add_function(wrap_pyfunction!(to_tidy_records, m)?)?;
+    m.add_function(wrap_pyfunction!(parse_lookup_json, m)?)?;
+    m.add_function(wrap_pyfunction!(parse_record_json, m)?)?;
     m.add_function(wrap_pyfunction!(parse_paginated_json, m)?)?;
     m.add_function(wrap_pyfunction!(parse_histogram_json, m)?)?;
     m.add_function(wrap_pyfunction!(parse_tree_json, m)?)?;
     m.add_function(wrap_pyfunction!(validate_query_json, m)?)?;
+    m.add_function(wrap_pyfunction!(validate_report_yaml, m)?)?;
     Ok(())
 }

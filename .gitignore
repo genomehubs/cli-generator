@@ -31,6 +31,9 @@ coverage/
 .env
 .env.*
 
+# Local ES integration config (contains connection details, not committed)
+config/es_integration.toml
+
 # macOS
 .DS_Store
 

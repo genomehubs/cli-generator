@@ -26,12 +26,13 @@ with contextlib.suppress(ImportError):
         split_source_columns,
         to_tidy_records,
         validate_query_json,
+        validate_report_yaml,
         values_only,
         version,
     )
 
 from .multi_query_builder import MultiQueryBuilder, from_file
-from .query import QueryBuilder
+from .query import QueryBuilder, ReportBuilder
 
 __all__ = [
     "annotate_source_labels",
@@ -50,10 +51,12 @@ __all__ = [
     "parse_search_json",
     "parse_tree_json",
     "QueryBuilder",
+    "ReportBuilder",
     "render_snippet",
     "split_source_columns",
     "to_tidy_records",
     "validate_query_json",
+    "validate_report_yaml",
     "values_only",
     "version",
 ]

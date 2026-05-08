@@ -1406,3 +1406,99 @@ def test_multi_query_builder_from_file_module_level(tmp_path: pathlib.Path) -> N
     batch_file.write_text("Caenorhabditis\nDrosophila\n")
     mq = from_file("taxon", str(batch_file))
     assert len(mq) == 2
+
+
+# ---------------------------------------------------------------------------
+# validate_report_yaml
+# ---------------------------------------------------------------------------
+
+
+def test_validate_report_yaml_valid_histogram() -> None:
+    from cli_generator import validate_report_yaml
+
+    errors = validate_report_yaml("report: histogram\nx: genome_size\nrank: species\n", "{}")
+    import json
+
+    assert json.loads(errors) == []
+
+
+def test_validate_report_yaml_missing_report_key() -> None:
+    from cli_generator import validate_report_yaml
+
+    import json
+
+    errors = json.loads(validate_report_yaml("x: genome_size\n", "{}"))
+    assert any("report" in e for e in errors)
+
+
+def test_validate_report_yaml_unknown_report_type() -> None:
+    from cli_generator import validate_report_yaml
+
+    import json
+
+    errors = json.loads(validate_report_yaml("report: unknown_type\n", "{}"))
+    assert any("unknown" in e.lower() or "report" in e.lower() for e in errors)
+
+
+def test_validate_report_yaml_count_per_rank_missing_query() -> None:
+    from cli_generator import validate_report_yaml
+
+    import json
+
+    errors = json.loads(validate_report_yaml("report: countPerRank\n", "{}"))
+    assert any("query" in e for e in errors)
+
+
+def test_validate_report_yaml_invalid_hex_resolution() -> None:
+    from cli_generator import validate_report_yaml
+
+    import json
+
+    errors = json.loads(
+        validate_report_yaml("report: map\nhex_resolution: 99\n", "{}")
+    )
+    assert any("hex_resolution" in e or "resolution" in e.lower() for e in errors)
+
+
+# ---------------------------------------------------------------------------
+# ReportBuilder
+# ---------------------------------------------------------------------------
+
+
+def test_report_builder_to_yaml_contains_report_key() -> None:
+    from cli_generator import ReportBuilder
+
+    rb = ReportBuilder("histogram")
+    assert "report: histogram" in rb.to_report_yaml()
+
+
+def test_report_builder_set_x_round_trips() -> None:
+    from cli_generator import ReportBuilder
+
+    rb = ReportBuilder("histogram").set_x("genome_size")
+    assert "genome_size" in rb.to_report_yaml()
+
+
+def test_report_builder_validate_valid() -> None:
+    from cli_generator import ReportBuilder
+
+    rb = ReportBuilder("histogram").set_x("genome_size").set_rank("species")
+    errors = rb.validate()
+    assert errors == []
+
+
+def test_report_builder_validate_missing_required_axis() -> None:
+    from cli_generator import ReportBuilder
+
+    rb = ReportBuilder("countPerRank")
+    errors = rb.validate()
+    assert any("query" in e for e in errors)
+
+
+def test_report_builder_chaining_returns_self() -> None:
+    from cli_generator import ReportBuilder
+
+    rb = ReportBuilder("scatter").set_x("genome_size").set_y("chromosome_count").set_rank("species")
+    assert "scatter" in rb.to_report_yaml()
+    assert "genome_size" in rb.to_report_yaml()
+    assert "chromosome_count" in rb.to_report_yaml()

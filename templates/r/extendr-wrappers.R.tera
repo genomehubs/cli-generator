@@ -43,6 +43,8 @@ render_snippet <- function(snapshot_json, site_name, api_base, sdk_name, languag
 #' metadata; pass `"{}"` to skip field-name checks (structural checks only).
 validate_query_json <- function(query_yaml, field_meta_json, config_json, synonyms_json) .Call(wrap__validate_query_json, query_yaml, field_meta_json, config_json, synonyms_json)
 
+validate_report_yaml <- function(report_yaml, field_meta_json) .Call(wrap__validate_report_yaml, report_yaml, field_meta_json)
+
 
 # nolint end
 

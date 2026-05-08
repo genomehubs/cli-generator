@@ -606,6 +606,32 @@ QueryBuilder <- R6::R6Class(
       validate_query_json(self$to_query_yaml(), meta_json, config_json, synonyms_json)
     },
 
+    #' @description Run a report query against the v3 /report endpoint.
+    #' @param report A \code{ReportBuilder} instance.
+    #' @param api_base Base URL of the API (default: from package).
+    #' @return Raw report list from the response.
+    report = function(report, api_base = NULL) {
+      if (is.null(api_base)) {
+        api_base <- private$.api_base
+      }
+      url <- paste0(api_base, "/", private$.api_version, "/report")
+      payload <- list(
+        query_yaml = self$to_query_yaml(),
+        params_yaml = self$to_params_yaml(),
+        report_yaml = report$to_report_yaml()
+      )
+      resp <- httr::POST(url,
+        body = jsonlite::toJSON(payload, auto_unbox = TRUE),
+        httr::add_headers("Content-Type" = "application/json"),
+        httr::accept("application/json")
+      )
+      httr::stop_for_status(resp)
+      data <- jsonlite::fromJSON(httr::content(resp, as = "text", encoding = "UTF-8"),
+        simplifyVector = FALSE
+      )
+      data$report %||% data
+    },
+
     #' @description Execute multiple searches in a single batch request.
     #' @param queries List of QueryBuilder objects.
     #' @param api_base Base URL of the API (default: from package).
@@ -808,6 +834,178 @@ QueryBuilder <- R6::R6Class(
       result <- QueryBuilder$new(builders[[1]]$.__enclos_env__$private$index_name)
       for (b in builders) result$merge(b)
       result
+    }
+  )
+)
+
+#' @title ReportBuilder
+#' @description Build report configurations for v3 /report POST calls.
+#'
+#' @details
+#' Constructs the \code{report_yaml} that controls how a report query is
+#' visualised.  Designed to be paired with a \code{QueryBuilder}:
+#'
+#' \preformatted{
+#' rb <- ReportBuilder$new("histogram")$set_x("genome_size")$set_rank("species")
+#' data <- qb$report(rb)
+#' }
+#'
+#' @export
+ReportBuilder <- R6::R6Class("ReportBuilder",
+  private = list(
+    .doc = NULL
+  ),
+  public = list(
+    #' @description Initialise the builder with a report type.
+    #' @param report_type One of \code{"histogram"}, \code{"scatter"},
+    #'   \code{"map"}, \code{"tree"}, \code{"countPerRank"}, \code{"sources"},
+    #'   \code{"arc"}.
+    initialize = function(report_type) {
+      private$.doc <- list(report = report_type)
+      invisible(self)
+    },
+
+    #' @description Set the X-axis field (histogram, scatter, arc reports).
+    #' @param field Field name.
+    #' @param opts Optional axis options string.
+    set_x = function(field, opts = "") {
+      private$.doc$x <- field
+      if (nchar(opts) > 0) private$.doc$x_opts <- opts
+      invisible(self)
+    },
+
+    #' @description Set the Y-axis field or fields (scatter reports).
+    #' @param field Field name or character vector of field names.
+    #' @param opts Optional axis options string.
+    set_y = function(field, opts = "") {
+      private$.doc$y <- field
+      if (nchar(opts) > 0) private$.doc$y_opts <- opts
+      invisible(self)
+    },
+
+    #' @description Set the category breakdown field.
+    #' @param field Field name.
+    #' @param opts Optional axis options string.
+    set_cat = function(field, opts = "") {
+      private$.doc$cat <- field
+      if (nchar(opts) > 0) private$.doc$cat_opts <- opts
+      invisible(self)
+    },
+
+    #' @description Set the query field (countPerRank reports).
+    #' @param field Field name.
+    set_query = function(field) {
+      private$.doc$query <- field
+      invisible(self)
+    },
+
+    #' @description Set the taxonomic rank to aggregate at.
+    #' @param rank Rank string, e.g. \code{"species"}.
+    set_rank = function(rank) {
+      private$.doc$rank <- rank
+      invisible(self)
+    },
+
+    #' @description Set the list of taxonomic ranks (countPerRank reports).
+    #' @param ranks Character vector of ranks.
+    set_ranks = function(ranks) {
+      private$.doc$ranks <- as.list(ranks)
+      invisible(self)
+    },
+
+    #' @description Set additional fields to include in results.
+    #' @param fields Character vector of field names.
+    set_fields = function(fields) {
+      private$.doc$fields <- as.list(fields)
+      invisible(self)
+    },
+
+    #' @description Filter by assembly/sample status.
+    #' @param value Status filter string, e.g. \code{"0"}.
+    set_status_filter = function(value) {
+      private$.doc$status_filter <- value
+      invisible(self)
+    },
+
+    #' @description Set the rank for category label aggregation.
+    #' @param rank Rank string.
+    set_cat_rank = function(rank) {
+      private$.doc$cat_rank <- rank
+      invisible(self)
+    },
+
+    #' @description Collapse monotypic nodes in tree reports.
+    #' @param value Logical; default \code{TRUE}.
+    set_collapse_monotypic = function(value = TRUE) {
+      private$.doc$collapse_monotypic <- value
+      invisible(self)
+    },
+
+    #' @description Preserve this rank when collapsing monotypic nodes.
+    #' @param rank Rank string.
+    set_preserve_rank = function(rank) {
+      private$.doc$preserve_rank <- rank
+      invisible(self)
+    },
+
+    #' @description Set the rank to count descendants at (tree reports).
+    #' @param rank Rank string.
+    set_count_rank = function(rank) {
+      private$.doc$count_rank <- rank
+      invisible(self)
+    },
+
+    #' @description Set the geographic location field (map reports).
+    #' @param field Field name.
+    set_location_field = function(field) {
+      private$.doc$location_field <- field
+      invisible(self)
+    },
+
+    #' @description Set the geohash resolution for map reports (1-12).
+    #' @param resolution Integer resolution.
+    set_hex_resolution = function(resolution) {
+      private$.doc$hex_resolution <- as.integer(resolution)
+      invisible(self)
+    },
+
+    #' @description Set the max map points before switching to hexbin mode.
+    #' @param threshold Integer threshold.
+    set_map_threshold = function(threshold) {
+      private$.doc$map_threshold <- as.integer(threshold)
+      invisible(self)
+    },
+
+    #' @description Set the max scatter points before switching to binned mode.
+    #' @param threshold Integer threshold.
+    set_scatter_threshold = function(threshold) {
+      private$.doc$scatter_threshold <- as.integer(threshold)
+      invisible(self)
+    },
+
+    #' @description Return the report configuration as a YAML string.
+    to_report_yaml = function() {
+      yaml::as.yaml(private$.doc)
+    },
+
+    #' @description Return a character vector of validation errors.
+    #' @param field_meta Optional named list of field metadata.
+    #' @return Character vector of error strings (empty = valid).
+    validate = function(field_meta = NULL) {
+      meta_json <- if (is.null(field_meta)) {
+        "{}"
+      } else {
+        jsonlite::toJSON(field_meta, auto_unbox = TRUE)
+      }
+      jsonlite::fromJSON(validate_report_yaml(self$to_report_yaml(), meta_json))
+    },
+
+    #' @description Execute this report against a QueryBuilder's query.
+    #' @param query_builder A \code{QueryBuilder} instance.
+    #' @param api_base Base URL of the API (default: from QueryBuilder).
+    #' @return Raw report list from the response.
+    run = function(query_builder, api_base = NULL) {
+      query_builder$report(self, api_base = api_base)
     }
   )
 )

@@ -359,6 +359,16 @@ fn validate_query_json(
     )
 }
 
+/// Validate a report YAML string against known report type rules.
+///
+/// Returns a JSON array of error strings (empty array `[]` if valid).
+/// Pass `"{}"` for `field_meta_json` to skip field-name validation.
+#[cfg(feature = "extension-module")]
+#[pyfunction]
+fn validate_report_yaml(report_yaml: &str, field_meta_json: &str) -> String {
+    genomehubs_query::validation::validate_report_yaml(report_yaml, field_meta_json)
+}
+
 /// Python module definition for `cli_generator`.
 
 #[cfg(feature = "extension-module")]
@@ -370,6 +380,7 @@ fn cli_generator(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(describe_query, m)?)?;
     m.add_function(wrap_pyfunction!(render_snippet, m)?)?;
     m.add_function(wrap_pyfunction!(validate_query_json, m)?)?;
+    m.add_function(wrap_pyfunction!(validate_report_yaml, m)?)?;
     m.add_function(wrap_pyfunction!(parse_response_status, m)?)?;
     m.add_function(wrap_pyfunction!(parse_search_json, m)?)?;
     m.add_function(wrap_pyfunction!(annotate_source_labels, m)?)?;

@@ -56,7 +56,7 @@ jobs:
         run: cargo install cargo-generate cargo-tarpaulin
 
       - name: Measure Rust code coverage
-        run: cargo tarpaulin --out Xml --output-dir ./coverage --timeout 300
+        run: cargo tarpaulin --lib --out Xml --output-dir ./coverage --timeout 300
 
       # Upload coverage to Codecov (optional; skip if token not available)
       - name: Upload Rust coverage to Codecov

@@ -3,6 +3,8 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+use crate::report::ReportType;
+
 /// Field metadata for validation (portable version without static lifetime constraints).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FieldMeta {
@@ -348,6 +350,109 @@ fn validate_query_impl(
     Ok(errors)
 }
 
+/// Validate a report YAML string against known report type rules.
+///
+/// Returns a JSON array of error strings (empty array if valid).
+///
+/// Checks:
+/// 1. `report` key is present and names a known report type.
+/// 2. All fields required by that type are present.
+/// 3. Axis field names (`x`, `y`, `cat`, `query`) are known fields when
+///    `field_meta_json` is non-empty.
+/// 4. Numeric range constraints: `hex_resolution` 1–12, `map_threshold` > 0,
+///    `scatter_threshold` > 0.
+pub fn validate_report_yaml(report_yaml: &str, field_meta_json: &str) -> String {
+    let errors = match validate_report_impl(report_yaml, field_meta_json) {
+        Ok(errs) => errs,
+        Err(e) => vec![format!("validation failed: {}", e)],
+    };
+    serde_json::to_string(&errors).unwrap_or_else(|_| r#"["serialization error"]"#.to_string())
+}
+
+fn validate_report_impl(report_yaml: &str, field_meta_json: &str) -> Result<Vec<String>, String> {
+    let doc: serde_yaml::Value = serde_yaml::from_str(report_yaml)
+        .map_err(|e| format!("failed to parse report YAML: {}", e))?;
+
+    let field_meta: HashMap<String, FieldMeta> =
+        if field_meta_json.is_empty() || field_meta_json == "{}" {
+            HashMap::new()
+        } else {
+            serde_json::from_str(field_meta_json)
+                .map_err(|e| format!("failed to parse field_meta JSON: {}", e))?
+        };
+
+    let mut errors = Vec::new();
+
+    let report_type_str = match doc.get("report").and_then(|v| v.as_str()) {
+        Some(rt) => rt,
+        None => {
+            errors.push("report YAML missing required 'report' key".to_string());
+            return Ok(errors);
+        }
+    };
+
+    let report_type = match ReportType::from_str(report_type_str) {
+        Some(rt) => rt,
+        None => {
+            errors.push(format!(
+                "unknown report type '{}'; expected one of: histogram, scatter, map, tree, countPerRank, sources, arc",
+                report_type_str
+            ));
+            return Ok(errors);
+        }
+    };
+
+    for required in report_type.required_axes() {
+        if doc.get(required).is_none() {
+            errors.push(format!(
+                "report type '{}' requires '{}' field in report YAML",
+                report_type_str, required
+            ));
+        }
+    }
+
+    if !field_meta.is_empty() {
+        for axis in &["x", "y", "cat", "query"] {
+            if let Some(field_val) = doc.get(axis) {
+                let check_fields: Vec<&str> = match field_val {
+                    serde_yaml::Value::Sequence(seq) => {
+                        seq.iter().filter_map(|v| v.as_str()).collect()
+                    }
+                    serde_yaml::Value::String(s) => vec![s.as_str()],
+                    _ => vec![],
+                };
+                for field_name in check_fields {
+                    let bare = field_name.split(':').next().unwrap_or(field_name);
+                    if !field_meta.contains_key(bare) {
+                        errors.push(format!("unknown field '{}' in '{}' axis", bare, axis));
+                    }
+                }
+            }
+        }
+    }
+
+    if let Some(hex_res) = doc.get("hex_resolution").and_then(|v| v.as_u64()) {
+        if !(1..=12).contains(&hex_res) {
+            errors.push(format!(
+                "hex_resolution must be between 1 and 12, got {}",
+                hex_res
+            ));
+        }
+    }
+    if let Some(map_t) = doc.get("map_threshold").and_then(|v| v.as_u64()) {
+        if map_t == 0 {
+            errors.push("map_threshold must be greater than 0".to_string());
+        }
+    }
+    if let Some(scatter_t) = doc.get("scatter_threshold").and_then(|v| v.as_u64()) {
+        if scatter_t == 0 {
+            errors.push("scatter_threshold must be greater than 0".to_string());
+        }
+    }
+
+    Ok(errors)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -413,5 +518,82 @@ mod tests {
 
         let result = validate_query_json(query, field_meta, config, synonyms);
         assert!(result.contains("unknown attribute"));
+    }
+
+    #[test]
+    fn test_validate_report_yaml_histogram_valid() {
+        let report_yaml = "report: histogram\nx: genome_size\n";
+        let result = validate_report_yaml(report_yaml, "{}");
+        assert_eq!(result, "[]");
+    }
+
+    #[test]
+    fn test_validate_report_yaml_histogram_missing_x() {
+        let report_yaml = "report: histogram\nrank: species\n";
+        let result = validate_report_yaml(report_yaml, "{}");
+        assert!(result.contains("requires 'x'"));
+    }
+
+    #[test]
+    fn test_validate_report_yaml_scatter_missing_y() {
+        let report_yaml = "report: scatter\nx: genome_size\n";
+        let result = validate_report_yaml(report_yaml, "{}");
+        assert!(result.contains("requires 'y'"));
+    }
+
+    #[test]
+    fn test_validate_report_yaml_map_valid() {
+        let result = validate_report_yaml("report: map\n", "{}");
+        assert_eq!(result, "[]");
+    }
+
+    #[test]
+    fn test_validate_report_yaml_tree_missing_rank() {
+        let result = validate_report_yaml("report: tree\nx: genome_size\n", "{}");
+        assert!(result.contains("requires 'rank'"));
+    }
+
+    #[test]
+    fn test_validate_report_yaml_count_per_rank_valid() {
+        let result = validate_report_yaml("report: countPerRank\nquery: genome_size\n", "{}");
+        assert_eq!(result, "[]");
+    }
+
+    #[test]
+    fn test_validate_report_yaml_unknown_type() {
+        let result = validate_report_yaml("report: xPerRank\nx: genome_size\n", "{}");
+        assert!(result.contains("unknown report type"));
+    }
+
+    #[test]
+    fn test_validate_report_yaml_missing_report_key() {
+        let result = validate_report_yaml("x: genome_size\n", "{}");
+        assert!(result.contains("missing required 'report' key"));
+    }
+
+    #[test]
+    fn test_validate_report_yaml_hex_resolution_out_of_range() {
+        let result = validate_report_yaml("report: map\nhex_resolution: 15\n", "{}");
+        assert!(result.contains("hex_resolution"));
+    }
+
+    #[test]
+    fn test_validate_report_yaml_map_threshold_zero() {
+        let result = validate_report_yaml("report: map\nmap_threshold: 0\n", "{}");
+        assert!(result.contains("map_threshold"));
+    }
+
+    #[test]
+    fn test_validate_report_yaml_unknown_field_with_meta() {
+        let field_meta = r#"{"genome_size": {"processed_type": "double", "traverse_direction": null, "summary": [], "constraint_enum": null}}"#;
+        let result = validate_report_yaml("report: histogram\nx: unknown_field\n", field_meta);
+        assert!(result.contains("unknown field"));
+    }
+
+    #[test]
+    fn test_validate_report_yaml_known_field_with_meta() {
+        let field_meta = r#"{"genome_size": {"processed_type": "double", "traverse_direction": null, "summary": [], "constraint_enum": null}}"#;
+        let result = validate_report_yaml("report: histogram\nx: genome_size\n", field_meta);
+        assert_eq!(result, "[]");
     }
 }

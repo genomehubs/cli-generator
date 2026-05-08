@@ -252,6 +252,7 @@ from .{} import (
     split_source_columns,
     to_tidy_records,
     validate_query_json,
+    validate_report_yaml,
     values_only,
 )
 from .query import QueryBuilder
@@ -276,6 +277,7 @@ __all__ = [
     "split_source_columns",
     "to_tidy_records",
     "validate_query_json",
+    "validate_report_yaml",
     "values_only",
 ]
 "#,

@@ -6,7 +6,7 @@
 # (not configured here to avoid format conflicts)
 
 # Exclude integration tests (they're covered by CI pipeline separately)
-exclude-files = ["tests/generated_goat_cli.rs"]
+exclude-files = ["tests/generated_goat_cli.rs", "tests/api_endpoints.rs"]
 
 # Lines to exclude from coverage calculations
 exclude-lines = [

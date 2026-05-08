@@ -30,7 +30,7 @@ from typing import Any
 
 # ── Public re-export ──────────────────────────────────────────────────────────
 
-__all__ = ["QueryBuilder"]
+__all__ = ["QueryBuilder", "ReportBuilder"]
 
 
 class QueryBuilder:
@@ -688,6 +688,33 @@ class QueryBuilder:
 
         return all_records[:max_records]
 
+    def report(
+        self,
+        report: "ReportBuilder",
+        api_base: str = "https://goat.genomehubs.org/api",
+        api_version: str = "v3",
+    ) -> Any:
+        """Run a report query against the v3 ``/report`` endpoint.
+
+        Args:
+            report: A :class:`ReportBuilder` instance describing the report
+                configuration.
+            api_base: Base URL of the API.
+            api_version: API version string (default: ``"v3"``).
+
+        Returns:
+            Raw ``report`` dict from the response.
+        """
+        data = self._post_json(
+            f"{api_base}/{api_version}/report",
+            {
+                "query_yaml": self.to_query_yaml(),
+                "params_yaml": self.to_params_yaml(),
+                "report_yaml": report.to_report_yaml(),
+            },
+        )
+        return data.get("report", data)
+
     def search_batch(
         self,
         queries: list["QueryBuilder"],
@@ -1179,3 +1206,144 @@ class QueryBuilder:
         )
 
         return cast(dict[str, str], json.loads(result_json))
+
+
+class ReportBuilder:
+    """Builder for v3 ``/report`` POST body configuration.
+
+    Constructs the ``report_yaml`` that controls how a report query is
+    visualised.  Designed to be paired with a :class:`QueryBuilder`::
+
+        rb = ReportBuilder("histogram").set_x("genome_size").set_rank("species")
+        data = qb.report(rb)
+    """
+
+    def __init__(self, report_type: str) -> None:
+        self._doc: dict[str, Any] = {"report": report_type}
+
+    def set_x(self, field: str, opts: str = "") -> "ReportBuilder":
+        """Set the X-axis field (histogram, scatter, arc reports)."""
+        self._doc["x"] = field
+        if opts:
+            self._doc["x_opts"] = opts
+        return self
+
+    def set_y(self, field: str | list[str], opts: str = "") -> "ReportBuilder":
+        """Set the Y-axis field or fields (scatter reports)."""
+        self._doc["y"] = field
+        if opts:
+            self._doc["y_opts"] = opts
+        return self
+
+    def set_cat(self, field: str, opts: str = "") -> "ReportBuilder":
+        """Set the category breakdown field."""
+        self._doc["cat"] = field
+        if opts:
+            self._doc["cat_opts"] = opts
+        return self
+
+    def set_query(self, field: str) -> "ReportBuilder":
+        """Set the query field (``countPerRank`` reports)."""
+        self._doc["query"] = field
+        return self
+
+    def set_rank(self, rank: str) -> "ReportBuilder":
+        """Set the taxonomic rank to aggregate at."""
+        self._doc["rank"] = rank
+        return self
+
+    def set_ranks(self, ranks: list[str]) -> "ReportBuilder":
+        """Set the list of taxonomic ranks (``countPerRank`` reports)."""
+        self._doc["ranks"] = ranks
+        return self
+
+    def set_fields(self, fields: list[str]) -> "ReportBuilder":
+        """Set additional fields to include in results."""
+        self._doc["fields"] = fields
+        return self
+
+    def set_status_filter(self, value: str) -> "ReportBuilder":
+        """Filter by assembly/sample status (e.g. ``"0"`` for any value)."""
+        self._doc["status_filter"] = value
+        return self
+
+    def set_cat_rank(self, rank: str) -> "ReportBuilder":
+        """Set the rank for category label aggregation."""
+        self._doc["cat_rank"] = rank
+        return self
+
+    def set_collapse_monotypic(self, value: bool = True) -> "ReportBuilder":
+        """Collapse monotypic nodes in tree reports."""
+        self._doc["collapse_monotypic"] = value
+        return self
+
+    def set_preserve_rank(self, rank: str) -> "ReportBuilder":
+        """Preserve this rank when collapsing monotypic nodes."""
+        self._doc["preserve_rank"] = rank
+        return self
+
+    def set_count_rank(self, rank: str) -> "ReportBuilder":
+        """Set the rank to count descendants at (tree reports)."""
+        self._doc["count_rank"] = rank
+        return self
+
+    def set_location_field(self, field: str) -> "ReportBuilder":
+        """Set the geographic location field (map reports)."""
+        self._doc["location_field"] = field
+        return self
+
+    def set_hex_resolution(self, resolution: int) -> "ReportBuilder":
+        """Set the geohash resolution for map reports (1–12)."""
+        self._doc["hex_resolution"] = resolution
+        return self
+
+    def set_map_threshold(self, threshold: int) -> "ReportBuilder":
+        """Set the max map points before switching to hexbin mode."""
+        self._doc["map_threshold"] = threshold
+        return self
+
+    def set_scatter_threshold(self, threshold: int) -> "ReportBuilder":
+        """Set the max scatter points before switching to binned mode."""
+        self._doc["scatter_threshold"] = threshold
+        return self
+
+    def to_report_yaml(self) -> str:
+        """Return the report configuration as a YAML string."""
+        import yaml  # type: ignore[import-untyped]
+
+        return yaml.safe_dump(self._doc, sort_keys=False)
+
+    def validate(self, field_meta: dict[str, Any] | None = None) -> list[str]:
+        """Return a list of validation errors. An empty list means the report is valid.
+
+        Args:
+            field_meta: Optional mapping of field names to metadata dicts.
+                When provided, axis field names are checked against known fields.
+
+        Returns:
+            List of error strings.
+        """
+        import json
+
+        from cli_generator import validate_report_yaml
+
+        field_meta_json = json.dumps(field_meta or {})
+        return list(json.loads(validate_report_yaml(self.to_report_yaml(), field_meta_json)))
+
+    def run(
+        self,
+        query_builder: "QueryBuilder",
+        api_base: str = "https://goat.genomehubs.org/api",
+        api_version: str = "v3",
+    ) -> Any:
+        """Execute this report against the given :class:`QueryBuilder`'s query.
+
+        Args:
+            query_builder: Query that defines the search scope.
+            api_base: Base URL of the API.
+            api_version: API version string (default: ``"v3"``).
+
+        Returns:
+            Raw ``report`` dict from the response.
+        """
+        return query_builder.report(self, api_base=api_base, api_version=api_version)

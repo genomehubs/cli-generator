@@ -457,3 +457,24 @@ def validate_query_json(
         ``'["error: ..."]'`` if parsing fails.
     """
     ...
+
+def validate_report_yaml(report_yaml: str, field_meta_json: str) -> str:
+    """Validate a report YAML string against known report type rules.
+
+    Returns a JSON array of error strings — an empty array (``"[]"``) means
+    the report configuration is valid.
+
+    Checks that the ``report`` key is present and names a known type, all
+    required axis fields are present, numeric ranges are in bounds, and axis
+    field names are valid when ``field_meta_json`` is non-empty.
+
+    Args:
+        report_yaml: YAML-serialised report configuration, e.g.
+            ``"report: histogram\\nx: genome_size\\n"``.
+        field_meta_json: JSON object mapping field names to metadata.  Pass
+            ``"{}"`` to skip field-name validation.
+
+    Returns:
+        JSON array of error strings.
+    """
+    ...

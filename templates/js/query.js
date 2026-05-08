@@ -34,6 +34,7 @@ const {
   split_source_columns: _splitSourceColumns,
   to_tidy_records: _toTidyRecords,
   validate_query_json: _validateQueryJson,
+  validate_report_yaml: _validateReportYaml,
   values_only: _valuesOnly,
   build_url,
   parse_response_status,
@@ -719,6 +720,32 @@ class QueryBuilder {
   }
 
   /**
+   * Run a report query against the v3 /report endpoint.
+   * @param {ReportBuilder} report - A ReportBuilder instance
+   * @param {string} [apiBase=API_BASE] - Base URL of the API
+   * @returns {Promise<object>} - Raw report object from the response
+   */
+  async report(report, apiBase = API_BASE) {
+    const url = `${apiBase}/v3/report`;
+    const payload = {
+      query_yaml: this.toQueryYaml(),
+      params_yaml: this.toParamsYaml(),
+      report_yaml: report.toReportYaml(),
+    };
+    const resp = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!resp.ok)
+      throw new Error(
+        `Report request failed: ${resp.status} ${resp.statusText}`,
+      );
+    const data = await resp.json();
+    return data.report ?? data;
+  }
+
+  /**
    * Execute multiple searches in a single batch request.
    * @param {QueryBuilder[]} queries - Array of QueryBuilder objects
    * @param {string} [apiBase=API_BASE] - Base URL of the API
@@ -1155,6 +1182,166 @@ class QueryBuilder {
 }
 
 /**
+ * Build report configurations for v3 /report POST calls.
+ *
+ * @example
+ * const rb = new ReportBuilder("histogram").setX("genome_size").setRank("species");
+ * const data = await qb.report(rb);
+ */
+class ReportBuilder {
+  /** @param {string} reportType - Report type (e.g. "histogram", "scatter", "countPerRank") */
+  constructor(reportType) {
+    this._doc = { report: reportType };
+  }
+
+  /** Set the X-axis field. @param {string} field @param {string} [opts=""] @returns {this} */
+  setX(field, opts = "") {
+    this._doc.x = field;
+    if (opts) this._doc.x_opts = opts;
+    return this;
+  }
+
+  /** Set the Y-axis field or fields. @param {string|string[]} field @param {string} [opts=""] @returns {this} */
+  setY(field, opts = "") {
+    this._doc.y = field;
+    if (opts) this._doc.y_opts = opts;
+    return this;
+  }
+
+  /** Set the category breakdown field. @param {string} field @param {string} [opts=""] @returns {this} */
+  setCat(field, opts = "") {
+    this._doc.cat = field;
+    if (opts) this._doc.cat_opts = opts;
+    return this;
+  }
+
+  /** Set the query field (countPerRank reports). @param {string} field @returns {this} */
+  setQuery(field) {
+    this._doc.query = field;
+    return this;
+  }
+
+  /** Set the taxonomic rank to aggregate at. @param {string} rank @returns {this} */
+  setRank(rank) {
+    this._doc.rank = rank;
+    return this;
+  }
+
+  /** Set the list of taxonomic ranks (countPerRank reports). @param {string[]} ranks @returns {this} */
+  setRanks(ranks) {
+    this._doc.ranks = ranks;
+    return this;
+  }
+
+  /** Set additional fields to include in results. @param {string[]} fields @returns {this} */
+  setFields(fields) {
+    this._doc.fields = fields;
+    return this;
+  }
+
+  /** Filter by assembly/sample status. @param {string} value @returns {this} */
+  setStatusFilter(value) {
+    this._doc.status_filter = value;
+    return this;
+  }
+
+  /** Set the rank for category label aggregation. @param {string} rank @returns {this} */
+  setCatRank(rank) {
+    this._doc.cat_rank = rank;
+    return this;
+  }
+
+  /** Collapse monotypic nodes in tree reports. @param {boolean} [value=true] @returns {this} */
+  setCollapseMonotypic(value = true) {
+    this._doc.collapse_monotypic = value;
+    return this;
+  }
+
+  /** Preserve this rank when collapsing monotypic nodes. @param {string} rank @returns {this} */
+  setPreserveRank(rank) {
+    this._doc.preserve_rank = rank;
+    return this;
+  }
+
+  /** Set the rank to count descendants at (tree reports). @param {string} rank @returns {this} */
+  setCountRank(rank) {
+    this._doc.count_rank = rank;
+    return this;
+  }
+
+  /** Set the geographic location field (map reports). @param {string} field @returns {this} */
+  setLocationField(field) {
+    this._doc.location_field = field;
+    return this;
+  }
+
+  /** Set the geohash resolution for map reports (1-12). @param {number} resolution @returns {this} */
+  setHexResolution(resolution) {
+    this._doc.hex_resolution = resolution;
+    return this;
+  }
+
+  /** Set the max map points before switching to hexbin mode. @param {number} threshold @returns {this} */
+  setMapThreshold(threshold) {
+    this._doc.map_threshold = threshold;
+    return this;
+  }
+
+  /** Set the max scatter points before switching to binned mode. @param {number} threshold @returns {this} */
+  setScatterThreshold(threshold) {
+    this._doc.scatter_threshold = threshold;
+    return this;
+  }
+
+  /**
+   * Return the report configuration as a YAML string.
+   * @returns {string}
+   */
+  toReportYaml() {
+    // Simple YAML serialisation sufficient for report config (no complex types)
+    const lines = [];
+    for (const [key, val] of Object.entries(this._doc)) {
+      if (Array.isArray(val)) {
+        lines.push(`${key}:`);
+        for (const item of val) lines.push(`- ${item}`);
+      } else if (typeof val === "boolean") {
+        lines.push(`${key}: ${val}`);
+      } else if (typeof val === "number") {
+        lines.push(`${key}: ${val}`);
+      } else {
+        lines.push(`${key}: ${val}`);
+      }
+    }
+    return lines.join("\n") + "\n";
+  }
+
+  /**
+   * Return an array of validation error strings (empty = valid).
+   * @param {object|null} [fieldMeta=null] - Optional field metadata map
+   * @returns {string[]}
+   */
+  validate(fieldMeta = null) {
+    const fieldMetaJson = JSON.stringify(fieldMeta || {});
+    const result = _validateReportYaml(this.toReportYaml(), fieldMetaJson);
+    try {
+      return JSON.parse(result);
+    } catch {
+      return [result];
+    }
+  }
+
+  /**
+   * Execute this report against a QueryBuilder's query.
+   * @param {QueryBuilder} queryBuilder
+   * @param {string} [apiBase=API_BASE]
+   * @returns {Promise<object>}
+   */
+  async run(queryBuilder, apiBase = API_BASE) {
+    return queryBuilder.report(this, apiBase);
+  }
+}
+
+/**
  * Reshape flat records from parseSearchJson into long/tidy format.
  *
  * Each flat record is exploded so that every bare field becomes its own row
@@ -1175,6 +1362,7 @@ function toTidyRecords(records) {
 
 export {
   QueryBuilder,
+  ReportBuilder,
   parseSearchJson,
   parseResponseStatus,
   parseHistogramJson,

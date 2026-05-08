@@ -458,3 +458,17 @@ pub fn validate_query_json(
         synonyms_json,
     )
 }
+
+/// Validate a report YAML string against known report type rules.
+///
+/// Returns a JSON array of error strings (empty array `[]` if valid).
+///
+/// Checks the `report` key is present and names a known type, all required
+/// axis fields are present, numeric ranges are in bounds, and axis field
+/// names are valid when `field_meta_json` is non-empty.
+///
+/// Pass `"{}"` for `field_meta_json` to skip field-name validation.
+#[cfg_attr(feature = "wasm", wasm_bindgen)]
+pub fn validate_report_yaml(report_yaml: &str, field_meta_json: &str) -> String {
+    validation::validate_report_yaml(report_yaml, field_meta_json)
+}

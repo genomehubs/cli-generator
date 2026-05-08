@@ -469,8 +469,29 @@ class TestSDKParity:
                 "search_df",
                 "search_polars",
                 "search_all",
+                "report",
                 "to_v2_url",
                 "_post_json",
+                # ReportBuilder public methods
+                "set_x",
+                "set_y",
+                "set_cat",
+                "set_query",
+                "set_rank",
+                "set_ranks",
+                "set_fields",
+                "set_status_filter",
+                "set_cat_rank",
+                "set_collapse_monotypic",
+                "set_preserve_rank",
+                "set_count_rank",
+                "set_location_field",
+                "set_hex_resolution",
+                "set_map_threshold",
+                "set_scatter_threshold",
+                "to_report_yaml",
+                "validate",
+                "run",
             ]
         )
 
@@ -577,3 +598,66 @@ class TestDocumentationParity:
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
+
+
+class TestGeneratedProjectWiring:
+    """Verify that lib.rs.tera registrations and patch_python_init exports stay in sync.
+
+    These tests catch the class of bug where a function is added to one place
+    (e.g. new.rs __init__.py exports) but forgotten in the other (lib.rs.tera
+    pymodule registrations), which produces an ImportError at runtime.
+    """
+
+    @staticmethod
+    def _registered_functions() -> set[str]:
+        """Names registered via add_function(wrap_pyfunction!(NAME, m)?) in lib.rs.tera."""
+        lib_tera = PROJECT_ROOT / "templates" / "rust" / "lib.rs.tera"
+        content = lib_tera.read_text()
+        return set(re.findall(r"wrap_pyfunction!\((\w+),", content))
+
+    @staticmethod
+    def _exported_from_init() -> set[str]:
+        """Names imported from the extension in the generated __init__.py (new.rs)."""
+        new_rs = PROJECT_ROOT / "src" / "commands" / "new.rs"
+        content = new_rs.read_text()
+        # The patch_python_init format string contains: from .{} import (\n    name,\n    ...
+        # Grab the block between the first `from .{} import (` and the matching `)`.
+        block_match = re.search(r"from \.\{\} import \((.+?)\)", content, re.DOTALL)
+        if not block_match:
+            return set()
+        return {n.strip().rstrip(",") for n in block_match.group(1).splitlines() if n.strip()}
+
+    def test_all_init_exports_are_registered(self) -> None:
+        """Every name imported in the generated __init__.py must be registered in lib.rs.tera."""
+        registered = self._registered_functions()
+        # sdk-level functions (build_url, search, count, …) live in generated::sdk, not as
+        # top-level pyfunction wrappers — they are registered as sdk::name.  Collect those too.
+        lib_tera = PROJECT_ROOT / "templates" / "rust" / "lib.rs.tera"
+        content = lib_tera.read_text()
+        sdk_functions = set(re.findall(r"wrap_pyfunction!\(sdk::(\w+),", content))
+        all_registered = registered | sdk_functions
+
+        exported = self._exported_from_init()
+        missing = exported - all_registered
+        assert not missing, (
+            f"Functions exported in __init__.py but NOT registered in lib.rs.tera: {missing}\n"
+            "Add a #[pyfunction] wrapper and m.add_function() call in templates/rust/lib.rs.tera"
+        )
+
+    def test_all_registered_functions_are_exported(self) -> None:
+        """Every non-sdk pyfunction registered in lib.rs.tera should be exported in __init__.py."""
+        registered = self._registered_functions()
+        # sdk:: registrations are not individual function names in __init__.py
+        lib_tera = PROJECT_ROOT / "templates" / "rust" / "lib.rs.tera"
+        content = lib_tera.read_text()
+        sdk_functions = set(re.findall(r"wrap_pyfunction!\(sdk::(\w+),", content))
+        # Class registrations (add_class) are also not in the function export list
+        # Remove anything that is clearly a class (FieldInfo, Validator)
+        non_exported_ok = sdk_functions | {"build_url", "build_ui_url", "search", "count"}
+
+        exported = self._exported_from_init()
+        missing = (registered - non_exported_ok) - exported
+        assert not missing, (
+            f"Functions registered in lib.rs.tera but NOT exported in __init__.py: {missing}\n"
+            "Add the name to the import block in src/commands/new.rs patch_python_init()"
+        )
