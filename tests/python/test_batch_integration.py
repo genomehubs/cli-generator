@@ -115,13 +115,13 @@ class TestBatchIntegration:
     def test_lookup_taxon_name(self, api_available):
         """Test lookup() with a taxon name."""
         qb = QueryBuilder("taxon").set_taxa(["Homo"])
-        result = qb.lookup(api_base=API_BASE)
+        result = qb.lookup("Homo", api_base=API_BASE)
         assert isinstance(result, (dict, list))
 
     def test_summary_with_field(self, api_available):
         """Test summary() with a field aggregation."""
         qb = QueryBuilder("taxon").set_taxa(["Canis lupus"]).add_field("genome_size")
-        result = qb.summary(api_base=API_BASE)
+        result = qb.summary("9646", "genome_size", api_base=API_BASE)
         assert isinstance(result, (dict, list))
 
     def test_search_batch_with_fields(self, api_available):

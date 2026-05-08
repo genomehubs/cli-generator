@@ -34,7 +34,7 @@ with contextlib.suppress(ImportError):
     )
 
 from .multi_query_builder import MultiQueryBuilder, from_file
-from .query import QueryBuilder, ReportBuilder
+from .query import QueryBuilder, ReportBuilder, probe_api_capability
 
 __all__ = [
     "annotate_source_labels",
@@ -54,6 +54,7 @@ __all__ = [
     "parse_tree_json",
     "QueryBuilder",
     "ReportBuilder",
+    "probe_api_capability",
     "query_yaml_from_url_params",
     "render_snippet",
     "report_yaml_from_url_params",

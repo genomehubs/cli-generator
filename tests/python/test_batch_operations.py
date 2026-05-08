@@ -210,14 +210,14 @@ class TestRecordHTTPHandling:
             mock_resp.__enter__.return_value = mock_resp
             mock_urlopen.return_value = mock_resp
 
-            qb.record(api_base="http://localhost:3000/api")
+            qb.record("9646", api_base="http://localhost:3000/api")
 
             call_args = mock_urlopen.call_args
-            request_obj = call_args[0][0]
-            assert "v3/record" in request_obj.full_url
+            url_called = call_args[0][0]
+            assert "v3/record" in url_called
 
-    def test_record_uses_post_method(self):
-        """record should use POST method."""
+    def test_record_uses_get_method(self):
+        """record should use GET method with query params."""
         qb = QueryBuilder("taxon").set_taxa(["9646"])
 
         with patch("urllib.request.urlopen") as mock_urlopen:
@@ -226,11 +226,11 @@ class TestRecordHTTPHandling:
             mock_resp.__enter__.return_value = mock_resp
             mock_urlopen.return_value = mock_resp
 
-            qb.record()
+            qb.record("9646")
 
             call_args = mock_urlopen.call_args
-            request_obj = call_args[0][0]
-            assert request_obj.data is not None  # POST has data
+            url_called = call_args[0][0]
+            assert "recordId=9646" in url_called
 
 
 class TestLookupHTTPHandling:
@@ -246,11 +246,11 @@ class TestLookupHTTPHandling:
             mock_resp.__enter__.return_value = mock_resp
             mock_urlopen.return_value = mock_resp
 
-            qb.lookup(api_base="http://localhost:3000/api")
+            qb.lookup("9646", api_base="http://localhost:3000/api")
 
             call_args = mock_urlopen.call_args
-            request_obj = call_args[0][0]
-            assert "v3/lookup" in request_obj.full_url
+            url_called = call_args[0][0]
+            assert "v3/lookup" in url_called
 
 
 class TestSummaryHTTPHandling:
@@ -266,11 +266,11 @@ class TestSummaryHTTPHandling:
             mock_resp.__enter__.return_value = mock_resp
             mock_urlopen.return_value = mock_resp
 
-            qb.summary(api_base="http://localhost:3000/api")
+            qb.summary("9646", "genome_size", api_base="http://localhost:3000/api")
 
             call_args = mock_urlopen.call_args
-            request_obj = call_args[0][0]
-            assert "v3/summary" in request_obj.full_url
+            url_called = call_args[0][0]
+            assert "v3/summary" in url_called
 
 
 class TestErrorHandling:

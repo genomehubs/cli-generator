@@ -26,11 +26,41 @@ Typical usage::
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    import pandas
+    import polars
 
 # ── Public re-export ──────────────────────────────────────────────────────────
 
-__all__ = ["QueryBuilder", "ReportBuilder"]
+__all__ = ["QueryBuilder", "ReportBuilder", "probe_api_capability"]
+
+
+def probe_api_capability(api_base: str) -> str:
+    """Probe an API base URL and return its capability level.
+
+    Calls ``{api_base}/v3/status``. If the response includes ``/search`` in
+    the ``supported`` list, returns ``"v3"``. Falls back to ``"v2"`` on any
+    error or missing endpoint.
+
+    Args:
+        api_base: Base URL of the API, e.g. ``"https://goat.genomehubs.org/api"``.
+
+    Returns:
+        ``"v3"`` or ``"v2"``.
+    """
+    import json
+    import urllib.request
+
+    try:
+        with urllib.request.urlopen(f"{api_base}/v3/status", timeout=5) as resp:
+            data = json.loads(resp.read().decode())
+        if "/search" in data.get("supported", []):
+            return "v3"
+    except Exception:
+        pass
+    return "v2"
 
 
 class QueryBuilder:
@@ -189,7 +219,12 @@ class QueryBuilder:
             result.extend(f"{field_name}__{mod}" for mod in mods)
         return result
 
-    def to_tidy_records(self, records: list[dict[str, Any]] | str) -> list[dict[str, Any]]:
+    def to_tidy_records(
+        self,
+        records: list[dict[str, Any]] | str | None = None,
+        api_base: str = "https://goat.genomehubs.org/api",
+        api_version: str = "v3",
+    ) -> list[dict[str, Any]]:
         """Reshape flat records from ``parse_search_json`` into long/tidy format.
 
         Each flat record is exploded so that every bare field becomes its own
@@ -204,17 +239,27 @@ class QueryBuilder:
         This is the natural input for ``pandas.melt`` or R's ``tidyr::pivot_longer``.
 
         Args:
-            records: Either the JSON string from ``parse_search_json`` or an
-                already-parsed list of flat record dicts.
+            records: Flat record dicts, a JSON string of flat records, or ``None``
+                to automatically call :meth:`search` and parse the response.
+            api_base: Base URL of the API (used only when ``records`` is ``None``).
+            api_version: API version string (used only when ``records`` is ``None``).
 
         Returns:
             List of dicts in tidy (long) format.
         """
         import json
 
+        from . import parse_search_json as _parse_search_json
         from . import to_tidy_records as _to_tidy_records  # FFI call to Rust
 
-        records_json = records if isinstance(records, str) else json.dumps(records)
+        if records is None:
+            raw = self.search(format="json", api_base=api_base, api_version=api_version)
+            data_str = json.dumps(raw) if isinstance(raw, dict) else raw
+            records_json = _parse_search_json(data_str)
+        elif isinstance(records, str):
+            records_json = records
+        else:
+            records_json = json.dumps(records)
         return list(json.loads(_to_tidy_records(records_json)))
 
     def set_attributes(
@@ -789,6 +834,64 @@ class QueryBuilder:
 
         return all_records[:max_records]
 
+    def search_df(
+        self,
+        api_base: str = "https://goat.genomehubs.org/api",
+        api_version: str = "v3",
+    ) -> "pandas.DataFrame":
+        """Execute a search and return results as a pandas DataFrame.
+
+        Requires: ``pip install pandas``
+
+        Args:
+            api_base: Base URL of the API.
+            api_version: API version string (default: ``"v3"``).
+
+        Returns:
+            pandas DataFrame with results.
+
+        Raises:
+            ImportError: If pandas is not installed.
+        """
+        import io
+
+        try:
+            import pandas as pd  # type: ignore[import-untyped]
+        except ModuleNotFoundError as e:
+            raise ImportError("search_df() requires pandas. Install it with:\n\n" "    pip install pandas\n") from e
+
+        tsv = self.search(format="tsv", api_base=api_base, api_version=api_version)
+        return pd.read_csv(io.StringIO(tsv), sep="\t")
+
+    def search_polars(
+        self,
+        api_base: str = "https://goat.genomehubs.org/api",
+        api_version: str = "v3",
+    ) -> "polars.DataFrame":
+        """Execute a search and return results as a polars DataFrame.
+
+        Requires: ``pip install polars``
+
+        Args:
+            api_base: Base URL of the API.
+            api_version: API version string (default: ``"v3"``).
+
+        Returns:
+            polars DataFrame with results.
+
+        Raises:
+            ImportError: If polars is not installed.
+        """
+        import io
+
+        try:
+            import polars as pl  # type: ignore[import-untyped]
+        except ModuleNotFoundError as e:
+            raise ImportError("search_polars() requires polars. Install it with:\n\n" "    pip install polars\n") from e
+
+        tsv = self.search(format="tsv", api_base=api_base, api_version=api_version)
+        return pl.read_csv(io.StringIO(tsv), separator="\t")
+
     def report(
         self,
         report: "ReportBuilder",
@@ -926,113 +1029,124 @@ class QueryBuilder:
 
     def record(
         self,
+        record_id: str,
+        result: str | None = None,
         api_base: str = "https://goat.genomehubs.org/api",
         api_version: str = "v3",
     ) -> Any:
         """Fetch a single record by ID or identifier.
 
-        Retrieves detailed information for a single record matching the current
-        query filters (typically just an ID or accession).
-
         Args:
+            record_id: Record ID to fetch (required).
+            result: Result type (``"taxon"``, ``"assembly"``, ``"sample"``); defaults to the
+                builder's current index.
             api_base: Base URL of the API.
-            api_version: API version string (default: "v3").
+            api_version: API version string (default: ``"v3"``).
 
         Returns:
             Parsed record object with all available fields.
         """
+        if not record_id:
+            raise ValueError("record() requires a non-empty record_id")
         import json
+        import urllib.parse
         import urllib.request
 
         from . import parse_record_json
 
-        url = f"{api_base}/{api_version}/record"
-        payload = {
-            "query_yaml": self.to_query_yaml(),
-            "params_yaml": self.to_params_yaml(),
-        }
-        req = urllib.request.Request(
-            url,
-            data=json.dumps(payload).encode("utf-8"),
-            headers={"Content-Type": "application/json"},
-        )
-        with urllib.request.urlopen(req) as resp:
+        result_type = result or self._index or "taxon"
+        params = urllib.parse.urlencode({"recordId": record_id, "result": result_type})
+        url = f"{api_base}/{api_version}/record?{params}"
+        with urllib.request.urlopen(url) as resp:
             body_text = resp.read().decode("utf-8")
-
         return json.loads(parse_record_json(body_text))
 
     def lookup(
         self,
+        search_term: str,
+        result: str | None = None,
+        size: int = 10,
         api_base: str = "https://goat.genomehubs.org/api",
         api_version: str = "v3",
     ) -> Any:
-        """Lookup records by alternative identifiers.
-
-        Resolves alternative identifiers to their canonical IDs or fetches
-        related records based on the lookup criteria in this query.
+        """Lookup records by alternative identifiers (autocomplete/search-as-you-type).
 
         Args:
+            search_term: Search term for lookup (required).
+            result: Result type (``"taxon"``, ``"assembly"``, ``"sample"``); defaults to the
+                builder's current index.
+            size: Number of results to return (default: ``10``).
             api_base: Base URL of the API.
-            api_version: API version string (default: "v3").
+            api_version: API version string (default: ``"v3"``).
 
         Returns:
             Parsed lookup result object.
         """
+        if not search_term:
+            raise ValueError("lookup() requires a non-empty search_term")
         import json
+        import urllib.parse
         import urllib.request
 
         from . import parse_lookup_json
 
-        url = f"{api_base}/{api_version}/lookup"
-        payload = {
-            "query_yaml": self.to_query_yaml(),
-            "params_yaml": self.to_params_yaml(),
-        }
-        req = urllib.request.Request(
-            url,
-            data=json.dumps(payload).encode("utf-8"),
-            headers={"Content-Type": "application/json"},
+        result_type = result or self._index or "taxon"
+        params = urllib.parse.urlencode(
+            {
+                "searchTerm": search_term,
+                "result": result_type,
+                "size": str(size),
+            }
         )
-        with urllib.request.urlopen(req) as resp:
+        url = f"{api_base}/{api_version}/lookup?{params}"
+        with urllib.request.urlopen(url) as resp:
             body_text = resp.read().decode("utf-8")
-
         return json.loads(parse_lookup_json(body_text))
 
     def summary(
         self,
+        record_id: str,
+        fields: str,
+        result: str | None = None,
+        summary_types: str = "min,max,mean",
         api_base: str = "https://goat.genomehubs.org/api",
         api_version: str = "v3",
     ) -> Any:
-        """Fetch summary aggregations for the current query.
-
-        Computes summary statistics (counts, averages, ranges, etc.) for
-        records matching this query.
+        """Fetch summary aggregations for specific fields.
 
         Args:
+            record_id: Record ID to summarize (required).
+            fields: Comma-separated field names to summarize (required).
+            result: Result type (``"taxon"``, ``"assembly"``, ``"sample"``); defaults to the
+                builder's current index.
+            summary_types: Summary types to compute (default: ``"min,max,mean"``).
             api_base: Base URL of the API.
-            api_version: API version string (default: "v3").
+            api_version: API version string (default: ``"v3"``).
 
         Returns:
             Parsed summary object with aggregation results.
         """
+        if not record_id:
+            raise ValueError("summary() requires a non-empty record_id")
+        if not fields:
+            raise ValueError("summary() requires a non-empty fields string")
         import json
+        import urllib.parse
         import urllib.request
 
-        url = f"{api_base}/{api_version}/summary"
-        payload = {
-            "query_yaml": self.to_query_yaml(),
-            "params_yaml": self.to_params_yaml(),
-        }
-        req = urllib.request.Request(
-            url,
-            data=json.dumps(payload).encode("utf-8"),
-            headers={"Content-Type": "application/json"},
+        result_type = result or self._index or "taxon"
+        params = urllib.parse.urlencode(
+            {
+                "recordId": record_id,
+                "result": result_type,
+                "fields": fields,
+                "summary": summary_types,
+            }
         )
-        with urllib.request.urlopen(req) as resp:
+        url = f"{api_base}/{api_version}/summary?{params}"
+        with urllib.request.urlopen(url) as resp:
             body_text = resp.read().decode("utf-8")
-
-        data = json.loads(body_text)
-        return data
+        return json.loads(body_text)
 
     # ── Utilities ─────────────────────────────────────────────────────────────
 

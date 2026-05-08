@@ -19,6 +19,35 @@ API_BASE: str = "{{ api_base }}"
 API_VERSION: str = "{{ api_version }}"
 UI_BASE: str = "{{ ui_base }}"
 
+# ── Utility functions ─────────────────────────────────────────────────────────
+
+
+def probe_api_capability(api_base: str = API_BASE) -> str:
+    """Probe an API base URL and return its capability level.
+
+    Calls ``{api_base}/v3/status``. If the response includes ``/search`` in
+    the ``supported`` list, returns ``"v3"``. Falls back to ``"v2"`` on any
+    error or missing endpoint.
+
+    Args:
+        api_base: Base URL of the API.
+
+    Returns:
+        ``"v3"`` or ``"v2"``.
+    """
+    import json
+    import urllib.request
+
+    try:
+        with urllib.request.urlopen(f"{api_base}/v3/status", timeout=5) as resp:
+            data = json.loads(resp.read().decode())
+        if "/search" in data.get("supported", []):
+            return "v3"
+    except Exception:
+        pass
+    return "v2"
+
+
 # ── Base QueryBuilder (inlined from cli-generator at generation time) ─────────
 
 
@@ -151,7 +180,9 @@ class QueryBuilder:
         self._fields = [{"name": f} if isinstance(f, str) else dict(f) for f in fields]
         return self
 
-    def to_tidy_records(self, records: "list[dict[str, Any]] | str") -> "list[dict[str, Any]]":
+    def to_tidy_records(
+        self, records: "list[dict[str, Any]] | str | None" = None
+    ) -> "list[dict[str, Any]]":
         """Reshape flat records from ``parse_search_json`` into long/tidy format.
 
         Each flat record is exploded so that every bare field becomes its own
@@ -160,8 +191,8 @@ class QueryBuilder:
         ``tidyr::pivot_longer``.
 
         Args:
-            records: Either the JSON string from ``parse_search_json`` or an
-                already-parsed list of flat record dicts.
+            records: Flat record dicts, a JSON string of flat records, or ``None``
+                to automatically call :meth:`search` and parse the response.
 
         Returns:
             List of dicts in tidy (long) format.
@@ -170,7 +201,14 @@ class QueryBuilder:
 
         from . import to_tidy_records as _to_tidy_records  # FFI call to Rust
 
-        records_json = records if isinstance(records, str) else json.dumps(records)
+        if records is None:
+            raw = self.search()
+            data_str = json.dumps(raw) if isinstance(raw, dict) else raw
+            records_json = _ext.parse_search_json(data_str)
+        elif isinstance(records, str):
+            records_json = records
+        else:
+            records_json = json.dumps(records)
         return list(json.loads(_to_tidy_records(records_json)))
 
     def set_names(self, name_classes: list[str]) -> "QueryBuilder":
