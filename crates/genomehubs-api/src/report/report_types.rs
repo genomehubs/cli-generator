@@ -579,6 +579,12 @@ pub async fn run_tree_report(
         ranks
     };
 
+    // Optional: count descendants of a specific rank per tree node (e.g. count_rank: species).
+    let count_rank: Option<String> = report_config
+        .get("count_rank")
+        .and_then(|v| v.as_str())
+        .map(str::to_string);
+
     // --- Step 1: Find LCA ---
     let (lca_id, lca_name, lca_rank, lca_parent, total_hits, lca_took) =
         find_tree_lca(state, index, base_query).await?;
@@ -708,13 +714,27 @@ pub async fn run_tree_report(
         collapse_monotypic_nodes(&mut tree_nodes, &lca_id, &preserve_ranks);
     }
 
-    // --- Step 6: Compute subtree counts ---
+    // --- Step 6: Descendant rank counts (optional) ---
+    // One extra ES query using nested lineage → reverse_nested to count how many
+    // taxa at `count_rank` descend from each tree node.
+    if let Some(ref rank) = count_rank {
+        let descendant_counts =
+            fetch_descendant_counts(&state.client, &state.es_base, index, &lca_id, rank).await?;
+        took_total += descendant_counts.took;
+        for (taxon_id, count) in descendant_counts.counts {
+            if let Some(node) = tree_nodes.get_mut(&taxon_id) {
+                node.insert("descendant_count".to_string(), json!(count));
+            }
+        }
+    }
+
+    // --- Step 7: Compute subtree counts ---
     compute_subtree_counts(&mut tree_nodes, &lca_id, &direct_results);
 
-    // --- Step 7: Compute tree depths from LCA ---
+    // --- Step 8: Compute tree depths from LCA ---
     let (max_depth, min_depth) = compute_tree_depths(&tree_nodes, &lca_id);
 
-    // --- Step 8: Build response ---
+    // --- Step 9: Build response ---
     let lca = json!({
         "taxon_id": lca_id,
         "scientific_name": lca_name,
@@ -750,6 +770,11 @@ pub async fn run_tree_report(
             "labels": cat_bounds.cat_labels,
             "scale": format!("{:?}", cat_spec.opts.scale).to_lowercase()
         });
+    }
+
+    // Advertise which rank was used for descendant_count so the UI knows how to label it
+    if let Some(ref rank) = count_rank {
+        report_data["countRank"] = json!(rank);
     }
 
     Ok((total_hits, took_total, report_data))
@@ -1455,6 +1480,88 @@ fn extract_tree_field(
         break; // use first matching attribute
     }
     fields_map
+}
+
+/// Result of `fetch_descendant_counts`.
+struct DescendantCounts {
+    /// Per-node counts: taxon_id → number of descendants at the requested rank.
+    counts: std::collections::HashMap<String, u64>,
+    /// ES `took` value for the query, in ms.
+    took: u64,
+}
+
+/// Count, for every ancestor node that is in scope under `lca_id`, how many taxa
+/// at `count_rank` descend from it.
+///
+/// Runs a single ES aggregation:
+/// - Filter to documents at `count_rank` whose lineage contains `lca_id`
+/// - Nest into `lineage`, group by `lineage.taxon_id` (all ancestors)
+/// - `reverse_nested` to count distinct parent documents per ancestor bucket
+///
+/// This gives the number of `count_rank` taxa beneath every ancestor in one round-trip.
+async fn fetch_descendant_counts(
+    client: &reqwest::Client,
+    es_base: &str,
+    index: &str,
+    lca_id: &str,
+    count_rank: &str,
+) -> Result<DescendantCounts, String> {
+    let body = json!({
+        "size": 0,
+        "query": {
+            "bool": {
+                "must": [
+                    { "term": { "taxon_rank": count_rank } },
+                    {
+                        "nested": {
+                            "path": "lineage",
+                            "query": { "term": { "lineage.taxon_id": lca_id } }
+                        }
+                    }
+                ]
+            }
+        },
+        "aggs": {
+            "by_ancestor": {
+                "nested": { "path": "lineage" },
+                "aggs": {
+                    "ancestors": {
+                        "terms": {
+                            "field": "lineage.taxon_id",
+                            "size": 100000
+                        },
+                        "aggs": {
+                            "node_count": { "reverse_nested": {} }
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    let resp = crate::es_client::execute_search(client, es_base, index, &body).await?;
+    let took = resp.get("took").and_then(|t| t.as_u64()).unwrap_or(0);
+
+    let buckets = resp
+        .pointer("/aggregations/by_ancestor/ancestors/buckets")
+        .and_then(|b| b.as_array())
+        .cloned()
+        .unwrap_or_default();
+
+    let mut counts = std::collections::HashMap::with_capacity(buckets.len());
+    for bucket in &buckets {
+        let taxon_id = match bucket.get("key").and_then(|k| k.as_str()) {
+            Some(id) => id.to_string(),
+            None => continue,
+        };
+        let count = bucket
+            .pointer("/node_count/doc_count")
+            .and_then(|c| c.as_u64())
+            .unwrap_or(0);
+        counts.insert(taxon_id, count);
+    }
+
+    Ok(DescendantCounts { counts, took })
 }
 
 /// Compute subtree counts via iterative post-order DFS.
