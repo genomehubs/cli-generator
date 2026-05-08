@@ -545,12 +545,10 @@
         ],
         "properties": {
           "params_yaml": {
-            "type": "string",
-            "description": "YAML string describing the QueryParams"
+            "type": "string"
           },
           "query_yaml": {
-            "type": "string",
-            "description": "YAML string describing the SearchQuery"
+            "type": "string"
           }
         }
       },

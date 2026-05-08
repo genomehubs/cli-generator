@@ -1,15 +1,53 @@
 use axum::{extract::Json, Extension};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
+use serde_json::{json, Value};
 use std::sync::Arc;
 
 use crate::{es_client, index_name, AppState};
 
-#[derive(Deserialize, utoipa::ToSchema)]
+#[derive(utoipa::ToSchema)]
 pub struct CountRequest {
-    /// YAML string describing the SearchQuery
     pub query_yaml: String,
-    /// YAML string describing the QueryParams
     pub params_yaml: String,
+}
+
+impl<'de> Deserialize<'de> for CountRequest {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        use serde::de;
+        let map = Value::deserialize(deserializer)?;
+
+        // Helper to convert value to YAML string
+        let to_yaml = |val: &Value| -> Result<String, D::Error> {
+            match val {
+                Value::String(s) => Ok(s.clone()),
+                _ => serde_yaml::to_string(val).map_err(de::Error::custom),
+            }
+        };
+
+        // Get query from either "query" or "query_yaml" field
+        let query_yaml = if let Some(query_val) = map.get("query").or_else(|| map.get("query_yaml"))
+        {
+            to_yaml(query_val)?
+        } else {
+            return Err(de::Error::missing_field("query or query_yaml"));
+        };
+
+        // Get params from either "params" or "params_yaml" field
+        let params_yaml =
+            if let Some(params_val) = map.get("params").or_else(|| map.get("params_yaml")) {
+                to_yaml(params_val)?
+            } else {
+                return Err(de::Error::missing_field("params or params_yaml"));
+            };
+
+        Ok(CountRequest {
+            query_yaml,
+            params_yaml,
+        })
+    }
 }
 
 #[derive(Serialize, utoipa::ToSchema)]
@@ -95,12 +133,19 @@ pub async fn post_count(
     let size = 0usize;
     let offset = (params.page.saturating_sub(1)) * params.size;
 
+    // Build taxa query fragment from identifiers
+    let taxa_query = query
+        .identifiers
+        .taxa
+        .as_ref()
+        .map(|t| format!("{}({})", t.filter_type.api_function(), t.names.join(",")));
+
     // Build a URL for the response (for debugging/reproduction)
     let built_url =
         genomehubs_query::query::build_query_url(&query, &params, &state.es_base, "v3", "count");
 
     let body = match cli_generator::core::query_builder::build_search_body(
-        None,
+        taxa_query.as_deref(),
         fields_slice.as_deref(),
         None,
         Some(&query.attributes.attributes),
@@ -123,8 +168,17 @@ pub async fn post_count(
         }
     };
 
+    // Extract only the query clause for the count endpoint (which expects {"query": {...}})
+    let count_body = json!({
+        "query": body
+            .get("query")
+            .cloned()
+            .unwrap_or_else(|| serde_json::json!({"match_all": {}}))
+    });
+
     // Execute count query against ES using shared helper
-    let raw = match es_client::execute_count(&state.client, &state.es_base, &idx, &body).await {
+    let raw = match es_client::execute_count(&state.client, &state.es_base, &idx, &count_body).await
+    {
         Ok(v) => v,
         Err(e) => {
             return Json(CountResponse {

@@ -259,11 +259,42 @@ pub async fn post_search(
 
         let took_ms = raw.get("took").and_then(|v| v.as_u64()).unwrap_or(0);
 
-        // Flatten records via the existing parse pipeline
-        let results_json = match genomehubs_query::parse::parse_search_json(&raw.to_string()) {
-            Ok(s) => s,
-            Err(e) => bail!(format!("failed to parse search results: {e}")),
+        // Transform raw ES response to API response format expected by parse_search_json
+        let group_name = match first_index {
+            genomehubs_query::query::SearchIndex::Taxon => "taxon",
+            genomehubs_query::query::SearchIndex::Assembly => "assembly",
+            genomehubs_query::query::SearchIndex::Sample => "sample",
         };
+
+        let es_hits = raw
+            .get("hits")
+            .and_then(|h| h.get("hits"))
+            .and_then(|hits| hits.as_array());
+
+        let api_results: Vec<Value> = es_hits
+            .map(|hits| {
+                hits.iter()
+                    .filter_map(|hit| {
+                        let source = hit.get("_source")?;
+                        Some(serde_json::json!({
+                            "result": source,
+                            "index": group_name
+                        }))
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
+
+        let formatted_response = serde_json::json!({
+            "results": api_results
+        });
+
+        // Flatten records via the existing parse pipeline
+        let results_json =
+            match genomehubs_query::parse::parse_search_json(&formatted_response.to_string()) {
+                Ok(s) => s,
+                Err(e) => bail!(format!("failed to parse search results: {e}")),
+            };
         let results: Vec<Value> = serde_json::from_str(&results_json).unwrap_or_default();
 
         // Extract search_after cursor for pagination
@@ -369,11 +400,36 @@ pub async fn post_search(
 
     let took_ms = raw.get("took").and_then(|v| v.as_u64()).unwrap_or(0);
 
+    // Transform raw ES response to API response format expected by parse_search_json
+    let es_hits = raw
+        .get("hits")
+        .and_then(|h| h.get("hits"))
+        .and_then(|hits| hits.as_array());
+
+    let api_results: Vec<Value> = es_hits
+        .map(|hits| {
+            hits.iter()
+                .filter_map(|hit| {
+                    let source = hit.get("_source")?;
+                    Some(serde_json::json!({
+                        "result": source,
+                        "index": group
+                    }))
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+
+    let formatted_response = serde_json::json!({
+        "results": api_results
+    });
+
     // Flatten records via the existing parse pipeline
-    let results_json = match genomehubs_query::parse::parse_search_json(&raw.to_string()) {
-        Ok(s) => s,
-        Err(e) => bail!(format!("failed to parse search results: {e}")),
-    };
+    let results_json =
+        match genomehubs_query::parse::parse_search_json(&formatted_response.to_string()) {
+            Ok(s) => s,
+            Err(e) => bail!(format!("failed to parse search results: {e}")),
+        };
     let results: Vec<Value> = serde_json::from_str(&results_json).unwrap_or_default();
 
     // Extract search_after cursor for pagination

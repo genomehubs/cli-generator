@@ -2,10 +2,13 @@
   "query": {
     "index": "taxon",
     "taxa": ["Mammalia"],
-    "rank": "species"
+    "rank": "species",
+    "taxon_filter_type": "tree",
+    "fields": ["genome_size", "assembly_level"]
   },
   "params": {
     "size": 10,
-    "page": 1
+    "page": 1,
+    "taxonomy": "ncbi"
   }
 }
