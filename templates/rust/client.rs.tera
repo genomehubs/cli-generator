@@ -611,7 +611,7 @@ pub fn msearch(
 /// fields your report type requires.
 #[derive(Debug, Default)]
 pub struct ReportOptions {
-    /// X-axis field name (histogram, scatter, xPerRank, tree, map, arc).
+    /// X-axis field name (histogram, scatter, tree, map, arc).
     pub x: Option<String>,
     /// X-axis modifiers (e.g. `"count"`, `"min"`, `"max"`).
     pub x_opts: Option<String>,
@@ -649,7 +649,7 @@ pub struct ReportOptions {
 
 /// Run a report query against the v3 `/report` endpoint.
 ///
-/// `report_type` must be one of `histogram`, `scatter`, `xPerRank`, `sources`,
+/// `report_type` must be one of `histogram`, `scatter`, `countPerRank`, `sources`,
 /// `tree`, `map`, or `arc`.  The query + params are the same as for `search`.
 /// Returns the raw JSON string from the API (the full `{status, report}` envelope).
 ///

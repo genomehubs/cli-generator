@@ -15,7 +15,7 @@ examples/
 │   ├── histogram-simple.json
 │   ├── histogram-categorized.json
 │   ├── scatter.json
-│   ├── xPerRank.json
+│   ├── countPerRank.json
 │   ├── sources.json
 │   ├── tree.json
 │   └── map.json
@@ -177,9 +177,9 @@ Returns raw documents if count < threshold; grid aggregation otherwise.
 
 ---
 
-### 4. xPerRank (Per Taxonomic Rank)
+### 4. countPerRank (Per Taxonomic Rank)
 
-**File:** `examples/report/xPerRank.json`
+**File:** `examples/report/countPerRank.json`
 
 ```json
 {
@@ -191,7 +191,7 @@ Returns raw documents if count < threshold; grid aggregation otherwise.
     "taxonomy": "ncbi"
   },
   "report": {
-    "report": "xPerRank",
+    "report": "countPerRank",
     "x": "genome_size"
   }
 }

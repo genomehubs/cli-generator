@@ -406,14 +406,37 @@ class QueryBuilder:
 
     # ── Site-specific API methods ─────────────────────────────────────────────
 
-    def to_url(self, endpoint: str = "search") -> str:
-        """Build a fully-encoded {{ site_display_name }} API URL.
+    def _post_json(self, url: str, payload: dict[str, Any]) -> Any:
+        """POST a JSON payload and return the parsed response body."""
+        import json
+        import urllib.request
+
+        req = urllib.request.Request(
+            url,
+            data=json.dumps(payload).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+        )
+        with urllib.request.urlopen(req) as resp:
+            return json.loads(resp.read().decode("utf-8"))
+
+    def to_v2_url(self, endpoint: str = "search") -> str:
+        """Build a fully-encoded {{ site_display_name }} v2 API URL.
 
         Args:
             endpoint: API endpoint — ``"search"``, ``"count"``, or
                 ``"searchPaginated"``.
         """
         return str(_ext.build_url(self.to_query_yaml(), self.to_params_yaml(), endpoint))
+
+    def to_url(self, endpoint: str = "search") -> str:
+        """Build a fully-encoded {{ site_display_name }} API URL.
+
+        .. deprecated::
+            Use :meth:`to_v2_url` instead.
+        """
+        import warnings
+        warnings.warn("to_url() is deprecated; use to_v2_url() instead.", DeprecationWarning, stacklevel=2)
+        return self.to_v2_url(endpoint)
 
     def to_ui_url(self, endpoint: str = "search") -> str:
         """Build a fully-encoded {{ site_display_name }} UI URL.
@@ -429,16 +452,32 @@ class QueryBuilder:
         """
         return str(_ext.build_ui_url(self.to_query_yaml(), self.to_params_yaml(), endpoint))
 
-    def search(self, format: str = "json") -> str:
-        """Execute a search and return the response body in the specified format.
+    def search(self, format: str = "json") -> Any:
+        """Execute a v3 search and return the response.
 
         Args:
-            format: Output format — ``"json"``, ``"tsv"``, or ``"csv"`` (default: ``"json"``)
+            format: Output format — ``"json"`` (default) or ``"tsv"``.
 
         Returns:
-            Response body as a string in the requested format.
+            Parsed JSON dict (v3 envelope) for ``"json"``; raw TSV text for ``"tsv"``.
         """
-        return str(_ext.search(self.to_query_yaml(), self.to_params_yaml(), format))
+        import json
+        import urllib.request
+
+        if format != "json":
+            url = self.to_v2_url("search")
+            accept = {
+                "tsv": "text/tab-separated-values",
+            }.get(format, "application/json")
+            req = urllib.request.Request(url, headers={"Accept": accept})
+            with urllib.request.urlopen(req) as resp:
+                return resp.read().decode()
+
+        data = self._post_json(
+            f"{API_BASE}/v3/search",
+            {"query_yaml": self.to_query_yaml(), "params_yaml": self.to_params_yaml()},
+        )
+        return data
 
     def search_df(self) -> pandas.DataFrame:
         """Execute a search and return results as a pandas DataFrame.
@@ -494,64 +533,58 @@ class QueryBuilder:
         self,
         max_records: int | None = None,
     ) -> list[dict[str, Any]]:
-        """Fetch all matching records using cursor-based pagination.
+        """Fetch all matching records using v3 cursor-based pagination.
 
-        Uses the ``/searchPaginated`` endpoint in chunks of 1 000 records per
-        page.  Pagination continues until all pages are retrieved or
-        *max_records* is reached.
+        Sends repeated POST ``/search`` requests with ``search_after`` cursors
+        until all records are retrieved or *max_records* is reached.
 
         Args:
             max_records: Maximum total records to return.  ``None`` means no
                 limit.
 
         Returns:
-            List of flat record dicts in the same format as
-            ``parse_search_json`` output.
+            List of flat record dicts as produced by ``parse_search_json``.
         """
         import json
-        import urllib.parse
-        import urllib.request
 
         CHUNK_SIZE = 1_000
         cap: float = float("inf") if max_records is None else float(max_records)
         all_records: list[dict[str, Any]] = []
-        search_after: list[Any] | None = None
+        search_after: Any = None
+        orig_size = self._size
+        self.set_size(CHUNK_SIZE)
+        try:
+            while True:
+                payload: dict[str, Any] = {
+                    "query_yaml": self.to_query_yaml(),
+                    "params_yaml": self.to_params_yaml(),
+                }
+                if search_after is not None:
+                    payload["search_after"] = search_after
+                resp_data = self._post_json(f"{API_BASE}/v3/search", payload)
+                records: list[dict[str, Any]] = json.loads(
+                    _ext.parse_search_json(json.dumps(resp_data))
+                )
+                remaining = int(cap) - len(all_records)
+                all_records.extend(records[:remaining])
+                search_after = resp_data.get("search_after")
+                total = resp_data.get("status", {}).get("hits", 0)
+                if not search_after or len(all_records) >= min(int(cap), total):
+                    break
+        finally:
+            self._size = orig_size
 
-        while True:
-            base_url = self.to_url("searchPaginated")
-            sep = "&" if "?" in base_url else "?"
-            url = base_url + f"{sep}size={CHUNK_SIZE}"
-            if search_after is not None:
-                url += "&searchAfter=" + urllib.parse.quote(json.dumps(search_after))
-
-            req = urllib.request.Request(url, headers={"Accept": "application/json"})
-            with urllib.request.urlopen(req) as resp:
-                raw: str = resp.read().decode()
-
-            page: dict[str, Any] = json.loads(_ext.parse_paginated_json(raw))
-            records: list[dict[str, Any]] = page.get("records", [])
-
-            remaining = int(cap) - len(all_records)
-            all_records.extend(records[:remaining])
-
-            if not page.get("hasMore", False) or len(all_records) >= cap:
-                break
-            search_after = page.get("searchAfter")
-
-        return all_records
+        return all_records[:max_records]
 
     def count(self) -> int:
-        """Execute a count query and return the hit count."""
-        import urllib.request
-        import urllib.parse
+        """Execute a v3 count query and return the hit count."""
         import json
 
-        url = self.to_url("search")
-        req = urllib.request.Request(url, headers={"Accept": "application/json"})
-        with urllib.request.urlopen(req) as resp:
-            raw = resp.read().decode()
-
-        status = json.loads(_ext.parse_response_status(raw))
+        data = self._post_json(
+            f"{API_BASE}/v3/count",
+            {"query_yaml": self.to_query_yaml(), "params_yaml": self.to_params_yaml()},
+        )
+        status = json.loads(_ext.parse_response_status(json.dumps(data)))
         hits = status.get("hits", 0)
         try:
             return int(hits)
@@ -564,11 +597,8 @@ class QueryBuilder:
     ) -> list[dict[str, Any]]:
         """Execute multiple searches in a single batch request."""
         import json
-        import urllib.request
 
-        url_base = self.to_url("search").split("?")[0].replace("/api/v", f"/api/v3/")
-        url = url_base.rsplit("/", 1)[0] + "/searchBatch"
-
+        url = f"{API_BASE}/v3/searchBatch"
         payload = {
             "searches": [
                 {
@@ -578,14 +608,7 @@ class QueryBuilder:
                 for q in queries
             ]
         }
-        req = urllib.request.Request(
-            url,
-            data=json.dumps(payload).encode("utf-8"),
-            headers={"Content-Type": "application/json"},
-        )
-        with urllib.request.urlopen(req) as resp:
-            body_text = resp.read().decode("utf-8")
-
+        body_text = json.dumps(self._post_json(url, payload))
         parsed_results = []
         data = json.loads(_ext.parse_batch_json(body_text))
         for result in data.get("results", []):
@@ -598,11 +621,8 @@ class QueryBuilder:
     ) -> list[int]:
         """Get hit counts for multiple queries in a batch request."""
         import json
-        import urllib.request
 
-        url_base = self.to_url("search").split("?")[0].replace("/api/v", f"/api/v3/")
-        url = url_base.rsplit("/", 1)[0] + "/countBatch"
-
+        url = f"{API_BASE}/v3/countBatch"
         payload = {
             "searches": [
                 {
@@ -612,14 +632,7 @@ class QueryBuilder:
                 for q in queries
             ]
         }
-        req = urllib.request.Request(
-            url,
-            data=json.dumps(payload).encode("utf-8"),
-            headers={"Content-Type": "application/json"},
-        )
-        with urllib.request.urlopen(req) as resp:
-            body_text = resp.read().decode("utf-8")
-
+        body_text = json.dumps(self._post_json(url, payload))
         data = json.loads(_ext.parse_batch_json(body_text))
         counts = []
         for result in data.get("results", []):

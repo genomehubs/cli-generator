@@ -311,7 +311,7 @@ class MultiQueryBuilder:
             searches: list[dict[str, Any]] = []
             for qb in chunk:
                 # Extract the raw query string from the URL.
-                url = qb.to_url(api_base, api_version, "search")
+                url = qb.to_v2_url(api_base, api_version, "search")
                 query_param = _extract_query_param(url)
                 search_obj: dict[str, Any] = {
                     "query": query_param,

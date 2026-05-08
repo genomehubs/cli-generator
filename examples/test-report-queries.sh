@@ -68,16 +68,15 @@ echo "---"
 echo ""
 
 # ============================================================================
-echo "4. xPerRank Report (genome_size per taxon_rank)"
-echo "   Testing statistics per taxonomic rank"
+echo "4. countPerRank Report (counts per taxon_rank)"
+echo "   Testing counts per taxonomic rank"
 echo ""
 
 curl -s -X POST "$API/report" \
   -H "Content-Type: application/json" \
-  -d @examples/report/xPerRank.json | jq '{
+  -d @examples/report/countPerRank.json | jq '{
     status: .status | {success, hits, took},
     report_type: .report.type,
-    x_field: .report.x,
     bucket_count: (.report.buckets | length),
     first_bucket: .report.buckets[0]
   }'

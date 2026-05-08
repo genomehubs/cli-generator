@@ -21,7 +21,7 @@ examples/
 │   ├── histogram-simple.json
 │   ├── histogram-categorized.json
 │   ├── scatter.json
-│   ├── xPerRank.json
+│   ├── countPerRank.json
 │   ├── sources.json
 │   ├── tree.json
 │   └── map.json

@@ -469,6 +469,8 @@ class TestSDKParity:
                 "search_df",
                 "search_polars",
                 "search_all",
+                "to_v2_url",
+                "_post_json",
             ]
         )
 

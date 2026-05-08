@@ -19,7 +19,7 @@ non-arc report types:
 | 2D histogram/heatmap | `histogram` + `y`             | composite terms/histogram                                             | when `y:` set                   |
 | Scatter (raw)        | `scatter`                     | top-N `_search` hits                                                  | count < scatter_threshold       |
 | Scatter (grid)       | `scatter`                     | 2D histogram                                                          | count ≥ scatter_threshold       |
-| xPerRank             | `xPerRank`                    | terms agg on `taxon_rank`, nested stats                               | always                          |
+| countPerRank         | `countPerRank`                | terms agg on `taxon_rank`, nested stats                               | always                          |
 | Sources              | `sources`                     | terms on `source`                                                     | always                          |
 | Tree                 | `tree`                        | lineage nested agg (LCA) + search_after pagination + lineage walk     | always                          |
 | Tree + cat           | `tree` + `cat_rank`           | as above + per-node `cat` label from ancestor at named rank           | when `cat_rank:` set            |
@@ -75,7 +75,7 @@ crates/genomehubs-query/src/report/builder.rs      — ReportBuilder SDK type
 
 | Key                  | Type          | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | -------------------- | ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `report`             | string        | `histogram`, `scatter`, `xPerRank`, `sources`, `tree`, `map`                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| `report`             | string        | `histogram`, `scatter`, `countPerRank`, `sources`, `tree`, `map`                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | `x`                  | string        | X-axis field name                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | `x_opts`             | string        | AxisOpts string for X                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | `y`                  | string        | Optional Y-axis field (2D histogram / scatter Y)                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
@@ -182,7 +182,7 @@ pub async fn post_report(
         "histogram" | "scatter" => {
             report_types::run_histogram_report(&state, &idx, &search_query, &params, &report_config, &base_query).await
         }
-        "xPerRank" => report_types::run_x_per_rank_report(&state, &idx, &base_query, &report_config).await,
+        "countPerRank" => report_types::run_count_per_rank_report(&state, &idx, &base_query, &report_config).await,
         "sources" => report_types::run_sources_report(&state, &idx, &base_query).await,
         "tree" => report_types::run_tree_report(&state, &idx, &base_query, &report_config).await,
         "map" => report_types::run_map_report(&state, &idx, &base_query, &report_config).await,
@@ -339,17 +339,17 @@ async fn run_scatter_raw(
 }
 ```
 
-#### xPerRank report
+#### countPerRank report
 
 ```rust
-pub async fn run_x_per_rank_report(
+pub async fn run_count_per_rank_report(
     state: &Arc<AppState>,
     index: &str,
     base_query: &Value,
     report_config: &serde_yaml::Value,
 ) -> Result<(u64, u64, Value), String> {
-    let x_field = report_config.get("x").and_then(|v| v.as_str())
-        .ok_or("report_yaml missing 'x' field")?;
+    let query_field = report_config.get("query").and_then(|v| v.as_str())
+        .ok_or("report_yaml missing 'query' field")?;
 
     let es_body = json!({
         "size": 0,
@@ -358,8 +358,8 @@ pub async fn run_x_per_rank_report(
             "by_rank": {
                 "terms": { "field": "taxon_rank", "size": 20 },
                 "aggs": {
-                    "field_stats": { "stats": { "field": x_field } },
-                    "doc_count": { "value_count": { "field": x_field } }
+                    "field_stats": { "stats": { "field": query_field } },
+                    "doc_count": { "value_count": { "field": query_field } }
                 }
             }
         }
@@ -370,7 +370,7 @@ pub async fn run_x_per_rank_report(
     let total = resp.pointer("/hits/total/value").and_then(|v| v.as_u64()).unwrap_or(0);
     let buckets = resp.pointer("/aggregations/by_rank/buckets").cloned().unwrap_or_default();
 
-    Ok((total, took, json!({ "type": "xPerRank", "x": x_field, "buckets": buckets })))
+    Ok((total, took, json!({ "type": "countPerRank", "query": query_field, "buckets": buckets })))
 }
 ```
 

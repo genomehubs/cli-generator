@@ -271,8 +271,8 @@ pub async fn run_histogram_report(
     Ok((total_hits, took, report_data))
 }
 
-/// Run an xPerRank report (values per taxonomic rank).
-pub async fn run_x_per_rank_report(
+/// Run a countPerRank report (counts per taxonomic rank).
+pub async fn run_count_per_rank_report(
     state: &Arc<AppState>,
     index: &str,
     base_query: &Value,

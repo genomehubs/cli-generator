@@ -42,7 +42,7 @@
     "/api/v3/countBatch": {
       "post": {
         "tags": [
-          "routes::countBatch"
+          "routes::count_batch"
         ],
         "operationId": "post_countBatch",
         "requestBody": {
@@ -273,7 +273,7 @@
     "/api/v3/searchBatch": {
       "post": {
         "tags": [
-          "routes::searchBatch"
+          "routes::search_batch"
         ],
         "operationId": "post_searchBatch",
         "requestBody": {

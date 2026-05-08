@@ -6,6 +6,29 @@
 
 ---
 
+## Status and Sub-phases
+
+Phase 6b defined the migration plan. Implementation is split into sub-phases:
+
+| Sub-phase                                       | Title                                                                          | Status      |
+| ----------------------------------------------- | ------------------------------------------------------------------------------ | ----------- |
+| **6b** (this file)                              | Plan, audit, Python SDK core migration                                         | ✅ Complete |
+| [**6c**](phase-6c-report-builder-validation.md) | `ReportBuilder` class + `validate_report_yaml` (Rust-first)                    | 🔲 Planned  |
+| [**6d**](phase-6d-cli-subcommand-gaps.md)       | CLI subcommand gaps: `record`, `summary`, `report`, batch, `count` v3          | 🔲 Planned  |
+| [**6e**](phase-6e-python-sdk-gaps.md)           | Python SDK remaining gaps: `from_v2_url`, `probe_api_capability`, v2 fallbacks | 🔲 Planned  |
+| [**6f**](phase-6f-r-js-sdk-gaps.md)             | R and JS SDK parity: v3 transport, `report`, `search_all`, `ReportBuilder`     | 🔲 Planned  |
+| [**6g**](phase-6g-quarto-docs.md)               | Quarto docs: API tab, `ReportBuilder` section, method accuracy                 | 🔲 Planned  |
+| [**6h**](phase-6h-test-parity.md)               | Test parity: canonical method registry, fixture assertions, deprecation tests  | 🔲 Planned  |
+
+Gap analysis and breaking-change reference: [docs/planning/v3-gap-analysis.md](../v3-gap-analysis.md)
+
+Deferred to phase-XX (post 6h):
+
+- [Describe and snippet extensions](phase-XX-describe-snippet-extensions.md) — `call_type`, report describe, batch snippets
+- [Metadata endpoint methods](phase-XX-metadata-endpoints.md) — `indices()`, `result_fields()`, `taxonomies()`, `taxonomic_ranks()`
+
+---
+
 ## Scope
 
 The v3 API is now a substantially complete REST implementation (POST-body JSON/YAML
@@ -20,21 +43,21 @@ minimal v2 fallback for parity checking during the transition period.
 
 ### V3 API — implemented endpoints (as of 2026-05-08)
 
-| Endpoint          | Method | Notes                                                                            |
-| ----------------- | ------ | -------------------------------------------------------------------------------- |
-| `/status`         | GET    | Returns `supported` list — **needs updating** (see §3)                           |
-| `/resultFields`   | GET    | —                                                                                |
-| `/taxonomies`     | GET    | —                                                                                |
-| `/taxonomicRanks` | GET    | —                                                                                |
-| `/indices`        | GET    | —                                                                                |
-| `/count`          | POST   | JSON/YAML body                                                                   |
-| `/countBatch`     | POST   | JSON/YAML body                                                                   |
-| `/search`         | POST   | JSON/YAML body; returns `{status, url, results, search_after}`                   |
-| `/searchBatch`    | POST   | JSON/YAML body                                                                   |
-| `/record`         | GET    | —                                                                                |
-| `/lookup`         | GET    | —                                                                                |
-| `/summary`        | POST   | JSON/YAML body                                                                   |
-| `/report`         | POST   | JSON/YAML body; dispatches histogram, scatter, xPerRank, sources, tree, map, arc |
+| Endpoint          | Method | Notes                                                                                |
+| ----------------- | ------ | ------------------------------------------------------------------------------------ |
+| `/status`         | GET    | Returns `supported` list — **needs updating** (see §3)                               |
+| `/resultFields`   | GET    | —                                                                                    |
+| `/taxonomies`     | GET    | —                                                                                    |
+| `/taxonomicRanks` | GET    | —                                                                                    |
+| `/indices`        | GET    | —                                                                                    |
+| `/count`          | POST   | JSON/YAML body                                                                       |
+| `/countBatch`     | POST   | JSON/YAML body                                                                       |
+| `/search`         | POST   | JSON/YAML body; returns `{status, url, results, search_after}`                       |
+| `/searchBatch`    | POST   | JSON/YAML body                                                                       |
+| `/record`         | GET    | —                                                                                    |
+| `/lookup`         | GET    | —                                                                                    |
+| `/summary`        | POST   | JSON/YAML body                                                                       |
+| `/report`         | POST   | JSON/YAML body; dispatches histogram, scatter, countPerRank, sources, tree, map, arc |
 
 `/searchPaginated` does **not** exist in v3; pagination is cursor-based via
 `search_after` in the `/search` response.

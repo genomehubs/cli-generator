@@ -188,8 +188,8 @@ pub async fn post_report(
             )
             .await
         }
-        "xPerRank" => {
-            report_types::run_x_per_rank_report(&state, &idx, &base_query, &report_config).await
+        "countPerRank" => {
+            report_types::run_count_per_rank_report(&state, &idx, &base_query, &report_config).await
         }
         "sources" => report_types::run_sources_report(&state, &idx, &base_query).await,
         "tree" => report_types::run_tree_report(&state, &idx, &base_query, &report_config).await,

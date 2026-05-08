@@ -215,7 +215,7 @@ enum {{ index.name | capitalize }}Commands {
 
     /// Run a report query (v3 only).
     Report {
-        /// Report type: histogram, scatter, xPerRank, sources, tree, map, arc.
+        /// Report type: histogram, scatter, countPerRank, sources, tree, map, arc.
         #[arg(long)]
         report_type: String,
 

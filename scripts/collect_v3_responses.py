@@ -16,7 +16,7 @@ def create_v3_request(report_type: str) -> Dict[str, str]:
     """Create a simple valid V3 request for the given report type.
 
     Args:
-        report_type: One of 'histogram', 'scatter', 'arc', 'tree', 'xPerRank'
+        report_type: One of 'histogram', 'scatter', 'arc', 'tree', 'countPerRank'
 
     Returns:
         Dict with query_yaml, params_yaml, report_yaml keys
@@ -36,8 +36,8 @@ def create_v3_request(report_type: str) -> Dict[str, str]:
         base["report_yaml"] = "report: arc\nfeature: assembly_span\nranks: [phylum, class, order, family]\n"
     elif report_type == "tree":
         base["report_yaml"] = "report: tree\nx: assembly_date\ny: genome_size\n"
-    elif report_type == "xPerRank":
-        base["report_yaml"] = "report: xPerRank\nx: genome_size\n"
+    elif report_type == "countPerRank":
+        base["report_yaml"] = "report: countPerRank\nquery: genome_size\n"
     else:
         raise ValueError(f"Unknown report type: {report_type}")
 
@@ -74,7 +74,7 @@ def main():
     output_dir = Path("tests/fixtures/parity/v3")
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    report_types = ["histogram", "scatter", "arc", "tree", "xPerRank"]
+    report_types = ["histogram", "scatter", "arc", "tree", "countPerRank"]
 
     for report_type in report_types:
         print(f"\n{report_type.upper()}")

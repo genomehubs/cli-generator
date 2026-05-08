@@ -746,7 +746,7 @@ tests/fixtures/parity/
 ```
 
 At minimum, collect at least one fixture per implemented report type
-(histogram, scatter, arc, tree, map, xPerRank, sources), and at least one
+(histogram, scatter, arc, tree, map, countPerRank, sources), and at least one
 fixture with a `cat` breakdown.
 
 ---
@@ -835,15 +835,15 @@ def test_report_parity(fixture_path: Path, local_v3_base: str) -> None:
 
 Required keys per report type:
 
-| Type        | Required v3 keys                                                              |
-| ----------- | ----------------------------------------------------------------------------- |
-| `histogram` | `type`, `x.field`, `x.domain`, `buckets`, `allValues`                         |
-| `scatter`   | `type`, `x`, `y`, `buckets`, `allValues`, `yBuckets`, `allYValues`, `zDomain` |
-| `arc`       | `type`, `arc`, `x`, `y`, `xTerm`, `yTerm`                                     |
-| `tree`      | `type`, `tree` (Newick string or node array)                                  |
-| `map`       | `type`, `map` or equivalent location array                                    |
-| `xPerRank`  | `type`, `ranks` or equivalent rank-keyed object                               |
-| `sources`   | `type`, `sources`                                                             |
+| Type           | Required v3 keys                                                              |
+| -------------- | ----------------------------------------------------------------------------- |
+| `histogram`    | `type`, `x.field`, `x.domain`, `buckets`, `allValues`                         |
+| `scatter`      | `type`, `x`, `y`, `buckets`, `allValues`, `yBuckets`, `allYValues`, `zDomain` |
+| `arc`          | `type`, `arc`, `x`, `y`, `xTerm`, `yTerm`                                     |
+| `tree`         | `type`, `tree` (Newick string or node array)                                  |
+| `map`          | `type`, `map` or equivalent location array                                    |
+| `countPerRank` | `type`, `ranks` or equivalent rank-keyed object                               |
+| `sources`      | `type`, `sources`                                                             |
 
 When `cat` is present, additionally assert `by_cat` and `cats`.
 

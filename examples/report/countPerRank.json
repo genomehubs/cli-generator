@@ -8,7 +8,7 @@
     "taxonomy": "ncbi"
   },
   "report": {
-    "report": "xPerRank",
-    "x": "genome_size"
+    "report": "countPerRank",
+    "query": "genome_size"
   }
 }

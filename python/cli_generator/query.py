@@ -428,13 +428,34 @@ class QueryBuilder:
 
     # ── URL + API calls ───────────────────────────────────────────────────────
 
-    def to_url(
+    def _post_json(self, url: str, payload: dict[str, Any]) -> Any:
+        """POST a JSON payload and return the parsed response body.
+
+        Args:
+            url: Full URL to POST to.
+            payload: Dict to serialise as JSON request body.
+
+        Returns:
+            Parsed JSON response as a Python object.
+        """
+        import json
+        import urllib.request
+
+        req = urllib.request.Request(
+            url,
+            data=json.dumps(payload).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+        )
+        with urllib.request.urlopen(req) as resp:
+            return json.loads(resp.read().decode("utf-8"))
+
+    def to_v2_url(
         self,
         api_base: str = "https://goat.genomehubs.org/api",
         api_version: str = "v2",
         endpoint: str = "search",
     ) -> str:
-        """Build the full API URL for this query without making a network call.
+        """Build the full v2 API URL for this query without making a network call.
 
         Args:
             api_base: Base URL of the API.
@@ -453,6 +474,35 @@ class QueryBuilder:
             api_version,
             endpoint,
         )
+
+    def to_url(
+        self,
+        api_base: str = "https://goat.genomehubs.org/api",
+        api_version: str = "v2",
+        endpoint: str = "search",
+    ) -> str:
+        """Build the full API URL for this query without making a network call.
+
+        .. deprecated::
+            Use :meth:`to_v2_url` instead.  ``to_url()`` will be removed in a
+            future release.
+
+        Args:
+            api_base: Base URL of the API.
+            api_version: API version string.
+            endpoint: API endpoint, e.g. ``"search"`` or ``"count"``.
+
+        Returns:
+            Fully encoded URL string.
+        """
+        import warnings
+
+        warnings.warn(
+            "to_url() is deprecated; use to_v2_url() instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.to_v2_url(api_base, api_version, endpoint)
 
     def to_ui_url(
         self,
@@ -483,43 +533,59 @@ class QueryBuilder:
     def count(
         self,
         api_base: str = "https://goat.genomehubs.org/api",
-        api_version: str = "v2",
+        api_version: str = "v3",
     ) -> int:
         """Fetch the count of records matching this query.
 
+        Uses the v3 POST ``/count`` endpoint by default.  Pass
+        ``api_version="v2"`` to fall back to the legacy GET ``/search``
+        path (returns ``status.hits`` with ``size=0``).
+
         Args:
             api_base: Base URL of the API.
-            api_version: API version string.
+            api_version: API version string (default: ``"v3"``).
 
         Returns:
             Number of matching records.
         """
         import json
-        import urllib.request
 
         from . import parse_response_status
 
-        counter = QueryBuilder(self._index)
-        counter.merge(self)
-        counter.set_size(0)
-        url = counter.to_url(api_base, api_version, "search")
-        with urllib.request.urlopen(url) as resp:
-            body_text = resp.read().decode("utf-8")
-        status = json.loads(parse_response_status(body_text))
+        if api_version != "v3":
+            import urllib.request
+
+            counter = QueryBuilder(self._index)
+            counter.merge(self)
+            counter.set_size(0)
+            url = counter.to_v2_url(api_base, api_version, "search")
+            with urllib.request.urlopen(url) as resp:
+                body_text = resp.read().decode("utf-8")
+            status = json.loads(parse_response_status(body_text))
+            return int(status.get("hits") or 0)
+
+        data = self._post_json(
+            f"{api_base}/{api_version}/count",
+            {"query_yaml": self.to_query_yaml(), "params_yaml": self.to_params_yaml()},
+        )
+        status = json.loads(parse_response_status(json.dumps(data)))
         return int(status.get("hits") or 0)
 
     def search(
         self,
         format: str = "json",
         api_base: str = "https://goat.genomehubs.org/api",
-        api_version: str = "v2",
+        api_version: str = "v3",
     ) -> Any:
         """Fetch results for this query.
+
+        Uses the v3 POST ``/search`` endpoint by default.  Pass
+        ``api_version="v2"`` to fall back to the legacy GET path.
 
         Args:
             format: Response format — ``"json"`` (default) or ``"tsv"``.
             api_base: Base URL of the API.
-            api_version: API version string.
+            api_version: API version string (default: ``"v3"``).
 
         Returns:
             Parsed JSON (dict) for ``format="json"``; raw text for ``"tsv"``.
@@ -527,73 +593,100 @@ class QueryBuilder:
         import json
         import urllib.request
 
-        url = self.to_url(api_base, api_version, "search")
-        headers = {
-            "json": "application/json",
-            "tsv": "text/tab-separated-values",
-        }.get(format, "application/json")
-        req = urllib.request.Request(url, headers={"Accept": headers})
-        with urllib.request.urlopen(req) as resp:
-            raw = resp.read().decode()
-        if format == "json":
-            return json.loads(raw)
-        return raw
+        if api_version != "v3":
+            url = self.to_v2_url(api_base, api_version, "search")
+            accept = {
+                "json": "application/json",
+                "tsv": "text/tab-separated-values",
+            }.get(format, "application/json")
+            req = urllib.request.Request(url, headers={"Accept": accept})
+            with urllib.request.urlopen(req) as resp:
+                raw = resp.read().decode()
+            return json.loads(raw) if format == "json" else raw
+
+        data = self._post_json(
+            f"{api_base}/{api_version}/search",
+            {"query_yaml": self.to_query_yaml(), "params_yaml": self.to_params_yaml()},
+        )
+        return data
 
     def search_all(
         self,
         max_records: int | None = None,
         api_base: str = "https://goat.genomehubs.org/api",
-        api_version: str = "v2",
+        api_version: str = "v3",
     ) -> list[dict[str, Any]]:
         """Fetch all matching records using cursor-based pagination.
 
-        Uses the ``/searchPaginated`` endpoint in chunks of 1 000 records per
-        page.  Pagination continues until all pages are retrieved or
-        *max_records* is reached.
+        With v3 (default) uses repeated POST ``/search`` calls with
+        ``search_after`` cursors.  With ``api_version="v2"`` falls back to the
+        legacy GET ``/searchPaginated`` path.
 
         Args:
             max_records: Maximum total records to return.  ``None`` means no
                 limit.
             api_base: Base URL of the API.
-            api_version: API version string.
+            api_version: API version string (default: ``"v3"``).
 
         Returns:
             List of flat record dicts in the same format as
             :func:`~cli_generator.parse_search_json` output.
         """
         import json
-        import urllib.parse
-        import urllib.request
 
-        from . import parse_paginated_json
+        from . import parse_paginated_json, parse_search_json
 
         CHUNK_SIZE = 1_000
         cap: float = float("inf") if max_records is None else float(max_records)
         all_records: list[dict[str, Any]] = []
-        search_after: list[Any] | None = None
 
-        while True:
-            base_url = self.to_url(api_base, api_version, "searchPaginated")
-            sep = "&" if "?" in base_url else "?"
-            url = base_url + f"{sep}size={CHUNK_SIZE}"
-            if search_after is not None:
-                url += "&searchAfter=" + urllib.parse.quote(json.dumps(search_after))
+        if api_version != "v3":
+            import urllib.parse
+            import urllib.request
 
-            req = urllib.request.Request(url, headers={"Accept": "application/json"})
-            with urllib.request.urlopen(req) as resp:
-                raw: str = resp.read().decode()
+            search_after: list[Any] | None = None
+            while True:
+                base_url = self.to_v2_url(api_base, api_version, "searchPaginated")
+                sep = "&" if "?" in base_url else "?"
+                url = base_url + f"{sep}size={CHUNK_SIZE}"
+                if search_after is not None:
+                    url += "&searchAfter=" + urllib.parse.quote(json.dumps(search_after))
+                req = urllib.request.Request(url, headers={"Accept": "application/json"})
+                with urllib.request.urlopen(req) as resp:
+                    raw: str = resp.read().decode()
+                page: dict[str, Any] = json.loads(parse_paginated_json(raw))
+                records: list[dict[str, Any]] = page.get("records", [])
+                remaining = int(cap) - len(all_records)
+                all_records.extend(records[:remaining])
+                if not page.get("hasMore", False) or len(all_records) >= cap:
+                    break
+                search_after = page.get("searchAfter")
+            return all_records
 
-            page: dict[str, Any] = json.loads(parse_paginated_json(raw))
-            records: list[dict[str, Any]] = page.get("records", [])
+        # v3: cursor-based POST loop
+        search_after_v3: Any = None
+        orig_size = self._size
+        self.set_size(CHUNK_SIZE)
+        try:
+            while True:
+                payload: dict[str, Any] = {
+                    "query_yaml": self.to_query_yaml(),
+                    "params_yaml": self.to_params_yaml(),
+                }
+                if search_after_v3 is not None:
+                    payload["search_after"] = search_after_v3
+                resp_data = self._post_json(f"{api_base}/{api_version}/search", payload)
+                records = json.loads(parse_search_json(json.dumps(resp_data)))
+                remaining = int(cap) - len(all_records)
+                all_records.extend(records[:remaining])
+                search_after_v3 = resp_data.get("search_after")
+                total = resp_data.get("status", {}).get("hits", 0)
+                if not search_after_v3 or len(all_records) >= min(int(cap), total):
+                    break
+        finally:
+            self._size = orig_size
 
-            remaining = int(cap) - len(all_records)
-            all_records.extend(records[:remaining])
-
-            if not page.get("hasMore", False) or len(all_records) >= cap:
-                break
-            search_after = page.get("searchAfter")
-
-        return all_records
+        return all_records[:max_records]
 
     def search_batch(
         self,

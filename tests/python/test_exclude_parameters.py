@@ -102,7 +102,7 @@ class TestExcludeParametersWithFixtures:
         """Verify QueryBuilder generates correct URL for exclude methods."""
         qb = QueryBuilder("taxon").add_field(field_name)
         getattr(qb, exclude_method)([field_name])
-        url = qb.to_url("https://goat.genomehubs.org/api", "v2", "search")
+        url = qb.to_v2_url("https://goat.genomehubs.org/api", "v2", "search")
 
         assert "exclude" in url.lower()
         assert field_name in url
@@ -118,7 +118,7 @@ class TestExcludeParametersWithFixtures:
             .set_exclude_missing(["chromosome_count"])
             .set_exclude_direct(["assembly_level"])
         )
-        url = qb.to_url("https://goat.genomehubs.org/api", "v2", "search")
+        url = qb.to_v2_url("https://goat.genomehubs.org/api", "v2", "search")
 
         # All three exclude types should be present
         assert "ancestral" in url.lower()
@@ -133,7 +133,7 @@ class TestExcludeParametersWithFixtures:
             .add_field("genome_size")
             .set_exclude_ancestral(["genome_size"])
         )
-        url = qb.to_url("https://goat.genomehubs.org/api", "v2", "search")
+        url = qb.to_v2_url("https://goat.genomehubs.org/api", "v2", "search")
 
         # Both taxa and exclude should be present
         assert "Mammalia" in url or "tax_tree" in url
@@ -145,7 +145,7 @@ class TestExcludeParametersWithFixtures:
         qb.add_exclude_ancestral("genome_size")
         qb.add_exclude_ancestral("c_value")
 
-        url = qb.to_url("https://goat.genomehubs.org/api", "v2", "search")
+        url = qb.to_v2_url("https://goat.genomehubs.org/api", "v2", "search")
         assert "genome_size" in url
         assert "c_value" in url
 
@@ -155,7 +155,7 @@ class TestExcludeParametersWithFixtures:
         qb.add_exclude_ancestral("genome_size")
         qb.set_exclude_ancestral(["c_value"])
 
-        url = qb.to_url("https://goat.genomehubs.org/api", "v2", "search")
+        url = qb.to_v2_url("https://goat.genomehubs.org/api", "v2", "search")
         # c_value should be present, genome_size may not be (overwritten)
         assert "c_value" in url
 
@@ -164,7 +164,7 @@ class TestExcludeParametersWithFixtures:
         qb = QueryBuilder("taxon").add_field("genome_size")
         qb.set_exclude_derived(["genome_size"])
 
-        url = qb.to_url("https://goat.genomehubs.org/api", "v2", "search")
+        url = qb.to_v2_url("https://goat.genomehubs.org/api", "v2", "search")
         # Should have exclude params (ancestral + descendant)
         assert "exclude" in url.lower()
 
@@ -173,6 +173,6 @@ class TestExcludeParametersWithFixtures:
         qb = QueryBuilder("taxon").add_field("genome_size")
         qb.set_exclude_estimated(["genome_size"])
 
-        url = qb.to_url("https://goat.genomehubs.org/api", "v2", "search")
+        url = qb.to_v2_url("https://goat.genomehubs.org/api", "v2", "search")
         # Should have exclude params for estimated values
         assert "exclude" in url.lower()

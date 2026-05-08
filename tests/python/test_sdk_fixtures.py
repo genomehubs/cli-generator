@@ -269,7 +269,7 @@ class TestFixtureValidation:
     def test_builder_creates_valid_url(self, fixture_name: str):
         """Verify builder creates a valid URL for each fixture."""
         qb = self.get_builder(fixture_name)
-        url = qb.to_url(
+        url = qb.to_v2_url(
             api_base="https://goat.genomehubs.org/api",
             api_version="v2",
         )
@@ -288,7 +288,7 @@ class TestFixtureValidation:
             fixture_name: Name of the fixture.
         """
         qb = self.get_builder(fixture_name)
-        url = qb.to_url(
+        url = qb.to_v2_url(
             api_base="https://goat.genomehubs.org/api",
             api_version="v2",
         )

@@ -118,12 +118,12 @@ DEFAULT_FIXTURES: Dict[str, List[Dict[str, str]]] = {
             },
         },
     ],
-    "xPerRank": [
+    "countPerRank": [
         {
-            "name": "xPerRank_genome_size",
+            "name": "countPerRank_genome_size",
             "params": {
-                "report": "xPerRank",
-                "x": "genome_size",
+                "report": "countPerRank",
+                "query": "genome_size",
                 "result": "taxon",
             },
         },
