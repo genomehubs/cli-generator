@@ -16,6 +16,16 @@ pub struct MetadataCache {
     pub has_trigram_field: bool,
 }
 
+impl MetadataCache {
+    /// Convert the cached `attr_types` JSON into a `TypesMap` for use with `build_search_body`.
+    ///
+    /// This is a pure deserialization — no network I/O. Call it per request when
+    /// a `TypesMap` is needed to select the correct typed value docvalue field.
+    pub fn as_types_map(&self) -> cli_generator::core::attr_types::TypesMap {
+        serde_json::from_value(self.attr_types.clone()).unwrap_or_default()
+    }
+}
+
 fn processed_type(meta: &JsonValue) -> Option<String> {
     let t = meta.get("type").and_then(|v| v.as_str()).unwrap_or("");
     if [

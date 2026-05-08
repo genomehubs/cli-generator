@@ -305,12 +305,26 @@ pub fn build_search_body(
                         }
                     }
                 }
-                // fallback: include both common numeric and keyword raw fields
-                if !docfields.contains(&"attributes.long_value".to_string()) {
-                    docfields.push("attributes.long_value".to_string());
-                }
-                if !docfields.contains(&"attributes.keyword_value.raw".to_string()) {
-                    docfields.push("attributes.keyword_value.raw".to_string());
+                // fallback: include all typed value fields so any attribute type works
+                // without needing the types_map (c_value=half_float, chromosome_number=short, etc.)
+                for fallback in &[
+                    "attributes.long_value",
+                    "attributes.integer_value",
+                    "attributes.short_value",
+                    "attributes.byte_value",
+                    "attributes.double_value",
+                    "attributes.float_value",
+                    "attributes.half_float_value",
+                    "attributes.1dp_value",
+                    "attributes.2dp_value",
+                    "attributes.3dp_value",
+                    "attributes.4dp_value",
+                    "attributes.keyword_value.raw",
+                    "attributes.date_value",
+                ] {
+                    if !docfields.contains(&fallback.to_string()) {
+                        docfields.push(fallback.to_string());
+                    }
                 }
             }
 

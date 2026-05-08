@@ -4,6 +4,7 @@ use serde_json::Value;
 use std::sync::Arc;
 
 use crate::{index_name, routes::ApiStatus, AppState};
+use super::deserialize_helpers;
 
 #[derive(utoipa::ToSchema)]
 pub struct SearchBatchItem {
@@ -19,18 +20,11 @@ impl<'de> Deserialize<'de> for SearchBatchItem {
         use serde::de;
         let map = Value::deserialize(deserializer)?;
 
-        // Helper to convert value to YAML string
-        let to_yaml = |val: &Value| -> Result<String, D::Error> {
-            match val {
-                Value::String(s) => Ok(s.clone()),
-                _ => serde_yaml::to_string(val).map_err(de::Error::custom),
-            }
-        };
-
         // Get query from either "query" or "query_yaml" field
         let query_yaml = if let Some(query_val) = map.get("query").or_else(|| map.get("query_yaml"))
         {
-            to_yaml(query_val)?
+            let normalized = deserialize_helpers::normalize_query(query_val.clone());
+            deserialize_helpers::to_yaml(&normalized)?
         } else {
             return Err(de::Error::missing_field("query or query_yaml"));
         };
@@ -38,7 +32,7 @@ impl<'de> Deserialize<'de> for SearchBatchItem {
         // Get params from either "params" or "params_yaml" field
         let params_yaml =
             if let Some(params_val) = map.get("params").or_else(|| map.get("params_yaml")) {
-                to_yaml(params_val)?
+                deserialize_helpers::to_yaml(params_val)?
             } else {
                 return Err(de::Error::missing_field("params or params_yaml"));
             };

@@ -3,6 +3,7 @@ use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::Value;
 use std::sync::Arc;
 
+use super::deserialize_helpers;
 use crate::{es_client, index_name, routes::ApiStatus, AppState};
 
 /// Combine multiple ES query bodies using bool.should (OR) or bool.must (AND).
@@ -63,18 +64,11 @@ impl<'de> Deserialize<'de> for SearchRequest {
         use serde::de;
         let map = Value::deserialize(deserializer)?;
 
-        // Helper to convert value to YAML string
-        let to_yaml = |val: &Value| -> Result<String, D::Error> {
-            match val {
-                Value::String(s) => Ok(s.clone()),
-                _ => serde_yaml::to_string(val).map_err(de::Error::custom),
-            }
-        };
-
         // Get query from either "query" or "query_yaml" field
         let query_yaml = if let Some(query_val) = map.get("query").or_else(|| map.get("query_yaml"))
         {
-            to_yaml(query_val)?
+            let normalized = deserialize_helpers::normalize_query(query_val.clone());
+            deserialize_helpers::to_yaml(&normalized)?
         } else {
             return Err(de::Error::missing_field("query or query_yaml"));
         };
@@ -82,7 +76,7 @@ impl<'de> Deserialize<'de> for SearchRequest {
         // Get params from either "params" or "params_yaml" field
         let params_yaml =
             if let Some(params_val) = map.get("params").or_else(|| map.get("params_yaml")) {
-                to_yaml(params_val)?
+                deserialize_helpers::to_yaml(params_val)?
             } else {
                 return Err(de::Error::missing_field("params or params_yaml"));
             };
@@ -139,6 +133,17 @@ pub async fn post_search(
         Ok(p) => p,
         Err(e) => bail!(format!("failed to parse params_yaml: {e}")),
     };
+
+    // Derive a TypesMap from the startup metadata cache so build_search_body can pick
+    // the single correct typed-value docvalue field (e.g. half_float_value) per attribute
+    // rather than requesting all possible typed-value fields.
+    let types_map: Option<cli_generator::core::attr_types::TypesMap> =
+        if let Some(ref arc) = state.cache {
+            let guard = arc.read().await;
+            Some(guard.as_types_map())
+        } else {
+            None
+        };
 
     // Check if this is a multi-query request (top-level OR/AND)
     if let Some(nested_queries) = &query.queries {
@@ -222,7 +227,7 @@ pub async fn post_search(
                 }),
                 params.size,
                 offset,
-                None,
+                types_map.as_ref(),
                 Some(group),
             ) {
                 Ok(b) => b,
@@ -271,31 +276,20 @@ pub async fn post_search(
             .and_then(|h| h.get("hits"))
             .and_then(|hits| hits.as_array());
 
-        let api_results: Vec<Value> = es_hits
+        let results: Vec<Value> = es_hits
             .map(|hits| {
                 hits.iter()
-                    .filter_map(|hit| {
-                        let source = hit.get("_source")?;
-                        Some(serde_json::json!({
-                            "result": source,
-                            "index": group_name
-                        }))
+                    .map(|hit| {
+                        deserialize_helpers::transform_es_hit(
+                            hit,
+                            group_name,
+                            params.include_lineage,
+                            params.include_taxon_names,
+                        )
                     })
                     .collect()
             })
             .unwrap_or_default();
-
-        let formatted_response = serde_json::json!({
-            "results": api_results
-        });
-
-        // Flatten records via the existing parse pipeline
-        let results_json =
-            match genomehubs_query::parse::parse_search_json(&formatted_response.to_string()) {
-                Ok(s) => s,
-                Err(e) => bail!(format!("failed to parse search results: {e}")),
-            };
-        let results: Vec<Value> = serde_json::from_str(&results_json).unwrap_or_default();
 
         // Extract search_after cursor for pagination
         let search_after = raw
@@ -374,7 +368,7 @@ pub async fn post_search(
         sort_order,
         params.size,
         offset,
-        None,
+        types_map.as_ref(),
         Some(group),
     ) {
         Ok(b) => b,
@@ -406,31 +400,20 @@ pub async fn post_search(
         .and_then(|h| h.get("hits"))
         .and_then(|hits| hits.as_array());
 
-    let api_results: Vec<Value> = es_hits
+    let results: Vec<Value> = es_hits
         .map(|hits| {
             hits.iter()
-                .filter_map(|hit| {
-                    let source = hit.get("_source")?;
-                    Some(serde_json::json!({
-                        "result": source,
-                        "index": group
-                    }))
+                .map(|hit| {
+                    deserialize_helpers::transform_es_hit(
+                        hit,
+                        group,
+                        params.include_lineage,
+                        params.include_taxon_names,
+                    )
                 })
                 .collect()
         })
         .unwrap_or_default();
-
-    let formatted_response = serde_json::json!({
-        "results": api_results
-    });
-
-    // Flatten records via the existing parse pipeline
-    let results_json =
-        match genomehubs_query::parse::parse_search_json(&formatted_response.to_string()) {
-            Ok(s) => s,
-            Err(e) => bail!(format!("failed to parse search results: {e}")),
-        };
-    let results: Vec<Value> = serde_json::from_str(&results_json).unwrap_or_default();
 
     // Extract search_after cursor for pagination
     let search_after = raw

@@ -172,6 +172,12 @@ pub struct QueryParams {
     /// page response.  `None` means "start from the first page".
     #[serde(default)]
     pub search_after: Option<Vec<serde_json::Value>>,
+    /// Include full lineage array in each result (default false — heavyweight).
+    #[serde(default)]
+    pub include_lineage: bool,
+    /// Include taxon_names array in each result (default false — heavyweight).
+    #[serde(default)]
+    pub include_taxon_names: bool,
 }
 
 impl Default for QueryParams {
@@ -185,6 +191,8 @@ impl Default for QueryParams {
             tidy: false,
             taxonomy: default_taxonomy(),
             search_after: None,
+            include_lineage: false,
+            include_taxon_names: false,
         }
     }
 }

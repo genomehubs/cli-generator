@@ -145,8 +145,18 @@ pub async fn post_report(
         .and_then(|v| v.as_str())
         .unwrap_or("histogram");
 
+    // Derive a TypesMap from the startup metadata cache so build_search_body can pick
+    // the single correct typed-value docvalue field per attribute.
+    let types_map: Option<cli_generator::core::attr_types::TypesMap> =
+        if let Some(ref arc) = state.cache {
+            let guard = arc.read().await;
+            Some(guard.as_types_map())
+        } else {
+            None
+        };
+
     // Build base query from search parameters
-    let base_query = match build_report_query(&search_query, &params, &state.default_taxonomy) {
+    let base_query = match build_report_query(&search_query, &params, &state.default_taxonomy, types_map.as_ref()) {
         Ok(q) => q,
         Err(e) => bail!(e),
     };
@@ -214,6 +224,7 @@ fn build_report_query(
     query: &SearchQuery,
     _params: &QueryParams,
     _default_taxonomy: &str,
+    types_map: Option<&cli_generator::core::attr_types::TypesMap>,
 ) -> Result<Value, String> {
     // Build taxa query expression from search query (None → match_all base)
     let taxa_query: Option<String> = query
@@ -266,7 +277,7 @@ fn build_report_query(
         None,
         1,    // size: only use for structuring query, not actual size
         0,    // offset
-        None, // types_map
+        types_map,
         Some(group),
     )
     .map_err(|e| format!("query builder error: {e}"))?;
