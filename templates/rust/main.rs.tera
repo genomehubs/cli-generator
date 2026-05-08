@@ -189,9 +189,19 @@ enum {{ index.name | capitalize }}Commands {
         #[arg(long = "filter", num_args = 3, value_names = ["FIELD", "OP", "VALUE"])]
         filter: Vec<String>,
 
+        /// Exclude fields with estimated values: FIELD TYPE (repeatable).
+        ///
+        /// TYPE is one of: ancestral, descendant, direct, missing.
+        #[arg(long = "exclude", num_args = 2, value_names = ["FIELD", "TYPE"])]
+        exclude: Vec<String>,
+
         /// Restrict results to a specific taxonomic rank (e.g. `species`, `genus`).
         #[arg(long)]
         rank: Option<String>,
+
+        /// Sort results by field (used when --file produces per-query output).
+        #[arg(long)]
+        sort: Option<String>,
 
         /// Additional raw query string ANDed with all other filters.
         #[arg(long, default_value = "")]
@@ -205,12 +215,58 @@ enum {{ index.name | capitalize }}Commands {
         #[arg(long, default_value_t = true, action = clap::ArgAction::Set)]
         include_estimates: bool,
 
+        /// Path to a file containing batch queries.
+        ///
+        /// Accepts the same three formats as `search --file`.
+        /// Each query produces one count in the output (JSON array).
+        /// Results include a `query_index` column unless --no-query-column is set.
+        #[arg(long)]
+        file: Option<std::path::PathBuf>,
+
+        /// Suppress the `query_index` column in batch output.
+        #[arg(long = "no-query-column")]
+        no_query_column: bool,
+
+        /// Suppress per-query size/sort divergence warnings when using --file.
+        #[arg(long)]
+        suppress_divergence_warnings: bool,
+
         /// Print timing information alongside the count.
         #[arg(long)]
         took: bool,
 
         #[command(flatten)]
         flags: generated::cli_flags::{{ index.name | capitalize }}Flags,
+    },
+
+    /// Fetch a single record by its identifier.
+    Record {
+        /// Record ID or accession (e.g. `GCA_000001405.15`).
+        #[arg(value_name = "ID")]
+        record_id: String,
+
+        /// Output format.
+        #[arg(long, value_enum, default_value = "json")]
+        format: generated::output::OutputFormat,
+    },
+
+    /// Fetch per-field summary aggregations for a record.
+    Summary {
+        /// Record ID or accession.
+        #[arg(value_name = "ID")]
+        record_id: String,
+
+        /// Comma-separated field names to summarise.
+        #[arg(long, value_delimiter = ',')]
+        fields: Vec<String>,
+
+        /// Summary types to return, comma-separated (e.g. `min,max,mean`).
+        #[arg(long, default_value = "min,max,mean", value_delimiter = ',')]
+        summary_types: Vec<String>,
+
+        /// Output format.
+        #[arg(long, value_enum, default_value = "json")]
+        format: generated::output::OutputFormat,
     },
 
     /// Run a report query (v3 only).
@@ -544,7 +600,9 @@ fn run(cli: Cli) -> anyhow::Result<()> {
                 }
             }
             {{ index.name | capitalize }}Commands::Count {
-                taxon, taxon_filter, filter, rank, query, taxonomy, include_estimates, took, flags,
+                taxon, taxon_filter, filter, exclude, rank, sort, query, taxonomy,
+                include_estimates, file, no_query_column, suppress_divergence_warnings,
+                took, flags,
             } => {
                 let taxon_clause = taxon.as_deref().map(|t| match taxon_filter {
                     TaxonFilter::Name     => format!("tax_name({t})"),
@@ -552,50 +610,94 @@ fn run(cli: Cli) -> anyhow::Result<()> {
                     TaxonFilter::Lineage  => format!("tax_lineage({t})"),
                 });
 
-                let filter_fragments: Vec<String> = filter
-                    .chunks(3)
-                    .filter_map(|chunk| {
-                        if chunk.len() < 3 { return None; }
-                        let op_symbol = match chunk[1].as_str() {
-                            "eq" | "==" | "=" => "=",
-                            "ne" | "!="       => "!=",
-                            "gt" | ">"        => ">",
-                            "ge" | ">="       => ">=",
-                            "lt" | "<"        => "<",
-                            "le" | "<="       => "<=",
-                            other             => other,
-                        };
-                        Some(format!("{}{}{}", chunk[0], op_symbol, chunk[2]))
-                    })
-                    .collect();
+                let filter_fragments = cli_filter_fragments(&filter);
+
+                // Parse --exclude FIELD TYPE pairs.
+                let mut exclude_ancestral = Vec::new();
+                let mut exclude_descendant = Vec::new();
+                let mut exclude_direct = Vec::new();
+                let mut exclude_missing = Vec::new();
+                for chunk in exclude.chunks(2) {
+                    if chunk.len() < 2 { continue; }
+                    let field = chunk[0].clone();
+                    match chunk[1].as_str() {
+                        "ancestral"  => exclude_ancestral.push(field),
+                        "descendant" => exclude_descendant.push(field),
+                        "direct"     => exclude_direct.push(field),
+                        "missing"    => exclude_missing.push(field),
+                        other => eprintln!("warning: unknown exclude type '{other}', skipping field '{field}'"),
+                    }
+                }
+
+                let (sort_by_opt, sort_order_str) = match sort.as_deref() {
+                    None => (None::<String>, "asc".to_string()),
+                    Some(s) => match s.split_once(':') {
+                        Some((field, dir)) => (Some(field.to_string()), dir.to_string()),
+                        None               => (Some(s.to_string()), "asc".to_string()),
+                    },
+                };
 
                 let owned_fields = flags.all_fields();
                 let fields: Vec<&str> = owned_fields.iter().map(|s: &String| s.as_str()).collect();
 
-                let full_query = {
-                    let mut parts: Vec<String> = Vec::new();
-                    if let Some(tc) = taxon_clause { parts.push(tc); }
-                    if let Some(ref r) = rank { parts.push(format!("tax_rank({r})")); }
-                    if !query.is_empty() { parts.push(query.clone()); }
-                    parts.extend(filter_fragments);
-                    parts.join(" AND ")
-                };
+                let rank_clause: Option<String> = rank.as_deref().map(|r| format!("tax_rank({r})"));
+                let full_query = build_query_string(
+                    taxon_clause.as_deref(),
+                    rank_clause.as_deref(),
+                    &filter_fragments,
+                    &query,
+                );
 
                 let opts = generated::client::SearchOptions {
+                    exclude_ancestral,
+                    exclude_descendant,
+                    exclude_direct,
+                    exclude_missing,
+                    sort_by: sort_by_opt,
+                    sort_order: sort_order_str,
                     taxonomy,
                     ..Default::default()
                 };
-                let _ = (include_estimates, &fields, &opts); // used only in v3 path below
-                let n = generated::client::count(
-                    generated::indexes::Index::{{ index.name | capitalize }},
-                    &full_query,
-                )?;
-                if took {
-                    // took is not available from the count() return type (u64);
-                    // print 0 as placeholder unless the API is extended.
-                    println!("{n}\ttook=?");
+                let _ = (include_estimates, &fields, &opts); // available for future v3 count enhancements
+
+                if let Some(ref file_path) = file {
+                    // ── Batch mode: one count per query in the file ───────────
+                    let batch_queries = load_batch_file(
+                        file_path,
+                        &taxon_filter,
+                        taxon.as_deref(),
+                        rank.as_deref(),
+                        &filter,
+                        &query,
+                        suppress_divergence_warnings,
+                    )?;
+
+                    let include_query_col = !no_query_column;
+                    let mut results: Vec<serde_json::Value> = Vec::new();
+                    for (qi, batch_q) in batch_queries.iter().enumerate() {
+                        let n = generated::client::count(
+                            generated::indexes::Index::{{ index.name | capitalize }},
+                            batch_q,
+                        )?;
+                        let mut obj = serde_json::json!({ "count": n });
+                        if include_query_col {
+                            obj["query_index"] = serde_json::Value::Number(qi.into());
+                        }
+                        results.push(obj);
+                    }
+                    let json = serde_json::to_string(&results)
+                        .context("serialising batch counts")?;
+                    println!("{json}");
                 } else {
-                    println!("{n}");
+                    let n = generated::client::count(
+                        generated::indexes::Index::{{ index.name | capitalize }},
+                        &full_query,
+                    )?;
+                    if took {
+                        println!("{n}\ttook=?");
+                    } else {
+                        println!("{n}");
+                    }
                 }
             }
             {{ index.name | capitalize }}Commands::Report {
@@ -651,6 +753,22 @@ fn run(cli: Cli) -> anyhow::Result<()> {
                     generated::indexes::Index::{{ index.name | capitalize }},
                     &search_term,
                     size,
+                )?;
+                generated::output::print_output(&body, format)?;
+            }
+            {{ index.name | capitalize }}Commands::Record { record_id, format } => {
+                let body = generated::client::record(
+                    generated::indexes::Index::{{ index.name | capitalize }},
+                    &record_id,
+                )?;
+                generated::output::print_output(&body, format)?;
+            }
+            {{ index.name | capitalize }}Commands::Summary { record_id, fields, summary_types, format } => {
+                let body = generated::client::summary(
+                    generated::indexes::Index::{{ index.name | capitalize }},
+                    &record_id,
+                    &fields,
+                    &summary_types,
                 )?;
                 generated::output::print_output(&body, format)?;
             }

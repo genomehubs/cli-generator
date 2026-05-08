@@ -1423,40 +1423,38 @@ def test_validate_report_yaml_valid_histogram() -> None:
 
 
 def test_validate_report_yaml_missing_report_key() -> None:
-    from cli_generator import validate_report_yaml
-
     import json
+
+    from cli_generator import validate_report_yaml
 
     errors = json.loads(validate_report_yaml("x: genome_size\n", "{}"))
     assert any("report" in e for e in errors)
 
 
 def test_validate_report_yaml_unknown_report_type() -> None:
-    from cli_generator import validate_report_yaml
-
     import json
+
+    from cli_generator import validate_report_yaml
 
     errors = json.loads(validate_report_yaml("report: unknown_type\n", "{}"))
     assert any("unknown" in e.lower() or "report" in e.lower() for e in errors)
 
 
 def test_validate_report_yaml_count_per_rank_missing_query() -> None:
-    from cli_generator import validate_report_yaml
-
     import json
+
+    from cli_generator import validate_report_yaml
 
     errors = json.loads(validate_report_yaml("report: countPerRank\n", "{}"))
     assert any("query" in e for e in errors)
 
 
 def test_validate_report_yaml_invalid_hex_resolution() -> None:
-    from cli_generator import validate_report_yaml
-
     import json
 
-    errors = json.loads(
-        validate_report_yaml("report: map\nhex_resolution: 99\n", "{}")
-    )
+    from cli_generator import validate_report_yaml
+
+    errors = json.loads(validate_report_yaml("report: map\nhex_resolution: 99\n", "{}"))
     assert any("hex_resolution" in e or "resolution" in e.lower() for e in errors)
 
 

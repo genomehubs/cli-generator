@@ -391,7 +391,7 @@ fn validate_report_impl(report_yaml: &str, field_meta_json: &str) -> Result<Vec<
         }
     };
 
-    let report_type = match ReportType::from_str(report_type_str) {
+    let report_type = match ReportType::parse(report_type_str) {
         Some(rt) => rt,
         None => {
             errors.push(format!(

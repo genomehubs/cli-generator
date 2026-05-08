@@ -28,7 +28,7 @@ impl ReportType {
     /// Parse a report type string into a `ReportType` variant.
     ///
     /// Returns `None` for unknown strings.
-    pub fn from_str(s: &str) -> Option<Self> {
+    pub fn parse(s: &str) -> Option<Self> {
         match s {
             "histogram" => Some(Self::Histogram),
             "scatter" => Some(Self::Scatter),

@@ -341,6 +341,51 @@ pub fn lookup(index: super::indexes::Index, search_term: &str, size: usize) -> R
         .context("reading response body")
 }
 
+/// Fetch a single record by its identifier via GET `/v3/record`.
+///
+/// Returns the raw JSON response body.
+pub fn record(index: super::indexes::Index, record_id: &str) -> Result<String> {
+    let url = format!(
+        "{API_BASE_URL}/v3/record?recordId={}&result={}",
+        pct_encode(record_id),
+        index.as_str(),
+    );
+    reqwest::blocking::get(&url)
+        .with_context(|| format!("HTTP GET {url}"))?
+        .error_for_status()
+        .with_context(|| format!("non-2xx response from {url}"))?
+        .text()
+        .context("reading record response body")
+}
+
+/// Fetch per-field summary aggregations for a record via GET `/v3/summary`.
+///
+/// `fields` is the list of field names to summarise; `summary_types` controls
+/// which aggregations are returned (e.g. `["min", "max", "mean"]`).
+/// Returns the raw JSON response body.
+pub fn summary(
+    index: super::indexes::Index,
+    record_id: &str,
+    fields: &[String],
+    summary_types: &[String],
+) -> Result<String> {
+    let fields_param = fields.join(",");
+    let summary_param = summary_types.join(",");
+    let url = format!(
+        "{API_BASE_URL}/v3/summary?recordId={}&result={}&fields={}&summary={}",
+        pct_encode(record_id),
+        index.as_str(),
+        pct_encode(&fields_param),
+        pct_encode(&summary_param),
+    );
+    reqwest::blocking::get(&url)
+        .with_context(|| format!("HTTP GET {url}"))?
+        .error_for_status()
+        .with_context(|| format!("non-2xx response from {url}"))?
+        .text()
+        .context("reading summary response body")
+}
+
 /// Fetch all matching records using cursor-based pagination.
 ///
 /// When the configured `API_VERSION` is `"v3"`, drives a loop of POST

@@ -407,6 +407,26 @@ fn copy_embedded_modules(repo_dir: &Path) -> Result<()> {
             .context("copying subcrate validation.rs")?;
     }
 
+    // Copy the report/ directory (report/mod.rs + supporting files).
+    let report_src_dir = subcrate_src.join("report");
+    let report_dest_dir = embedded_dir.join("core/report");
+    if report_src_dir.is_dir() {
+        std::fs::create_dir_all(&report_dest_dir).context("creating core/report directory")?;
+        for entry in std::fs::read_dir(&report_src_dir).context("reading report directory")? {
+            let entry = entry.context("reading report directory entry")?;
+            let path = entry.path();
+            if let Some(file_name) = path.file_name() {
+                let dest_file = report_dest_dir.join(file_name);
+                std::fs::copy(&path, &dest_file).with_context(|| {
+                    format!(
+                        "copying report/{}",
+                        path.file_name().unwrap_or_default().to_string_lossy()
+                    )
+                })?;
+            }
+        }
+    }
+
     // validation.rs is cli-generator-specific and not in the subcrate's mod.rs.
     let query_mod_path = embedded_dir.join("core/query/mod.rs");
     let mut query_mod =
@@ -459,6 +479,7 @@ pub mod describe;
 pub mod fetch;
 pub mod parse;
 pub mod query;
+pub mod report;
 pub mod snippet;
 pub mod validation;
 "#;
