@@ -15,7 +15,9 @@ use super::agg::RawBuckets;
 /// Contains axis-specific information needed by transformation steps.
 pub struct ReportContext {
     pub scale: Scale,
+    #[allow(dead_code)]
     pub cat_labels: Vec<String>,
+    #[allow(dead_code)]
     pub show_other: bool,
 }
 
@@ -54,6 +56,7 @@ impl PipelineStep for ScaleStep {
 }
 
 /// Pass buckets through unchanged (identity transformation).
+#[allow(dead_code)]
 pub struct NullStep;
 
 impl PipelineStep for NullStep {
@@ -67,6 +70,7 @@ impl PipelineStep for NullStep {
 /// When a categorical axis has fixed values with translations (from AxisOpts),
 /// the bucket keys are canonical terms; `cat_labels` from `BoundsResult` may
 /// provide friendlier display names. This step stores the label in a `label` field.
+#[allow(dead_code)]
 pub struct CatLabelStep;
 
 impl PipelineStep for CatLabelStep {
@@ -90,6 +94,7 @@ impl PipelineStep for CatLabelStep {
 ///
 /// Passed through unchanged; used as a sentinel that tells the scatter
 /// route to attach raw hit documents rather than aggregation buckets.
+#[allow(dead_code)]
 pub struct RawDataStep;
 
 impl PipelineStep for RawDataStep {
@@ -102,6 +107,7 @@ impl PipelineStep for RawDataStep {
 ///
 /// Useful for limit-based reports where only the most significant buckets
 /// should be displayed (e.g., top-10 assemblies by count).
+#[allow(dead_code)]
 pub struct TopBucketsStep {
     pub limit: usize,
 }

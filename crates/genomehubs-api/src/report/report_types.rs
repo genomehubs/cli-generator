@@ -24,6 +24,7 @@ use crate::AppState;
 ///
 /// Returns a JSON object mapping each category key to an array of `doc_count` values, one per
 /// main-histogram bucket. Includes an `"other"` key when `show_other` is true.
+#[allow(clippy::too_many_arguments)]
 fn extract_cat_histograms(
     resp: &Value,
     agg_name: &str,
@@ -412,9 +413,7 @@ pub async fn run_sources_report(
                                 .unwrap_or(0);
 
                             // Get or create source entry
-                            let entry = sources_map
-                                .entry(source_name.clone())
-                                .or_insert_with(serde_json::Map::new);
+                            let entry = sources_map.entry(source_name.clone()).or_default();
 
                             // Update count
                             if let Some(existing_count) =
@@ -826,7 +825,7 @@ pub async fn run_map_report(
     // --- Cat axis (optional) ---
     let cat_spec_opt = resolve_axis_spec(AxisRole::Cat, report_config, state);
     let cat_bounds_opt = if let Some(ref spec) = cat_spec_opt {
-        match compute_bounds(
+        compute_bounds(
             &state.client,
             &state.es_base,
             index,
@@ -835,10 +834,7 @@ pub async fn run_map_report(
             &state.cache,
         )
         .await
-        {
-            Ok(b) => Some(b),
-            Err(_) => None,
-        }
+        .ok()
     } else {
         None
     };
@@ -1060,21 +1056,15 @@ fn infer_value_type(
             if let serde_json::Value::Object(groups) = &c.attr_types {
                 for (_, group) in groups {
                     if let serde_json::Value::Object(fields) = group {
-                        if let Some(field_meta) = fields.get(field) {
-                            if let serde_json::Value::Object(meta_obj) = field_meta {
-                                if let Some(type_str) =
-                                    meta_obj.get("type").and_then(|v| v.as_str())
-                                {
-                                    return match type_str {
-                                        "date" => ValueType::Date,
-                                        "keyword" => ValueType::Keyword,
-                                        "long" | "integer" | "float" | "double" => {
-                                            ValueType::Numeric
-                                        }
-                                        "geo_point" => ValueType::GeoPoint,
-                                        _ => ValueType::Keyword,
-                                    };
-                                }
+                        if let Some(serde_json::Value::Object(meta_obj)) = fields.get(field) {
+                            if let Some(type_str) = meta_obj.get("type").and_then(|v| v.as_str()) {
+                                return match type_str {
+                                    "date" => ValueType::Date,
+                                    "keyword" => ValueType::Keyword,
+                                    "long" | "integer" | "float" | "double" => ValueType::Numeric,
+                                    "geo_point" => ValueType::GeoPoint,
+                                    _ => ValueType::Keyword,
+                                };
                             }
                         }
                     }
@@ -1908,6 +1898,7 @@ fn find_attr_keyword(attrs: &[Value], field: &str) -> Option<String> {
 /// Returns `(by_cat, y_values_by_cat)`:
 /// - `by_cat`: `{label: [count per x-bucket]}`
 /// - `y_values_by_cat`: `{label: [[y-counts per x-bucket]]}`
+#[allow(clippy::too_many_arguments)]
 fn extract_scatter_by_cat(
     resp: &Value,
     agg_name: &str,
@@ -2072,6 +2063,7 @@ fn compute_z_domain(all_y_values: &[Vec<u64>]) -> [u64; 2] {
 ///
 /// Returns an object mapping category name to an array of `{scientific_name, taxonId, x, y, cat}`
 /// point objects. Falls back to a single "all" key when no category is specified.
+#[allow(clippy::too_many_arguments)]
 async fn fetch_raw_point_data(
     state: &Arc<AppState>,
     index: &str,

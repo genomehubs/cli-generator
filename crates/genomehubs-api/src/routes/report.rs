@@ -3,10 +3,8 @@ use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::Value;
 use std::sync::Arc;
 
-use cli_generator::core::query_builder;
 use genomehubs_query::query::chain::{collect_chain_refs, resolve_chain_refs};
 use genomehubs_query::query::{QueryParams, SearchQuery};
-use genomehubs_query::report::axis::AxisOpts;
 
 use crate::{index_name, report::report_types, routes::ApiStatus, AppState};
 

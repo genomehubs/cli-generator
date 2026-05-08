@@ -49,7 +49,8 @@ impl ApiStatus {
 
 pub mod chain_executor;
 pub mod count;
-pub mod countBatch;
+#[path = "countBatch.rs"]
+pub mod count_batch;
 pub mod deserialize_helpers;
 pub mod indices;
 pub mod lookup;
@@ -57,7 +58,8 @@ pub mod record;
 pub mod report;
 pub mod result_fields;
 pub mod search;
-pub mod searchBatch;
+#[path = "searchBatch.rs"]
+pub mod search_batch;
 pub mod status;
 pub mod summary;
 pub mod taxonomic_ranks;

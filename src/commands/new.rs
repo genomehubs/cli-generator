@@ -351,6 +351,7 @@ fn copy_embedded_modules(repo_dir: &Path) -> Result<()> {
     let subcrate_modules = [
         ("mod.rs", "core/query/mod.rs"),
         ("attributes.rs", "core/query/attributes.rs"),
+        ("chain.rs", "core/query/chain.rs"),
         ("identifiers.rs", "core/query/identifiers.rs"),
         ("url.rs", "core/query/url.rs"),
     ];
@@ -723,6 +724,7 @@ fn copy_r_embedded_modules(rust_src_dir: &Path) -> Result<()> {
     let subcrate_modules = [
         ("mod.rs", "core/query/mod.rs"),
         ("attributes.rs", "core/query/attributes.rs"),
+        ("chain.rs", "core/query/chain.rs"),
         ("identifiers.rs", "core/query/identifiers.rs"),
         ("url.rs", "core/query/url.rs"),
     ];

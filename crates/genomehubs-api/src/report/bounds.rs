@@ -59,14 +59,12 @@ fn get_attribute_value_field(
                 // Search all groups for this field
                 for (_, group) in groups {
                     if let Value::Object(fields) = group {
-                        if let Some(field_meta) = fields.get(field) {
-                            if let Value::Object(meta_obj) = field_meta {
-                                // Get processed_summary which is the exact ES field name
-                                if let Some(ps) =
-                                    meta_obj.get("processed_summary").and_then(|v| v.as_str())
-                                {
-                                    return Ok(format!("attributes.{}", ps));
-                                }
+                        if let Some(Value::Object(meta_obj)) = fields.get(field) {
+                            // Get processed_summary which is the exact ES field name
+                            if let Some(ps) =
+                                meta_obj.get("processed_summary").and_then(|v| v.as_str())
+                            {
+                                return Ok(format!("attributes.{}", ps));
                             }
                         }
                     }

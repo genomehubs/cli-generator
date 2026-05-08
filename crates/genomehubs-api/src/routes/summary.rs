@@ -9,7 +9,8 @@ pub struct SummaryQuery {
     #[serde(rename = "recordId")]
     pub record_id: String,
     pub result: Option<String>,
-    pub fields: String,          // comma-separated
+    pub fields: String, // comma-separated
+    #[allow(dead_code)]
     pub summary: Option<String>, // comma-separated: "min,max,mean"
 }
 

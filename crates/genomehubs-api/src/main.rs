@@ -28,13 +28,13 @@ pub struct AppState {
 #[openapi(
     paths(
         routes::count::post_count,
-        routes::countBatch::post_countBatch,
+        routes::count_batch::post_countBatch,
         routes::lookup::get_lookup,
         routes::record::get_record,
         routes::report::post_report,
         routes::result_fields::get_result_fields,
         routes::search::post_search,
-        routes::searchBatch::post_searchBatch,
+        routes::search_batch::post_searchBatch,
         routes::status::get_status,
         routes::summary::get_summary,
         routes::taxonomies::get_taxonomies_openapi,
@@ -44,10 +44,10 @@ pub struct AppState {
     components(schemas(
         routes::ApiStatus,
         routes::count::CountResponse,
-        routes::countBatch::CountBatchItem,
-        routes::countBatch::CountBatchRequest,
-        routes::countBatch::CountBatchResponse,
-        routes::countBatch::CountBatchResultItem,
+        routes::count_batch::CountBatchItem,
+        routes::count_batch::CountBatchRequest,
+        routes::count_batch::CountBatchResponse,
+        routes::count_batch::CountBatchResultItem,
         routes::lookup::LookupResponse,
         routes::lookup::LookupResult,
         routes::record::RecordItem,
@@ -59,10 +59,10 @@ pub struct AppState {
         routes::result_fields::ResultFieldsResponse,
         routes::search::SearchRequest,
         routes::search::SearchResponse,
-        routes::searchBatch::SearchBatchItem,
-        routes::searchBatch::SearchBatchRequest,
-        routes::searchBatch::SearchBatchResponse,
-        routes::searchBatch::SearchBatchResultItem,
+        routes::search_batch::SearchBatchItem,
+        routes::search_batch::SearchBatchRequest,
+        routes::search_batch::SearchBatchResponse,
+        routes::search_batch::SearchBatchResultItem,
         routes::status::StatusResponse,
         routes::summary::SummaryItem,
         routes::summary::SummaryQuery,
@@ -185,7 +185,7 @@ async fn main() {
         )
         .route(
             "/api/v3/countBatch",
-            axum::routing::post(routes::countBatch::post_countBatch),
+            axum::routing::post(routes::count_batch::post_countBatch),
         )
         .route("/api/v3/indices", get(routes::indices::get_indices))
         .route("/api/v3/lookup", get(routes::lookup::get_lookup))
@@ -204,7 +204,7 @@ async fn main() {
         )
         .route(
             "/api/v3/searchBatch",
-            axum::routing::post(routes::searchBatch::post_searchBatch),
+            axum::routing::post(routes::search_batch::post_searchBatch),
         )
         .route("/api/v3/status", get(routes::status::get_status))
         .route("/api/v3/summary", get(routes::summary::get_summary))

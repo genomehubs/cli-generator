@@ -33,7 +33,6 @@ pub struct HistogramAggBuilder {
     pub interval: f64,
     pub min: f64,
     pub max: f64,
-    pub scale: Scale,
     pub script: Option<String>,
 }
 
@@ -124,6 +123,7 @@ impl AggBuilder for TermsAggBuilder {
 }
 
 /// Build a `stats` sub-aggregation (used for Y-axis values within X buckets).
+#[allow(dead_code)]
 pub struct StatsAggBuilder {
     pub field: String,
 }
@@ -171,6 +171,7 @@ impl AggBuilder for GeoHashAggBuilder {
 }
 
 /// Build a `reverse_nested` aggregation (used for tree node counts).
+#[allow(dead_code)]
 pub struct ReverseNestedAggBuilder;
 
 impl AggBuilder for ReverseNestedAggBuilder {
@@ -189,6 +190,7 @@ impl AggBuilder for ReverseNestedAggBuilder {
 /// Compose two `AggBuilder`s: parent builds outer agg; inner is nested within each bucket.
 ///
 /// Used for patterns like: x-axis histogram → y-axis stats within each x bucket.
+#[allow(dead_code)]
 pub struct CompositeAggBuilder<'a> {
     pub outer: &'a dyn AggBuilder,
     pub inner: &'a dyn AggBuilder,
@@ -213,6 +215,7 @@ impl<'a> AggBuilder for CompositeAggBuilder<'a> {
 impl<'a> CompositeAggBuilder<'a> {
     /// Recursively inject inner aggregation into nested structures.
     /// Handles both direct aggregations and nested attribute aggregations.
+    #[allow(dead_code)]
     fn inject_inner_agg(&self, outer: &mut Value, agg_name: &str, inner_agg: &Value) {
         if let Some(outer_obj) = outer.get_mut(agg_name) {
             // First try direct injection (for simple histogram, terms, etc.)
@@ -304,14 +307,12 @@ fn get_attribute_value_field(
                 // Search all groups for this field
                 for (_, group) in groups {
                     if let Value::Object(fields) = group {
-                        if let Some(field_meta) = fields.get(field) {
-                            if let Value::Object(meta_obj) = field_meta {
-                                // Get processed_summary which is the exact ES field name
-                                if let Some(ps) =
-                                    meta_obj.get("processed_summary").and_then(|v| v.as_str())
-                                {
-                                    return Ok(format!("attributes.{}", ps));
-                                }
+                        if let Some(Value::Object(meta_obj)) = fields.get(field) {
+                            // Get processed_summary which is the exact ES field name
+                            if let Some(ps) =
+                                meta_obj.get("processed_summary").and_then(|v| v.as_str())
+                            {
+                                return Ok(format!("attributes.{}", ps));
                             }
                         }
                     }
@@ -468,6 +469,7 @@ fn build_y_histogram_sub_agg(
     })
 }
 
+#[allow(clippy::too_many_arguments)]
 /// Build a complete scatter (2-axis) aggregation for nested attributes, optionally with categories.
 ///
 /// Supports any x-axis value type: numeric fields use `histogram`, keyword/rank fields use
@@ -531,7 +533,7 @@ pub fn build_nested_attribute_scatter_agg(
         if cat_labels.is_empty() && !is_numeric_cat {
             None
         } else {
-            let default_bounds = cat_bounds.unwrap_or_else(|| x_bounds);
+            let default_bounds = cat_bounds.unwrap_or(x_bounds);
             let (by_value_agg_type, by_value_def) = build_by_value_agg(
                 cat_vt,
                 &cat_value_field,
@@ -607,11 +609,11 @@ pub fn build_nested_attribute_scatter_agg(
 /// Returns `(agg_type_key, agg_params)` for embedding in the `by_value` ES object:
 /// - Keyword/rank fields use `filters` (named buckets, one per known label).
 /// - Numeric fields use `histogram` (array buckets from bounds domain/interval).
-fn build_by_value_agg<'a>(
+fn build_by_value_agg(
     cat_value_type: ValueType,
     cat_value_field: &str,
     cat_bounds: &BoundsResult,
-    cat_labels: &'a [String],
+    cat_labels: &[String],
     show_other: bool,
 ) -> (&'static str, Value) {
     match cat_value_type {
@@ -644,6 +646,7 @@ fn build_by_value_agg<'a>(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 /// Build a complete nested-attribute histogram aggregation with per-category sub-histograms.
 ///
 /// Supports any x-axis value type: numeric fields use `histogram`, keyword/rank fields use
@@ -814,7 +817,6 @@ pub fn agg_builder_for(
 
                 Ok(Box::new(NestedAttributeAggBuilder {
                     field: spec.field.clone(),
-                    value_field,
                     inner_agg_body: inner_agg,
                     inner_agg_name: "histogram".to_string(),
                 }))
@@ -832,7 +834,6 @@ pub fn agg_builder_for(
                     interval,
                     min: hist_min,
                     max: hist_max,
-                    scale: spec.opts.scale,
                     script: script_opt,
                 }))
             }
@@ -854,7 +855,6 @@ pub fn agg_builder_for(
                 });
                 Ok(Box::new(NestedAttributeAggBuilder {
                     field: spec.field.clone(),
-                    value_field,
                     inner_agg_body: inner_agg,
                     inner_agg_name: "date_histogram".to_string(),
                 }))
@@ -878,7 +878,6 @@ pub fn agg_builder_for(
                 });
                 Ok(Box::new(NestedAttributeAggBuilder {
                     field: spec.field.clone(),
-                    value_field,
                     inner_agg_body: inner_agg,
                     inner_agg_name: "terms".to_string(),
                 }))
@@ -915,39 +914,9 @@ pub fn agg_builder_for(
     }
 }
 
-/// Compute a histogram bin interval from domain and desired tick count.
-///
-/// For log scales, the interval is computed in log-space. For other scales,
-/// it is a linear division of the domain.
-fn compute_histogram_interval(min: f64, max: f64, tick_count: usize, scale: Scale) -> f64 {
-    let ticks = tick_count.max(1) as f64;
-    match scale {
-        Scale::Log | Scale::Log10 => {
-            let log_min = min.max(1.0).log10();
-            let log_max = max.max(1.0).log10();
-            let log_interval = (log_max - log_min) / ticks;
-            10_f64.powf(log_interval)
-        }
-        Scale::Log2 => {
-            let log_min = min.max(1.0).log2();
-            let log_max = max.max(1.0).log2();
-            let log_interval = (log_max - log_min) / ticks;
-            2_f64.powf(log_interval)
-        }
-        Scale::Sqrt => {
-            let sqrt_min = min.max(0.0).sqrt();
-            let sqrt_max = max.sqrt();
-            let sqrt_interval = (sqrt_max - sqrt_min) / ticks;
-            sqrt_interval * sqrt_interval
-        }
-        _ => (max - min) / ticks,
-    }
-}
-
 /// Wrapper that adds nested query logic around a base aggregation for nested attributes.
 pub struct NestedAttributeAggBuilder {
     pub field: String,
-    pub value_field: String,
     pub inner_agg_body: Value,
     pub inner_agg_name: String,
 }

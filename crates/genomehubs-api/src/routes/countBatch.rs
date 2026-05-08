@@ -225,6 +225,7 @@ async fn resolve_lineage_taxon_ids(
         (status = 200, description = "Batch count results", body = CountBatchResponse)
     )
 )]
+#[allow(non_snake_case)]
 pub async fn post_countBatch(
     Extension(state): Extension<Arc<AppState>>,
     Json(req): Json<CountBatchRequest>,

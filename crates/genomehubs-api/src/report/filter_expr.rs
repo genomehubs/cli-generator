@@ -237,8 +237,8 @@ fn parse_simple_term(term: &str) -> Result<FilterTerm, String> {
 /// Tries multi-char operators before single-char ones.
 fn split_op(s: &str) -> Option<(&'static str, &str)> {
     for &op in &[">=", "<=", ">", "<"] {
-        if s.starts_with(op) {
-            return Some((op, &s[op.len()..]));
+        if let Some(rest) = s.strip_prefix(op) {
+            return Some((op, rest));
         }
     }
     None

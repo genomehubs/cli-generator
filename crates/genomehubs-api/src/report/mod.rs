@@ -14,8 +14,3 @@ pub mod bounds;
 pub mod filter_expr;
 pub mod pipeline;
 pub mod report_types;
-
-pub use agg::agg_builder_for;
-pub use bounds::compute_bounds;
-pub use filter_expr::filter_expr_to_es_query;
-pub use pipeline::Pipeline;
