@@ -83,3 +83,9 @@ parse_histogram_json <- function(raw) .Call(wrap__parse_histogram_json, raw)
 
 #' Flatten a tree report's `treeNodes` map into a JSON array.
 parse_tree_json <- function(raw) .Call(wrap__parse_tree_json, raw)
+
+#' Parse a v2 API or UI URL into a JSON pair `[query_yaml, params_yaml]`.
+query_yaml_from_url_params <- function(url) .Call(wrap__query_yaml_from_url_params, url)
+
+#' Parse a v2 report URL into a JSON triple `[query_yaml, params_yaml, report_yaml]`.
+report_yaml_from_url_params <- function(url) .Call(wrap__report_yaml_from_url_params, url)

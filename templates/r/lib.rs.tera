@@ -297,6 +297,32 @@ fn parse_tree_json(raw: &str) -> String {
     }
 }
 
+/// Parse a v2 API or UI URL into a JSON pair `[query_yaml, params_yaml]`.
+#[extendr]
+fn query_yaml_from_url_params(url: &str) -> String {
+    use crate::embedded::core::query;
+    match query::query_yaml_from_url_params(url) {
+        Ok((qy, py)) => {
+            let pair = serde_json::json!([qy, py]);
+            pair.to_string()
+        }
+        Err(e) => format!("{{\"error\":{:?}}}", e),
+    }
+}
+
+/// Parse a v2 report URL into a JSON triple `[query_yaml, params_yaml, report_yaml]`.
+#[extendr]
+fn report_yaml_from_url_params(url: &str) -> String {
+    use crate::embedded::core::report;
+    match report::report_yaml_from_url_params(url) {
+        Ok((qy, py, ry)) => {
+            let triple = serde_json::json!([qy, py, ry]);
+            triple.to_string()
+        }
+        Err(e) => format!("{{\"error\":{:?}}}", e),
+    }
+}
+
 // Register all exported functions with R.
 extendr_module! {
     mod {% endraw %}{{ r_package_name }}{% raw %};
@@ -317,5 +343,7 @@ extendr_module! {
     fn parse_lookup_json;
     fn parse_histogram_json;
     fn parse_tree_json;
+    fn query_yaml_from_url_params;
+    fn report_yaml_from_url_params;
 }
 {% endraw %}

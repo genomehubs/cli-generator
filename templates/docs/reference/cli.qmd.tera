@@ -37,7 +37,7 @@ is available without writing code.
 {{ site_name }}-cli {{ index.name }} <COMMAND> [OPTIONS]
 ```
 
-**Commands**: `count`, `search`, `snippet`
+**Commands**: `count`, `search`, `record`, `summary`, `report`, `snippet`
 
 #### `count`
 
@@ -71,7 +71,51 @@ Generate a code snippet for this query in the language of your choice:
 
 ```
 
+#### `record`
+
+```bash
+{{ site_name }}-cli {{ index.name }} record GCA_000001405.15{% if loop.first %} --format json{% endif %}
+
+```
+
+#### `summary`
+
+```bash
+{{ site_name }}-cli {{ index.name }} summary GCA_000001405.15{% if loop.first %} --fields genome_size,assembly_level{% endif %}
+
+```
+
+#### `report`
+
+```bash
+{{ site_name }}-cli {{ index.name }} report histogram{% if loop.first %} \
+  --taxon Mammalia --taxon-filter tree \
+  --x genome_size --rank species{% endif %}
+
+```
+
 {% endfor %}
+
+## Batch subcommands
+
+### `{{ site_name }}-cli search-batch`
+
+Execute multiple searches defined in a JSON or YAML file:
+
+```bash
+{{ site_name }}-cli search-batch queries.json --format json
+```
+
+Each entry in `queries.json` is a query object with the same flags as `search`.
+Results are returned as a JSON array, one element per query.
+
+### `{{ site_name }}-cli count-batch`
+
+Get hit counts for multiple queries in a single request:
+
+```bash
+{{ site_name }}-cli count-batch queries.json
+```
 
 ---
 

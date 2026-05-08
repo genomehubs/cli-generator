@@ -90,6 +90,9 @@ QueryBuilder <- R6::R6Class(
     api_base_url = "{{ api_base }}",
     api_version = "{{ api_version }}",
     ui_base_url = "{{ ui_base }}",
+    # YAML overrides set by from_v2_url(); take priority in to_query_yaml/to_params_yaml
+    query_yaml_override = NULL,
+    params_yaml_override = NULL,
 
     # Return a copy of `fields` as a character vector, or character(0) if NULL.
     normalise_fields = function(fields) {
@@ -335,6 +338,9 @@ QueryBuilder <- R6::R6Class(
     #' @description Serialise the query state to a YAML string for the Rust engine.
     #' @return A character string.
     to_query_yaml = function() {
+      if (!is.null(private$query_yaml_override)) {
+        return(private$query_yaml_override)
+      }
       doc <- list(index = private$index_name)
 
       if (length(private$taxa_names) > 0) {
@@ -392,6 +398,9 @@ QueryBuilder <- R6::R6Class(
     #' @description Serialise execution parameters to a YAML string for the Rust engine.
     #' @return A character string.
     to_params_yaml = function() {
+      if (!is.null(private$params_yaml_override)) {
+        return(private$params_yaml_override)
+      }
       # Build YAML manually to guarantee true/false, not R's yes/no.
       include_est <- if (isTRUE(private$include_estimates)) "true" else "false"
       tidy_val <- if (isTRUE(private$tidy)) "true" else "false"
@@ -415,8 +424,45 @@ QueryBuilder <- R6::R6Class(
     #' @description Build the API URL for this query without making a network call.
     #' @param endpoint API endpoint name (default: "search").
     #' @return A character string containing the full URL.
-    to_url = function(endpoint = "search") {
+    to_v2_url = function(endpoint = "search") {
       build_url(self$to_query_yaml(), self$to_params_yaml(), endpoint)
+    },
+
+    #' @description Build the API URL (deprecated; use \code{to_v2_url}).
+    #' @param endpoint API endpoint name (default: "search").
+    #' @return A character string containing the full URL.
+    to_url = function(endpoint = "search") {
+      .Deprecated("to_v2_url")
+      self$to_v2_url(endpoint)
+    },
+
+    #' @description Reconstruct a builder from a v2 API or UI URL.
+    #' Detects whether the URL is a search or report URL and returns the
+    #' appropriate builder type. Report URLs return a \code{ReportBuilder}
+    #' with an embedded query.
+    #' @param url A full v2 API or UI URL string.
+    #' @return A \code{QueryBuilder} for search URLs or a \code{ReportBuilder} for report URLs.
+    from_v2_url = function(url) {
+      is_report <- grepl("[?&]report=", url) || grepl("/report(\\?|$)", url)
+      if (is_report) {
+        raw <- report_yaml_from_url_params(url)
+        triple <- jsonlite::fromJSON(raw, simplifyVector = FALSE)
+        if (!is.null(triple$error)) stop(paste("from_v2_url:", triple$error))
+        qb <- QueryBuilder$new(private$index_name)
+        qb$.__enclos_env__$private$query_yaml_override <- triple[[1]]
+        qb$.__enclos_env__$private$params_yaml_override <- triple[[2]]
+        rb <- ReportBuilder$new("_placeholder")
+        rb$.__enclos_env__$private$report_yaml_override <- triple[[3]]
+        rb$.__enclos_env__$private$embedded_query_builder <- qb
+        return(rb)
+      }
+      raw <- query_yaml_from_url_params(url)
+      pair <- jsonlite::fromJSON(raw, simplifyVector = FALSE)
+      if (!is.null(pair$error)) stop(paste("from_v2_url:", pair$error))
+      qb <- QueryBuilder$new(private$index_name)
+      qb$.__enclos_env__$private$query_yaml_override <- pair[[1]]
+      qb$.__enclos_env__$private$params_yaml_override <- pair[[2]]
+      qb
     },
 
     #' @description Build the UI URL for this query without making a network call.
@@ -429,12 +475,16 @@ QueryBuilder <- R6::R6Class(
     #' @description Fetch the count of records matching this query.
     #' @return An integer.
     count = function() {
-      # Clone this builder with size=0 for counting (matches JS/Python behavior)
-      counter <- QueryBuilder$new(private$index_name)
-      counter$merge(self)
-      counter$set_size(0)
-      url <- counter$to_url("search")
-      resp <- httr::GET(url, httr::accept("application/json"))
+      payload <- list(
+        query_yaml = self$to_query_yaml(),
+        params_yaml = self$to_params_yaml()
+      )
+      resp <- httr::POST(
+        paste0(private$api_base_url, "/", private$api_version, "/count"),
+        body = jsonlite::toJSON(payload, auto_unbox = TRUE),
+        httr::content_type_json(),
+        httr::accept_json()
+      )
       httr::stop_for_status(resp)
       raw_text <- httr::content(resp, as = "text", encoding = "UTF-8")
       status <- tryCatch(
@@ -448,34 +498,77 @@ QueryBuilder <- R6::R6Class(
 
     #' @description Fetch results for this query.
     #' @param format Response format: "tsv" (default), "csv", or "json".
-    #' @return Parsed content: a data.frame for tsv/csv, a list for json.
+    #' @return For tsv/csv: a data.frame. For json: the raw JSON text (pass to parse_search_json).
     search = function(format = "tsv") {
-      url <- self$to_url("search")
-      accept_type <- switch(format,
-        tsv  = "text/tab-separated-values",
-        csv  = "text/csv",
-        json = "application/json",
-        "application/json"
-      )
-      response <- httr::GET(url, httr::accept(accept_type))
-      httr::stop_for_status(response)
       if (format %in% c("tsv", "csv")) {
+        url <- self$to_v2_url("search")
         sep <- if (format == "tsv") "\t" else ","
+        accept_type <- if (format == "tsv") "text/tab-separated-values" else "text/csv"
+        response <- httr::GET(url, httr::accept(accept_type))
+        httr::stop_for_status(response)
         text <- httr::content(response, as = "text", encoding = "UTF-8")
-        utils::read.table(
+        return(utils::read.table(
           text = text, header = TRUE, sep = sep,
-          stringsAsFactors = FALSE, quote = "\""
-        )
-      } else {
-        # For JSON requests return the raw text so callers can pass the
-        # unmodified response to the parse_* helpers. If a caller wants a
-        # parsed R object they can call jsonlite::fromJSON(qb$search(format="json"))
-        if (format == "json") {
-          httr::content(response, as = "text", encoding = "UTF-8")
-        } else {
-          httr::content(response, as = "parsed", type = "application/json")
-        }
+          stringsAsFactors = FALSE, quote = '"'
+        ))
       }
+      # JSON: POST to v3
+      payload <- list(
+        query_yaml = self$to_query_yaml(),
+        params_yaml = self$to_params_yaml()
+      )
+      resp <- httr::POST(
+        paste0(private$api_base_url, "/", private$api_version, "/search"),
+        body = jsonlite::toJSON(payload, auto_unbox = TRUE),
+        httr::content_type_json(),
+        httr::accept_json()
+      )
+      httr::stop_for_status(resp)
+      httr::content(resp, as = "text", encoding = "UTF-8")
+    },
+
+    #' @description Fetch all matching records using v3 cursor-based pagination.
+    #' @param max_records Maximum total records (NULL = no limit).
+    #' @return A list of record lists.
+    search_all = function(max_records = NULL) {
+      CHUNK_SIZE <- 1000L
+      cap <- if (is.null(max_records)) Inf else as.numeric(max_records)
+      all_records <- list()
+      search_after <- NULL
+      orig_size <- private$size
+      self$set_size(CHUNK_SIZE)
+      on.exit(self$set_size(orig_size), add = TRUE)
+
+      repeat {
+        payload <- list(
+          query_yaml = self$to_query_yaml(),
+          params_yaml = self$to_params_yaml()
+        )
+        if (!is.null(search_after)) {
+          payload[["search_after"]] <- search_after
+        }
+        resp <- httr::POST(
+          paste0(private$api_base_url, "/", private$api_version, "/search"),
+          body = jsonlite::toJSON(payload, auto_unbox = TRUE),
+          httr::content_type_json()
+        )
+        httr::stop_for_status(resp)
+        raw_text <- httr::content(resp, as = "text", encoding = "UTF-8")
+        resp_data <- jsonlite::fromJSON(raw_text, simplifyVector = FALSE)
+
+        records <- jsonlite::fromJSON(
+          parse_search_json(raw_text),
+          simplifyVector = FALSE
+        )
+        remaining <- cap - length(all_records)
+        all_records <- c(all_records, head(records, ceiling(remaining)))
+
+        search_after <- resp_data[["search_after"]]
+        total <- resp_data[["status"]][["hits"]] %||% 0
+        if (is.null(search_after) || length(all_records) >= min(cap, total)) break
+      }
+
+      if (!is.null(max_records)) head(all_records, max_records) else all_records
     },
 
     #' @description Get a human-readable description of this query.
@@ -612,9 +705,9 @@ QueryBuilder <- R6::R6Class(
     #' @return Raw report list from the response.
     report = function(report, api_base = NULL) {
       if (is.null(api_base)) {
-        api_base <- private$.api_base
+        api_base <- private$api_base_url
       }
-      url <- paste0(api_base, "/", private$.api_version, "/report")
+      url <- paste0(api_base, "/", private$api_version, "/report")
       payload <- list(
         query_yaml = self$to_query_yaml(),
         params_yaml = self$to_params_yaml(),
@@ -642,10 +735,10 @@ QueryBuilder <- R6::R6Class(
       }
 
       if (is.null(api_base)) {
-        api_base <- private$.api_base
+        api_base <- private$api_base_url
       }
 
-      url <- paste0(api_base, "/", private$.api_version, "/searchBatch")
+      url <- paste0(api_base, "/", private$api_version, "/searchBatch")
       payload <- list(
         searches = lapply(queries, function(q) {
           list(
@@ -676,10 +769,10 @@ QueryBuilder <- R6::R6Class(
       }
 
       if (is.null(api_base)) {
-        api_base <- private$.api_base
+        api_base <- private$api_base_url
       }
 
-      url <- paste0(api_base, "/", private$.api_version, "/countBatch")
+      url <- paste0(api_base, "/", private$api_version, "/countBatch")
       payload <- list(
         searches = lapply(queries, function(q) {
           list(
@@ -712,10 +805,10 @@ QueryBuilder <- R6::R6Class(
       if (is.null(record_id) || record_id == "") {
         stop("record() requires a record_id parameter")
       }
-      result_type <- if (is.null(result)) private$.index else result
+      result_type <- if (is.null(result)) private$index_name else result
 
       params <- list(recordId = record_id, result = result_type)
-      url <- paste0(private$.api_base, "/", private$.api_version, "/record?")
+      url <- paste0(private$api_base_url, "/", private$api_version, "/record?")
       query_string <- paste(names(params), sapply(params, as.character), sep = "=", collapse = "&")
       url <- paste0(url, query_string)
 
@@ -734,10 +827,10 @@ QueryBuilder <- R6::R6Class(
       if (is.null(search_term) || search_term == "") {
         stop("lookup() requires a search_term parameter")
       }
-      result_type <- if (is.null(result)) private$.index else result
+      result_type <- if (is.null(result)) private$index_name else result
 
       params <- list(searchTerm = search_term, result = result_type, size = as.character(size))
-      url <- paste0(private$.api_base, "/", private$.api_version, "/lookup?")
+      url <- paste0(private$api_base_url, "/", private$api_version, "/lookup?")
       query_string <- paste(names(params), sapply(params, as.character), sep = "=", collapse = "&")
       url <- paste0(url, query_string)
 
@@ -760,10 +853,10 @@ QueryBuilder <- R6::R6Class(
       if (is.null(fields) || fields == "") {
         stop("summary() requires a fields parameter")
       }
-      result_type <- if (is.null(result)) private$.index else result
+      result_type <- if (is.null(result)) private$index_name else result
 
       params <- list(recordId = record_id, result = result_type, fields = fields, summary = summary_types)
-      url <- paste0(private$.api_base, "/", private$.api_version, "/summary?")
+      url <- paste0(private$api_base_url, "/", private$api_version, "/summary?")
       query_string <- paste(names(params), sapply(params, as.character), sep = "=", collapse = "&")
       url <- paste0(url, query_string)
 
@@ -853,7 +946,10 @@ QueryBuilder <- R6::R6Class(
 #' @export
 ReportBuilder <- R6::R6Class("ReportBuilder",
   private = list(
-    .doc = NULL
+    .doc = NULL,
+    # Set by QueryBuilder$from_v2_url() for report URLs
+    report_yaml_override = NULL,
+    embedded_query_builder = NULL
   ),
   public = list(
     #' @description Initialise the builder with a report type.
@@ -985,6 +1081,9 @@ ReportBuilder <- R6::R6Class("ReportBuilder",
 
     #' @description Return the report configuration as a YAML string.
     to_report_yaml = function() {
+      if (!is.null(private$report_yaml_override)) {
+        return(private$report_yaml_override)
+      }
       yaml::as.yaml(private$.doc)
     },
 
@@ -1004,8 +1103,12 @@ ReportBuilder <- R6::R6Class("ReportBuilder",
     #' @param query_builder A \code{QueryBuilder} instance.
     #' @param api_base Base URL of the API (default: from QueryBuilder).
     #' @return Raw report list from the response.
-    run = function(query_builder, api_base = NULL) {
-      query_builder$report(self, api_base = api_base)
+    run = function(query_builder = NULL, api_base = NULL) {
+      qb <- if (!is.null(query_builder)) query_builder else private$embedded_query_builder
+      if (is.null(qb)) {
+        stop("run() requires a QueryBuilder argument or a ReportBuilder created via QueryBuilder$from_v2_url()")
+      }
+      qb$report(self, api_base = api_base)
     }
   )
 )

@@ -203,3 +203,95 @@ value was measured directly on this taxon (`"direct"`), rolled up from
 descendants (`"descendant"`), or inherited from an ancestor (`"ancestor"`).
 See [Parsing results](reference/parse.qmd) for how to annotate or split on
 these.
+
+---
+
+## Run a report
+
+Reports aggregate data across taxa rather than returning individual records.
+
+::: {.panel-tabset group="language"}
+
+## Python
+
+```python
+from {{ sdk_name }}.query import QueryBuilder, ReportBuilder
+
+qb = QueryBuilder("taxon").set_taxa(["Mammalia"], filter_type="tree")
+rb = ReportBuilder("histogram").set_x("genome_size").set_rank("species")
+data = qb.report(rb, api_base="{{ api_base }}")
+```
+
+## R
+
+```r
+library({{ r_package_name }})
+
+qb <- query_builder("taxon") |> set_taxa(c("Mammalia"), filter_type = "tree")
+rb <- ReportBuilder$new("histogram")$set_x("genome_size")$set_rank("species")
+data <- qb$report(rb)
+```
+
+## JavaScript
+
+```javascript
+import { QueryBuilder, ReportBuilder } from '{{ site_name }}-sdk';
+
+const qb = new QueryBuilder('taxon').setTaxa(['Mammalia'], 'tree');
+const rb = new ReportBuilder('histogram').setX('genome_size').setRank('species');
+const data = await qb.report(rb);
+```
+
+## CLI
+
+```bash
+{{ site_name }}-cli taxon report histogram \
+  --taxon Mammalia --taxon-filter tree \
+  --x genome_size --rank species
+```
+
+## API
+
+```bash
+curl -s -X POST {{ api_base }}/v3/report \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query_yaml": "index: taxon\ntaxa:\n  - Mammalia\ntaxon_filter_type: tree\n",
+    "params_yaml": "size: 10\npage: 1\ninclude_estimates: true\ntaxonomy: ncbi\n",
+    "report_yaml": "report: histogram\nx: genome_size\nrank: species\n"
+  }'
+```
+
+:::
+
+---
+
+## Using the API directly
+
+All SDK operations map to a small set of HTTP endpoints.  You can call them
+directly with any HTTP client — no SDK required.
+
+```bash
+# Count matching records
+curl -s -X POST {{ api_base }}/v3/count \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query_yaml": "index: taxon\ntaxa:\n  - Mammalia\ntaxon_filter_type: tree\n",
+    "params_yaml": "size: 10\npage: 1\ninclude_estimates: true\ntaxonomy: ncbi\n"
+  }'
+
+# Fetch records (JSON)
+curl -s -X POST {{ api_base }}/v3/search \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query_yaml": "index: taxon\ntaxa:\n  - Mammalia\ntaxon_filter_type: tree\n",
+    "params_yaml": "size: 10\npage: 1\ninclude_estimates: true\ntaxonomy: ncbi\n"
+  }'
+
+# Fetch records (TSV — v2 GET)
+curl -s -H "Accept: text/tab-separated-values" \
+  "{{ api_base }}/{{ api_version }}/search?result=taxon&query=tax_tree(Mammalia)&size=10"
+```
+
+See the `query_yaml` and `params_yaml` formats in the
+[QueryBuilder reference](reference/query-builder.qmd).

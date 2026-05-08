@@ -287,9 +287,79 @@ Sort results.  `order` is `"asc"` or `"desc"`.
 
 ## Execution
 
-### `to_url(api_base, api_version, endpoint="search") -> str`
+### `to_v2_url(endpoint="search") -> str`
 
-Build the URL without making a network request.
+Build the v2 API URL for this query without making a network request.
+Delegates to the Rust WASM/extension module, guaranteeing identical output
+across Python, R, and JavaScript.
+
+::: {.panel-tabset group="language"}
+
+## Python
+
+```python
+url = qb.to_v2_url(api_base="{{ api_base }}", api_version="{{ api_version }}")
+print(url)
+```
+
+## R
+
+```r
+url <- qb$to_v2_url()
+cat(url, "\n")
+```
+
+## JavaScript
+
+```javascript
+const url = qb.toV2Url();
+console.log(url);
+```
+
+:::
+
+::: {.callout-warning}
+## Deprecated
+
+`to_url()` is deprecated. Use `to_v2_url()` to build a v2 GET URL,
+or use `to_query_yaml()` + `to_params_yaml()` to construct a v3 POST body.
+:::
+
+### `QueryBuilder.from_v2_url(url) -> QueryBuilder`
+
+Reconstruct a builder from an existing v2 API or UI URL.  Call `from_v2_url`
+when you have a URL (e.g. from the browser address bar) and want to continue
+building the query programmatically.  Report URLs (path ends in `/report` or the
+query string contains `report=`) return a `ReportBuilder` with an embedded
+query so that `run()` can be called without supplying a separate `QueryBuilder`.
+
+::: {.panel-tabset group="language"}
+
+## Python
+
+```python
+url = "{{ api_base }}/{{ api_version }}/search?result=taxon&query=tax_tree(Mammalia)&fields=genome_size"
+qb = QueryBuilder.from_v2_url(url)
+count = qb.count(api_base="{{ api_base }}")
+```
+
+## R
+
+```r
+url <- "{{ api_base }}/{{ api_version }}/search?result=taxon&query=tax_tree(Mammalia)&fields=genome_size"
+qb <- QueryBuilder$from_v2_url(url)
+count <- qb$count()
+```
+
+## JavaScript
+
+```javascript
+const url = "{{ api_base }}/{{ api_version }}/search?result=taxon&query=tax_tree(Mammalia)&fields=genome_size";
+const qb = QueryBuilder.fromV2Url(url);
+const count = await qb.count();
+```
+
+:::
 
 ### `to_ui_url(endpoint="search") -> str`
 
@@ -297,33 +367,121 @@ Build the equivalent web UI URL without making a network request.  The result
 targets the browser interface rather than the REST API — no version component
 is inserted, so the path is `{ui_base}/{endpoint}?…`.
 
+---
+
 ### `count(api_base, api_version) -> int`
 
-Return the number of matching records.
+Fetch the number of matching records.  POSTs to `/v3/count`.
 
-### `search(api_base, api_version) -> list[dict]`
+::: {.panel-tabset group="language"}
 
-Return a list of flat record dicts (parsed by `parse_search_json`).
+## Python
+
+```python
+n = qb.count(api_base="{{ api_base }}", api_version="{{ api_version }}")
+print(f"Matching records: {n}")
+```
+
+## R
+
+```r
+n <- qb$count()
+cat("Matching records:", n, "\n")
+```
+
+## JavaScript
+
+```javascript
+const n = await qb.count();
+console.log(`Matching records: ${n}`);
+```
+
+## API
+
+```bash
+curl -s -X POST {{ api_base }}/v3/count \
+  -H "Content-Type: application/json" \
+  -d '{"query_yaml": "index: taxon\ntaxa:\n  - Mammalia\ntaxon_filter_type: tree\n", "params_yaml": "size: 10\npage: 1\ninclude_estimates: true\ntaxonomy: ncbi\n"}'
+```
+
+:::
+
+---
+
+### `search(format="json", api_base, api_version) -> list[dict] | str`
+
+Fetch results.  JSON format (default) POSTs to `/v3/search` and returns a list
+of flat record dicts.  TSV or CSV format uses a v2 GET via `to_v2_url()` and
+returns the raw text.
+
+::: {.panel-tabset group="language"}
+
+## Python
+
+```python
+records = qb.search(api_base="{{ api_base }}", api_version="{{ api_version }}")
+for r in records:
+    print(r["scientific_name"], r.get("genome_size"))
+
+# TSV (v2 GET)
+tsv = qb.search(format="tsv", api_base="{{ api_base }}", api_version="{{ api_version }}")
+```
+
+## R
+
+```r
+records <- qb$search()
+
+# TSV
+tsv <- qb$search(format = "tsv")
+```
+
+## JavaScript
+
+```javascript
+const records = await qb.search();
+
+// TSV (v2 GET)
+const tsv = await qb.search('tsv');
+```
+
+## API
+
+```bash
+# JSON (v3 POST)
+curl -s -X POST {{ api_base }}/v3/search \
+  -H "Content-Type: application/json" \
+  -d '{"query_yaml": "index: taxon\ntaxa:\n  - Mammalia\ntaxon_filter_type: tree\n", "params_yaml": "size: 10\npage: 1\ninclude_estimates: true\ntaxonomy: ncbi\n"}'
+
+# TSV (v2 GET)
+curl -s -H "Accept: text/tab-separated-values" \
+  "{{ api_base }}/{{ api_version }}/search?result=taxon&query=tax_tree(Mammalia)&size=10"
+```
+
+:::
+
+---
 
 ### `search_df(api_base, api_version) -> pandas.DataFrame`
 
-Return results as a pandas DataFrame.
+Return results as a pandas DataFrame.  Python only.
 
 ### `search_polars(api_base, api_version) -> polars.DataFrame`
 
-Return results as a Polars DataFrame (lazy-evaluated).
+Return results as a Polars DataFrame.  Python only.
+
+---
 
 ### `search_all(max_records=None, api_base, api_version) -> list[dict]`
 
-Fetch **every** matching record using cursor-based pagination.  Calls the
-`/searchPaginated` endpoint in chunks of 1 000 records and continues until all
-pages are retrieved (or `max_records` is reached).
-
-Returns a flat list of record dicts in the same format as `search()`.
+Fetch **every** matching record using cursor-based pagination.  Sends repeated
+POST requests to `/v3/search` with `search_after` cursors until all records
+are retrieved (or `max_records` is reached).  Page size is set to 1 000 per
+chunk and restored when done.
 
 | Parameter | Type | Description |
 |---|---|---|
-| `max_records` | int \| None | Cap the total records returned. `None` (default) means no limit. |
+| `max_records` | int \| None | Cap total records returned. `None` means no limit. |
 | `api_base` | str | Base URL of the API. |
 | `api_version` | str | API version string (Python only). |
 
@@ -338,14 +496,24 @@ qb = (
     .set_rank("species")
     .add_field("genome_size")
 )
-
-# Fetch up to 5 000 records
 records = qb.search_all(
     max_records=5000,
     api_base="{{ api_base }}",
     api_version="{{ api_version }}",
 )
-print(len(records))  # up to 5000
+print(len(records))
+```
+
+## R
+
+```r
+qb <- query_builder("taxon") |>
+  set_taxa(c("Mammalia"), filter_type = "tree") |>
+  set_rank("species") |>
+  add_field("genome_size")
+
+records <- qb$search_all(max_records = 5000)
+cat("Records fetched:", length(records), "\n")
 ```
 
 ## JavaScript
@@ -358,6 +526,276 @@ const qb = new QueryBuilder('taxon')
 
 const records = await qb.searchAll(5000);
 console.log(records.length);
+```
+
+## API
+
+```bash
+# First page — capture the scroll cursor
+RESP=$(curl -s -X POST {{ api_base }}/v3/search \
+  -H "Content-Type: application/json" \
+  -d '{"query_yaml": "index: taxon\n", "params_yaml": "size: 1000\npage: 1\n"}')
+
+# Next page — pass search_after from previous response
+CURSOR=$(echo "$RESP" | jq -c '.search_after')
+curl -s -X POST {{ api_base }}/v3/search \
+  -H "Content-Type: application/json" \
+  -d "{\"query_yaml\": \"index: taxon\n\", \"params_yaml\": \"size: 1000\npage: 1\n\", \"search_after\": $CURSOR}"
+```
+
+:::
+
+---
+
+### `report(report, api_base) -> dict`
+
+Run a report query against `/v3/report`.  The `report` argument must be a
+`ReportBuilder` instance (see [ReportBuilder](#reportbuilder) below).
+
+::: {.panel-tabset group="language"}
+
+## Python
+
+```python
+from {{ sdk_name }}.query import QueryBuilder, ReportBuilder
+
+qb = QueryBuilder("taxon").set_taxa(["Mammalia"], filter_type="tree")
+rb = ReportBuilder("histogram").set_x("genome_size").set_rank("species")
+data = qb.report(rb, api_base="{{ api_base }}")
+```
+
+## R
+
+```r
+library({{ r_package_name }})
+
+qb <- query_builder("taxon") |> set_taxa(c("Mammalia"), filter_type = "tree")
+rb <- ReportBuilder$new("histogram")$set_x("genome_size")$set_rank("species")
+data <- qb$report(rb)
+```
+
+## JavaScript
+
+```javascript
+import { QueryBuilder, ReportBuilder } from '{{ site_name }}-sdk';
+
+const qb = new QueryBuilder('taxon').setTaxa(['Mammalia'], 'tree');
+const rb = new ReportBuilder('histogram').setX('genome_size').setRank('species');
+const data = await qb.report(rb);
+```
+
+## API
+
+```bash
+curl -s -X POST {{ api_base }}/v3/report \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query_yaml": "index: taxon\ntaxa:\n  - Mammalia\ntaxon_filter_type: tree\n",
+    "params_yaml": "size: 10\npage: 1\ninclude_estimates: true\ntaxonomy: ncbi\n",
+    "report_yaml": "report: histogram\nx: genome_size\nrank: species\n"
+  }'
+```
+
+:::
+
+---
+
+### `search_batch(queries, api_base, api_version) -> list[list[dict]]`
+
+Execute up to 100 searches in a single request to `/v3/searchBatch`.  Returns
+a list of record lists, one per input query, in the same order.
+
+::: {.panel-tabset group="language"}
+
+## Python
+
+```python
+q1 = QueryBuilder("taxon").set_taxa(["Mammalia"], filter_type="tree")
+q2 = QueryBuilder("taxon").set_taxa(["Reptilia"], filter_type="tree")
+results = qb.search_batch([q1, q2], api_base="{{ api_base }}", api_version="{{ api_version }}")
+mammals, reptiles = results
+```
+
+## R
+
+```r
+q1 <- query_builder("taxon") |> set_taxa(c("Mammalia"), filter_type = "tree")
+q2 <- query_builder("taxon") |> set_taxa(c("Reptilia"), filter_type = "tree")
+results <- qb$search_batch(list(q1, q2))
+```
+
+## JavaScript
+
+```javascript
+const q1 = new QueryBuilder('taxon').setTaxa(['Mammalia'], 'tree');
+const q2 = new QueryBuilder('taxon').setTaxa(['Reptilia'], 'tree');
+const [mammals, reptiles] = await qb.searchBatch([q1, q2]);
+```
+
+## API
+
+```bash
+curl -s -X POST {{ api_base }}/v3/searchBatch \
+  -H "Content-Type: application/json" \
+  -d '{
+    "searches": [
+      {"query_yaml": "index: taxon\ntaxa:\n  - Mammalia\ntaxon_filter_type: tree\n", "params_yaml": "size: 10\npage: 1\ninclude_estimates: true\ntaxonomy: ncbi\n"},
+      {"query_yaml": "index: taxon\ntaxa:\n  - Reptilia\ntaxon_filter_type: tree\n", "params_yaml": "size: 10\npage: 1\ninclude_estimates: true\ntaxonomy: ncbi\n"}
+    ]
+  }'
+```
+
+:::
+
+---
+
+### `count_batch(queries, api_base, api_version) -> list[int]`
+
+Get hit counts for up to 100 queries in a single request to `/v3/countBatch`.
+Returns a list of integers in the same order as the input queries.
+
+::: {.panel-tabset group="language"}
+
+## Python
+
+```python
+q1 = QueryBuilder("taxon").set_taxa(["Mammalia"], filter_type="tree")
+q2 = QueryBuilder("taxon").set_taxa(["Reptilia"], filter_type="tree")
+counts = qb.count_batch([q1, q2], api_base="{{ api_base }}", api_version="{{ api_version }}")
+print(counts)  # e.g. [6400, 11000]
+```
+
+## R
+
+```r
+q1 <- query_builder("taxon") |> set_taxa(c("Mammalia"), filter_type = "tree")
+q2 <- query_builder("taxon") |> set_taxa(c("Reptilia"), filter_type = "tree")
+counts <- qb$count_batch(list(q1, q2))
+```
+
+## JavaScript
+
+```javascript
+const q1 = new QueryBuilder('taxon').setTaxa(['Mammalia'], 'tree');
+const q2 = new QueryBuilder('taxon').setTaxa(['Reptilia'], 'tree');
+const counts = await qb.countBatch([q1, q2]);
+console.log(counts);
+```
+
+## API
+
+```bash
+curl -s -X POST {{ api_base }}/v3/countBatch \
+  -H "Content-Type: application/json" \
+  -d '{
+    "searches": [
+      {"query_yaml": "index: taxon\ntaxa:\n  - Mammalia\ntaxon_filter_type: tree\n", "params_yaml": "size: 10\npage: 1\ninclude_estimates: true\ntaxonomy: ncbi\n"},
+      {"query_yaml": "index: taxon\ntaxa:\n  - Reptilia\ntaxon_filter_type: tree\n", "params_yaml": "size: 10\npage: 1\ninclude_estimates: true\ntaxonomy: ncbi\n"}
+    ]
+  }'
+```
+
+:::
+
+---
+
+### `record(record_id, result=None, api_base, api_version) -> dict`
+
+Fetch a single record by its ID via GET to `/v3/record`.
+
+::: {.panel-tabset group="language"}
+
+## Python
+
+```python
+rec = qb.record("9606", api_base="{{ api_base }}", api_version="{{ api_version }}")
+```
+
+## R
+
+```r
+rec <- qb$record("9606")
+```
+
+## JavaScript
+
+```javascript
+const rec = await qb.record("9606");
+```
+
+## API
+
+```bash
+curl -s "{{ api_base }}/v3/record?recordId=9606&result=taxon"
+```
+
+:::
+
+---
+
+### `lookup(search_term, result=None, size=10, api_base, api_version) -> dict`
+
+Search for records by alternative identifiers (autocomplete) via GET to
+`/v3/lookup`.
+
+::: {.panel-tabset group="language"}
+
+## Python
+
+```python
+results = qb.lookup("Homo", api_base="{{ api_base }}", api_version="{{ api_version }}")
+```
+
+## R
+
+```r
+results <- qb$lookup("Homo")
+```
+
+## JavaScript
+
+```javascript
+const results = await qb.lookup("Homo");
+```
+
+## API
+
+```bash
+curl -s "{{ api_base }}/v3/lookup?searchTerm=Homo&result=taxon&size=10"
+```
+
+:::
+
+---
+
+### `summary(record_id, fields, result=None, summary_types="min,max,mean", api_base, api_version) -> dict`
+
+Fetch aggregated summary statistics for specific fields via GET to `/v3/summary`.
+
+::: {.panel-tabset group="language"}
+
+## Python
+
+```python
+data = qb.summary("9606", "genome_size", api_base="{{ api_base }}", api_version="{{ api_version }}")
+```
+
+## R
+
+```r
+data <- qb$summary("9606", "genome_size")
+```
+
+## JavaScript
+
+```javascript
+const data = await qb.summary("9606", "genome_size");
+```
+
+## API
+
+```bash
+curl -s "{{ api_base }}/v3/summary?recordId=9606&result=taxon&fields=genome_size&summary=min,max,mean"
 ```
 
 :::
@@ -427,13 +865,12 @@ Class method: create a new builder by merging all inputs.
 ## Python
 
 ```python
-# Useful when different MCP tools each provide part of the query
 id_qb   = QueryBuilder("taxon").set_taxa(["Mammalia"], filter_type="tree")
 attr_qb = QueryBuilder("taxon").add_attribute("genome_size", "exists")
 size_qb = QueryBuilder("taxon").set_size(50).set_rank("species")
 
 final = QueryBuilder.combine(id_qb, attr_qb, size_qb)
-url = final.to_url(api_base="{{ api_base }}", api_version="{{ api_version }}")
+url = final.to_v2_url(api_base="{{ api_base }}", api_version="{{ api_version }}")
 ```
 
 ## R
@@ -456,3 +893,88 @@ final <- combine_builders(id_qb, attr_qb)
 `to_params_yaml() -> str` — serialise execution parameters to YAML.
 
 `describe(mode="concise") -> str` — English prose summary of the current query.
+
+---
+
+## ReportBuilder
+
+`ReportBuilder` constructs the report configuration for `/v3/report` queries.
+It is designed to be paired with a `QueryBuilder` via the `report()` method:
+
+::: {.panel-tabset group="language"}
+
+## Python
+
+```python
+from {{ sdk_name }}.query import QueryBuilder, ReportBuilder
+
+qb = QueryBuilder("taxon").set_taxa(["Mammalia"], filter_type="tree")
+rb = ReportBuilder("histogram").set_x("genome_size").set_rank("species")
+data = qb.report(rb, api_base="{{ api_base }}")
+```
+
+## R
+
+```r
+library({{ r_package_name }})
+
+qb <- query_builder("taxon") |> set_taxa(c("Mammalia"), filter_type = "tree")
+rb <- ReportBuilder$new("histogram")$set_x("genome_size")$set_rank("species")
+data <- qb$report(rb)
+```
+
+## JavaScript
+
+```javascript
+import { QueryBuilder, ReportBuilder } from '{{ site_name }}-sdk';
+
+const qb = new QueryBuilder('taxon').setTaxa(['Mammalia'], 'tree');
+const rb = new ReportBuilder('histogram').setX('genome_size').setRank('species');
+const data = await qb.report(rb);
+```
+
+:::
+
+Supported report types: `"histogram"`, `"scatter"`, `"map"`, `"tree"`,
+`"countPerRank"`, `"sources"`, `"arc"`.
+
+### Constructor
+
+`ReportBuilder(report_type)` — initialise with one of the report type strings above.
+
+### Axis setters
+
+- `set_x(field, opts="")` — X-axis field (histogram, scatter, arc)
+- `set_y(field, opts="")` — Y-axis field or fields (scatter)
+- `set_cat(field, opts="")` — Category breakdown field
+- `set_query(field)` — Query field (countPerRank)
+
+### Config setters
+
+- `set_rank(rank)` — Taxonomic rank to aggregate at
+- `set_ranks(ranks)` — List of ranks (countPerRank)
+- `set_fields(fields)` — Additional fields to include in results
+- `set_status_filter(value)` — Filter by assembly or sample status
+- `set_cat_rank(rank)` — Rank for category label aggregation
+- `set_collapse_monotypic(value=True)` — Collapse monotypic nodes (tree)
+- `set_preserve_rank(rank)` — Preserve rank when collapsing monotypic (tree)
+- `set_count_rank(rank)` — Rank to count descendants at (tree)
+- `set_location_field(field)` — Geographic location field (map)
+- `set_hex_resolution(resolution)` — Geohash resolution 1–12 (map)
+- `set_map_threshold(threshold)` — Max map points before hexbin mode (map)
+- `set_scatter_threshold(threshold)` — Max scatter points before binned mode (scatter)
+
+### `to_report_yaml() -> str`
+
+Serialise the report configuration to YAML.
+
+### `validate(field_metadata=None) -> list[str]`
+
+Validate the report configuration.  Returns a list of error strings (empty = valid).
+
+### `run(query_builder, api_base) -> dict`
+
+Execute this report against the supplied `QueryBuilder`.  Equivalent to
+`query_builder.report(self, api_base)`.  If constructed via
+`QueryBuilder.from_v2_url()`, the embedded query is used automatically and
+`query_builder` may be omitted.

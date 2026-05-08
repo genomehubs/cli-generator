@@ -10,6 +10,8 @@ import contextlib
 import json
 import os
 import sys
+import urllib.error
+import urllib.request
 from pprint import pformat
 from typing import Any
 
@@ -28,9 +30,31 @@ from goat_sdk import (
     values_only,
 )
 
+_DEFAULT_API_BASE = "https://goat.genomehubs.org/api"
+
+
+def _api_reachable(api_base: str = _DEFAULT_API_BASE) -> bool:
+    """Return True when the v3 count endpoint responds with HTTP 2xx."""
+    try:
+        req = urllib.request.Request(
+            f"{api_base}/v3/count",
+            data=b'{"query_yaml":"index: taxon\\n","params_yaml":"size: 1\\npage: 1\\ninclude_estimates: true\\ntaxonomy: ncbi\\n"}',
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            return resp.status < 400
+    except Exception:
+        return False
+
 
 def main() -> None:
     print("\n== Deep Validation: Python SDK ==\n")
+
+    api_base = os.environ.get("GOAT_API_BASE", _DEFAULT_API_BASE)
+    network_available = _api_reachable(api_base)
+    if not network_available:
+        print(f"  ⊙ API not reachable at {api_base}/v3/count — skipping network tests (2-9).\n")
 
     # Test 1: validate()
     print("Test 1: Validation (.validate())")
@@ -39,133 +63,137 @@ def main() -> None:
     assert isinstance(errors, list), "validate() should return list"
     print(f"  ✓ validate() works, returned: {len(errors)} errors")
 
-    # Test 2: count()
-    print("Test 2: Count (.count())")
-    qb = QueryBuilder("taxon").set_taxa(["Mammalia"], filter_type="tree")
-    count = qb.count()
-    assert isinstance(count, int), "count() should return int"
-    assert count > 0, "Expected count > 0 for Mammalia"
-    print(f"  ✓ count() works: {count} records found")
+    if network_available:
+        # Test 2: count()
+        print("Test 2: Count (.count())")
+        qb = QueryBuilder("taxon").set_taxa(["Mammalia"], filter_type="tree")
+        count = qb.count()
+        assert isinstance(count, int), "count() should return int"
+        assert count > 0, "Expected count > 0 for Mammalia"
+        print(f"  ✓ count() works: {count} records found")
 
-    # Test 3: search()
-    print("Test 3: Search (.search())")
-    qb = QueryBuilder("taxon").set_taxa(["Mammalia"], filter_type="tree").add_field("genome_size").set_size(10)
-    raw = qb.search()
-    results = json.loads(parse_search_json(raw))
-    assert isinstance(results, list) and len(results) > 0, "search() should return non-empty list"
-    print(f"  ✓ search() works: returned {len(results)} results")
-    print("    First result (pretty):")
-    try:
-        print(pformat(results[0]))
-    except Exception:
-        print(json.dumps(results[0], ensure_ascii=False))
+        # Test 3: search()
+        print("Test 3: Search (.search())")
+        qb = QueryBuilder("taxon").set_taxa(["Mammalia"], filter_type="tree").add_field("genome_size").set_size(10)
+        raw = qb.search()
+        results = json.loads(parse_search_json(raw))
+        assert isinstance(results, list) and len(results) > 0, "search() should return non-empty list"
+        print(f"  ✓ search() works: returned {len(results)} results")
+        print("    First result (pretty):")
+        try:
+            print(pformat(results[0]))
+        except Exception:
+            print(json.dumps(results[0], ensure_ascii=False))
 
-    # Test 4: add_attribute()
-    print("Test 4: Attribute filters (.add_attribute())")
-    qb = (
-        QueryBuilder("taxon")
-        .set_taxa(["Mammalia"], filter_type="tree")
-        .add_attribute("genome_size", "ge", "1G")
-        .add_field("genome_size")
-        .set_size(10)
-    )
-    raw = qb.search()
-    results = json.loads(parse_search_json(raw))
-    assert all("genome_size" in r for r in results), "All results should have genome_size"
-    print(f"  ✓ add_attribute() works: {len(results)} results with genome_size >= 1G")
+        # Test 4: add_attribute()
+        print("Test 4: Attribute filters (.add_attribute())")
+        qb = (
+            QueryBuilder("taxon")
+            .set_taxa(["Mammalia"], filter_type="tree")
+            .add_attribute("genome_size", "ge", "1G")
+            .add_field("genome_size")
+            .set_size(10)
+        )
+        raw = qb.search()
+        results = json.loads(parse_search_json(raw))
+        assert all("genome_size" in r for r in results), "All results should have genome_size"
+        print(f"  ✓ add_attribute() works: {len(results)} results with genome_size >= 1G")
 
-    # Test 5: multiple attribute filters
-    print("Test 5: Multiple attribute filters")
-    qb = (
-        QueryBuilder("taxon")
-        .set_taxa(["Mammalia"], filter_type="tree")
-        .add_attribute("genome_size", "ge", "1G")
-        .add_attribute("genome_size", "le", "3G")
-        .add_field("genome_size")
-        .set_size(10)
-    )
-    raw = qb.search()
-    results = json.loads(parse_search_json(raw))
-    assert len(results) > 0, "Expected results in 1G-3G range"
-    print(f"  ✓ Multiple filters work: {len(results)} results with 1G <= genome_size <= 3G")
+        # Test 5: multiple attribute filters
+        print("Test 5: Multiple attribute filters")
+        qb = (
+            QueryBuilder("taxon")
+            .set_taxa(["Mammalia"], filter_type="tree")
+            .add_attribute("genome_size", "ge", "1G")
+            .add_attribute("genome_size", "le", "3G")
+            .add_field("genome_size")
+            .set_size(10)
+        )
+        raw = qb.search()
+        results = json.loads(parse_search_json(raw))
+        assert len(results) > 0, "Expected results in 1G-3G range"
+        print(f"  ✓ Multiple filters work: {len(results)} results with 1G <= genome_size <= 3G")
 
-    # Test 6: parse_response_status
-    print("Test 6: Response parsing (parse_response_status())")
-    qb = QueryBuilder("taxon").set_taxa(["Insecta"], filter_type="tree").add_field("genome_size").set_size(5)
-    raw = qb.search()
-    status_json = json.loads(parse_response_status(raw))
-    assert "hits" in status_json, "Status should have 'hits' field"
-    print("  ✓ parse_response_status() works")
-    print("    Full status JSON:")
-    print(json.dumps(status_json, indent=2, ensure_ascii=False))
+        # Test 6: parse_response_status
+        print("Test 6: Response parsing (parse_response_status())")
+        qb = QueryBuilder("taxon").set_taxa(["Insecta"], filter_type="tree").add_field("genome_size").set_size(5)
+        raw = qb.search()
+        status_json = json.loads(parse_response_status(raw))
+        assert "hits" in status_json, "Status should have 'hits' field"
+        print("  ✓ parse_response_status() works")
+        print("    Full status JSON:")
+        print(json.dumps(status_json, indent=2, ensure_ascii=False))
 
-    # Test 7: describe()
-    print("Test 7: Query description (.describe())")
-    qb = QueryBuilder("taxon").set_taxa(["Mammalia"], filter_type="tree").add_attribute("genome_size", "ge", "1G")
-    description = qb.describe()
-    assert isinstance(description, str) and len(description) > 0, "describe() should return non-empty string"
-    print("  ✓ describe() works")
-    print(f"    {description[:100]}...")
+        # Test 7: describe()
+        print("Test 7: Query description (.describe())")
+        qb = QueryBuilder("taxon").set_taxa(["Mammalia"], filter_type="tree").add_attribute("genome_size", "ge", "1G")
+        description = qb.describe()
+        assert isinstance(description, str) and len(description) > 0, "describe() should return non-empty string"
+        print("  ✓ describe() works")
+        print(f"    {description[:100]}...")
 
-    # Test 8: snippet()
-    print("Test 8: Code snippet generation (.snippet())")
-    snippets = qb.snippet(site_name="goat", sdk_name="goat_sdk", languages=["python", "r", "javascript"])
-    assert (
-        "python" in snippets and "r" in snippets and "javascript" in snippets
-    ), "snippet() should produce all languages"
-    print("  ✓ snippet() works for all languages")
+        # Test 8: snippet()
+        print("Test 8: Code snippet generation (.snippet())")
+        snippets = qb.snippet(site_name="goat", sdk_name="goat_sdk", languages=["python", "r", "javascript"])
+        assert (
+            "python" in snippets and "r" in snippets and "javascript" in snippets
+        ), "snippet() should produce all languages"
+        print("  ✓ snippet() works for all languages")
 
-    # Test 9: parsing helper coverage
-    print("Test 9: Parsing helpers (annotate/split/values/annotated/tidy)")
-    raw = qb.search()
-    records_json = parse_search_json(raw)
-    asl = json.loads(annotate_source_labels(records_json, mode="non_direct"))
-    assert isinstance(asl, list), "annotate_source_labels should return JSON array"
-    print(f"  ✓ annotate_source_labels() works: returned {len(asl)} rows")
-    if len(asl) > 0:
-        print("    Sample annotated source labels (first 2 rows):")
-        print(json.dumps(asl[:2], indent=2, ensure_ascii=False))
-    split = json.loads(split_source_columns(records_json))
-    # Normalise split output: it may be a dict, array of dicts, or array of JSON strings.
-    if isinstance(split, dict):
-        split = list(split.values())
-    assert isinstance(split, list), "split_source_columns should return JSON array"
-    normalised_split = []
-    for row in split:
-        if isinstance(row, str):
-            try:
-                row_obj = json.loads(row)
-            except Exception:
-                # keep as-is string if it isn't JSON
-                continue
-        else:
-            row_obj = row
-        normalised_split.append(row_obj)
-    split = normalised_split
-    print(f"  ✓ split_source_columns() works: returned {len(split)} rows")
-    if len(split) > 0:
-        print("    Sample split columns (first 2 rows):")
-        print(json.dumps(split[:2], indent=2, ensure_ascii=False))
-    vo = json.loads(values_only(records_json))
-    assert isinstance(vo, list), "values_only should return JSON array"
-    print(f"  ✓ values_only() works: returned {len(vo)} rows")
-    if len(vo) > 0:
-        print("    Sample values_only (first 2 rows):")
-        print(json.dumps(vo[:2], indent=2, ensure_ascii=False))
-    ann = json.loads(annotated_values(records_json, mode="non_direct"))
-    assert isinstance(ann, list), "annotated_values should return JSON array"
-    print(f"  ✓ annotated_values() works: returned {len(ann)} rows")
-    if len(ann) > 0:
-        print("    Sample annotated_values (first 2 rows):")
-        print(json.dumps(ann[:2], indent=2, ensure_ascii=False))
-    tidy = json.loads(to_tidy_records(records_json))
-    assert isinstance(tidy, list) and all(
-        isinstance(r, dict) for r in tidy
-    ), "to_tidy_records should return array of objects"
-    print(f"  ✓ to_tidy_records() works: {len(tidy)} tidy rows")
-    if len(tidy) > 0:
-        print("    Sample tidy rows (first 2):")
-        print(json.dumps(tidy[:2], indent=2, ensure_ascii=False))
+        # Test 9: parsing helper coverage
+        print("Test 9: Parsing helpers (annotate/split/values/annotated/tidy)")
+        raw = qb.search()
+        records_json = parse_search_json(raw)
+        asl = json.loads(annotate_source_labels(records_json, mode="non_direct"))
+        assert isinstance(asl, list), "annotate_source_labels should return JSON array"
+        print(f"  ✓ annotate_source_labels() works: returned {len(asl)} rows")
+        if len(asl) > 0:
+            print("    Sample annotated source labels (first 2 rows):")
+            print(json.dumps(asl[:2], indent=2, ensure_ascii=False))
+        split = json.loads(split_source_columns(records_json))
+        # Normalise split output: it may be a dict, array of dicts, or array of JSON strings.
+        if isinstance(split, dict):
+            split = list(split.values())
+        assert isinstance(split, list), "split_source_columns should return JSON array"
+        normalised_split = []
+        for row in split:
+            if isinstance(row, str):
+                try:
+                    row_obj = json.loads(row)
+                except Exception:
+                    # keep as-is string if it isn't JSON
+                    continue
+            else:
+                row_obj = row
+            normalised_split.append(row_obj)
+        split = normalised_split
+        print(f"  ✓ split_source_columns() works: returned {len(split)} rows")
+        if len(split) > 0:
+            print("    Sample split columns (first 2 rows):")
+            print(json.dumps(split[:2], indent=2, ensure_ascii=False))
+        vo = json.loads(values_only(records_json))
+        assert isinstance(vo, list), "values_only should return JSON array"
+        print(f"  ✓ values_only() works: returned {len(vo)} rows")
+        if len(vo) > 0:
+            print("    Sample values_only (first 2 rows):")
+            print(json.dumps(vo[:2], indent=2, ensure_ascii=False))
+        ann = json.loads(annotated_values(records_json, mode="non_direct"))
+        assert isinstance(ann, list), "annotated_values should return JSON array"
+        print(f"  ✓ annotated_values() works: returned {len(ann)} rows")
+        if len(ann) > 0:
+            print("    Sample annotated_values (first 2 rows):")
+            print(json.dumps(ann[:2], indent=2, ensure_ascii=False))
+        tidy = json.loads(to_tidy_records(records_json))
+        assert isinstance(tidy, list) and all(
+            isinstance(r, dict) for r in tidy
+        ), "to_tidy_records should return array of objects"
+        print(f"  ✓ to_tidy_records() works: {len(tidy)} tidy rows")
+        if len(tidy) > 0:
+            print("    Sample tidy rows (first 2):")
+            print(json.dumps(tidy[:2], indent=2, ensure_ascii=False))
+
+    else:
+        print("Tests 2-9: skipped (API not reachable)\n")
 
     # Test 10: module utilities
     print("Test 10: Module utilities (validate_query_json, build_url, build_ui_url)")

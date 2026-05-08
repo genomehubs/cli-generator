@@ -36,6 +36,8 @@ const {
   validate_query_json: _validateQueryJson,
   validate_report_yaml: _validateReportYaml,
   values_only: _valuesOnly,
+  query_yaml_from_url_params: _queryYamlFromUrlParams,
+  report_yaml_from_url_params: _reportYamlFromUrlParams,
   build_url,
   parse_response_status,
   version,
@@ -151,6 +153,9 @@ class QueryBuilder {
     // Validation options
     this._validationLevel = options.validationLevel || "full";
     this._apiBase = options.apiBase || API_BASE;
+    // YAML overrides set by fromV2Url(); take priority in toQueryYaml/toParamsYaml
+    this._queryYamlOverride = null;
+    this._paramsYamlOverride = null;
   }
 
   // ── Identifiers ────────────────────────────────────────────────────────────
@@ -505,6 +510,7 @@ class QueryBuilder {
    * @returns {string}
    */
   toQueryYaml() {
+    if (this._queryYamlOverride !== null) return this._queryYamlOverride;
     const lines = [];
     lines.push(`index: ${this._index}`);
 
@@ -586,6 +592,7 @@ class QueryBuilder {
    * @returns {string}
    */
   toParamsYaml() {
+    if (this._paramsYamlOverride !== null) return this._paramsYamlOverride;
     const lines = [];
     lines.push(`size: ${this._size}`);
     lines.push(`page: ${this._page}`);
@@ -602,14 +609,73 @@ class QueryBuilder {
   // ── URL building ───────────────────────────────────────────────────────────
 
   /**
-   * Build and return the full API URL without making a network request.
+   * Reconstruct a builder from a v2 API or UI URL.
+   *
+   * Detects whether the URL is a search or report URL and returns the
+   * appropriate builder type.  Report URLs (path ends in `/report` or the
+   * query string contains `report=`) return a {@link ReportBuilder} with an
+   * embedded query so that {@link ReportBuilder#run} can be called without
+   * supplying a separate {@link QueryBuilder}.
+   *
+   * @param {string} url - A full v2 API or UI URL, e.g.
+   *   `"https://goat.genomehubs.org/api/v2/search?tax_name=Primates&fields=genome_size"`
+   *   or
+   *   `"https://goat.genomehubs.org/report?report=histogram&x=genome_size&result=taxon"`.
+   * @returns {QueryBuilder|ReportBuilder}
+   * @throws {Error} If URL parsing fails.
+   */
+  static fromV2Url(url) {
+    const parsed = new URL(url);
+    const isReport =
+      parsed.searchParams.has("report") ||
+      parsed.pathname.replace(/\/$/, "").endsWith("/report");
+
+    if (isReport) {
+      const raw = _reportYamlFromUrlParams(url);
+      let triple;
+      try {
+        triple = JSON.parse(raw);
+      } catch {
+        throw new Error(`fromV2Url: failed to parse report URL: ${raw}`);
+      }
+      if (!Array.isArray(triple))
+        throw new Error(`fromV2Url: ${triple.error ?? raw}`);
+      const [queryYaml, paramsYaml, reportYaml] = triple;
+      const qb = new QueryBuilder("taxon");
+      qb._queryYamlOverride = queryYaml;
+      qb._paramsYamlOverride = paramsYaml;
+      const rb = new ReportBuilder("_placeholder");
+      rb._reportYamlOverride = reportYaml;
+      rb._embeddedQueryBuilder = qb;
+      return rb;
+    }
+
+    const raw = _queryYamlFromUrlParams(url);
+    let pair;
+    try {
+      pair = JSON.parse(raw);
+    } catch {
+      throw new Error(`fromV2Url: failed to parse URL: ${raw}`);
+    }
+    if (!Array.isArray(pair))
+      throw new Error(`fromV2Url: ${pair.error ?? raw}`);
+    const [queryYaml, paramsYaml] = pair;
+    const qb = new QueryBuilder("taxon");
+    qb._queryYamlOverride = queryYaml;
+    qb._paramsYamlOverride = paramsYaml;
+    return qb;
+  }
+
+  /**
+   * Build and return the full v2 API URL without making a network request.
    * Delegates to the Rust WASM module for identical output to the Python SDK.
    *
    * @param {string} [apiBase] - Override the default API base URL.
    * @param {string} [apiVersion] - Override the default API version.
+   * @param {string} [endpoint="search"] - API endpoint name.
    * @returns {string}
    */
-  toUrl(apiBase = API_BASE, apiVersion = API_VERSION, endpoint = "search") {
+  toV2Url(apiBase = API_BASE, apiVersion = API_VERSION, endpoint = "search") {
     const queryYaml = this.toQueryYaml();
     const paramsYaml = this.toParamsYaml();
     if (endpoint === "search") {
@@ -622,6 +688,18 @@ class QueryBuilder {
       apiVersion,
       endpoint,
     );
+  }
+
+  /**
+   * @deprecated Use {@link toV2Url} instead.
+   * @param {string} [apiBase]
+   * @param {string} [apiVersion]
+   * @param {string} [endpoint="search"]
+   * @returns {string}
+   */
+  toUrl(apiBase = API_BASE, apiVersion = API_VERSION, endpoint = "search") {
+    console.warn("toUrl() is deprecated; use toV2Url() instead.");
+    return this.toV2Url(apiBase, apiVersion, endpoint);
   }
 
   /**
@@ -642,46 +720,65 @@ class QueryBuilder {
   // ── API calls ──────────────────────────────────────────────────────────────
 
   /**
+   * POST JSON to a URL and return parsed JSON response.
+   * @param {string} url
+   * @param {object} payload
+   * @returns {Promise<object>}
+   */
+  async _postJson(url, payload) {
+    const resp = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!resp.ok)
+      throw new Error(`POST ${url} failed: ${resp.status} ${resp.statusText}`);
+    return resp.json();
+  }
+
+  /**
    * Fetch the count of matching records.
    * @param {string} [apiBase]
    * @returns {Promise<number>}
    */
   async count(apiBase = API_BASE) {
-    // Clone this builder with size=0 for counting
-    const counter = new QueryBuilder(this._index);
-    counter.merge(this);
-    counter.setSize(0);
-    const url = counter.toUrl(apiBase);
-    const resp = await fetch(url, { headers: { Accept: "application/json" } });
-    if (!resp.ok)
-      throw new Error(`API request failed: ${resp.status} ${resp.statusText}`);
-    const text = await resp.text();
-    const statusJson = parse_response_status(text);
+    const data = await this._postJson(`${apiBase}/v3/count`, {
+      query_yaml: this.toQueryYaml(),
+      params_yaml: this.toParamsYaml(),
+    });
+    const statusJson = parse_response_status(JSON.stringify(data));
     return JSON.parse(statusJson).hits ?? 0;
   }
 
   /**
-   * Fetch results as a parsed JSON object.
+   * Fetch results as a parsed JSON object (v3 POST) or raw text (v2 GET for non-JSON).
    * @param {string} [format="json"]
    * @param {string} [apiBase]
-   * @returns {Promise<object>}
+   * @returns {Promise<object|string>}
    */
   async search(format = "json", apiBase = API_BASE) {
-    const url = this.toUrl(apiBase);
-    const resp = await fetch(url, { headers: { Accept: "application/json" } });
-    if (!resp.ok)
-      throw new Error(`API request failed: ${resp.status} ${resp.statusText}`);
-    if (format === "json") {
-      return resp.json();
+    if (format !== "json") {
+      const url = this.toV2Url(apiBase);
+      const mimeType =
+        format === "tsv" ? "text/tab-separated-values" : "text/csv";
+      const resp = await fetch(url, { headers: { Accept: mimeType } });
+      if (!resp.ok)
+        throw new Error(
+          `API request failed: ${resp.status} ${resp.statusText}`,
+        );
+      return resp.text();
     }
-    return resp.text();
+    return this._postJson(`${apiBase}/v3/search`, {
+      query_yaml: this.toQueryYaml(),
+      params_yaml: this.toParamsYaml(),
+    });
   }
 
   /**
-   * Fetch all matching records using cursor-based pagination.
+   * Fetch all matching records using v3 cursor-based pagination.
    *
-   * Uses the `/searchPaginated` endpoint in chunks of 1 000 records per page.
-   * Pagination continues until all pages are retrieved or maxRecords is reached.
+   * Sends repeated POST requests to ``/v3/search`` with ``search_after`` cursors
+   * until all records are retrieved or maxRecords is reached.
    *
    * @param {number} [maxRecords=Infinity]
    * @param {string} [apiBase]
@@ -691,32 +788,28 @@ class QueryBuilder {
     const CHUNK_SIZE = 1000;
     const allRecords = [];
     let searchAfter = null;
-
-    while (true) {
-      let url = this.toUrl(apiBase, API_VERSION, "searchPaginated");
-      url += (url.includes("?") ? "&" : "?") + `size=${CHUNK_SIZE}`;
-      if (searchAfter !== null) {
-        url += `&searchAfter=${encodeURIComponent(JSON.stringify(searchAfter))}`;
+    const origSize = this._size;
+    this.setSize(CHUNK_SIZE);
+    try {
+      while (true) {
+        const payload = {
+          query_yaml: this.toQueryYaml(),
+          params_yaml: this.toParamsYaml(),
+        };
+        if (searchAfter !== null) payload.search_after = searchAfter;
+        const data = await this._postJson(`${apiBase}/v3/search`, payload);
+        const records = JSON.parse(_parseSearchJson(JSON.stringify(data)));
+        const remaining = maxRecords - allRecords.length;
+        allRecords.push(...records.slice(0, remaining));
+        searchAfter = data.search_after ?? null;
+        const total = data.status?.hits ?? 0;
+        if (!searchAfter || allRecords.length >= Math.min(maxRecords, total))
+          break;
       }
-
-      const resp = await fetch(url, {
-        headers: { Accept: "application/json" },
-      });
-      if (!resp.ok)
-        throw new Error(
-          `API request failed: ${resp.status} ${resp.statusText}`,
-        );
-
-      const page = JSON.parse(_parsePaginatedJson(await resp.text()));
-      const records = page.records ?? [];
-      const remaining = maxRecords - allRecords.length;
-      allRecords.push(...records.slice(0, remaining));
-
-      if (!page.hasMore || allRecords.length >= maxRecords) break;
-      searchAfter = page.searchAfter;
+    } finally {
+      this.setSize(origSize);
     }
-
-    return allRecords;
+    return allRecords.slice(0, maxRecords);
   }
 
   /**
@@ -726,22 +819,11 @@ class QueryBuilder {
    * @returns {Promise<object>} - Raw report object from the response
    */
   async report(report, apiBase = API_BASE) {
-    const url = `${apiBase}/v3/report`;
-    const payload = {
+    const data = await this._postJson(`${apiBase}/v3/report`, {
       query_yaml: this.toQueryYaml(),
       params_yaml: this.toParamsYaml(),
       report_yaml: report.toReportYaml(),
-    };
-    const resp = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
     });
-    if (!resp.ok)
-      throw new Error(
-        `Report request failed: ${resp.status} ${resp.statusText}`,
-      );
-    const data = await resp.json();
     return data.report ?? data;
   }
 
@@ -755,24 +837,18 @@ class QueryBuilder {
     if (queries.length > 100)
       throw new Error("maximum 100 searches per batch request");
 
-    const url = `${apiBase}/v3/searchBatch`;
-    const payload = {
-      searches: queries.map((q) => ({
-        query_yaml: q.toQueryYaml(),
-        params_yaml: q.toParamsYaml(),
-      })),
-    };
-
-    const resp = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-
-    if (!resp.ok)
-      throw new Error(`API request failed: ${resp.status} ${resp.statusText}`);
-
-    const data = JSON.parse(_parseBatchJson(await resp.text()));
+    const data = JSON.parse(
+      _parseBatchJson(
+        JSON.stringify(
+          await this._postJson(`${apiBase}/v3/searchBatch`, {
+            searches: queries.map((q) => ({
+              query_yaml: q.toQueryYaml(),
+              params_yaml: q.toParamsYaml(),
+            })),
+          }),
+        ),
+      ),
+    );
     return data.results ?? [];
   }
 
@@ -786,24 +862,18 @@ class QueryBuilder {
     if (queries.length > 100)
       throw new Error("maximum 100 searches per batch request");
 
-    const url = `${apiBase}/v3/countBatch`;
-    const payload = {
-      searches: queries.map((q) => ({
-        query_yaml: q.toQueryYaml(),
-        params_yaml: q.toParamsYaml(),
-      })),
-    };
-
-    const resp = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-
-    if (!resp.ok)
-      throw new Error(`API request failed: ${resp.status} ${resp.statusText}`);
-
-    const data = JSON.parse(_parseBatchJson(await resp.text()));
+    const data = JSON.parse(
+      _parseBatchJson(
+        JSON.stringify(
+          await this._postJson(`${apiBase}/v3/countBatch`, {
+            searches: queries.map((q) => ({
+              query_yaml: q.toQueryYaml(),
+              params_yaml: q.toParamsYaml(),
+            })),
+          }),
+        ),
+      ),
+    );
     const counts = [];
     for (const result of data.results ?? []) {
       counts.push(result.status?.hits ?? 0);
@@ -1192,6 +1262,9 @@ class ReportBuilder {
   /** @param {string} reportType - Report type (e.g. "histogram", "scatter", "countPerRank") */
   constructor(reportType) {
     this._doc = { report: reportType };
+    // Set by QueryBuilder.fromV2Url() for report URLs
+    this._reportYamlOverride = null;
+    this._embeddedQueryBuilder = null;
   }
 
   /** Set the X-axis field. @param {string} field @param {string} [opts=""] @returns {this} */
@@ -1298,6 +1371,7 @@ class ReportBuilder {
    * @returns {string}
    */
   toReportYaml() {
+    if (this._reportYamlOverride !== null) return this._reportYamlOverride;
     // Simple YAML serialisation sufficient for report config (no complex types)
     const lines = [];
     for (const [key, val] of Object.entries(this._doc)) {
@@ -1337,7 +1411,12 @@ class ReportBuilder {
    * @returns {Promise<object>}
    */
   async run(queryBuilder, apiBase = API_BASE) {
-    return queryBuilder.report(this, apiBase);
+    const qb = queryBuilder ?? this._embeddedQueryBuilder;
+    if (!qb)
+      throw new Error(
+        "run() requires a QueryBuilder argument or a ReportBuilder created via QueryBuilder.fromV2Url()",
+      );
+    return qb.report(this, apiBase);
   }
 }
 

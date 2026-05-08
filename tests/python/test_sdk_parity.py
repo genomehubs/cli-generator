@@ -182,6 +182,18 @@ CANONICAL_METHODS = {
         "js_name": "toUrl",
         "r_name": "to_url",
     },
+    "to_v2_url": {
+        "params": [],
+        "python_name": "to_v2_url",
+        "js_name": "toV2Url",
+        "r_name": "to_v2_url",
+    },
+    "from_v2_url": {
+        "params": ["url"],
+        "python_name": "from_v2_url",
+        "js_name": "fromV2Url",
+        "r_name": "from_v2_url",
+    },
     "to_ui_url": {
         "params": [],
         "python_name": "to_ui_url",
@@ -199,6 +211,12 @@ CANONICAL_METHODS = {
         "python_name": "search",
         "js_name": "search",
         "r_name": "search",
+    },
+    "search_all": {
+        "params": ["max_records"],
+        "python_name": "search_all",
+        "js_name": "searchAll",
+        "r_name": "search_all",
     },
     "validate": {
         "params": [],
@@ -466,7 +484,6 @@ class TestSDKParity:
                 "field_names",
                 "field_info",
                 "combine",
-                "from_v2_url",
                 "search_df",
                 "search_polars",
                 "search_all",
