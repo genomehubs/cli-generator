@@ -34,7 +34,7 @@ from typing import Any
 
 import pytest
 
-from cli_generator import QueryBuilder, parse_response_status
+from cli_generator import QueryBuilder, ReportBuilder, parse_response_status
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 
@@ -503,6 +503,56 @@ class TestFixtureRegressionCatches:
         # taxa_filter_tree should have taxa set
         qb = FIXTURE_TO_BUILDER["taxa_filter_tree"]()
         assert len(qb._taxa) > 0
+
+
+# ── YAML-based fixture builders (no cached JSON required) ────────────────────
+# Maps a logical fixture name to (query_builder_factory, report_builder_factory).
+# These test that to_query_yaml() / to_report_yaml() encode state correctly
+# without requiring a live API or a cached fixture file.
+
+YAML_FIXTURE_BUILDERS: dict[str, tuple[Any, Any]] = {
+    "report_histogram_primates": (
+        lambda: QueryBuilder("taxon").set_taxa(["Primates"], filter_type="ancestor").set_rank("species"),
+        lambda: ReportBuilder("histogram").set_x("genome_size").set_rank("species"),
+    ),
+}
+
+# ── Expected YAML substrings per YAML fixture ─────────────────────────────────
+# Each entry maps a fixture name to expected substrings in the YAML outputs.
+# This validates v3 transport correctness (POST body content) without a live API.
+
+FIXTURE_EXPECTED_YAML_PARTS: dict[str, dict[str, list[str]]] = {
+    "report_histogram_primates": {
+        "query_yaml": ["taxa:", "Primates"],
+        "report_yaml": ["report: histogram", "x: genome_size"],
+    },
+}
+
+
+class TestYamlFixtures:
+    """Validate YAML output for report and query builders (no network required)."""
+
+    @pytest.mark.parametrize("fixture_name", YAML_FIXTURE_BUILDERS.keys())
+    def test_yaml_fixture_query_yaml_content(self, fixture_name: str):
+        """Verify to_query_yaml() contains expected substrings."""
+        query_factory, _ = YAML_FIXTURE_BUILDERS[fixture_name]
+        qb = query_factory()
+        query_yaml = qb.to_query_yaml()
+
+        expected = FIXTURE_EXPECTED_YAML_PARTS.get(fixture_name, {}).get("query_yaml", [])
+        for part in expected:
+            assert part in query_yaml, f"{fixture_name}: expected '{part}' in query_yaml — got: {query_yaml}"
+
+    @pytest.mark.parametrize("fixture_name", YAML_FIXTURE_BUILDERS.keys())
+    def test_yaml_fixture_report_yaml_content(self, fixture_name: str):
+        """Verify to_report_yaml() contains expected substrings."""
+        _, report_factory = YAML_FIXTURE_BUILDERS[fixture_name]
+        rb = report_factory()
+        report_yaml = rb.to_report_yaml()
+
+        expected = FIXTURE_EXPECTED_YAML_PARTS.get(fixture_name, {}).get("report_yaml", [])
+        for part in expected:
+            assert part in report_yaml, f"{fixture_name}: expected '{part}' in report_yaml — got: {report_yaml}"
 
 
 if __name__ == "__main__":

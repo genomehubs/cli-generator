@@ -50,7 +50,7 @@ cat(sprintf("Reading fixtures from: %s\n", FIXTURES_DIR))
 pkgload::load_all(R_SDK_PATH, quiet = TRUE)
 
 API_BASE <- paste0("https://", SITE, ".genomehubs.org/api")
-UI_BASE  <- paste0("https://", SITE, ".genomehubs.org")
+UI_BASE <- paste0("https://", SITE, ".genomehubs.org")
 
 # ── Fixture loading ────────────────────────────────────────────────────────────
 
@@ -311,21 +311,21 @@ test_that("all cached fixtures are mapped to a QueryBuilder", {
 # ── Additional method tests ────────────────────────────────────────────────────
 
 for (name in names(FIXTURE_TO_BUILDER)) {
-  local({
-    fixture_name <- name
-    test_that(sprintf("validate() returns empty errors for fixture: %s", fixture_name), {
-      qb <- FIXTURE_TO_BUILDER[[fixture_name]]()
-      errors <- qb$validate()
-      expect_true(
-        is.character(errors),
-        info = sprintf("%s: validate() should return a character vector", fixture_name)
-      )
-      expect_equal(
-        length(errors), 0L,
-        info = sprintf("%s: validate() returned unexpected errors: %s", fixture_name, paste(errors, collapse = "; "))
-      )
+    local({
+        fixture_name <- name
+        test_that(sprintf("validate() returns empty errors for fixture: %s", fixture_name), {
+            qb <- FIXTURE_TO_BUILDER[[fixture_name]]()
+            errors <- qb$validate()
+            expect_true(
+                is.character(errors),
+                info = sprintf("%s: validate() should return a character vector", fixture_name)
+            )
+            expect_equal(
+                length(errors), 0L,
+                info = sprintf("%s: validate() returned unexpected errors: %s", fixture_name, paste(errors, collapse = "; "))
+            )
+        })
     })
-  })
 }
 
 test_that("QueryBuilder$reset() clears state while preserving index", {
@@ -350,6 +350,54 @@ test_that("QueryBuilder$merge() combines two builders", {
 
     # Verify the merge completed (no error = success)
     expect_true(TRUE, info = "merge() should complete without error")
+})
+
+# ── YAML fixture builders (no cached JSON required) ────────────────────────────
+# Mirrors YAML_FIXTURE_BUILDERS in tests/python/test_sdk_fixtures.py.
+
+YAML_FIXTURE_BUILDERS <- list(
+    report_histogram_primates = list(
+        query  = function() QueryBuilder$new("taxon")$set_taxa(c("Primates"), filter_type = "ancestor")$set_rank("species"),
+        report = function() ReportBuilder$new("histogram")$set_x("genome_size")$set_rank("species")
+    )
+)
+
+# ── Expected YAML substrings per YAML fixture ──────────────────────────────────
+# Mirrors FIXTURE_EXPECTED_YAML_PARTS in tests/python/test_sdk_fixtures.py.
+
+FIXTURE_EXPECTED_YAML_PARTS <- list(
+    report_histogram_primates = list(
+        query_yaml  = c("taxa:", "Primates"),
+        report_yaml = c("report: histogram", "x: genome_size")
+    )
+)
+
+test_that("YAML fixture: query_yaml contains expected substrings", {
+    for (name in names(YAML_FIXTURE_BUILDERS)) {
+        qb <- YAML_FIXTURE_BUILDERS[[name]]$query()
+        query_yaml <- qb$to_query_yaml()
+        expected <- FIXTURE_EXPECTED_YAML_PARTS[[name]]$query_yaml
+        for (part in expected) {
+            expect_true(
+                grepl(part, query_yaml, fixed = TRUE),
+                info = sprintf("%s: expected '%s' in query_yaml — got: %s", name, part, query_yaml)
+            )
+        }
+    }
+})
+
+test_that("YAML fixture: report_yaml contains expected substrings", {
+    for (name in names(YAML_FIXTURE_BUILDERS)) {
+        rb <- YAML_FIXTURE_BUILDERS[[name]]$report()
+        report_yaml <- rb$to_report_yaml()
+        expected <- FIXTURE_EXPECTED_YAML_PARTS[[name]]$report_yaml
+        for (part in expected) {
+            expect_true(
+                grepl(part, report_yaml, fixed = TRUE),
+                info = sprintf("%s: expected '%s' in report_yaml — got: %s", name, part, report_yaml)
+            )
+        }
+    }
 })
 
 cat(sprintf("\n✓ R fixture tests complete for %s SDK\n", SITE))

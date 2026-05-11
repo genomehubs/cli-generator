@@ -545,3 +545,59 @@ describe("QueryBuilder state management", () => {
     assert.ok(true, "merge() should complete without error");
   });
 });
+
+// ── YAML fixture builders (no cached JSON required) ───────────────────────────
+// Mirrors YAML_FIXTURE_BUILDERS in tests/python/test_sdk_fixtures.py.
+
+const YAML_FIXTURE_BUILDERS = {
+  report_histogram_primates: {
+    query: () =>
+      new QueryBuilder("taxon")
+        .setTaxa(["Primates"], "ancestor")
+        .setRank("species"),
+    report: () =>
+      new ReportBuilder("histogram").setX("genome_size").setRank("species"),
+  },
+};
+
+// ── Expected YAML substrings per YAML fixture ─────────────────────────────────
+// Mirrors FIXTURE_EXPECTED_YAML_PARTS in tests/python/test_sdk_fixtures.py.
+
+const FIXTURE_EXPECTED_YAML_PARTS = {
+  report_histogram_primates: {
+    query_yaml: ["taxa:", "Primates"],
+    report_yaml: ["report: histogram", "x: genome_size"],
+  },
+};
+
+describe("YAML fixtures — query_yaml content", () => {
+  for (const [name, builders] of Object.entries(YAML_FIXTURE_BUILDERS)) {
+    test(`query_yaml: ${name}`, () => {
+      const qb = builders.query();
+      const queryYaml = qb.toQueryYaml();
+      const expected = FIXTURE_EXPECTED_YAML_PARTS[name]?.query_yaml ?? [];
+      for (const part of expected) {
+        assert.ok(
+          queryYaml.includes(part),
+          `${name}: expected '${part}' in query_yaml — got: ${queryYaml}`,
+        );
+      }
+    });
+  }
+});
+
+describe("YAML fixtures — report_yaml content", () => {
+  for (const [name, builders] of Object.entries(YAML_FIXTURE_BUILDERS)) {
+    test(`report_yaml: ${name}`, () => {
+      const rb = builders.report();
+      const reportYaml = rb.toReportYaml();
+      const expected = FIXTURE_EXPECTED_YAML_PARTS[name]?.report_yaml ?? [];
+      for (const part of expected) {
+        assert.ok(
+          reportYaml.includes(part),
+          `${name}: expected '${part}' in report_yaml — got: ${reportYaml}`,
+        );
+      }
+    });
+  }
+});

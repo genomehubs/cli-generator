@@ -278,9 +278,67 @@ CANONICAL_METHODS = {
         "js_name": "summary",
         "r_name": "summary",
     },
+    "report": {
+        "params": ["report"],
+        "python_name": "report",
+        "js_name": "report",
+        "r_name": "report",
+    },
 }
 
 CONSTRUCTOR_PARAMS: dict[str, dict[str, str]] = {}
+
+# ── ReportBuilder canonical method definitions ────────────────────────────────
+
+CANONICAL_REPORT_BUILDER_METHODS = {
+    "set_x": {"python_name": "set_x", "js_name": "setX", "r_name": "set_x"},
+    "set_y": {"python_name": "set_y", "js_name": "setY", "r_name": "set_y"},
+    "set_cat": {"python_name": "set_cat", "js_name": "setCat", "r_name": "set_cat"},
+    "set_query": {"python_name": "set_query", "js_name": "setQuery", "r_name": "set_query"},
+    "set_rank": {"python_name": "set_rank", "js_name": "setRank", "r_name": "set_rank"},
+    "set_ranks": {"python_name": "set_ranks", "js_name": "setRanks", "r_name": "set_ranks"},
+    "set_fields": {"python_name": "set_fields", "js_name": "setFields", "r_name": "set_fields"},
+    "set_status_filter": {
+        "python_name": "set_status_filter",
+        "js_name": "setStatusFilter",
+        "r_name": "set_status_filter",
+    },
+    "set_cat_rank": {"python_name": "set_cat_rank", "js_name": "setCatRank", "r_name": "set_cat_rank"},
+    "set_collapse_monotypic": {
+        "python_name": "set_collapse_monotypic",
+        "js_name": "setCollapseMonotypic",
+        "r_name": "set_collapse_monotypic",
+    },
+    "set_preserve_rank": {
+        "python_name": "set_preserve_rank",
+        "js_name": "setPreserveRank",
+        "r_name": "set_preserve_rank",
+    },
+    "set_count_rank": {"python_name": "set_count_rank", "js_name": "setCountRank", "r_name": "set_count_rank"},
+    "set_location_field": {
+        "python_name": "set_location_field",
+        "js_name": "setLocationField",
+        "r_name": "set_location_field",
+    },
+    "set_hex_resolution": {
+        "python_name": "set_hex_resolution",
+        "js_name": "setHexResolution",
+        "r_name": "set_hex_resolution",
+    },
+    "set_map_threshold": {
+        "python_name": "set_map_threshold",
+        "js_name": "setMapThreshold",
+        "r_name": "set_map_threshold",
+    },
+    "set_scatter_threshold": {
+        "python_name": "set_scatter_threshold",
+        "js_name": "setScatterThreshold",
+        "r_name": "set_scatter_threshold",
+    },
+    "to_report_yaml": {"python_name": "to_report_yaml", "js_name": "toReportYaml", "r_name": "to_report_yaml"},
+    "validate": {"python_name": "validate", "js_name": "validate", "r_name": "validate"},
+    "run": {"python_name": "run", "js_name": "run", "r_name": "run"},
+}
 
 # ── Introspection functions ──────────────────────────────────────────────────
 
@@ -422,6 +480,91 @@ def get_r_methods():
     return methods
 
 
+def get_python_report_builder_methods() -> dict[str, list[str]]:
+    """Extract all public methods from the ReportBuilder class in the Python template."""
+    query_py_tera = PROJECT_ROOT / "templates" / "python" / "query.py.tera"
+    content = Path(query_py_tera).read_text()
+
+    class_match = re.search(r"^class ReportBuilder:", content, re.MULTILINE)
+    if not class_match:
+        return {}
+    rb_content = content[class_match.start() :]
+
+    methods: dict[str, list[str]] = {}
+    pattern = r"^\s{4}def\s+(\w+)\s*\("
+    for match in re.finditer(pattern, rb_content, re.MULTILINE):
+        name = match.group(1)
+        if name.startswith("_"):
+            continue
+        paren_start = match.end() - 1
+        paren_depth = 0
+        paren_end = paren_start
+        for i in range(paren_start, len(rb_content)):
+            if rb_content[i] == "(":
+                paren_depth += 1
+            elif rb_content[i] == ")":
+                paren_depth -= 1
+                if paren_depth == 0:
+                    paren_end = i
+                    break
+        params_str = rb_content[paren_start + 1 : paren_end]
+        params = [p.strip() for p in params_str.split(",") if p.strip() and p.strip() != "self"]
+        params = [p.split(":")[0].split("=")[0].strip() for p in params]
+        methods[name] = params
+
+    return methods
+
+
+def get_js_report_builder_methods() -> dict[str, list[str]]:
+    """Extract all public methods from the ReportBuilder class in the JS template."""
+    query_js = PROJECT_ROOT / "templates" / "js" / "query.js"
+    content = Path(query_js).read_text()
+
+    class_match = re.search(r"^class ReportBuilder\s*{", content, re.MULTILINE)
+    if not class_match:
+        return {}
+    rb_content = content[class_match.start() :]
+
+    methods: dict[str, list[str]] = {}
+    skip = {"constructor", "if", "for", "while", "async"}
+    pattern = r"(\w+)\s*\(\s*([^)]*)\s*\)\s*{"
+    for match in re.finditer(pattern, rb_content):
+        name = match.group(1)
+        if name.startswith("_") or name in skip:
+            continue
+        params_str = match.group(2)
+        params = [p.strip() for p in params_str.split(",") if p.strip()]
+        params = [p.split("=")[0].strip() for p in params]
+        methods[name] = [p for p in params if p]
+
+    return methods
+
+
+def get_r_report_builder_methods() -> dict[str, list[str]]:
+    """Extract all public methods from the ReportBuilder R6 class in the R template."""
+    query_r = PROJECT_ROOT / "templates" / "r" / "query.R"
+    content = Path(query_r).read_text()
+
+    class_match = re.search(r"ReportBuilder\s*<-\s*R6::R6Class", content)
+    if not class_match:
+        return {}
+    rb_content = content[class_match.start() :]
+
+    methods: dict[str, list[str]] = {}
+    skip = {"private", "initialize"}
+    pattern = r"(\w+)\s*=\s*function\s*\(([^)]*)\)"
+    for match in re.finditer(pattern, rb_content):
+        name = match.group(1)
+        if name.startswith("_") or name in skip:
+            continue
+        params_str = match.group(2)
+        params = [p.strip() for p in params_str.split(",") if p.strip()]
+        params = [p.split("=")[0].strip() for p in params]
+        methods[name] = [p for p in params if p]
+
+    return methods
+
+
 def get_python_docstring(method_name: str) -> str:
     """Get the docstring for a Python template method.
 
@@ -475,7 +618,7 @@ class TestSDKParity:
         """Python should not have extra methods beyond canonical set."""
         python_methods = get_python_methods()
         canonical_python_names = {spec["python_name"] for spec in CANONICAL_METHODS.values()}
-        # Allow documented utility methods
+        # Allow documented utility methods and Python-only internals
         canonical_python_names.update(
             [
                 "__init__",
@@ -486,35 +629,29 @@ class TestSDKParity:
                 "combine",
                 "search_df",
                 "search_polars",
-                "search_all",
-                "report",
-                "to_v2_url",
-                "_post_json",
-                # ReportBuilder public methods
-                "set_x",
-                "set_y",
-                "set_cat",
-                "set_query",
-                "set_rank",
-                "set_ranks",
-                "set_fields",
-                "set_status_filter",
-                "set_cat_rank",
-                "set_collapse_monotypic",
-                "set_preserve_rank",
-                "set_count_rank",
-                "set_location_field",
-                "set_hex_resolution",
-                "set_map_threshold",
-                "set_scatter_threshold",
-                "to_report_yaml",
-                "validate",
-                "run",
+                "_post_json",  # Python-only: internal transport helper
             ]
         )
+        # ReportBuilder canonical methods are also extracted by get_python_methods()
+        # since the file contains both classes; allow them here.
+        canonical_python_names.update({spec["python_name"] for spec in CANONICAL_REPORT_BUILDER_METHODS.values()})
 
         extra = set(python_methods.keys()) - canonical_python_names
         assert len(extra) == 0, f"Python has extra methods not in canonical list: {extra}"
+
+    def test_to_url_emits_deprecation_warning(self):
+        """to_url() must emit DeprecationWarning when called."""
+        import warnings
+
+        from cli_generator.query import QueryBuilder
+
+        qb = QueryBuilder("taxon")
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            qb.to_url()
+        assert any(
+            issubclass(w.category, DeprecationWarning) for w in caught
+        ), "to_url() should emit DeprecationWarning"
 
 
 class TestValidationConfiguration:
@@ -679,3 +816,25 @@ class TestGeneratedProjectWiring:
             f"Functions registered in lib.rs.tera but NOT exported in __init__.py: {missing}\n"
             "Add the name to the import block in src/commands/new.rs patch_python_init()"
         )
+
+
+class TestReportBuilderParity:
+    """ReportBuilder methods must be present in all three SDK languages."""
+
+    def test_python_report_builder_methods_present(self):
+        """All canonical ReportBuilder methods must exist in the Python template."""
+        python_methods = get_python_report_builder_methods()
+        for concept, spec in CANONICAL_REPORT_BUILDER_METHODS.items():
+            assert spec["python_name"] in python_methods, f"ReportBuilder missing Python method: {spec['python_name']}"
+
+    def test_javascript_report_builder_methods_present(self):
+        """All canonical ReportBuilder methods must exist in the JavaScript template."""
+        js_methods = get_js_report_builder_methods()
+        for concept, spec in CANONICAL_REPORT_BUILDER_METHODS.items():
+            assert spec["js_name"] in js_methods, f"ReportBuilder missing JavaScript method: {spec['js_name']}"
+
+    def test_r_report_builder_methods_present(self):
+        """All canonical ReportBuilder methods must exist in the R template."""
+        r_methods = get_r_report_builder_methods()
+        for concept, spec in CANONICAL_REPORT_BUILDER_METHODS.items():
+            assert spec["r_name"] in r_methods, f"ReportBuilder missing R method: {spec['r_name']}"
