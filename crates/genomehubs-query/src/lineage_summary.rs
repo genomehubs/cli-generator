@@ -209,7 +209,7 @@ fn top_n_keyword_values(dist: &Value, n: usize) -> Value {
         .iter()
         .filter_map(|(k, v)| Some((k.as_str(), v.as_u64()?)))
         .collect();
-    pairs.sort_by(|a, b| b.1.cmp(&a.1));
+    pairs.sort_by_key(|pair| std::cmp::Reverse(pair.1));
     Value::Array(
         pairs
             .into_iter()

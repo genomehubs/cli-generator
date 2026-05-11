@@ -278,6 +278,24 @@ CANONICAL_METHODS = {
         "js_name": "summary",
         "r_name": "summary",
     },
+    "set_lineage_rank_summary": {
+        "params": ["specs"],
+        "python_name": "set_lineage_rank_summary",
+        "js_name": "setLineageRankSummary",
+        "r_name": "set_lineage_rank_summary",
+    },
+    "to_flat_records": {
+        "params": ["lineage_summary"],
+        "python_name": "to_flat_records",
+        "js_name": "toFlatRecords",
+        "r_name": "to_flat_records",
+    },
+    "to_tidy_records": {
+        "params": ["records", "lineage_summary"],
+        "python_name": "to_tidy_records",
+        "js_name": "toTidyRecords",
+        "r_name": "to_tidy_records",
+    },
     "report": {
         "params": ["report"],
         "python_name": "report",
@@ -623,7 +641,6 @@ class TestSDKParity:
             [
                 "__init__",
                 "field_modifiers",
-                "to_tidy_records",
                 "field_names",
                 "field_info",
                 "combine",

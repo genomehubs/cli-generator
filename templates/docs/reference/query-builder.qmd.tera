@@ -283,9 +283,88 @@ Sort results.  `order` is `"asc"` or `"desc"`.
 
 ### `set_taxonomy(name)` — taxonomy name, e.g. `"ncbi"` or `"ott"` (default `"ncbi"`)
 
----
+### `set_lineage_rank_summary(specs)`
 
-## Execution
+Configure per-rank ancestor aggregation for lineage rank summary columns.
+Each spec must have a `"rank"` key and a `"fields"` key listing attribute names
+to aggregate across species in each ancestor.  The API validates that all field
+names exist.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `specs` | list of dict | Array of rank specs, e.g. `[{"rank": "genus", "fields": ["assembly_level", "genome_size"]}]`. |
+
+::: {.panel-tabset group="language"}
+
+## Python
+
+```python
+qb = (
+    QueryBuilder("taxon")
+    .set_taxa(["Canidae"])
+    .set_rank("species")
+    .add_field("assembly_level")
+    .add_field("genome_size")
+    .set_lineage_rank_summary([
+        {"rank": "genus", "fields": ["assembly_level", "genome_size"]}
+    ])
+)
+records = qb.to_flat_records(
+    lineage_summary={
+        "genus": {
+            "assembly_level": "top",
+            "genome_size": "stats",
+        }
+    }
+)
+# Records now include columns: genus__assembly_level, genus__genome_size__min, etc.
+```
+
+## R
+
+```r
+qb <- query_builder("taxon") |>
+  set_taxa(c("Canidae")) |>
+  set_rank("species") |>
+  add_field("assembly_level") |>
+  add_field("genome_size") |>
+  set_lineage_rank_summary(list(
+    list(rank = "genus", fields = c("assembly_level", "genome_size"))
+  ))
+
+records <- qb$to_flat_records(
+  lineage_summary = list(
+    genus = list(
+      assembly_level = "top",
+      genome_size = "stats"
+    )
+  )
+)
+```
+
+## JavaScript
+
+```javascript
+const qb = new QueryBuilder('taxon')
+  .setTaxa(['Canidae'])
+  .setRank('species')
+  .addField('assembly_level')
+  .addField('genome_size')
+  .setLineageRankSummary([
+    { rank: 'genus', fields: ['assembly_level', 'genome_size'] }
+  ]);
+
+const records = await qb.toFlatRecords({
+  genus: {
+    assembly_level: 'top',
+    genome_size: 'stats'
+  }
+});
+```
+
+:::
+
+---
 
 ### `to_v2_url(endpoint="search") -> str`
 
@@ -541,6 +620,162 @@ CURSOR=$(echo "$RESP" | jq -c '.search_after')
 curl -s -X POST {{ api_base }}/v3/search \
   -H "Content-Type: application/json" \
   -d "{\"query_yaml\": \"index: taxon\n\", \"params_yaml\": \"size: 1000\npage: 1\n\", \"search_after\": $CURSOR}"
+```
+
+:::
+
+---
+
+### `to_flat_records(lineage_summary=None, api_base, api_version) -> list[dict]`
+
+Fetch results and return flat records, optionally with lineage summary columns.
+Calls `search()`, parses the response, and attaches per-ancestor aggregation
+columns when `lineage_summary` is provided.
+
+`lineage_summary` controls which distributions to attach and how to reduce them.
+Its structure is `{rank: {field: mode_or_modes}}`.  Modes include:
+- `"top"` — most common keyword value
+- `"top_n:<N>"` — top-N values as a list
+- `"all"` — full distribution dict
+- `"count"` — distinct value count
+- `"min"` / `"max"` / `"avg"` — individual stats
+- `"stats"` — all four stats (min, max, avg, count)
+
+| Parameter | Type | Description |
+|---|---|---|
+| `lineage_summary` | dict \| None | Reduction config, or `None` for plain flat records. |
+| `api_base` | str | Base URL of the API. |
+| `api_version` | str | API version string (Python only). |
+
+::: {.panel-tabset group="language"}
+
+## Python
+
+```python
+records = (
+    QueryBuilder("taxon")
+    .set_taxa(["Canidae"])
+    .set_rank("species")
+    .set_fields(["genome_size", "assembly_level"])
+    .set_lineage_rank_summary([
+        {"rank": "genus", "fields": ["assembly_level", "genome_size"]},
+    ])
+    .to_flat_records(
+        lineage_summary={
+            "genus": {
+                "assembly_level": "top",
+                "genome_size": "stats",
+            }
+        },
+        api_base="{{ api_base }}",
+        api_version="{{ api_version }}",
+    )
+)
+for r in records:
+    print(r["scientific_name"], r.get("genus__assembly_level"))
+```
+
+## R
+
+```r
+records <- query_builder("taxon") |>
+  set_taxa(c("Canidae")) |>
+  set_rank("species") |>
+  set_fields(c("genome_size", "assembly_level")) |>
+  set_lineage_rank_summary(list(
+    list(rank = "genus", fields = c("assembly_level", "genome_size"))
+  )) |>
+  to_flat_records(
+    lineage_summary = list(
+      genus = list(
+        assembly_level = "top",
+        genome_size = "stats"
+      )
+    )
+  )
+```
+
+## JavaScript
+
+```javascript
+const records = await new QueryBuilder('taxon')
+  .setTaxa(['Canidae'])
+  .setRank('species')
+  .setFields(['genome_size', 'assembly_level'])
+  .setLineageRankSummary([
+    { rank: 'genus', fields: ['assembly_level', 'genome_size'] }
+  ])
+  .toFlatRecords({
+    genus: {
+      assembly_level: 'top',
+      genome_size: 'stats'
+    }
+  });
+```
+
+:::
+
+---
+
+### `to_tidy_records(records=None, lineage_summary=None, api_base, api_version) -> list[dict]`
+
+Transform flat records into tidy (long-format) records, optionally with
+lineage summary columns.  When `records` is `None`, fetches via `to_flat_records()`.
+Converts wide columns (e.g. assembly_level, genome_size) into a `tidy_type` and
+`tidy_value` pair, making data suitable for ggplot2, tidyverse (R), or pandas
+(Python).
+
+| Parameter | Type | Description |
+|---|---|---|
+| `records` | list[dict] \| None | Flat records, or `None` to call `to_flat_records()`. |
+| `lineage_summary` | dict \| None | Lineage summary config for `to_flat_records()` when records is `None`. |
+| `api_base` | str | Base URL of the API. |
+| `api_version` | str | API version string (Python only). |
+
+::: {.panel-tabset group="language"}
+
+## Python
+
+```python
+tidy_records = (
+    QueryBuilder("taxon")
+    .set_taxa(["Mammalia"], filter_type="tree")
+    .set_rank("species")
+    .add_field("genome_size")
+    .add_field("assembly_level")
+    .to_tidy_records(
+        api_base="{{ api_base }}",
+        api_version="{{ api_version }}",
+    )
+)
+# Each row now has: scientific_name, tidy_type (e.g. 'genome_size'), tidy_value
+```
+
+## R
+
+```r
+tidy_records <- query_builder("taxon") |>
+  set_taxa(c("Mammalia"), filter_type = "tree") |>
+  set_rank("species") |>
+  add_field("genome_size") |>
+  add_field("assembly_level") |>
+  to_tidy_records()
+
+# Suitable for ggplot2
+library(ggplot2)
+ggplot(tidy_records, aes(x = tidy_type, y = as.numeric(tidy_value))) +
+  geom_boxplot()
+```
+
+## JavaScript
+
+```javascript
+const tidyRecords = await new QueryBuilder('taxon')
+  .setTaxa(['Mammalia'], 'tree')
+  .setRank('species')
+  .addField('genome_size')
+  .addField('assembly_level')
+  .toTidyRecords();
 ```
 
 :::
