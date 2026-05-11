@@ -281,10 +281,8 @@ class QueryBuilder:
         """
         import json
 
-        from cli_generator import (
-            parse_search_json as _parse_search_json,
-            parse_search_with_lineage_summary as _parse_search_with_lineage_summary,
-        )
+        from cli_generator import parse_search_json as _parse_search_json
+        from cli_generator import parse_search_with_lineage_summary as _parse_search_with_lineage_summary
 
         if lineage_summary is not None:
             # Build lineage_rank_summary specs from the config keys so the API
@@ -343,11 +341,9 @@ class QueryBuilder:
         """
         import json
 
-        from cli_generator import (
-            parse_search_json as _parse_search_json,
-            parse_search_with_lineage_summary as _parse_search_with_lineage_summary,
-            to_tidy_records as _to_tidy_records,
-        )
+        from cli_generator import parse_search_json as _parse_search_json
+        from cli_generator import parse_search_with_lineage_summary as _parse_search_with_lineage_summary
+        from cli_generator import to_tidy_records as _to_tidy_records
 
         if records is None:
             raw = self.search(format="json", api_base=api_base, api_version=api_version)

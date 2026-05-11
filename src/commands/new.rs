@@ -597,13 +597,11 @@ fn patch_pyproject_toml(repo_dir: &Path, repo_name: &str, sdk_name: &str) -> Res
                 &format!("module-name = \"{module_name}\""),
             );
         }
-    } else {
-        if !text.contains(&format!("module-name = \"{module_name}\"")) {
-            text = text.replace(
-                "python-source = \"python\"",
-                &format!("python-source = \"python\"\nmodule-name    = \"{module_name}\""),
-            );
-        }
+    } else if !text.contains(&format!("module-name = \"{module_name}\"")) {
+        text = text.replace(
+            "python-source = \"python\"",
+            &format!("python-source = \"python\"\nmodule-name    = \"{module_name}\""),
+        );
     }
 
     std::fs::write(&path, text).context("writing patched pyproject.toml")?;

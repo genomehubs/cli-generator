@@ -909,7 +909,7 @@ mod tests {
                         queries: None,
                         named_queries: None,
                         combine_with: CombineStrategy::AND,
-            lineage_rank_summary: None,
+                        lineage_rank_summary: None,
                     }
                 })
                 .boxed()

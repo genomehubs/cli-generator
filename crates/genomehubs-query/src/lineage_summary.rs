@@ -338,8 +338,7 @@ mod tests {
 
     #[test]
     fn test_parse_config_array_modes() {
-        let cfg =
-            parse_summary_config(r#"{"genus": {"genome_size": ["min", "max"]}}"#).unwrap();
+        let cfg = parse_summary_config(r#"{"genus": {"genome_size": ["min", "max"]}}"#).unwrap();
         assert_eq!(
             cfg["genus"]["genome_size"],
             vec![SummaryMode::Min, SummaryMode::Max]
@@ -354,8 +353,7 @@ mod tests {
 
     #[test]
     fn test_parse_config_top_n() {
-        let cfg =
-            parse_summary_config(r#"{"genus": {"assembly_level": "top_n:3"}}"#).unwrap();
+        let cfg = parse_summary_config(r#"{"genus": {"assembly_level": "top_n:3"}}"#).unwrap();
         assert_eq!(cfg["genus"]["assembly_level"], vec![SummaryMode::TopN(3)]);
     }
 
@@ -419,8 +417,7 @@ mod tests {
     fn test_stats_mode_four_columns() {
         let pairs = reduce_distribution(&stats_dist(), &SummaryMode::Stats);
         assert_eq!(pairs.len(), 4);
-        let map: HashMap<String, &Value> =
-            pairs.iter().map(|(k, v)| (k.clone(), v)).collect();
+        let map: HashMap<String, &Value> = pairs.iter().map(|(k, v)| (k.clone(), v)).collect();
         assert_eq!(*map["__min"], json!(0.5));
         assert_eq!(*map["__max"], json!(99.1));
         assert_eq!(*map["__avg"], json!(72.3));
@@ -449,7 +446,8 @@ mod tests {
 
     #[test]
     fn test_ancestor_id_array_form() {
-        let result = json!({"ranks": {"genus": {"taxon_id": [9701], "scientific_name": ["Canis"]}}});
+        let result =
+            json!({"ranks": {"genus": {"taxon_id": [9701], "scientific_name": ["Canis"]}}});
         assert_eq!(
             ancestor_taxon_id_at_rank(&result, "genus").as_deref(),
             Some("9701")
@@ -505,8 +503,7 @@ mod tests {
                 "9701": {"assembly_level": {"chromosome": 5, "scaffold": 2}}
             }
         });
-        let config =
-            parse_summary_config(r#"{"genus": {"assembly_level": "top"}}"#).unwrap();
+        let config = parse_summary_config(r#"{"genus": {"assembly_level": "top"}}"#).unwrap();
         attach_lineage_summary_columns(&mut row, &result, &lineage_summary, &config);
         assert_eq!(row["genus__assembly_level"], json!("chromosome"));
     }
@@ -522,8 +519,7 @@ mod tests {
                 }
             }
         });
-        let config =
-            parse_summary_config(r#"{"genus": {"genome_size": "stats"}}"#).unwrap();
+        let config = parse_summary_config(r#"{"genus": {"genome_size": "stats"}}"#).unwrap();
         attach_lineage_summary_columns(&mut row, &result, &lineage_summary, &config);
         assert_eq!(row["genus__genome_size__min"], json!(1.0e9));
         assert_eq!(row["genus__genome_size__count"], json!(5));
@@ -548,8 +544,7 @@ mod tests {
         let mut row = serde_json::Map::new();
         let result = json!({});
         let lineage_summary = json!({"genus": {}});
-        let config =
-            parse_summary_config(r#"{"genus": {"assembly_level": "top"}}"#).unwrap();
+        let config = parse_summary_config(r#"{"genus": {"assembly_level": "top"}}"#).unwrap();
         attach_lineage_summary_columns(&mut row, &result, &lineage_summary, &config);
         assert_eq!(row["genus__assembly_level"], Value::Null);
     }
@@ -561,8 +556,7 @@ mod tests {
         let lineage_summary = json!({
             "genus": {"9701": {"assembly_level": {}}}
         });
-        let config =
-            parse_summary_config(r#"{"genus": {"assembly_level": "top"}}"#).unwrap();
+        let config = parse_summary_config(r#"{"genus": {"assembly_level": "top"}}"#).unwrap();
         attach_lineage_summary_columns(&mut row, &result, &lineage_summary, &config);
         assert_eq!(row["genus__assembly_level"], Value::Null);
     }

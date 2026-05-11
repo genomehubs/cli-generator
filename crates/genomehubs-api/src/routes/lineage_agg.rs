@@ -138,7 +138,6 @@ pub fn validate_lineage_rank_summary_fields(
     }
 }
 
-
 ///
 /// Dispatches on processed type from the metadata cache:
 /// - `integer` → `stats` on `attributes.long_value`
@@ -227,10 +226,7 @@ fn resolve_value_subfield(
 /// A genus absent from the map means it had zero matching species in the main
 /// query.  A genus present with `"field": {}` means it had matching species but
 /// none had a value for that field.
-pub fn extract_lineage_summary(
-    es_resp: &Value,
-    specs: &[LineageRankSummarySpec],
-) -> Value {
+pub fn extract_lineage_summary(es_resp: &Value, specs: &[LineageRankSummarySpec]) -> Value {
     let mut summary = serde_json::Map::new();
 
     for spec in specs {
@@ -540,10 +536,7 @@ mod tests {
     fn make_cache_with_fields(fields: &[&str]) -> Option<Arc<tokio::sync::RwLock<MetadataCache>>> {
         let mut field_map = serde_json::Map::new();
         for f in fields {
-            field_map.insert(
-                f.to_string(),
-                json!({ "processed_type": "keyword" }),
-            );
+            field_map.insert(f.to_string(), json!({ "processed_type": "keyword" }));
         }
         let attr_types = json!({ "default": Value::Object(field_map) });
         let cache = MetadataCache {
@@ -553,7 +546,9 @@ mod tests {
         Some(Arc::new(tokio::sync::RwLock::new(cache)))
     }
 
-    fn make_cache_with_typed(entries: &[(&str, &str)]) -> Option<Arc<tokio::sync::RwLock<MetadataCache>>> {
+    fn make_cache_with_typed(
+        entries: &[(&str, &str)],
+    ) -> Option<Arc<tokio::sync::RwLock<MetadataCache>>> {
         let mut field_map = serde_json::Map::new();
         for (f, t) in entries {
             field_map.insert(f.to_string(), json!({ "processed_type": t }));
@@ -576,8 +571,7 @@ mod tests {
             ["aggs"]["by_attribute"]["aggs"]["assembly_date"];
         // Date fields use stats on date_value, not terms on keyword_value.raw
         assert_eq!(
-            field_agg["aggs"]["by_value"]["stats"]["field"],
-            "attributes.date_value",
+            field_agg["aggs"]["by_value"]["stats"]["field"], "attributes.date_value",
             "date field should use stats on date_value"
         );
     }
@@ -593,7 +587,10 @@ mod tests {
         let cache = make_cache_with_fields(&["assembly_level"]);
         let specs = vec![make_spec("genus", &["assembly_level", "null_field"])];
         let err = validate_lineage_rank_summary_fields(&specs, &cache).unwrap_err();
-        assert!(err.contains("null_field"), "error should name the bad field: {err}");
+        assert!(
+            err.contains("null_field"),
+            "error should name the bad field: {err}"
+        );
     }
 
     #[test]
