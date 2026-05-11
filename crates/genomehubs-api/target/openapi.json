@@ -888,6 +888,9 @@
           "results"
         ],
         "properties": {
+          "lineage_summary": {
+            "description": "Per-rank ancestor aggregation results.\n\nShape: `{rank: {ancestor_taxon_id: {field: distribution}}}`.\nOnly present when `lineage_rank_summary` was requested."
+          },
           "results": {
             "type": "array",
             "items": {},

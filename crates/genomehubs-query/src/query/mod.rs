@@ -56,6 +56,20 @@ use serde::{Deserialize, Serialize};
 ///   - index: taxon
 ///     taxa: [Aves]
 /// ```
+/// Specification for a single lineage-rank aggregation requested alongside
+/// the main search results.
+///
+/// `rank` names a taxonomic rank (e.g. `"genus"`, `"family"`, `"order"`).
+/// `fields` names one or more attributes to aggregate per ancestor bucket.
+/// Multiple fields at the same rank share one outer nested-lineage agg pass.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LineageRankSummarySpec {
+    /// Taxonomic rank to group by (e.g. `"genus"`, `"family"`).
+    pub rank: String,
+    /// Attribute fields whose value distributions to aggregate per ancestor.
+    pub fields: Vec<String>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(deny_unknown_fields)]
 pub struct SearchQuery {
@@ -80,6 +94,12 @@ pub struct SearchQuery {
     /// `value: queryA.field` or `value: queryA.summary(field)`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub named_queries: Option<std::collections::HashMap<String, chain::NamedQuerySpec>>,
+    /// Per-rank ancestor aggregations to compute alongside search results.
+    ///
+    /// Produces a `lineage_summary` map in the response envelope, keyed by
+    /// `rank → ancestor_taxon_id → field → distribution`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub lineage_rank_summary: Option<Vec<LineageRankSummarySpec>>,
 }
 
 /// Strategy for combining multiple queries.
@@ -668,6 +688,7 @@ taxa: []
             queries: None,
             named_queries: None,
             combine_with: Default::default(),
+            lineage_rank_summary: None,
         };
         let yaml = query.to_yaml().expect("serialize");
         assert!(yaml.contains("taxon"));
@@ -682,6 +703,7 @@ taxa: []
             queries: None,
             named_queries: None,
             combine_with: Default::default(),
+            lineage_rank_summary: None,
         };
         assert_eq!(query.index, SearchIndex::Assembly);
     }

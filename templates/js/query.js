@@ -33,6 +33,7 @@ const {
   render_snippet: _renderSnippet,
   split_source_columns: _splitSourceColumns,
   to_tidy_records: _toTidyRecords,
+  parse_search_with_lineage_summary: _parseSearchWithLineageSummary,
   validate_query_json: _validateQueryJson,
   validate_report_yaml: _validateReportYaml,
   values_only: _valuesOnly,
@@ -156,6 +157,7 @@ class QueryBuilder {
     // YAML overrides set by fromV2Url(); take priority in toQueryYaml/toParamsYaml
     this._queryYamlOverride = null;
     this._paramsYamlOverride = null;
+    this._lineageRankSummary = [];
   }
 
   // ── Identifiers ────────────────────────────────────────────────────────────
@@ -316,6 +318,16 @@ class QueryBuilder {
    */
   setRanks(ranks) {
     this._ranks = [...ranks];
+    return this;
+  }
+
+  /**
+   * Set lineage rank summary aggregation specs.
+   * @param {object[]} specs - Array of spec objects with `rank` and `fields` keys.
+   * @returns {QueryBuilder}
+   */
+  setLineageRankSummary(specs) {
+    this._lineageRankSummary = specs.map((s) => ({ ...s }));
     return this;
   }
 
@@ -583,6 +595,31 @@ class QueryBuilder {
       lines.push("exclude_missing:");
       for (const f of this._excludeMissing) lines.push(`  - ${f}`);
     }
+    if (this._lineageRankSummary.length > 0) {
+      lines.push("lineage_rank_summary:");
+      for (const spec of this._lineageRankSummary) {
+        lines.push(`  - rank: ${spec.rank}`);
+        if (spec.fields) {
+          lines.push("    fields:");
+          // Handle both array (field names) and object (field->mode mappings)
+          if (Array.isArray(spec.fields)) {
+            for (const field of spec.fields) {
+              lines.push(`      - ${field}`);
+            }
+          } else {
+            // Object with field -> mode mappings
+            for (const [field, mode] of Object.entries(spec.fields)) {
+              if (Array.isArray(mode)) {
+                lines.push(`      ${field}:`);
+                for (const m of mode) lines.push(`        - ${m}`);
+              } else {
+                lines.push(`      ${field}: ${mode}`);
+              }
+            }
+          }
+        }
+      }
+    }
     return lines.join("\n") + "\n";
   }
 
@@ -810,6 +847,36 @@ class QueryBuilder {
       this.setSize(origSize);
     }
     return allRecords.slice(0, maxRecords);
+  }
+
+  /**
+   * Fetch and flatten search results, optionally joining lineage summary columns.
+   *
+   * Delegates to the Rust WASM function `_parseSearchWithLineageSummary` for all
+   * lineage column reduction logic, keeping JS free of duplicated logic.
+   *
+   * @param {object|null} [lineageSummary=null] - Optional explicit config `{rank: {field: "mode"}}`.
+   *        If null and lineage_rank_summary specs are set, defaults to "stats" mode for all fields.
+   * @param {string} [apiBase=API_BASE] - Base URL of the API
+   * @returns {Promise<object[]>} - Array of flat record objects
+   */
+  async toFlatRecords(lineageSummary = null, apiBase = API_BASE) {
+    const response = await this.search("json", apiBase);
+    const responseJson = JSON.stringify(response);
+
+    // Only join lineage columns when the caller provides an explicit config with field modes.
+    // Without a config the field types (numeric vs categorical) are unknown, so fall back
+    // to basic flattening — matching Python's behavior.
+    if (lineageSummary === null) {
+      return JSON.parse(_parseSearchJson(responseJson));
+    }
+
+    return JSON.parse(
+      _parseSearchWithLineageSummary(
+        responseJson,
+        JSON.stringify(lineageSummary),
+      ),
+    );
   }
 
   /**
@@ -1434,9 +1501,24 @@ class ReportBuilder {
  * @param {string|object[]} records - Flat records from parseSearchJson.
  * @returns {object[]}
  */
-function toTidyRecords(records) {
+function toTidyRecords(records, lineageSummary) {
   const str = typeof records === "string" ? records : JSON.stringify(records);
+  if (lineageSummary !== undefined && lineageSummary !== null) {
+    // lineageSummary is already joined via toFlatRecords; just reshape
+  }
   return JSON.parse(_toTidyRecords(str));
+}
+
+/**
+ * Fetch results and return as flat records, optionally joining lineage summary columns.
+ *
+ * @param {string|object} raw - Raw API response string or object.
+ * @param {string} configJson - JSON string: `{"rank": {"field": "mode"}}` config.
+ * @returns {object[]}
+ */
+function parseSearchWithLineageSummary(raw, configJson) {
+  const str = typeof raw === "string" ? raw : JSON.stringify(raw);
+  return JSON.parse(_parseSearchWithLineageSummary(str, configJson));
 }
 
 export {
@@ -1451,4 +1533,5 @@ export {
   valuesOnly,
   annotatedValues,
   toTidyRecords,
+  parseSearchWithLineageSummary,
 };

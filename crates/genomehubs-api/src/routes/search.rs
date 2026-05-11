@@ -98,6 +98,12 @@ pub struct SearchResponse {
     /// Cursor for the next page, if more results exist.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub search_after: Option<Value>,
+    /// Per-rank ancestor aggregation results.
+    ///
+    /// Shape: `{rank: {ancestor_taxon_id: {field: distribution}}}`.
+    /// Only present when `lineage_rank_summary` was requested.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub lineage_summary: Option<Value>,
 }
 
 #[utoipa::path(
@@ -120,6 +126,7 @@ pub async fn post_search(
                 url: String::new(),
                 results: vec![],
                 search_after: None,
+                lineage_summary: None,
             })
         };
     }
@@ -305,6 +312,7 @@ pub async fn post_search(
             url: built_url,
             results,
             search_after,
+            lineage_summary: None,
         });
     }
 
@@ -356,7 +364,7 @@ pub async fn post_search(
         .map(|t| format!("{}({})", t.filter_type.api_function(), t.names.join(",")));
 
     // `build_search_body` is in cli_generator::core::query_builder
-    let body = match cli_generator::core::query_builder::build_search_body(
+    let mut body = match cli_generator::core::query_builder::build_search_body(
         taxa_query.as_deref(),
         fields_slice.as_deref(),
         None,
@@ -374,6 +382,32 @@ pub async fn post_search(
         Ok(b) => b,
         Err(e) => bail!(format!("failed to build ES body: {}", e)),
     };
+
+    // Inject lineage_rank_summary aggregations when requested
+    if let Some(specs) = &query.lineage_rank_summary {
+        if specs.len() > 5 {
+            bail!("lineage_rank_summary: maximum 5 rank specs per request".to_string());
+        }
+        if let Err(e) =
+            super::lineage_agg::validate_lineage_rank_summary_fields(specs, &state.cache)
+        {
+            bail!(e);
+        }
+        let aggs = body
+            .as_object_mut()
+            .unwrap()
+            .entry("aggs")
+            .or_insert_with(|| serde_json::json!({}));
+        for spec in specs {
+            let size = super::lineage_agg::ancestor_bucket_size_for_rank(&spec.rank);
+            match super::lineage_agg::build_lineage_rank_summary_agg(spec, size, &state.cache) {
+                Ok((name, agg_body)) => {
+                    aggs[name] = agg_body;
+                }
+                Err(e) => bail!(format!("lineage_rank_summary: {e}")),
+            }
+        }
+    }
 
     // For v3 API POST endpoints, return the endpoint path
     // (actual query is in the JSON request body, not URL-reproducible)
@@ -394,6 +428,13 @@ pub async fn post_search(
 
     let took_ms = raw.get("took").and_then(|v| v.as_u64()).unwrap_or(0);
 
+    // Lineage is needed for ancestor lookup when lineage_rank_summary is requested
+    let include_lineage = params.include_lineage
+        || query
+            .lineage_rank_summary
+            .as_ref()
+            .map_or(false, |s| !s.is_empty());
+
     // Transform raw ES response to API response format expected by parse_search_json
     let es_hits = raw
         .get("hits")
@@ -407,7 +448,7 @@ pub async fn post_search(
                     deserialize_helpers::transform_es_hit(
                         hit,
                         group,
-                        params.include_lineage,
+                        include_lineage,
                         params.include_taxon_names,
                     )
                 })
@@ -424,10 +465,18 @@ pub async fn post_search(
         .and_then(|last| last.get("sort"))
         .cloned();
 
+    // Extract lineage summary if it was requested
+    let lineage_summary = query
+        .lineage_rank_summary
+        .as_deref()
+        .filter(|specs| !specs.is_empty())
+        .map(|specs| super::lineage_agg::extract_lineage_summary(&raw, specs));
+
     Json(SearchResponse {
         status: ApiStatus::query_ok(hits_count, took_ms),
         url: built_url,
         results,
         search_after,
+        lineage_summary,
     })
 }

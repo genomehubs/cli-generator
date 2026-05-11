@@ -17,6 +17,7 @@
 //! ```
 
 pub mod describe;
+pub mod lineage_summary;
 pub mod parse;
 pub mod query;
 pub mod report;
@@ -212,6 +213,25 @@ pub fn annotated_values(records_json: &str, mode: &str, keep_columns_json: &str)
 #[cfg_attr(feature = "wasm", wasm_bindgen)]
 pub fn to_tidy_records(records_json: &str) -> String {
     match parse::to_tidy_records(records_json) {
+        Ok(records) => records,
+        Err(e) => format!(r#"{{"error":{e:?}}}"#),
+    }
+}
+
+/// Parse a raw genomehubs `/search` JSON response and join lineage summary
+/// aggregations as extra flat columns on every record.
+///
+/// `raw` must be the full API response (including the `lineage_summary` block
+/// produced when `lineage_rank_summary` was part of the query).
+///
+/// `config_json` controls how each field distribution is reduced to column(s).
+/// Format: `{"rank": {"field": "mode_or_array_of_modes"}}`.
+/// See [`parse::parse_search_with_lineage_summary`] for supported modes.
+///
+/// On error returns a JSON string `{"error":"..."}`.
+#[cfg_attr(feature = "wasm", wasm_bindgen)]
+pub fn parse_search_with_lineage_summary(raw: &str, config_json: &str) -> String {
+    match parse::parse_search_with_lineage_summary(raw, config_json) {
         Ok(records) => records,
         Err(e) => format!(r#"{{"error":{e:?}}}"#),
     }

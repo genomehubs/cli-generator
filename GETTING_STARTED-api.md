@@ -1,0 +1,438 @@
+# Getting Started: API Setup and Deployment
+
+This guide covers setting up and running the **genomehubs-api** (Rust/Axum backend) for local development, testing, or deployment.
+
+## Prerequisites
+
+- **Elasticsearch** running and accessible (required for all methods)
+- **Rust 1.81+** (for direct build)
+- **Docker** (for containerized deployment)
+- **curl** or similar for testing
+
+## Quick Start: Docker (Recommended)
+
+### 1. Run with Default Configuration
+
+The simplest way to get started is to run the pre-built Docker image:
+
+```bash
+docker run -d \
+  -p 3000:3000 \
+  -e ES_INTEGRATION_CONFIG=/app/config/es_integration.toml \
+  genomehubs/cli-generator-api:develop
+```
+
+The API will start on `http://localhost:3000` and attempt to connect to a local Elasticsearch at `http://localhost:9200` with default hub settings.
+
+### 2. Run with Custom Configuration via TOML
+
+Create an `es_integration.toml` file with your settings:
+
+```toml
+base_url = "http://elasticsearch:9200"
+default_result = "taxon"
+default_taxonomy = "ncbi"
+default_version = "2021.10.15"
+hub_name = "goat"
+index_separator = "--"
+```
+
+Mount the config file into the container:
+
+```bash
+docker run -d \
+  -p 3000:3000 \
+  -v /path/to/es_integration.toml:/app/config/es_integration.toml \
+  genomehubs/cli-generator-api:develop
+```
+
+### 3. Run with Environment Variables
+
+Override configuration via environment variables:
+
+```bash
+docker run -d \
+  -p 3000:3000 \
+  -e ES_BASE_URL="http://elasticsearch:9200" \
+  -e HUB_NAME="my-hub" \
+  -e DEFAULT_TAXONOMY="ncbi" \
+  -e DEFAULT_RESULT="taxon" \
+  genomehubs/cli-generator-api:develop
+```
+
+### 4. Docker Compose Setup
+
+For a complete stack with Elasticsearch:
+
+```yaml
+version: "3.8"
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.10.0
+    environment:
+      - discovery.type=single-node
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - xpack.security.enabled=false
+    ports:
+      - "9200:9200"
+    volumes:
+      - es-data:/usr/share/elasticsearch/data
+
+  api:
+    image: genomehubs/cli-generator-api:develop
+    ports:
+      - "3000:3000"
+    depends_on:
+      - elasticsearch
+    environment:
+      - ES_BASE_URL=http://elasticsearch:9200
+      - HUB_NAME=goat
+      - DEFAULT_TAXONOMY=ncbi
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/v3/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+
+volumes:
+  es-data:
+```
+
+Start with:
+
+```bash
+docker-compose up -d
+```
+
+## Direct Build from Source
+
+### Prerequisites
+
+- Rust 1.81+ (install from [rustup.rs](https://rustup.rs/))
+- Cargo
+
+### Build Steps
+
+1. **Clone the repository:**
+
+```bash
+git clone https://github.com/genomehubs/cli-generator.git
+cd cli-generator
+```
+
+2. **Build the API binary:**
+
+```bash
+cargo build -p genomehubs-api --release
+```
+
+The binary will be at `target/release/genomehubs-api`.
+
+3. **Create configuration:**
+
+Create `config/es_integration.toml` in the project root:
+
+```toml
+base_url = "http://localhost:9200"
+default_result = "taxon"
+default_taxonomy = "ncbi"
+default_version = "2021.10.15"
+hub_name = "goat"
+index_separator = "--"
+```
+
+4. **Run the API:**
+
+```bash
+./target/release/genomehubs-api
+```
+
+The API will listen on `http://0.0.0.0:3000`.
+
+## Configuration
+
+### Configuration File Format (`es_integration.toml`)
+
+```toml
+# Required: Elasticsearch base URL (no trailing slash)
+base_url = "http://localhost:9200"
+
+# Optional: defaults shown below
+default_result = "taxon"
+default_taxonomy = "ncbi"
+default_version = "2021.10.15"
+hub_name = "goat"
+index_separator = "--"
+```
+
+### Configuration Priority
+
+The API resolves configuration in this order (first match wins):
+
+1. **Environment variable**: `ES_INTEGRATION_CONFIG=/path/to/custom.toml`
+2. **File search**: Walks up directory tree from current working directory looking for `config/es_integration.toml`
+3. **Fallback**: Uses `config/es_integration.toml.example` if no config found
+4. **Defaults**: Built-in defaults if all above fail
+
+### Environment Variables
+
+You can override config file values with environment variables:
+
+```bash
+export ES_BASE_URL="http://elasticsearch:9200"
+export DEFAULT_RESULT="taxon"
+export DEFAULT_TAXONOMY="ncbi"
+export DEFAULT_VERSION="2021.10.15"
+export HUB_NAME="my-hub"
+export INDEX_SEPARATOR="--"
+```
+
+Then run:
+
+```bash
+./target/release/genomehubs-api
+```
+
+## Testing the API
+
+### Health Check
+
+```bash
+curl http://localhost:3000/api/v3/status
+```
+
+### API Documentation
+
+Once running, access the Swagger UI documentation at:
+
+```
+http://localhost:3000/swagger-ui/
+```
+
+### Example Queries
+
+**Get taxonomies:**
+
+```bash
+curl http://localhost:3000/api/v3/taxonomies
+```
+
+**Get indices:**
+
+```bash
+curl http://localhost:3000/api/v3/indices
+```
+
+**Search:**
+
+```bash
+curl -X POST http://localhost:3000/api/v3/search \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "sapiens",
+    "limit": 10
+  }'
+```
+
+## Logging and Debugging
+
+### View Logs
+
+Logs are printed to stdout with structured tracing. Set the `RUST_LOG` environment variable to control verbosity:
+
+```bash
+# In Docker:
+docker run -e RUST_LOG=info genomehubs/cli-generator-api:develop
+
+# Direct build:
+RUST_LOG=info ./target/release/genomehubs-api
+```
+
+Log levels: `trace`, `debug`, `info`, `warn`, `error`
+
+### Example: Full debug logging
+
+```bash
+docker run -e RUST_LOG=debug genomehubs/cli-generator-api:develop
+```
+
+## Deployment
+
+### Kubernetes
+
+Example manifest:
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: genomehubs-api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: genomehubs-api
+  template:
+    metadata:
+      labels:
+        app: genomehubs-api
+    spec:
+      containers:
+        - name: api
+          image: genomehubs/cli-generator-api:develop
+          ports:
+            - containerPort: 3000
+          env:
+            - name: ES_BASE_URL
+              value: "http://elasticsearch:9200"
+            - name: HUB_NAME
+              value: "goat"
+          livenessProbe:
+            httpGet:
+              path: /api/v3/status
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /api/v3/status
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: genomehubs-api
+spec:
+  selector:
+    app: genomehubs-api
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 3000
+  type: LoadBalancer
+```
+
+### Environment-specific Configuration
+
+#### Development
+
+```bash
+# Mount a local config file for easy iteration
+docker run -v $(pwd)/config:/app/config \
+  -p 3000:3000 \
+  genomehubs/cli-generator-api:develop
+```
+
+#### Staging
+
+```bash
+docker run \
+  -e ES_BASE_URL="http://elasticsearch-staging:9200" \
+  -e HUB_NAME="staging-hub" \
+  -p 3000:3000 \
+  genomehubs/cli-generator-api:develop
+```
+
+#### Production
+
+Use a config file or secrets management system (e.g., Kubernetes Secrets):
+
+```bash
+# Via mounted secret
+docker run \
+  -v /run/secrets/es_config:/app/config/es_integration.toml:ro \
+  -p 3000:3000 \
+  genomehubs/cli-generator-api:develop
+```
+
+## Troubleshooting
+
+### API won't start: "Failed to populate metadata cache"
+
+**Cause**: Elasticsearch is not reachable or not running.
+
+**Solution**:
+
+1. Verify Elasticsearch is running: `curl http://your-es-url:9200`
+2. Check `ES_BASE_URL` or `base_url` in config
+3. Ensure network connectivity between API container and Elasticsearch
+
+### "Index not found" errors
+
+**Cause**: The configured hub indices don't exist in Elasticsearch.
+
+**Solution**:
+
+1. Verify indices exist: `curl http://your-es-url:9200/_cat/indices`
+2. Check `hub_name`, `default_taxonomy`, and `index_separator` values
+3. Ensure indices match the naming pattern: `{separator}{taxonomy}{separator}{hub}{separator}{version}`
+
+### High memory usage
+
+**Cause**: Large metadata cache (many indices/taxonomies).
+
+**Solution**:
+
+1. Increase container memory limits
+2. Consider filtering indices (if supported by your setup)
+3. Monitor cache population logs
+
+### Slow startup
+
+**Cause**: Large Elasticsearch cluster or slow network.
+
+**Solution**:
+
+1. Check Elasticsearch response times
+2. Increase startup timeout in health checks
+3. Monitor logs with `RUST_LOG=debug`
+
+## API Endpoints
+
+| Method | Endpoint                 | Description                  |
+| ------ | ------------------------ | ---------------------------- |
+| GET    | `/api/v3/status`         | Health check and API version |
+| GET    | `/api/v3/taxonomies`     | List available taxonomies    |
+| GET    | `/api/v3/indices`        | List available indices       |
+| GET    | `/api/v3/taxonomicRanks` | List taxonomic ranks         |
+| POST   | `/api/v3/search`         | Search records               |
+| POST   | `/api/v3/searchBatch`    | Batch search                 |
+| POST   | `/api/v3/count`          | Count records                |
+| POST   | `/api/v3/countBatch`     | Batch count                  |
+| GET    | `/api/v3/lookup`         | Quick lookup by name/ID      |
+| GET    | `/api/v3/record`         | Get specific record          |
+| GET    | `/api/v3/resultFields`   | List available result fields |
+| POST   | `/api/v3/report`         | Generate reports             |
+| GET    | `/swagger-ui/`           | API documentation (Swagger)  |
+
+For detailed endpoint documentation, see the Swagger UI at `http://localhost:3000/swagger-ui/`.
+
+## Building Your Own Docker Image
+
+To build the Docker image locally:
+
+```bash
+docker build -f Dockerfile.api -t my-genomehubs-api:latest .
+docker run -p 3000:3000 my-genomehubs-api:latest
+```
+
+## Additional Resources
+
+- [API Source Code](../crates/genomehubs-api/)
+- [Elasticsearch Documentation](https://www.elastic.co/guide/en/elasticsearch/reference/current/index.html)
+- [Axum Web Framework](https://github.com/tokio-rs/axum)
+- [Tokio Async Runtime](https://tokio.rs/)
+
+## Support
+
+For issues, questions, or contributions, see the main [README.md](../README.md) and [CONTRIBUTING.md](../CONTRIBUTING.md).

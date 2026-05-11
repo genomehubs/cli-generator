@@ -247,6 +247,16 @@ fn to_tidy_records(records_json: &str) -> String {
     }
 }
 
+/// Parse a raw search response and join lineage summary aggregations as flat columns.
+#[extendr]
+fn parse_search_with_lineage_summary(raw: &str, config_json: &str) -> String {
+    use crate::embedded::core::parse;
+    match parse::parse_search_with_lineage_summary(raw, config_json) {
+        Ok(records) => records,
+        Err(e) => format!("{{\"error\": \"{:?}\"}}", e),
+    }
+}
+
 /// Parse one page from a `/searchPaginated` response.
 #[extendr]
 fn parse_paginated_json(raw: &str) -> String {
@@ -338,6 +348,7 @@ extendr_module! {
     fn values_only;
     fn annotated_values;
     fn to_tidy_records;
+    fn parse_search_with_lineage_summary;
     fn parse_paginated_json;
     fn parse_record_json;
     fn parse_lookup_json;

@@ -53,6 +53,7 @@ pub mod count;
 pub mod count_batch;
 pub mod deserialize_helpers;
 pub mod indices;
+pub mod lineage_agg;
 pub mod lookup;
 pub mod record;
 pub mod report;

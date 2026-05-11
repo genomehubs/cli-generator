@@ -204,6 +204,22 @@ fn to_tidy_records(records_json: &str) -> String {
     }
 }
 
+/// Parse a raw search response and join lineage summary aggregations as flat columns.
+///
+/// `config_json` controls how each field distribution is reduced to column(s).
+/// Format: `{"rank": {"field": "mode_or_array_of_modes"}}`.
+/// Returns a JSON array string of flat record dicts.
+/// Returns `{"error":"..."}` on failure.
+#[cfg(feature = "extension-module")]
+#[pyfunction]
+fn parse_search_with_lineage_summary(raw: &str, config_json: &str) -> String {
+    use crate::embedded::core::parse;
+    match parse::parse_search_with_lineage_summary(raw, config_json) {
+        Ok(records) => records,
+        Err(e) => {% raw %}format!(r#"{{"error":{:?}}}"#, e){% endraw %},
+    }
+}
+
 /// Parse the `results` array from a raw `/lookup` API response.
 ///
 /// Returns a JSON array of candidate dicts with id, name, rank, and reason.
@@ -333,6 +349,7 @@ fn {{ sdk_name }}(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(values_only, m)?)?;
     m.add_function(wrap_pyfunction!(annotated_values, m)?)?;
     m.add_function(wrap_pyfunction!(to_tidy_records, m)?)?;
+    m.add_function(wrap_pyfunction!(parse_search_with_lineage_summary, m)?)?;
     m.add_function(wrap_pyfunction!(parse_lookup_json, m)?)?;
     m.add_function(wrap_pyfunction!(parse_record_json, m)?)?;
     m.add_function(wrap_pyfunction!(parse_paginated_json, m)?)?;

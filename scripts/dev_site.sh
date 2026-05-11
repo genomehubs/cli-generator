@@ -58,7 +58,12 @@ done
 
 OUTPUT_DIR="${OUTPUT_DIR:-/tmp/${SITE}-cli}"
 SITE_CLI_DIR="${OUTPUT_DIR}/${SITE}-cli"
-SDK_NAME="${SITE}_sdk"
+# Extract actual SDK name from config YAML to ensure we use the right module name
+SDK_NAME=$(grep "^sdk_name:" "sites/${SITE}.yaml" 2>/dev/null | sed 's/^sdk_name:\s*//' | xargs | head -1)
+if [[ -z "$SDK_NAME" ]]; then
+    # Fallback: derive from site name by appending _sdk
+    SDK_NAME="${SITE}_sdk"
+fi
 
 cd "$PROJECT_ROOT"
 
@@ -154,23 +159,32 @@ ok "Generated ${SITE}-cli → ${SITE_CLI_DIR}"
 
 # Copy WASM packages to generated project if they exist
 if [[ $BUILD_BROWSER -eq 1 || $REBUILD_WASM -eq 1 ]]; then
-    JS_PACKAGE="${SITE//-/_}"
-    JS_OUT_DIR="${SITE_CLI_DIR}/js/${JS_PACKAGE}"
+    # Extract CLI name from config to get correct JS directory
+    CLI_NAME=$(grep "^name:" "sites/${SITE}.yaml" 2>/dev/null | sed 's/^name:\s*//;s/-/_/g' | xargs | head -1)
+    if [[ -z "$CLI_NAME" ]]; then
+        # Fallback: derive from site name
+        CLI_NAME="${SITE//-/_}"
+    fi
+    JS_OUT_DIR="${SITE_CLI_DIR}/js/${CLI_NAME}"
 
     # Copy dual WASM builds if they exist
+    # Use rsync to update contents instead of cp -r which creates nested dirs if dest exists
     if [[ -d "$PROJECT_ROOT/crates/genomehubs-query/pkg-web" ]]; then
-        cp -r "$PROJECT_ROOT/crates/genomehubs-query/pkg-web" "$JS_OUT_DIR/pkg-web"
-        ok "Copied pkg-web/ → ${JS_PACKAGE}/pkg-web/"
+        mkdir -p "$JS_OUT_DIR/pkg-web"
+        rsync -a "$PROJECT_ROOT/crates/genomehubs-query/pkg-web/" "$JS_OUT_DIR/pkg-web/"
+        ok "Copied pkg-web/ → ${CLI_NAME}/pkg-web/"
     fi
     if [[ -d "$PROJECT_ROOT/crates/genomehubs-query/pkg-nodejs" ]]; then
-        cp -r "$PROJECT_ROOT/crates/genomehubs-query/pkg-nodejs" "$JS_OUT_DIR/pkg-nodejs"
-        ok "Copied pkg-nodejs/ → ${JS_PACKAGE}/pkg-nodejs/"
+        mkdir -p "$JS_OUT_DIR/pkg-nodejs"
+        rsync -a "$PROJECT_ROOT/crates/genomehubs-query/pkg-nodejs/" "$JS_OUT_DIR/pkg-nodejs/"
+        ok "Copied pkg-nodejs/ → ${CLI_NAME}/pkg-nodejs/"
     fi
 
     # Also copy pkg/ as fallback for standard Node.js builds
     if [[ -d "$PROJECT_ROOT/crates/genomehubs-query/pkg" ]]; then
-        cp -r "$PROJECT_ROOT/crates/genomehubs-query/pkg" "$JS_OUT_DIR/pkg"
-        ok "Copied pkg/ → ${JS_PACKAGE}/pkg/"
+        mkdir -p "$JS_OUT_DIR/pkg"
+        rsync -a "$PROJECT_ROOT/crates/genomehubs-query/pkg/" "$JS_OUT_DIR/pkg/"
+        ok "Copied pkg/ → ${CLI_NAME}/pkg/"
     fi
 
     # Copy field metadata JSON files so validate() works without running build-wasm.sh
@@ -202,8 +216,11 @@ echo "Running Rust smoke-test (--url flag)..."
 
 # ── Step 4: JS smoke-test ─────────────────────────────────────────────────────
 
-JS_PACKAGE="${SITE//-/_}"
-JS_DIR="$(cd "${SITE_CLI_DIR}/js/${JS_PACKAGE}" 2>/dev/null && pwd || true)"
+CLI_NAME=$(grep "^name:" "sites/${SITE}.yaml" 2>/dev/null | sed 's/^name:\s*//;s/-/_/g' | xargs | head -1)
+if [[ -z "$CLI_NAME" ]]; then
+    CLI_NAME="${SITE//-/_}"
+fi
+JS_DIR="$(cd "${SITE_CLI_DIR}/js/${CLI_NAME}" 2>/dev/null && pwd || true)"
 
 if [[ -d "$JS_DIR" ]]; then
     echo ""

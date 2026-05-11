@@ -511,6 +511,7 @@ mod tests {
             queries: None,
             named_queries: None,
             combine_with: CombineStrategy::AND,
+            lineage_rank_summary: None,
         }
     }
 
@@ -572,6 +573,7 @@ mod tests {
             queries: None,
             named_queries: None,
             combine_with: CombineStrategy::AND,
+            lineage_rank_summary: None,
         };
         let url = build_query_url(
             &query,
@@ -611,6 +613,7 @@ mod tests {
             queries: None,
             named_queries: None,
             combine_with: CombineStrategy::AND,
+            lineage_rank_summary: None,
         };
         let url = build_query_url(
             &query,
@@ -642,6 +645,7 @@ mod tests {
             queries: None,
             named_queries: None,
             combine_with: CombineStrategy::AND,
+            lineage_rank_summary: None,
         };
         let url = build_query_url(
             &query,
@@ -676,6 +680,7 @@ mod tests {
             queries: None,
             named_queries: None,
             combine_with: CombineStrategy::AND,
+            lineage_rank_summary: None,
         };
         let url = build_query_url(
             &query,
@@ -709,6 +714,7 @@ mod tests {
             queries: None,
             named_queries: None,
             combine_with: CombineStrategy::AND,
+            lineage_rank_summary: None,
         };
         let url = build_query_url(
             &query,
@@ -769,6 +775,7 @@ mod tests {
             queries: None,
             named_queries: None,
             combine_with: CombineStrategy::AND,
+            lineage_rank_summary: None,
         };
         let url = build_query_url(
             &query,
@@ -825,6 +832,7 @@ mod tests {
             queries: None,
             named_queries: None,
             combine_with: CombineStrategy::AND,
+            lineage_rank_summary: None,
         };
         let url = build_query_url(
             &query,
@@ -852,6 +860,7 @@ mod tests {
             queries: None,
             named_queries: None,
             combine_with: CombineStrategy::AND,
+            lineage_rank_summary: None,
         };
         let url = build_query_url(
             &query,
@@ -900,6 +909,7 @@ mod tests {
                         queries: None,
                         named_queries: None,
                         combine_with: CombineStrategy::AND,
+            lineage_rank_summary: None,
                     }
                 })
                 .boxed()
@@ -958,6 +968,7 @@ mod tests {
                     queries: None,
             named_queries: None,
                     combine_with: CombineStrategy::AND,
+            lineage_rank_summary: None,
                 };
                 let url = build_query_url(
                     &query,
@@ -981,6 +992,7 @@ mod tests {
                     queries: None,
             named_queries: None,
                     combine_with: Default::default(),
+                    lineage_rank_summary: None,
                 };
                 let url = build_query_url(
                     &query,

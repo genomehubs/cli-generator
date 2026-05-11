@@ -87,12 +87,13 @@ QueryBuilder <- R6::R6Class(
     include_estimates = TRUE,
     tidy = FALSE,
     taxonomy = "ncbi",
-    api_base_url = "{{ api_base }}",
-    api_version = "{{ api_version }}",
-    ui_base_url = "{{ ui_base }}",
+    api_base_url = "{{ api_base | safe }}",
+    api_version = "{{ api_version | safe }}",
+    ui_base_url = "{{ ui_base | safe }}",
     # YAML overrides set by from_v2_url(); take priority in to_query_yaml/to_params_yaml
     query_yaml_override = NULL,
     params_yaml_override = NULL,
+    lineage_rank_summary = list(),
 
     # Return a copy of `fields` as a character vector, or character(0) if NULL.
     normalise_fields = function(fields) {
@@ -124,6 +125,7 @@ QueryBuilder <- R6::R6Class(
       private$include_estimates <- TRUE
       private$tidy <- FALSE
       private$taxonomy <- "ncbi"
+      private$lineage_rank_summary <- list()
       invisible(self)
     },
 
@@ -211,6 +213,13 @@ QueryBuilder <- R6::R6Class(
     #' @param ranks A character vector of rank names.
     set_ranks = function(ranks) {
       private$ranks_list <- ranks
+      invisible(self)
+    },
+
+    #' @description Set lineage rank summary aggregation specs.
+    #' @param specs A list of spec lists, each with `rank` and `fields` entries.
+    set_lineage_rank_summary = function(specs) {
+      private$lineage_rank_summary <- lapply(specs, function(s) s)
       invisible(self)
     },
 
@@ -382,6 +391,10 @@ QueryBuilder <- R6::R6Class(
 
       if (length(private$exclude_missing) > 0) {
         doc$excludeMissing <- as.list(private$exclude_missing)
+      }
+
+      if (length(private$lineage_rank_summary) > 0) {
+        doc$lineage_rank_summary <- private$lineage_rank_summary
       }
 
       if (length(private$attributes) > 0) {
@@ -569,6 +582,42 @@ QueryBuilder <- R6::R6Class(
       }
 
       if (!is.null(max_records)) head(all_records, max_records) else all_records
+    },
+
+    #' @description Fetch results and return as flat records, optionally joining lineage summary columns.
+    #' @param lineage_summary Optional pre-fetched lineage summary list. If NULL and
+    #'   lineage_rank_summary specs are set, search() is called to obtain both results
+    #'   and summary in one request.
+    #' @return A list of flat record lists.
+    to_flat_records = function(lineage_summary = NULL) {
+      raw_text <- self$search(format = "json")
+      # Without an explicit config the field types (numeric vs categorical) are unknown,
+      # so only join lineage columns when the caller provides lineage_summary explicitly.
+      # This matches Python's behavior.
+      if (is.null(lineage_summary)) {
+        return(jsonlite::fromJSON(parse_search_json(raw_text), simplifyVector = FALSE))
+      }
+      config_json <- jsonlite::toJSON(lineage_summary, auto_unbox = TRUE)
+      jsonlite::fromJSON(
+        parse_search_with_lineage_summary(raw_text, config_json),
+        simplifyVector = FALSE
+      )
+    },
+
+    #' @description Reshape flat records into long/tidy format.
+    #' @param records Flat record list, JSON string, or NULL to call to_flat_records().
+    #' @param lineage_summary Optional lineage summary for to_flat_records() when records is NULL.
+    #' @return A list of tidy record lists.
+    to_tidy_records = function(records = NULL, lineage_summary = NULL) {
+      if (is.null(records)) {
+        flat <- self$to_flat_records(lineage_summary = lineage_summary)
+        records_json <- jsonlite::toJSON(flat, auto_unbox = TRUE)
+      } else if (is.character(records)) {
+        records_json <- records
+      } else {
+        records_json <- jsonlite::toJSON(records, auto_unbox = TRUE)
+      }
+      jsonlite::fromJSON(to_tidy_records(records_json), simplifyVector = FALSE)
     },
 
     #' @description Get a human-readable description of this query.

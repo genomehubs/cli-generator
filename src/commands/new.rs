@@ -68,9 +68,9 @@ pub fn run(
 
     patch_python_init(&repo_dir, &sdk_name, &site.display_name)?;
     copy_config_files(site_name, sites_dir, &repo_dir)?;
-    stamp_cargo_toml(&repo_dir, &site)?;
-    patch_cargo_toml(&repo_dir, &site.name, &sdk_name)?;
-    patch_pyproject_toml(&repo_dir, &site.name, &sdk_name)?;
+    stamp_cargo_toml(&repo_dir, &site, &repo_name)?;
+    patch_cargo_toml(&repo_dir, &repo_name, &sdk_name)?;
+    patch_pyproject_toml(&repo_dir, &repo_name, &sdk_name)?;
     create_r_package(&repo_dir, &site)?;
     create_js_package(&repo_dir, &site)?;
     create_quarto_docs(&repo_dir, &site)?;
@@ -224,10 +224,9 @@ fn rename_python_package(repo_dir: &Path, site_name: &str, sdk_name: &str) -> Re
 /// We replace it with the real SDK surface: `build_url`, `search`, `count`,
 /// and the `QueryBuilder` class from `query.py`.
 fn patch_python_init(repo_dir: &Path, sdk_name: &str, display_name: &str) -> Result<()> {
-    let path = repo_dir.join("python").join(sdk_name).join("__init__.py");
-    if !path.exists() {
-        return Ok(());
-    }
+    let pkg_dir = repo_dir.join("python").join(sdk_name);
+    std::fs::create_dir_all(&pkg_dir).context("creating python package dir")?;
+    let path = pkg_dir.join("__init__.py");
     let content = format!(
         r#""""{}  Python SDK.
 
@@ -242,10 +241,11 @@ from .{} import (
     describe_query,
     parse_histogram_json,
     parse_lookup_json,
+    parse_paginated_json,
     parse_record_json,
     parse_response_status,
     parse_search_json,
-    parse_paginated_json,
+    parse_search_with_lineage_summary,
     parse_tree_json,
     render_snippet,
     search,
@@ -272,6 +272,7 @@ __all__ = [
     "parse_record_json",
     "parse_response_status",
     "parse_search_json",
+    "parse_search_with_lineage_summary",
     "parse_tree_json",
     "QueryBuilder",
     "query_yaml_from_url_params",
@@ -415,6 +416,14 @@ fn copy_embedded_modules(repo_dir: &Path) -> Result<()> {
             .replace("crate::", "crate::embedded::core::");
         std::fs::write(&validation_dest, content).context("writing validation.rs")?;
     }
+    let lineage_summary_src = subcrate_src.join("lineage_summary.rs");
+    let lineage_summary_dest = embedded_dir.join("core/lineage_summary.rs");
+    if lineage_summary_src.exists() {
+        let content = std::fs::read_to_string(&lineage_summary_src)
+            .context("reading subcrate lineage_summary.rs")?
+            .replace("crate::", "crate::embedded::core::");
+        std::fs::write(&lineage_summary_dest, content).context("writing lineage_summary.rs")?;
+    }
 
     // Copy the report/ directory (report/mod.rs + supporting files).
     // Files in report also need crate:: path rewriting for the embedded context.
@@ -495,6 +504,7 @@ pub mod core;
 pub mod config;
 pub mod describe;
 pub mod fetch;
+pub mod lineage_summary;
 pub mod parse;
 pub mod query;
 pub mod report;
@@ -513,15 +523,16 @@ pub mod validation;
 /// Patch the generated repo's main `Cargo.toml` to use the SDK name instead of the
 /// site name for the package name. This ensures the Python wheel is built with the
 /// correct name (e.g., `goat_sdk` instead of `goat_cli`).
-fn patch_cargo_toml(repo_dir: &Path, site_name: &str, sdk_name: &str) -> Result<()> {
+fn patch_cargo_toml(repo_dir: &Path, repo_name: &str, sdk_name: &str) -> Result<()> {
     let path = repo_dir.join("Cargo.toml");
     if !path.exists() {
         return Ok(());
     }
     let mut text = std::fs::read_to_string(&path).context("reading generated Cargo.toml")?;
 
-    // Fix package name in root Cargo.toml: replace {site}_cli with sdk_name
-    let old_pkg_name = format!("{}_cli", site_name.replace('-', "_"));
+    // Fix package name in root Cargo.toml: replace scaffolded name with sdk_name
+    // The scaffolded name uses underscores (e.g., goat_test_cli)
+    let old_pkg_name = repo_name.replace('-', "_");
     if old_pkg_name != sdk_name {
         text = text.replace(
             &format!("name = \"{old_pkg_name}\""),
@@ -538,7 +549,7 @@ fn patch_cargo_toml(repo_dir: &Path, site_name: &str, sdk_name: &str) -> Result<
 ///
 /// Idempotent — skips if the dep is already present.  Silent no-op if
 /// `pyproject.toml` does not exist in the template output.
-fn patch_pyproject_toml(repo_dir: &Path, site_name: &str, sdk_name: &str) -> Result<()> {
+fn patch_pyproject_toml(repo_dir: &Path, repo_name: &str, sdk_name: &str) -> Result<()> {
     let path = repo_dir.join("pyproject.toml");
     if !path.exists() {
         return Ok(());
@@ -554,19 +565,45 @@ fn patch_pyproject_toml(repo_dir: &Path, site_name: &str, sdk_name: &str) -> Res
         );
     }
 
-    // Fix package name: replace {site}_cli with sdk_name
-    let old_pkg_name = format!("{}_cli", site_name.replace('-', "_"));
-    if old_pkg_name != sdk_name {
+    // Fix package name: replace scaffolded name with sdk_name
+    // Try both the original repo_name (with hyphens) and the underscored version
+    let repo_name_underscored = repo_name.replace('-', "_");
+    for old_name in &[repo_name.to_string(), repo_name_underscored.clone()] {
+        if old_name == sdk_name {
+            continue; // Skip if they're already the same
+        }
         // Update [project] name field (use sdk_name-sdk for the package name)
         text = text.replace(
-            &format!("name = \"{old_pkg_name}\""),
+            &format!("name             = \"{old_name}\""),
+            &format!("name             = \"{sdk_name}-sdk\""),
+        );
+        // Also try without padding
+        text = text.replace(
+            &format!("name = \"{old_name}\""),
             &format!("name = \"{sdk_name}-sdk\""),
         );
-        // Update [tool.maturin] module-name field (use sdk_name for the module)
-        text = text.replace(
-            &format!("module-name = \"{old_pkg_name}\""),
-            &format!("module-name = \"{sdk_name}\""),
-        );
+    }
+
+    // Ensure module-name is set in [tool.maturin] so maturin uses sdk_name's
+    // PyInit symbol rather than deriving it from the Cargo package name.
+    let module_name = format!("{sdk_name}.{sdk_name}");
+    if text.contains("module-name") {
+        for old_name in &[repo_name.to_string(), repo_name_underscored.clone()] {
+            if old_name == sdk_name {
+                continue;
+            }
+            text = text.replace(
+                &format!("module-name = \"{old_name}\""),
+                &format!("module-name = \"{module_name}\""),
+            );
+        }
+    } else {
+        if !text.contains(&format!("module-name = \"{module_name}\"")) {
+            text = text.replace(
+                "python-source = \"python\"",
+                &format!("python-source = \"python\"\nmodule-name    = \"{module_name}\""),
+            );
+        }
     }
 
     std::fs::write(&path, text).context("writing patched pyproject.toml")?;
@@ -803,20 +840,62 @@ fn copy_r_embedded_modules(rust_src_dir: &Path) -> Result<()> {
         }
     }
 
-    // Copy validation.rs and parse.rs from the subcrate root (not the query subdirectory).
-    // These modules are self-contained and need no path rewriting.
+    // Copy validation.rs, parse.rs, and lineage_summary.rs from the subcrate root.
+    // parse.rs and lineage_summary.rs reference sibling modules via `crate::`, so rewrite
+    // those paths to `crate::embedded::core::` for the embedded context.
     let subcrate_src =
         std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("crates/genomehubs-query/src");
     let parse_src = subcrate_src.join("parse.rs");
     let parse_dest = embedded_dir.join("core/parse.rs");
     if parse_src.exists() {
-        std::fs::copy(&parse_src, &parse_dest).context("copying subcrate parse.rs")?;
+        let content = std::fs::read_to_string(&parse_src)
+            .context("reading subcrate parse.rs")?
+            .replace("crate::", "crate::embedded::core::");
+        std::fs::write(&parse_dest, content).context("writing parse.rs")?;
     }
     let validation_src = subcrate_src.join("validation.rs");
     let validation_dest = embedded_dir.join("core/validation.rs");
     if validation_src.exists() {
-        std::fs::copy(&validation_src, &validation_dest)
-            .context("copying subcrate validation.rs")?;
+        let content = std::fs::read_to_string(&validation_src)
+            .context("reading subcrate validation.rs")?
+            .replace("crate::", "crate::embedded::core::");
+        std::fs::write(&validation_dest, content).context("writing validation.rs")?;
+    }
+    let lineage_summary_src = subcrate_src.join("lineage_summary.rs");
+    let lineage_summary_dest = embedded_dir.join("core/lineage_summary.rs");
+    if lineage_summary_src.exists() {
+        let content = std::fs::read_to_string(&lineage_summary_src)
+            .context("reading subcrate lineage_summary.rs")?
+            .replace("crate::", "crate::embedded::core::");
+        std::fs::write(&lineage_summary_dest, content).context("writing lineage_summary.rs")?;
+    }
+
+    // Copy the report/ directory — needed by validation.rs for ReportType.
+    let report_src_dir = subcrate_src.join("report");
+    let report_dest_dir = embedded_dir.join("core/report");
+    if report_src_dir.is_dir() {
+        std::fs::create_dir_all(&report_dest_dir).context("creating core/report directory")?;
+        for entry in std::fs::read_dir(&report_src_dir).context("reading report directory")? {
+            let entry = entry.context("reading report directory entry")?;
+            let path = entry.path();
+            if let Some(file_name) = path.file_name() {
+                let dest_file = report_dest_dir.join(file_name);
+                let content = std::fs::read_to_string(&path)
+                    .with_context(|| {
+                        format!(
+                            "reading report/{}",
+                            path.file_name().unwrap_or_default().to_string_lossy()
+                        )
+                    })?
+                    .replace("crate::", "crate::embedded::core::");
+                std::fs::write(&dest_file, content).with_context(|| {
+                    format!(
+                        "writing report/{}",
+                        path.file_name().unwrap_or_default().to_string_lossy()
+                    )
+                })?;
+            }
+        }
     }
 
     let query_mod_path = embedded_dir.join("core/query/mod.rs");
@@ -836,7 +915,7 @@ fn copy_r_embedded_modules(rust_src_dir: &Path) -> Result<()> {
 
     std::fs::write(
         embedded_dir.join("core/mod.rs"),
-        "//! Core cli_generator modules.\n\npub mod config;\npub mod describe;\npub mod fetch;\npub mod parse;\npub mod query;\npub mod snippet;\npub mod validation;\n",
+        "//! Core cli_generator modules.\n\npub mod config;\npub mod describe;\npub mod fetch;\npub mod lineage_summary;\npub mod parse;\npub mod query;\npub mod report;\npub mod snippet;\npub mod validation;\n",
     )
     .context("writing embedded/core/mod.rs")?;
 
@@ -1125,7 +1204,7 @@ fn create_quarto_docs(repo_dir: &Path, site: &SiteConfig) -> Result<()> {
     Ok(())
 }
 
-fn stamp_cargo_toml(repo_dir: &Path, site: &SiteConfig) -> Result<()> {
+fn stamp_cargo_toml(repo_dir: &Path, site: &SiteConfig, repo_name: &str) -> Result<()> {
     use sha2::{Digest, Sha256};
 
     let cargo_toml_path = repo_dir.join("Cargo.toml");
@@ -1159,11 +1238,12 @@ fn stamp_cargo_toml(repo_dir: &Path, site: &SiteConfig) -> Result<()> {
 
     // Rename the lib crate to match the SDK package name so maturin builds a
     // `.so` with the correct importable name.
-    let lib_name = format!("{}_cli", site.name.replace('-', "_"));
+    // The scaffolded lib name is based on repo_name (e.g., "goat-test-cli" → "goat_test_cli").
+    let scaffolded_lib_name = repo_name.replace('-', "_");
     let sdk_name = site.resolved_sdk_name();
-    if lib_name != sdk_name {
+    if scaffolded_lib_name != sdk_name {
         text = text.replacen(
-            &format!("[lib]\nname = \"{lib_name}\""),
+            &format!("[lib]\nname = \"{scaffolded_lib_name}\""),
             &format!("[lib]\nname = \"{sdk_name}\""),
             1,
         );

@@ -59,14 +59,52 @@ fn build_search_post_body(
     opts: &SearchOptions,
     search_after: Option<&serde_json::Value>,
 ) -> serde_json::Value {
-    let query_obj = serde_json::json!({
-        "index": index.as_str(),
-        "query": query,
-        "fields": fields,
-        "size": size,
-    });
+    // Build the structured query object — matches SearchQuery field layout.
+    let mut query_obj = serde_json::Map::new();
+    query_obj.insert("index".to_string(), serde_json::json!(index.as_str()));
+
+    if !opts.taxa.is_empty() {
+        query_obj.insert("taxa".to_string(), serde_json::json!(opts.taxa));
+        if opts.taxon_filter_type != "name" {
+            query_obj.insert("taxon_filter_type".to_string(), serde_json::json!(opts.taxon_filter_type));
+        }
+    }
+    if let Some(ref rank) = opts.rank_filter {
+        query_obj.insert("rank".to_string(), serde_json::json!(rank));
+    }
+    if !opts.attributes.is_empty() {
+        query_obj.insert("attributes".to_string(), serde_json::json!(opts.attributes));
+    }
+    // fields: string array is normalised to [{name: …}] by the API deserializer.
+    if !fields.is_empty() {
+        query_obj.insert("fields".to_string(), serde_json::json!(fields));
+    }
+    if !opts.name_classes.is_empty() {
+        query_obj.insert("names".to_string(), serde_json::json!(opts.name_classes));
+    }
+    if !opts.lineage_ranks.is_empty() {
+        query_obj.insert("ranks".to_string(), serde_json::json!(opts.lineage_ranks));
+    }
+    // exclude_* belong in the query object (not params).
+    if !opts.exclude_ancestral.is_empty() {
+        query_obj.insert("exclude_ancestral".to_string(), serde_json::json!(opts.exclude_ancestral));
+    }
+    if !opts.exclude_descendant.is_empty() {
+        query_obj.insert("exclude_descendant".to_string(), serde_json::json!(opts.exclude_descendant));
+    }
+    if !opts.exclude_direct.is_empty() {
+        query_obj.insert("exclude_direct".to_string(), serde_json::json!(opts.exclude_direct));
+    }
+    if !opts.exclude_missing.is_empty() {
+        query_obj.insert("exclude_missing".to_string(), serde_json::json!(opts.exclude_missing));
+    }
+    if !opts.lineage_summary_specs.is_empty() {
+        query_obj.insert("lineage_rank_summary".to_string(), serde_json::json!(opts.lineage_summary_specs));
+    }
 
     let mut params_obj = serde_json::json!({
+        "size": size,
+        "page": opts.page,
         "taxonomy": opts.taxonomy,
         "include_estimates": include_estimates,
         "sort_order": opts.sort_order,
@@ -74,24 +112,11 @@ fn build_search_post_body(
     if let Some(ref sort_by) = opts.sort_by {
         params_obj["sort_by"] = serde_json::Value::String(sort_by.clone());
     }
-    let offset = opts.page.saturating_sub(1) * size;
-    if offset > 0 {
-        params_obj["offset"] = serde_json::json!(offset);
-    }
-    if !opts.exclude_ancestral.is_empty() {
-        params_obj["exclude_ancestral"] = serde_json::json!(opts.exclude_ancestral);
-    }
-    if !opts.exclude_descendant.is_empty() {
-        params_obj["exclude_descendant"] = serde_json::json!(opts.exclude_descendant);
-    }
-    if !opts.exclude_direct.is_empty() {
-        params_obj["exclude_direct"] = serde_json::json!(opts.exclude_direct);
-    }
-    if !opts.exclude_missing.is_empty() {
-        params_obj["exclude_missing"] = serde_json::json!(opts.exclude_missing);
-    }
 
-    let mut body = serde_json::json!({ "query": query_obj, "params": params_obj });
+    let mut body = serde_json::json!({
+        "query": serde_json::Value::Object(query_obj),
+        "params": params_obj,
+    });
     if let Some(sa) = search_after {
         body["search_after"] = sa.clone();
     }
@@ -104,8 +129,21 @@ fn build_search_post_body(
 /// and set only the fields you need.
 #[derive(Debug)]
 pub struct SearchOptions {
+    /// Taxon names for the v3 structured query (e.g. `["Canis lupus"]`).
+    pub taxa: Vec<String>,
+    /// How to apply the taxon filter: `"name"` (default), `"tree"`, or `"lineage"`.
+    pub taxon_filter_type: String,
+    /// Taxonomic rank to restrict results to (e.g. `"species"`).
+    pub rank_filter: Option<String>,
+    /// Structured attribute filters for the v3 POST body.
+    pub attributes: Vec<serde_json::Value>,
     /// Lineage rank columns to include in each result row (e.g. `["genus", "family"]`).
     pub lineage_ranks: Vec<String>,
+    /// Lineage rank summary specs for the POST body (`lineage_rank_summary`).
+    pub lineage_summary_specs: Vec<serde_json::Value>,
+    /// Lineage summary config for `parse_search_with_lineage_summary`.
+    /// `Null` means no lineage summary — use basic `parse_search_json`.
+    pub lineage_summary_config: serde_json::Value,
     /// Taxon name classes to include in results (e.g. `["common_name", "synonym"]`).
     pub name_classes: Vec<String>,
     /// Fields to exclude ancestrally derived estimates for.
@@ -129,7 +167,13 @@ pub struct SearchOptions {
 impl Default for SearchOptions {
     fn default() -> Self {
         Self {
+            taxa: Vec::new(),
+            taxon_filter_type: "name".to_string(),
+            rank_filter: None,
+            attributes: Vec::new(),
             lineage_ranks: Vec::new(),
+            lineage_summary_specs: Vec::new(),
+            lineage_summary_config: serde_json::Value::Null,
             name_classes: Vec::new(),
             exclude_ancestral: Vec::new(),
             exclude_descendant: Vec::new(),
@@ -162,9 +206,15 @@ pub fn search(
         let body = build_search_post_body(index, query, fields, size, include_estimates, opts, None);
         let url = format!("{API_BASE_URL}/v3/search");
         let raw = post_json(&url, &body)?;
-        // parse_search_json returns a JSON flat-records array
-        crate::embedded::core::parse::parse_search_json(&raw)
-            .map_err(|e| anyhow::anyhow!("{e}"))
+        if opts.lineage_summary_config.is_null() {
+            // parse_search_json returns a JSON flat-records array
+            crate::embedded::core::parse::parse_search_json(&raw)
+                .map_err(|e| anyhow::anyhow!("{e}"))
+        } else {
+            let config_json = opts.lineage_summary_config.to_string();
+            crate::embedded::core::parse::parse_search_with_lineage_summary(&raw, &config_json)
+                .map_err(|e| anyhow::anyhow!("{e}"))
+        }
     } else {
         let url = search_url(index, query, fields, size, include_estimates, opts);
         let client = reqwest::blocking::Client::new();
@@ -447,7 +497,13 @@ fn search_all_v3(
             .unwrap_or(0);
         let next_cursor = envelope.get("search_after").cloned();
 
-        let records_json = parse_search_json(&raw).map_err(|e| anyhow::anyhow!("{e}"))?;
+        let records_json = if opts.lineage_summary_config.is_null() {
+            parse_search_json(&raw).map_err(|e| anyhow::anyhow!("{e}"))?
+        } else {
+            let config_json = opts.lineage_summary_config.to_string();
+            crate::embedded::core::parse::parse_search_with_lineage_summary(&raw, &config_json)
+                .map_err(|e| anyhow::anyhow!("{e}"))?
+        };
         let records: Vec<serde_json::Value> =
             serde_json::from_str(&records_json).context("parsing flat records")?;
 

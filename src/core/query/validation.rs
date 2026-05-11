@@ -461,6 +461,7 @@ mod tests {
             queries: None,
             combine_with: CombineStrategy::AND,
             named_queries: None,
+            lineage_rank_summary: None,
         };
         let errors = validate_query(
             &query,
@@ -490,6 +491,7 @@ mod tests {
             queries: None,
             combine_with: CombineStrategy::AND,
             named_queries: None,
+            lineage_rank_summary: None,
         };
         let errors = validate_query(
             &query,
@@ -527,6 +529,7 @@ mod tests {
             queries: None,
             combine_with: CombineStrategy::AND,
             named_queries: None,
+            lineage_rank_summary: None,
         };
         let errors = validate_query(
             &query,
@@ -558,6 +561,7 @@ mod tests {
             queries: None,
             combine_with: CombineStrategy::AND,
             named_queries: None,
+            lineage_rank_summary: None,
         };
         let errors = validate_query(
             &query,
@@ -589,6 +593,7 @@ mod tests {
             queries: None,
             combine_with: CombineStrategy::AND,
             named_queries: None,
+            lineage_rank_summary: None,
         };
         let errors = validate_query(
             &query,
@@ -615,6 +620,7 @@ mod tests {
             queries: None,
             combine_with: CombineStrategy::AND,
             named_queries: None,
+            lineage_rank_summary: None,
         };
         let errors = validate_query(
             &query,
@@ -638,6 +644,7 @@ mod tests {
             queries: None,
             combine_with: CombineStrategy::AND,
             named_queries: None,
+            lineage_rank_summary: None,
         };
         let errors = validate_query(
             &query,
@@ -664,6 +671,7 @@ mod tests {
             queries: None,
             combine_with: CombineStrategy::AND,
             named_queries: None,
+            lineage_rank_summary: None,
         };
         let errors = validate_query(
             &query,
@@ -690,6 +698,7 @@ mod tests {
             queries: None,
             combine_with: CombineStrategy::AND,
             named_queries: None,
+            lineage_rank_summary: None,
         };
         let errors = validate_query(
             &query,
@@ -723,6 +732,7 @@ mod tests {
             queries: None,
             combine_with: CombineStrategy::AND,
             named_queries: None,
+            lineage_rank_summary: None,
         };
         let errors = validate_query(
             &query,
@@ -747,6 +757,7 @@ mod tests {
             queries: None,
             combine_with: CombineStrategy::AND,
             named_queries: None,
+            lineage_rank_summary: None,
         };
         let errors = validate_query(
             &query,
@@ -774,6 +785,7 @@ mod tests {
             queries: None,
             combine_with: CombineStrategy::AND,
             named_queries: None,
+            lineage_rank_summary: None,
         };
         let errors = validate_query(
             &query,
@@ -814,6 +826,7 @@ mod tests {
             queries: None,
             combine_with: CombineStrategy::AND,
             named_queries: None,
+            lineage_rank_summary: None,
         };
         let errors = validate_query(
             &query,
@@ -852,6 +865,7 @@ mod tests {
             queries: None,
             combine_with: CombineStrategy::AND,
             named_queries: None,
+            lineage_rank_summary: None,
         };
         let errors = validate_query(
             &query,
@@ -882,6 +896,7 @@ mod tests {
             queries: None,
             combine_with: CombineStrategy::AND,
             named_queries: None,
+            lineage_rank_summary: None,
         };
         let errors = validate_query(
             &query,
@@ -912,6 +927,7 @@ mod tests {
             queries: None,
             combine_with: CombineStrategy::AND,
             named_queries: None,
+            lineage_rank_summary: None,
         };
         let errors = validate_query(
             &query,
@@ -948,6 +964,7 @@ mod tests {
             queries: None,
             combine_with: CombineStrategy::AND,
             named_queries: None,
+            lineage_rank_summary: None,
         };
         let errors = validate_query(
             &query,
@@ -990,6 +1007,7 @@ mod tests {
             queries: None,
             combine_with: CombineStrategy::AND,
             named_queries: None,
+            lineage_rank_summary: None,
         };
         // The TaxonFilterType is an enum that gets serialized; we test the validation
         let errors = validate_query(
@@ -1028,6 +1046,7 @@ mod tests {
             queries: None,
             combine_with: CombineStrategy::AND,
             named_queries: None,
+            lineage_rank_summary: None,
         };
         let errors = validate_query(
             &query,

@@ -94,6 +94,8 @@ class QueryBuilder:
         self._exclude_descendant: list[str] = []
         self._exclude_direct: list[str] = []
         self._exclude_missing: list[str] = []
+        # Lineage rank summary aggregation specs
+        self._lineage_rank_summary: list[dict[str, Any]] = []
         # QueryParams
         self._size: int = 10
         self._page: int = 1
@@ -219,9 +221,92 @@ class QueryBuilder:
             result.extend(f"{field_name}__{mod}" for mod in mods)
         return result
 
+    def to_flat_records(
+        self,
+        lineage_summary: dict[str, dict[str, str | list[str]]] | None = None,
+        api_base: str = "https://goat.genomehubs.org/api",
+        api_version: str = "v3",
+    ) -> list[dict[str, Any]]:
+        """Fetch results and return flat records, optionally with lineage summary columns.
+
+        Calls :meth:`search`, parses the response, and attaches per-ancestor
+        aggregation columns when ``lineage_summary`` is provided.
+
+        ``lineage_summary`` controls which distributions to attach and how to
+        reduce them.  Its structure is ``{rank: {field: mode_or_modes}}``.
+        Modes:
+
+        - ``"top"`` — most common keyword value
+        - ``"top_n:<N>"`` — top-N values as a list
+        - ``"all"`` — full distribution dict
+        - ``"count"`` — distinct value count
+        - ``"min"`` / ``"max"`` / ``"avg"`` — individual stats
+        - ``"stats"`` — all four stats as ``{rank}_{field}__min`` etc.
+
+        The ``lineage_rank_summary`` specs must have been set on the builder
+        (via :meth:`set_lineage_rank_summary`) so that the API computes the
+        aggregations.
+
+        Args:
+            lineage_summary: Reduction config, or ``None`` to return plain flat
+                records without lineage columns.
+            api_base: Base URL of the API.
+            api_version: API version string (default: ``"v3"``).
+
+        Returns:
+            List of flat record dicts.  Each dict contains the standard
+            identity and attribute columns.  When ``lineage_summary`` is
+            supplied, extra columns such as ``genus__assembly_level`` or
+            ``genus__genome_size__min`` are appended.
+
+        Example::
+
+            records = (
+                QueryBuilder("taxon")
+                .set_taxa(["Canidae"])
+                .set_rank("species")
+                .set_fields(["genome_size", "assembly_level"])
+                .set_lineage_rank_summary([
+                    {"rank": "genus", "fields": ["assembly_level", "genome_size"]},
+                ])
+                .to_flat_records(
+                    lineage_summary={
+                        "genus": {
+                            "assembly_level": "top",
+                            "genome_size": "stats",
+                        }
+                    }
+                )
+            )
+        """
+        import json
+
+        from cli_generator import (
+            parse_search_json as _parse_search_json,
+            parse_search_with_lineage_summary as _parse_search_with_lineage_summary,
+        )
+
+        if lineage_summary is not None:
+            # Build lineage_rank_summary specs from the config keys so the API
+            # returns the aggregation block and auto-includes lineage in results.
+            specs = [{"rank": rank, "fields": list(fields.keys())} for rank, fields in lineage_summary.items()]
+            saved_lrs = self._lineage_rank_summary
+            self._lineage_rank_summary = specs
+            try:
+                raw = self.search(format="json", api_base=api_base, api_version=api_version)
+            finally:
+                self._lineage_rank_summary = saved_lrs
+            data_str = json.dumps(raw) if isinstance(raw, dict) else raw
+            return list(json.loads(_parse_search_with_lineage_summary(data_str, json.dumps(lineage_summary))))
+
+        raw = self.search(format="json", api_base=api_base, api_version=api_version)
+        data_str = json.dumps(raw) if isinstance(raw, dict) else raw
+        return list(json.loads(_parse_search_json(data_str)))
+
     def to_tidy_records(
         self,
         records: list[dict[str, Any]] | str | None = None,
+        lineage_summary: dict[str, dict[str, str | list[str]]] | None = None,
         api_base: str = "https://goat.genomehubs.org/api",
         api_version: str = "v3",
     ) -> list[dict[str, Any]]:
@@ -232,6 +317,12 @@ class QueryBuilder:
         columns (``taxon_id``, ``scientific_name``, ``taxon_rank``, …) present in
         the source record.
 
+        When ``lineage_summary`` is provided and ``records`` is ``None``, the
+        full search response is parsed with
+        :func:`~cli_generator.parse_search_with_lineage_summary` so that
+        lineage summary columns appear as additional tidy rows.  Column naming
+        follows the same convention as :meth:`to_flat_records`.
+
         Explicitly-requested modifier columns (from ``field:modifier`` requests,
         e.g. ``assembly_span__min``) are emitted as separate rows with ``"field"``
         set to ``"{bare}:{modifier}"`` and ``"source"`` as ``None``.
@@ -241,6 +332,9 @@ class QueryBuilder:
         Args:
             records: Flat record dicts, a JSON string of flat records, or ``None``
                 to automatically call :meth:`search` and parse the response.
+            lineage_summary: Reduction config for lineage summary columns (same
+                format as :meth:`to_flat_records`).  Only used when ``records``
+                is ``None``.
             api_base: Base URL of the API (used only when ``records`` is ``None``).
             api_version: API version string (used only when ``records`` is ``None``).
 
@@ -249,13 +343,19 @@ class QueryBuilder:
         """
         import json
 
-        from . import parse_search_json as _parse_search_json
-        from . import to_tidy_records as _to_tidy_records  # FFI call to Rust
+        from cli_generator import (
+            parse_search_json as _parse_search_json,
+            parse_search_with_lineage_summary as _parse_search_with_lineage_summary,
+            to_tidy_records as _to_tidy_records,
+        )
 
         if records is None:
             raw = self.search(format="json", api_base=api_base, api_version=api_version)
             data_str = json.dumps(raw) if isinstance(raw, dict) else raw
-            records_json = _parse_search_json(data_str)
+            if lineage_summary is not None:
+                records_json = _parse_search_with_lineage_summary(data_str, json.dumps(lineage_summary))
+            else:
+                records_json = _parse_search_json(data_str)
         elif isinstance(records, str):
             records_json = records
         else:
@@ -304,6 +404,23 @@ class QueryBuilder:
     def set_ranks(self, ranks: list[str]) -> "QueryBuilder":
         """Set the lineage rank columns to include, e.g. ``["genus", "family"]``."""
         self._ranks = list(ranks)
+        return self
+
+    def set_lineage_rank_summary(
+        self,
+        specs: list[dict[str, Any]],
+    ) -> "QueryBuilder":
+        """Set the per-rank ancestor aggregation specs for a lineage rank summary.
+
+        Each spec must have a ``"rank"`` key and a ``"fields"`` key listing the
+        attribute names to aggregate across species in each ancestor.  The API
+        validates that all field names exist.
+
+        Args:
+            specs: List of rank specs, e.g.
+                ``[{"rank": "genus", "fields": ["assembly_level", "genome_size"]}]``.
+        """
+        self._lineage_rank_summary = [dict(s) for s in specs]
         return self
 
     # ── Exclusion filters (field-level) ──────────────────────────────────────
@@ -457,6 +574,8 @@ class QueryBuilder:
             doc["exclude_direct"] = self._exclude_direct
         if self._exclude_missing:
             doc["exclude_missing"] = self._exclude_missing
+        if self._lineage_rank_summary:
+            doc["lineage_rank_summary"] = self._lineage_rank_summary
 
         return yaml.safe_dump(doc, sort_keys=False)
 

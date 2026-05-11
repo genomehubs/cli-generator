@@ -259,6 +259,26 @@ fn to_tidy_records(records_json: &str) -> String {
     genomehubs_query::to_tidy_records(records_json)
 }
 
+/// Parse a raw genomehubs `/search` JSON response and join lineage summary
+/// aggregations as extra flat columns on every record.
+///
+/// `raw` must be the full API response from a query that included
+/// `lineage_rank_summary`.  `config_json` controls how each field distribution
+/// is reduced to column(s):
+/// ```json
+/// {"genus": {"assembly_level": "top", "genome_size": "stats"}}
+/// ```
+/// Supported modes: `"top"`, `"top_n:<N>"`, `"all"`, `"count"`, `"min"`,
+/// `"max"`, `"avg"`, `"stats"`.
+///
+/// Column naming: `{rank}_{field}` for `top`/`top_n`/`all`; `{rank}_{field}__min`
+/// etc. for named stat modes.
+#[cfg(feature = "extension-module")]
+#[pyfunction]
+fn parse_search_with_lineage_summary(raw: &str, config_json: &str) -> String {
+    genomehubs_query::parse_search_with_lineage_summary(raw, config_json)
+}
+
 /// Parse one page from a `/searchPaginated` response.
 ///
 /// Returns a JSON object with `"records"` (flat, same format as
@@ -415,6 +435,7 @@ fn cli_generator(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(values_only, m)?)?;
     m.add_function(wrap_pyfunction!(annotated_values, m)?)?;
     m.add_function(wrap_pyfunction!(to_tidy_records, m)?)?;
+    m.add_function(wrap_pyfunction!(parse_search_with_lineage_summary, m)?)?;
     m.add_function(wrap_pyfunction!(parse_paginated_json, m)?)?;
     m.add_function(wrap_pyfunction!(parse_batch_json, m)?)?;
     m.add_function(wrap_pyfunction!(parse_record_json, m)?)?;

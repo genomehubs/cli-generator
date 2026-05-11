@@ -69,6 +69,9 @@ annotated_values <- function(records_json, mode, keep_columns_json) .Call(wrap__
 #' Reshape flat records from `parse_search_json` into long/tidy format.
 to_tidy_records <- function(records_json) .Call(wrap__to_tidy_records, records_json)
 
+#' Parse a raw search response and join lineage summary aggregations as flat columns.
+parse_search_with_lineage_summary <- function(raw, config_json) .Call(wrap__parse_search_with_lineage_summary, raw, config_json)
+
 #' Parse one page from a `/searchPaginated` response.
 parse_paginated_json <- function(raw) .Call(wrap__parse_paginated_json, raw)
 

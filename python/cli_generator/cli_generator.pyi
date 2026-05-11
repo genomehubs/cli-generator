@@ -297,6 +297,56 @@ def to_tidy_records(records_json: str) -> str:
     """
     ...
 
+def parse_search_with_lineage_summary(raw: str, config_json: str) -> str:
+    """Parse a raw genomehubs ``/search`` JSON response and join lineage summary
+    aggregations as extra flat columns on every record.
+
+    ``raw`` must be the full API response from a query that included
+    ``lineage_rank_summary``.  The ``lineage_summary`` block produced by the
+    API is automatically located and joined against ``result.ranks`` for each
+    row.
+
+    ``config_json`` is a JSON object controlling how each field's distribution
+    is reduced to one or more flat columns:
+
+    .. code-block:: json
+
+        {
+          "genus": {
+            "assembly_level": "top",
+            "genome_size": "stats",
+            "assembly_date": ["min", "max"]
+          }
+        }
+
+    Supported modes:
+
+    - ``"top"`` — most common keyword value (``null`` for numeric/date)
+    - ``"top_n:<N>"`` — top-N keyword values as a JSON array
+    - ``"all"`` — full distribution object
+    - ``"count"`` — distinct value count
+    - ``"min"`` / ``"max"`` / ``"avg"`` — individual stats fields
+    - ``"stats"`` — shorthand for all four stats (four columns)
+
+    Column naming:
+
+    - ``top`` / ``top_n`` / ``all`` → ``{rank}_{field}``
+    - ``count`` → ``{rank}_{field}__count``
+    - ``min`` / ``max`` / ``avg`` → ``{rank}_{field}__min`` etc.
+    - ``stats`` → ``{rank}_{field}__min``, ``__max``, ``__avg``, ``__count``
+
+    A missing ancestor or a field with no data always produces ``null``.
+
+    Args:
+        raw: Raw JSON string from the ``/search`` endpoint (full response).
+        config_json: JSON object specifying rank → field → mode(s).
+
+    Returns:
+        Compact JSON array string of flat records with lineage summary columns
+        appended.
+    """
+    ...
+
 def parse_paginated_json(raw: str) -> str:
     """Parse one page from a ``/searchPaginated`` API response.
 

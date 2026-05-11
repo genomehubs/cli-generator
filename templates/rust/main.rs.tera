@@ -102,6 +102,15 @@ enum {{ index.name | capitalize }}Commands {
         #[arg(long = "lineage-ranks", value_delimiter = ',')]
         lineage_ranks: Vec<String>,
 
+        /// Compute per-rank aggregate columns: RANK FIELD MODE (repeatable).
+        ///
+        /// One entry per (rank, field) pair. MODE is one of: top, all, stats, count.
+        ///
+        /// Example: --lineage-rank-summary genus assembly_level top
+        ///          --lineage-rank-summary genus genome_size stats
+        #[arg(long = "lineage-rank-summary", num_args = 3, value_names = ["RANK", "FIELD", "MODE"])]
+        lineage_rank_summary: Vec<String>,
+
         /// Taxon name classes to include, comma-separated (e.g. `common_name,synonym`).
         #[arg(long = "name-classes", value_delimiter = ',')]
         name_classes: Vec<String>,
@@ -357,7 +366,7 @@ fn run(cli: Cli) -> anyhow::Result<()> {
     match cli.command {
 {% for index in indexes %}
         Commands::{{ index.name | capitalize }} { subcommand } => match subcommand {
-            {{ index.name | capitalize }}Commands::Search { taxon, taxon_filter, query, filter, exclude, rank, sort, size, page, include_estimates, taxonomy, lineage_ranks, name_classes, url, ui_url, all, max_results, file, no_query_column, suppress_divergence_warnings, describe, verbose, snippet_languages, format, flags } => {
+            {{ index.name | capitalize }}Commands::Search { taxon, taxon_filter, query, filter, exclude, rank, sort, size, page, include_estimates, taxonomy, lineage_ranks, lineage_rank_summary, name_classes, url, ui_url, all, max_results, file, no_query_column, suppress_divergence_warnings, describe, verbose, snippet_languages, format, flags } => {
                 if flags.list_field_groups {
                     for (name, short, desc) in generated::cli_flags::{{ index.name | capitalize }}Flags::list_groups() {
                         match short {
@@ -369,13 +378,21 @@ fn run(cli: Cli) -> anyhow::Result<()> {
                 }
 
                 // Build the taxon clause from --taxon and --taxon-filter.
-                let taxon_clause = taxon.as_deref().map(|t| match taxon_filter {
-                    TaxonFilter::Name     => format!("tax_name({t})"),
-                    TaxonFilter::Tree     => format!("tax_tree({t})"),
-                    TaxonFilter::Lineage  => format!("tax_lineage({t})"),
+                // Also capture components for the v3 structured POST body.
+                let taxon_filter_type_str = match taxon_filter {
+                    TaxonFilter::Name     => "name",
+                    TaxonFilter::Tree     => "tree",
+                    TaxonFilter::Lineage  => "lineage",
+                }.to_string();
+                let taxa_for_post: Vec<String> =
+                    taxon.as_ref().map(|t| vec![t.clone()]).unwrap_or_default();
+                let taxon_clause = taxon.as_deref().map(|t| match taxon_filter_type_str.as_str() {
+                    "tree"    => format!("tax_tree({t})"),
+                    "lineage" => format!("tax_lineage({t})"),
+                    _         => format!("tax_name({t})"),
                 });
 
-                // Convert --filter FIELD OP VALUE triples into expression fragments.
+                // Build filter string fragments (for v2 URL display).
                 let filter_fragments: Vec<String> = filter
                     .chunks(3)
                     .filter_map(|chunk| {
@@ -392,6 +409,19 @@ fn run(cli: Cli) -> anyhow::Result<()> {
                             other             => other,
                         };
                         Some(format!("{}{}{}", chunk[0], op_symbol, chunk[2]))
+                    })
+                    .collect();
+
+                // Build structured attribute objects for the v3 POST body.
+                let structured_attributes: Vec<serde_json::Value> = filter
+                    .chunks(3)
+                    .filter_map(|chunk| {
+                        if chunk.len() < 3 { return None; }
+                        Some(serde_json::json!({
+                            "name":     chunk[0],
+                            "operator": chunk[1],
+                            "value":    chunk[2],
+                        }))
                     })
                     .collect();
 
@@ -439,8 +469,24 @@ fn run(cli: Cli) -> anyhow::Result<()> {
                     },
                 };
 
+                // Warn if --query (raw string) is used in v3 mode — it only affects --url display.
+                if !query.is_empty() && {{ sdk_name }}::cli_meta::API_VERSION == "v3" {
+                    eprintln!("warning: --query raw strings are not supported in the v3 POST body. \
+                               Use --filter FIELD OP VALUE instead. \
+                               The raw string still appears in --url output.");
+                }
+
+                let (lineage_summary_specs, lineage_summary_config) =
+                    parse_lineage_rank_summary_args(&lineage_rank_summary)?;
+
                 let opts = generated::client::SearchOptions {
+                    taxa: taxa_for_post,
+                    taxon_filter_type: taxon_filter_type_str,
+                    rank_filter: rank.clone(),
+                    attributes: structured_attributes,
                     lineage_ranks,
+                    lineage_summary_specs,
+                    lineage_summary_config,
                     name_classes,
                     exclude_ancestral,
                     exclude_descendant,
@@ -1164,3 +1210,36 @@ trait Pipe: Sized {
     }
 }
 impl<T> Pipe for T {}
+
+/// Parse `--lineage-rank-summary` arguments into the two forms needed by the SDK.
+///
+/// args is a flat Vec produced by `num_args = 3`: [rank, field, mode, rank, field, mode, …]
+/// Multiple entries for the same rank are merged into a single spec.
+fn parse_lineage_rank_summary_args(
+    args: &[String],
+) -> anyhow::Result<(Vec<serde_json::Value>, serde_json::Value)> {
+    if args.is_empty() {
+        return Ok((Vec::new(), serde_json::Value::Null));
+    }
+    // Use BTreeMap to preserve insertion order when iterating.
+    let mut fields_per_rank: std::collections::BTreeMap<String, Vec<String>> = std::collections::BTreeMap::new();
+    let mut config: serde_json::Map<String, serde_json::Value> = serde_json::Map::new();
+    for chunk in args.chunks(3) {
+        if chunk.len() < 3 {
+            anyhow::bail!("--lineage-rank-summary: expected groups of 3 (RANK FIELD MODE)");
+        }
+        let (rank, field, mode) = (&chunk[0], &chunk[1], &chunk[2]);
+        fields_per_rank.entry(rank.clone()).or_default().push(field.clone());
+        config
+            .entry(rank.clone())
+            .or_insert_with(|| serde_json::Value::Object(serde_json::Map::new()))
+            .as_object_mut()
+            .expect("config entry is always Object")
+            .insert(field.clone(), serde_json::Value::String(mode.clone()));
+    }
+    let specs: Vec<serde_json::Value> = fields_per_rank
+        .into_iter()
+        .map(|(rank, fields)| serde_json::json!({ "rank": rank, "fields": fields }))
+        .collect();
+    Ok((specs, serde_json::Value::Object(config)))
+}

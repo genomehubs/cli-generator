@@ -189,6 +189,64 @@ pub fn parse_search_json(raw: &str) -> Result<String, String> {
     serde_json::to_string(&rows).map_err(|e| format!("serialisation error: {e}"))
 }
 
+/// Parse a raw genomehubs `/search` JSON response and join lineage summary
+/// aggregations as extra columns on every flat record.
+///
+/// The `raw` string must be the full API response, including the optional
+/// `lineage_summary` block that is returned when `lineage_rank_summary` was
+/// included in the query.
+///
+/// `config_json` controls how each field distribution is reduced to column(s).
+/// Format: `{"rank": {"field": "mode_or_array_of_modes"}}`.
+///
+/// Supported modes:
+/// - `"top"` — most common keyword value, or `null` for numeric/date
+/// - `"top_n:<N>"` — top-N values as a JSON array
+/// - `"all"` — full distribution object
+/// - `"count"` — distinct value count
+/// - `"min"` / `"max"` / `"avg"` — individual stats
+/// - `"stats"` — all four stats as separate `__min`, `__max`, `__avg`, `__count` columns
+///
+/// Column naming:
+/// - `top` / `top_n` / `all` → `{rank}_{field}`
+/// - `count` → `{rank}_{field}__count`
+/// - `min` / `max` / `avg` / `stats` → `{rank}_{field}__min` etc.
+///
+/// Returns a compact JSON array string on success.
+pub fn parse_search_with_lineage_summary(raw: &str, config_json: &str) -> Result<String, String> {
+    use crate::lineage_summary::{attach_lineage_summary_columns, parse_summary_config};
+
+    let config = parse_summary_config(config_json)?;
+    let envelope: serde_json::Value =
+        serde_json::from_str(raw).map_err(|e| format!("invalid JSON: {e}"))?;
+
+    let lineage_summary = envelope
+        .get("lineage_summary")
+        .cloned()
+        .unwrap_or_else(|| serde_json::json!({}));
+
+    let results = match envelope.get("results").and_then(|v| v.as_array()) {
+        Some(arr) => arr,
+        None => return Ok("[]".to_string()),
+    };
+
+    let rows: Vec<serde_json::Value> = results
+        .iter()
+        .map(|entry| {
+            let result = entry.get("result").unwrap_or(&serde_json::Value::Null);
+            let index = entry
+                .get("index")
+                .and_then(|v| v.as_str())
+                .unwrap_or("taxon");
+            let mut row = flatten_result(result, index);
+            attach_lineage_summary_columns(&mut row, result, &lineage_summary, &config);
+            serde_json::Value::Object(row)
+        })
+        .collect();
+
+    serde_json::to_string(&rows).map_err(|e| format!("serialisation error: {e}"))
+}
+
 /// Flatten one `result` object into a single row map.
 fn flatten_result(result: &serde_json::Value, index: &str) -> FlatRow {
     let mut row: FlatRow = serde_json::Map::new();

@@ -149,6 +149,7 @@ pub fn parse_url_params(
         queries: None,
         combine_with: Default::default(),
         named_queries: None,
+        lineage_rank_summary: None,
     };
 
     Ok((query, qp))

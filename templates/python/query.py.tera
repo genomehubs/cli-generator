@@ -92,6 +92,7 @@ class QueryBuilder:
         # Pre-parsed YAML overrides (set by from_v2_url; take priority in to_*_yaml)
         self._query_yaml_override: str | None = None
         self._params_yaml_override: str | None = None
+        self._lineage_rank_summary: list[dict[str, Any]] = []
 
     # ── Identifiers ──────────────────────────────────────────────────────────
 
@@ -181,7 +182,9 @@ class QueryBuilder:
         return self
 
     def to_tidy_records(
-        self, records: "list[dict[str, Any]] | str | None" = None
+        self,
+        records: "list[dict[str, Any]] | str | None" = None,
+        lineage_summary: "dict[str, Any] | None" = None,
     ) -> "list[dict[str, Any]]":
         """Reshape flat records from ``parse_search_json`` into long/tidy format.
 
@@ -193,23 +196,64 @@ class QueryBuilder:
         Args:
             records: Flat record dicts, a JSON string of flat records, or ``None``
                 to automatically call :meth:`search` and parse the response.
+            lineage_summary: Lineage summary aggregation result dict, used to
+                attach per-rank ancestor columns before tidying.
 
         Returns:
             List of dicts in tidy (long) format.
         """
         import json
 
-        from . import to_tidy_records as _to_tidy_records  # FFI call to Rust
-
         if records is None:
-            raw = self.search()
-            data_str = json.dumps(raw) if isinstance(raw, dict) else raw
-            records_json = _ext.parse_search_json(data_str)
+            flat = self.to_flat_records(lineage_summary=lineage_summary)
+            records_json = json.dumps(flat)
         elif isinstance(records, str):
             records_json = records
         else:
             records_json = json.dumps(records)
-        return list(json.loads(_to_tidy_records(records_json)))
+        return list(json.loads(_ext.to_tidy_records(records_json)))
+
+    def to_flat_records(
+        self,
+        lineage_summary: "dict[str, Any] | None" = None,
+    ) -> "list[dict[str, Any]]":
+        """Fetch results and return as flat records, optionally joining lineage summary columns.
+
+        If ``lineage_summary`` is provided the response is parsed with
+        ``parse_search_with_lineage_summary`` so that per-rank ancestor
+        distribution columns are joined onto each record.  Column naming
+        follows the convention described in
+        :meth:`parse_search_with_lineage_summary`.
+
+        Args:
+            lineage_summary: Reduction config dict, e.g.
+                ``{"genus": {"assembly_level": "top", "genome_size": "stats"}}``.
+                When ``None``, only standard search columns are returned.
+
+        Returns:
+            List of flat record dicts.
+        """
+        import json
+
+        if lineage_summary is not None:
+            # Build lineage_rank_summary specs from the config keys so the API
+            # returns the aggregation block and auto-includes lineage in results.
+            specs = [
+                {"rank": rank, "fields": list(fields.keys())}
+                for rank, fields in lineage_summary.items()
+            ]
+            saved_lrs = self._lineage_rank_summary
+            self._lineage_rank_summary = specs
+            try:
+                raw = self.search()
+            finally:
+                self._lineage_rank_summary = saved_lrs
+            raw_str = json.dumps(raw) if isinstance(raw, dict) else raw
+            config_json = json.dumps(lineage_summary)
+            return list(json.loads(_ext.parse_search_with_lineage_summary(raw_str, config_json)))
+        raw = self.search()
+        raw_str = json.dumps(raw) if isinstance(raw, dict) else raw
+        return list(json.loads(_ext.parse_search_json(raw_str)))
 
     def set_names(self, name_classes: list[str]) -> "QueryBuilder":
         """Set the name classes to include, e.g. ``["scientific_name"]``."""
@@ -219,6 +263,20 @@ class QueryBuilder:
     def set_ranks(self, ranks: list[str]) -> "QueryBuilder":
         """Set the lineage rank columns to include."""
         self._ranks = list(ranks)
+        return self
+
+    def set_lineage_rank_summary(
+        self,
+        specs: list[dict[str, Any]],
+    ) -> "QueryBuilder":
+        """Set lineage rank summary aggregation specs.
+
+        Each spec is a dict with ``"rank"`` and ``"fields"`` keys.
+
+        Args:
+            specs: List of rank-summary spec dicts.
+        """
+        self._lineage_rank_summary = [dict(s) for s in specs]
         return self
 
     # ── Exclusion filters (field-level) ──────────────────────────────────────
@@ -356,6 +414,8 @@ class QueryBuilder:
             doc["excludeDirect"] = self._exclude_direct
         if self._exclude_missing:
             doc["excludeMissing"] = self._exclude_missing
+        if self._lineage_rank_summary:
+            doc["lineage_rank_summary"] = self._lineage_rank_summary
         return yaml.safe_dump(doc, sort_keys=False)
 
     def to_params_yaml(self) -> str:

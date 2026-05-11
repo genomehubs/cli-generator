@@ -1,0 +1,61 @@
+# Multi-stage Dockerfile for genomehubs-api (Rust/Axum)
+# Build stage: compile the Rust API binary
+FROM rust:1.81-bookworm AS builder
+WORKDIR /build
+
+# Ensure we have a recent stable toolchain (some dependencies require edition2024 support).
+# Do not use nightly — install/activate the latest stable via rustup if needed.
+RUN set -eux; \
+    if ! command -v rustup >/dev/null 2>&1; then \
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable; \
+    fi; \
+    export PATH="/root/.cargo/bin:$PATH"; \
+    rustup toolchain install stable || true; \
+    rustup default stable; \
+    rustc --version; \
+    cargo --version
+
+ENV PATH="/root/.cargo/bin:${PATH}"
+
+# Copy workspace and crate manifests
+COPY Cargo.toml Cargo.lock ./
+COPY crates/ ./crates/
+COPY src/ ./src/
+COPY templates/ ./templates/
+
+# Build the API binary in release mode
+RUN cargo build -p genomehubs-api --release
+
+# Runtime stage: minimal container with just the binary
+FROM debian:bookworm-slim
+WORKDIR /app
+
+# Install runtime dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy binary from builder
+COPY --from=builder /build/target/release/genomehubs-api /app/genomehubs-api
+
+# Create a directory for config mounting
+RUN mkdir -p /app/config
+
+# Create non-root user for security
+RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
+USER appuser
+
+# Expose API port
+EXPOSE 3000
+
+# Health check (optional; adjust timeout/interval as needed)
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:3000/api/v3/status || exit 1
+
+# Run the API
+# Configuration can be provided via:
+# - ES_INTEGRATION_CONFIG env var (path to TOML file)
+# - Mounted volume at /app/config/es_integration.toml
+# - Default environment variables (see documentation)
+CMD ["/app/genomehubs-api"]
