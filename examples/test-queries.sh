@@ -1,5 +1,5 @@
 #!/bin/bash
-# Test script for search, countBatch endpoints with multi-query OR/AND combining
+# Test script for search, count/batch endpoints with multi-query OR/AND combining
 # Run the API server first: cargo run -p genomehubs-api
 # Then run this script: bash examples/test-queries.sh
 
@@ -39,22 +39,22 @@ curl -s -X POST "$API/search" \
 echo ""
 echo "=== Count Single Queries ==="
 echo "Counting Mammalia, Aves, Reptilia separately..."
-curl -s -X POST "$API/countBatch" \
+curl -s -X POST "$API/count/batch" \
   -H "Content-Type: application/yaml" \
   -d @examples/batch/query-batch-count-single.yaml | jq '.results[] | {taxa: .hits}'
 
 echo ""
 echo "=== Count Multi-Query Combining ==="
 echo "Counting: (Mammalia OR Aves) total, Mammalia alone, Aves alone..."
-curl -s -X POST "$API/countBatch" \
+curl -s -X POST "$API/count/batch" \
   -H "Content-Type: application/yaml" \
   -d @examples/batch/query-batch-count-multi.yaml | jq '.results[] | {count: .count}'
 
 echo ""
 echo "=== SearchBatch (Parallel Independent Searches) ==="
 echo "Searching for Mammalia, Aves, Reptilia in parallel..."
-# For searchBatch, wrap each query YAML in a query_yaml field
-curl -s -X POST "$API/searchBatch" \
+# For search/batch, wrap each query YAML in a query_yaml field
+curl -s -X POST "$API/search/batch" \
   -H "Content-Type: application/json" \
   -d '{
     "queries": [

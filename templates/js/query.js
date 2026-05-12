@@ -27,6 +27,8 @@ const {
   parse_histogram_json: _parseHistogramJson,
   parse_lookup_json: _parseLookupJson,
   parse_paginated_json: _parsePaginatedJson,
+  parse_phylopic_json: _parsePhylopicJson,
+  parse_phylopic_batch_json: _parsePhylopicBatchJson,
   parse_record_json: _parseRecordJson,
   parse_search_json: _parseSearchJson,
   parse_tree_json: _parseTreeJson,
@@ -907,7 +909,7 @@ class QueryBuilder {
     const data = JSON.parse(
       _parseBatchJson(
         JSON.stringify(
-          await this._postJson(`${apiBase}/v3/searchBatch`, {
+          await this._postJson(`${apiBase}/v3/search/batch`, {
             searches: queries.map((q) => ({
               query_yaml: q.toQueryYaml(),
               params_yaml: q.toParamsYaml(),
@@ -932,7 +934,7 @@ class QueryBuilder {
     const data = JSON.parse(
       _parseBatchJson(
         JSON.stringify(
-          await this._postJson(`${apiBase}/v3/countBatch`, {
+          await this._postJson(`${apiBase}/v3/count/batch`, {
             searches: queries.map((q) => ({
               query_yaml: q.toQueryYaml(),
               params_yaml: q.toParamsYaml(),
@@ -997,6 +999,122 @@ class QueryBuilder {
       throw new Error(`API request failed: ${resp.status} ${resp.statusText}`);
 
     return JSON.parse(await resp.text());
+  }
+
+  /**
+   * Fetch a PhyloPic silhouette record for a single taxon.
+   * @param {string} taxonId - NCBI taxon ID (required)
+   * @param {string} [taxonomy="ncbi"] - Taxonomy name
+   * @returns {Promise<object|null>} - Silhouette record, or null when none found
+   */
+  async phylopic(taxonId, taxonomy = "ncbi") {
+    if (!taxonId) throw new Error("phylopic() requires a taxonId parameter");
+
+    const params = new URLSearchParams({ taxon_id: taxonId, taxonomy });
+    const url = `${API_BASE}/v3/phylopic?${params.toString()}`;
+
+    const resp = await fetch(url, { method: "GET" });
+    if (!resp.ok)
+      throw new Error(`API request failed: ${resp.status} ${resp.statusText}`);
+
+    return JSON.parse(_parsePhylopicJson(await resp.text()));
+  }
+
+  /**
+   * Fetch PhyloPic silhouette records for multiple taxa in one request.
+   * @param {string[]} taxonIds - List of NCBI taxon IDs (1–200, required)
+   * @param {string} [taxonomy="ncbi"] - Taxonomy name
+   * @returns {Promise<object[]>} - Array of silhouette records each with a taxonId field
+   */
+  async phylopicBatch(taxonIds, taxonomy = "ncbi") {
+    if (!taxonIds || taxonIds.length === 0)
+      throw new Error("phylopicBatch() requires at least one taxon ID");
+    if (taxonIds.length > 200)
+      throw new Error(
+        "phylopicBatch() accepts at most 200 taxon IDs per request",
+      );
+
+    const resp = await fetch(`${API_BASE}/v3/phylopic/batch`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ taxon_ids: taxonIds, taxonomy }),
+    });
+    if (!resp.ok)
+      throw new Error(`API request failed: ${resp.status} ${resp.statusText}`);
+
+    return JSON.parse(_parsePhylopicBatchJson(await resp.text()));
+  }
+
+  /**
+   * Fetch aggregated metadata in a single request.
+   * @returns {Promise<object>} - Object with indices, taxonomies, ranks, and versions keys
+   */
+  async metadata() {
+    const resp = await fetch(`${API_BASE}/v3/metadata`, { method: "GET" });
+    if (!resp.ok)
+      throw new Error(`API request failed: ${resp.status} ${resp.statusText}`);
+    const data = await resp.json();
+    return Object.fromEntries(
+      ["indices", "taxonomies", "ranks", "versions"]
+        .filter((k) => k in data)
+        .map((k) => [k, data[k]]),
+    );
+  }
+
+  /**
+   * Return the list of available index names.
+   * @returns {Promise<string[]>} - Array of index name strings
+   */
+  async indices() {
+    const resp = await fetch(`${API_BASE}/v3/metadata/indices`, {
+      method: "GET",
+    });
+    if (!resp.ok)
+      throw new Error(`API request failed: ${resp.status} ${resp.statusText}`);
+    return (await resp.json()).indices ?? [];
+  }
+
+  /**
+   * Return field metadata for the given index.
+   * @param {string} index - Index name, e.g. "taxon" or "assembly" (required)
+   * @returns {Promise<object>} - Object mapping field name to field metadata
+   */
+  async fields(index) {
+    if (!index) throw new Error("fields() requires an index parameter");
+    const params = new URLSearchParams({ result: index });
+    const resp = await fetch(
+      `${API_BASE}/v3/metadata/fields?${params.toString()}`,
+      { method: "GET" },
+    );
+    if (!resp.ok)
+      throw new Error(`API request failed: ${resp.status} ${resp.statusText}`);
+    return (await resp.json()).fields ?? {};
+  }
+
+  /**
+   * Return the list of available taxonomy names.
+   * @returns {Promise<string[]>} - Array of taxonomy name strings
+   */
+  async taxonomies() {
+    const resp = await fetch(`${API_BASE}/v3/metadata/taxonomies`, {
+      method: "GET",
+    });
+    if (!resp.ok)
+      throw new Error(`API request failed: ${resp.status} ${resp.statusText}`);
+    return (await resp.json()).taxonomies ?? [];
+  }
+
+  /**
+   * Return the list of recognised taxonomic rank names.
+   * @returns {Promise<string[]>} - Array of rank name strings
+   */
+  async ranks() {
+    const resp = await fetch(`${API_BASE}/v3/metadata/ranks`, {
+      method: "GET",
+    });
+    if (!resp.ok)
+      throw new Error(`API request failed: ${resp.status} ${resp.statusText}`);
+    return (await resp.json()).ranks ?? [];
   }
 
   /**

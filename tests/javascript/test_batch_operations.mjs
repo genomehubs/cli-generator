@@ -49,7 +49,7 @@ class StubQueryBuilder {
     if (queries.length > 100) {
       throw new Error("maximum 100 searches per batch request");
     }
-    const url = `${apiBase}/v3/searchBatch`;
+    const url = `${apiBase}/v3/search/batch`;
     const payload = {
       searches: queries.map((q) => ({
         query_yaml: q.to_query_yaml(),
@@ -69,7 +69,7 @@ class StubQueryBuilder {
     if (queries.length > 100) {
       throw new Error("maximum 100 searches per batch request");
     }
-    const url = `${apiBase}/v3/countBatch`;
+    const url = `${apiBase}/v3/count/batch`;
     const payload = {
       searches: queries.map((q) => ({
         query_yaml: q.to_query_yaml(),
@@ -216,7 +216,7 @@ describe("Batch Operations - Search Batch HTTP", async () => {
     try {
       await qb.search_batch(queries, "http://localhost:3000/api");
       assert.ok(
-        capturedUrl.includes("http://localhost:3000/api/v3/searchBatch"),
+        capturedUrl.includes("http://localhost:3000/api/v3/search/batch"),
       );
     } finally {
       global.fetch = originalFetch;
@@ -321,7 +321,7 @@ describe("Batch Operations - Count Batch HTTP", async () => {
     try {
       await qb.count_batch(queries, "http://localhost:3000/api");
       assert.ok(
-        capturedUrl.includes("http://localhost:3000/api/v3/countBatch"),
+        capturedUrl.includes("http://localhost:3000/api/v3/count/batch"),
       );
     } finally {
       global.fetch = originalFetch;

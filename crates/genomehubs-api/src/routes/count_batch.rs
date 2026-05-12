@@ -219,14 +219,13 @@ async fn resolve_lineage_taxon_ids(
 
 #[utoipa::path(
     post,
-    path = "/api/v3/countBatch",
+    path = "/api/v3/count/batch",
     request_body = CountBatchRequest,
     responses(
         (status = 200, description = "Batch count results", body = CountBatchResponse)
     )
 )]
-#[allow(non_snake_case)]
-pub async fn post_countBatch(
+pub async fn post_count_batch(
     Extension(state): Extension<Arc<AppState>>,
     Json(req): Json<CountBatchRequest>,
 ) -> Json<CountBatchResponse> {

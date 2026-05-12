@@ -31,7 +31,7 @@ pub async fn get_taxonomies(
 
 #[utoipa::path(
     get,
-    path = "/api/v3/taxonomies",
+    path = "/api/v3/metadata/taxonomies",
     responses(
         (status = 200, description = "Cached taxonomies", body = TaxonomiesResponse)
     )

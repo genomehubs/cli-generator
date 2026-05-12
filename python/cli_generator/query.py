@@ -1064,7 +1064,7 @@ class QueryBuilder:
         if len(queries) > 100:
             raise ValueError("maximum 100 searches per batch request")
 
-        url = f"{api_base}/{api_version}/searchBatch"
+        url = f"{api_base}/{api_version}/search/batch"
         payload = {
             "searches": [
                 {
@@ -1118,7 +1118,7 @@ class QueryBuilder:
         if len(queries) > 100:
             raise ValueError("maximum 100 searches per batch request")
 
-        url = f"{api_base}/{api_version}/countBatch"
+        url = f"{api_base}/{api_version}/count/batch"
         payload = {
             "searches": [
                 {
@@ -1217,6 +1217,203 @@ class QueryBuilder:
         with urllib.request.urlopen(url) as resp:
             body_text = resp.read().decode("utf-8")
         return json.loads(parse_lookup_json(body_text))
+
+    def phylopic(
+        self,
+        taxon_id: str,
+        taxonomy: str = "ncbi",
+        api_base: str = "https://goat.genomehubs.org/api",
+        api_version: str = "v3",
+    ) -> Any:
+        """Fetch a PhyloPic silhouette record for a single taxon.
+
+        Queries the ``/phylopic`` proxy endpoint, which resolves the best
+        available silhouette from PhyloPic for the given NCBI taxon ID and
+        returns it with URL, attribution, and licence metadata.
+
+        Args:
+            taxon_id: NCBI taxon ID (required).
+            taxonomy: Taxonomy name (default: ``"ncbi"``).
+            api_base: Base URL of the API.
+            api_version: API version string (default: ``"v3"``).
+
+        Returns:
+            Silhouette record dict with ``uuid``, ``raster_url``, ``vector_url``,
+            ``ratio``, ``attribution``, ``license``, ``license_url``,
+            ``source_url``, and ``source`` fields, or ``None`` when no
+            silhouette is found.
+        """
+        if not taxon_id:
+            raise ValueError("phylopic() requires a non-empty taxon_id")
+        import json
+        import urllib.parse
+        import urllib.request
+
+        from . import parse_phylopic_json
+
+        params = urllib.parse.urlencode({"taxon_id": taxon_id, "taxonomy": taxonomy})
+        url = f"{api_base}/{api_version}/phylopic?{params}"
+        with urllib.request.urlopen(url) as resp:
+            body_text = resp.read().decode("utf-8")
+        return json.loads(parse_phylopic_json(body_text))
+
+    def phylopic_batch(
+        self,
+        taxon_ids: list[str],
+        taxonomy: str = "ncbi",
+        api_base: str = "https://goat.genomehubs.org/api",
+        api_version: str = "v3",
+    ) -> list[Any]:
+        """Fetch PhyloPic silhouette records for multiple taxa in one request.
+
+        POSTs up to 200 NCBI taxon IDs to the ``/phylopic/batch`` proxy
+        endpoint.  Results are returned as a flat list; taxa with no
+        silhouette in PhyloPic are omitted.
+
+        Args:
+            taxon_ids: List of NCBI taxon IDs (1–200, required).
+            taxonomy: Taxonomy name (default: ``"ncbi"``).
+            api_base: Base URL of the API.
+            api_version: API version string (default: ``"v3"``).
+
+        Returns:
+            List of silhouette record dicts, each including a ``taxon_id`` key
+            plus the same fields as :meth:`phylopic`.
+        """
+        if not taxon_ids:
+            raise ValueError("phylopic_batch() requires at least one taxon_id")
+        if len(taxon_ids) > 200:
+            raise ValueError("phylopic_batch() accepts at most 200 taxon IDs per request")
+        import json
+        import urllib.request
+
+        from . import parse_phylopic_batch_json
+
+        url = f"{api_base}/{api_version}/phylopic/batch"
+        payload = json.dumps({"taxon_ids": taxon_ids, "taxonomy": taxonomy}).encode("utf-8")
+        req = urllib.request.Request(
+            url,
+            data=payload,
+            headers={"Content-Type": "application/json"},
+        )
+        with urllib.request.urlopen(req) as resp:
+            body_text = resp.read().decode("utf-8")
+        return json.loads(parse_phylopic_batch_json(body_text))
+
+    def metadata(
+        self,
+        api_base: str = "https://goat.genomehubs.org/api",
+        api_version: str = "v3",
+    ) -> dict:
+        """Fetch aggregated metadata in a single request.
+
+        Returns indices, taxonomies, ranks, and versions without requiring
+        separate calls to each sub-endpoint.
+
+        Args:
+            api_base: Base URL of the API.
+            api_version: API version string (default: ``"v3"``).
+
+        Returns:
+            Dict with ``indices``, ``taxonomies``, ``ranks``, and ``versions`` keys.
+        """
+        import json
+        import urllib.request
+
+        url = f"{api_base}/{api_version}/metadata"
+        with urllib.request.urlopen(url) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+        return {k: data[k] for k in ("indices", "taxonomies", "ranks", "versions") if k in data}
+
+    def indices(
+        self,
+        api_base: str = "https://goat.genomehubs.org/api",
+        api_version: str = "v3",
+    ) -> list[str]:
+        """Return the list of available index names.
+
+        Args:
+            api_base: Base URL of the API.
+            api_version: API version string (default: ``"v3"``).
+
+        Returns:
+            List of index name strings, e.g. ``["taxon", "assembly", "sample"]``.
+        """
+        import json
+        import urllib.request
+
+        url = f"{api_base}/{api_version}/metadata/indices"
+        with urllib.request.urlopen(url) as resp:
+            return json.loads(resp.read().decode("utf-8")).get("indices", [])
+
+    def fields(
+        self,
+        index: str,
+        api_base: str = "https://goat.genomehubs.org/api",
+        api_version: str = "v3",
+    ) -> dict:
+        """Return field metadata for the given index.
+
+        Args:
+            index: Index name, e.g. ``"taxon"`` or ``"assembly"`` (required).
+            api_base: Base URL of the API.
+            api_version: API version string (default: ``"v3"``).
+
+        Returns:
+            Dict mapping field name to field metadata dict.
+        """
+        import json
+        import urllib.parse
+        import urllib.request
+
+        if not index:
+            raise ValueError("fields() requires a non-empty index name")
+        params = urllib.parse.urlencode({"result": index})
+        url = f"{api_base}/{api_version}/metadata/fields?{params}"
+        with urllib.request.urlopen(url) as resp:
+            return json.loads(resp.read().decode("utf-8")).get("fields", {})
+
+    def taxonomies(
+        self,
+        api_base: str = "https://goat.genomehubs.org/api",
+        api_version: str = "v3",
+    ) -> list[str]:
+        """Return the list of available taxonomy names.
+
+        Args:
+            api_base: Base URL of the API.
+            api_version: API version string (default: ``"v3"``).
+
+        Returns:
+            List of taxonomy name strings, e.g. ``["ncbi", "ott"]``.
+        """
+        import json
+        import urllib.request
+
+        url = f"{api_base}/{api_version}/metadata/taxonomies"
+        with urllib.request.urlopen(url) as resp:
+            return json.loads(resp.read().decode("utf-8")).get("taxonomies", [])
+
+    def ranks(
+        self,
+        api_base: str = "https://goat.genomehubs.org/api",
+        api_version: str = "v3",
+    ) -> list[str]:
+        """Return the list of recognised taxonomic rank names.
+
+        Args:
+            api_base: Base URL of the API.
+            api_version: API version string (default: ``"v3"``).
+
+        Returns:
+            List of rank name strings, e.g. ``["species", "genus", ...]``.
+        """
+        import json
+        import urllib.request
+
+        url = f"{api_base}/{api_version}/metadata/ranks"
+        with urllib.request.urlopen(url) as resp:
+            return json.loads(resp.read().decode("utf-8")).get("ranks", [])
 
     def summary(
         self,

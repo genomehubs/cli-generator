@@ -2087,3 +2087,142 @@ mod report_parse_tests {
         assert_eq!(rows[0]["descendant_count"], 63);
     }
 }
+
+// ── PhyloPic parse functions ──────────────────────────────────────────────────
+
+/// Extract the `phylopic` record from a raw `/phylopic` API response.
+///
+/// Returns the `phylopic` object as a JSON string, or `"null"` if the response
+/// contains no silhouette (e.g. taxon not found in PhyloPic).
+///
+/// # Errors
+/// Returns `Err` if the input is not valid JSON.
+///
+/// # Example
+/// ```
+/// use genomehubs_query::parse::parse_phylopic_json;
+///
+/// let json = r#"{"status":{"hits":1},"phylopic":{"uuid":"abc","raster_url":"https://example.com/a.png","vector_url":null,"ratio":1.5,"attribution":null,"license":"CC0-1.0","license_url":"https://creativecommons.org/publicdomain/zero/1.0/","source_url":"https://phylopic.org/image/abc","source":"Primary"}}"#;
+/// let result = parse_phylopic_json(json).unwrap();
+/// let record: serde_json::Value = serde_json::from_str(&result).unwrap();
+/// assert_eq!(record["uuid"], "abc");
+/// assert_eq!(record["license"], "CC0-1.0");
+/// ```
+pub fn parse_phylopic_json(raw: &str) -> Result<String, String> {
+    let envelope: serde_json::Value =
+        serde_json::from_str(raw).map_err(|e| format!("invalid JSON: {e}"))?;
+
+    let record = envelope
+        .get("phylopic")
+        .cloned()
+        .unwrap_or(serde_json::Value::Null);
+    serde_json::to_string(&record).map_err(|e| format!("serialisation error: {e}"))
+}
+
+/// Flatten the `results` map from a raw `/phylopic/batch` API response.
+///
+/// Converts the `results` object (keyed by taxon ID) into a JSON array where
+/// each element is the resolved silhouette record with an added `taxon_id` field.
+/// Taxa that returned no silhouette are omitted.
+///
+/// # Errors
+/// Returns `Err` if the input is not valid JSON or the `results` field is absent.
+///
+/// # Example
+/// ```
+/// use genomehubs_query::parse::parse_phylopic_batch_json;
+///
+/// let json = r#"{"status":{"hits":1},"results":{"9606":{"status":{"hits":1},"phylopic":{"uuid":"abc","raster_url":"https://example.com/a.png","vector_url":null,"ratio":1.5,"attribution":null,"license":"CC0-1.0","license_url":"https://creativecommons.org/publicdomain/zero/1.0/","source_url":"https://phylopic.org/image/abc","source":"Primary"}}}}"#;
+/// let result = parse_phylopic_batch_json(json).unwrap();
+/// let records: Vec<serde_json::Value> = serde_json::from_str(&result).unwrap();
+/// assert_eq!(records.len(), 1);
+/// assert_eq!(records[0]["taxon_id"], "9606");
+/// assert_eq!(records[0]["uuid"], "abc");
+/// ```
+pub fn parse_phylopic_batch_json(raw: &str) -> Result<String, String> {
+    let envelope: serde_json::Value =
+        serde_json::from_str(raw).map_err(|e| format!("invalid JSON: {e}"))?;
+
+    let results = envelope
+        .get("results")
+        .and_then(|r| r.as_object())
+        .ok_or_else(|| "missing 'results' object in response".to_string())?;
+
+    let records: Vec<serde_json::Value> = results
+        .iter()
+        .filter_map(|(taxon_id, entry)| {
+            let phylopic = entry.get("phylopic")?;
+            if phylopic.is_null() {
+                return None;
+            }
+            let mut record = phylopic.clone();
+            if let Some(obj) = record.as_object_mut() {
+                obj.insert(
+                    "taxon_id".to_string(),
+                    serde_json::Value::String(taxon_id.clone()),
+                );
+            }
+            Some(record)
+        })
+        .collect();
+
+    serde_json::to_string(&records).map_err(|e| format!("serialisation error: {e}"))
+}
+
+#[cfg(test)]
+mod phylopic_parse_tests {
+    use super::*;
+
+    const PHYLOPIC_RECORD: &str = r#"{"uuid":"abc123","raster_url":"https://example.com/a.png","vector_url":null,"ratio":1.5,"attribution":null,"license":"CC0-1.0","license_url":"https://creativecommons.org/publicdomain/zero/1.0/","source_url":"https://phylopic.org/image/abc123","source":"Primary"}"#;
+
+    #[test]
+    fn parse_phylopic_json_extracts_phylopic_field() {
+        let raw = format!(r#"{{"status":{{"hits":1}},"phylopic":{PHYLOPIC_RECORD}}}"#);
+        let out = parse_phylopic_json(&raw).unwrap();
+        let record: serde_json::Value = serde_json::from_str(&out).unwrap();
+        assert_eq!(record["uuid"], "abc123");
+        assert_eq!(record["license"], "CC0-1.0");
+        assert_eq!(record["source"], "Primary");
+    }
+
+    #[test]
+    fn parse_phylopic_json_returns_null_when_no_phylopic() {
+        let raw = r#"{"status":{"hits":0}}"#;
+        let out = parse_phylopic_json(raw).unwrap();
+        assert_eq!(out, "null");
+    }
+
+    #[test]
+    fn parse_phylopic_json_errors_on_invalid_json() {
+        assert!(parse_phylopic_json("not json").is_err());
+    }
+
+    #[test]
+    fn parse_phylopic_batch_json_flattens_results_with_taxon_id() {
+        let raw = format!(
+            r#"{{"status":{{"hits":1}},"results":{{"9606":{{"status":{{"hits":1}},"phylopic":{PHYLOPIC_RECORD}}}}}}}"#
+        );
+        let out = parse_phylopic_batch_json(&raw).unwrap();
+        let records: Vec<serde_json::Value> = serde_json::from_str(&out).unwrap();
+        assert_eq!(records.len(), 1);
+        assert_eq!(records[0]["taxon_id"], "9606");
+        assert_eq!(records[0]["uuid"], "abc123");
+    }
+
+    #[test]
+    fn parse_phylopic_batch_json_omits_entries_with_null_phylopic() {
+        let raw = format!(
+            r#"{{"status":{{"hits":1}},"results":{{"9606":{{"status":{{"hits":1}},"phylopic":{PHYLOPIC_RECORD}}},"99999":{{"status":{{"hits":0}},"phylopic":null}}}}}}"#
+        );
+        let out = parse_phylopic_batch_json(&raw).unwrap();
+        let records: Vec<serde_json::Value> = serde_json::from_str(&out).unwrap();
+        assert_eq!(records.len(), 1);
+        assert_eq!(records[0]["taxon_id"], "9606");
+    }
+
+    #[test]
+    fn parse_phylopic_batch_json_errors_on_missing_results() {
+        let raw = r#"{"status":{"hits":0}}"#;
+        assert!(parse_phylopic_batch_json(raw).is_err());
+    }
+}

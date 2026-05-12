@@ -6,18 +6,21 @@ use crate::AppState;
 
 const SUPPORTED_ENDPOINTS: &[&str] = &[
     "/status",
-    "/resultFields",
-    "/taxonomies",
-    "/taxonomicRanks",
-    "/indices",
+    "/metadata",
+    "/metadata/indices",
+    "/metadata/fields",
+    "/metadata/ranks",
+    "/metadata/taxonomies",
     "/count",
-    "/countBatch",
+    "/count/batch",
     "/search",
-    "/searchBatch",
+    "/search/batch",
     "/record",
     "/lookup",
     "/summary",
     "/report",
+    "/phylopic",
+    "/phylopic/batch",
 ];
 
 #[derive(Serialize, utoipa::ToSchema)]

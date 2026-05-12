@@ -433,7 +433,7 @@ pub async fn post_search(
         || query
             .lineage_rank_summary
             .as_ref()
-            .map_or(false, |s| !s.is_empty());
+            .is_some_and(|s| !s.is_empty());
 
     // Transform raw ES response to API response format expected by parse_search_json
     let es_hits = raw

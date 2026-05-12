@@ -287,6 +287,26 @@ fn parse_lookup_json(raw: &str) -> String {
     }
 }
 
+/// Extract the `phylopic` record from a raw `/phylopic` API response.
+#[extendr]
+fn parse_phylopic_json(raw: &str) -> String {
+    use crate::embedded::core::parse;
+    match parse::parse_phylopic_json(raw) {
+        Ok(record) => record,
+        Err(e) => format!("{{\"error\": \"{}\"}}", e),
+    }
+}
+
+/// Flatten the `results` map from a raw `/phylopic/batch` API response.
+#[extendr]
+fn parse_phylopic_batch_json(raw: &str) -> String {
+    use crate::embedded::core::parse;
+    match parse::parse_phylopic_batch_json(raw) {
+        Ok(records) => records,
+        Err(e) => format!("{{\"error\": \"{}\"}}", e),
+    }
+}
+
 /// Extract histogram buckets from a raw `/report` JSON response.
 #[extendr]
 fn parse_histogram_json(raw: &str) -> String {
@@ -352,6 +372,8 @@ extendr_module! {
     fn parse_paginated_json;
     fn parse_record_json;
     fn parse_lookup_json;
+    fn parse_phylopic_json;
+    fn parse_phylopic_batch_json;
     fn parse_histogram_json;
     fn parse_tree_json;
     fn query_yaml_from_url_params;

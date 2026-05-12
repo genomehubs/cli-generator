@@ -1,8 +1,8 @@
-## searchBatch: multiple independent searches
+## search/batch: multiple independent searches
 ## Returns separate result sets for each query
 ## Usage:
-##   POST /api/v3/searchBatch
-##   curl -X POST http://localhost:3000/api/v3/searchBatch \
+##   POST /api/v3/search/batch
+##   curl -X POST http://localhost:3000/api/v3/search/batch \
 ##     -H "Content-Type: application/json" \
 ##     -d '{"queries": [{"query_yaml": "'$(cat examples/query-batch-search.yaml | sed -n '1,10p' | tr '\n' '\\n')'"}, ...]}'
 

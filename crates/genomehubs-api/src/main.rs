@@ -1,5 +1,5 @@
 use axum::{routing::get, Extension, Router};
-use std::{fs, net::SocketAddr, path::PathBuf, sync::Arc};
+use std::{fs, net::SocketAddr, path::PathBuf, sync::Arc, time::Duration};
 // use toml;
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
@@ -8,6 +8,7 @@ mod es_client;
 mod es_metadata;
 mod fetch_records;
 mod index_name;
+mod phylopic_client;
 mod report;
 mod routes;
 
@@ -22,19 +23,23 @@ pub struct AppState {
     pub index_suffix: Option<String>,
     pub cache: Option<std::sync::Arc<tokio::sync::RwLock<es_metadata::MetadataCache>>>,
     pub client: reqwest::Client,
+    pub phylopic_cache: Arc<tokio::sync::RwLock<phylopic_client::PhylopicCache>>,
 }
 
 #[derive(OpenApi)]
 #[openapi(
     paths(
         routes::count::post_count,
-        routes::count_batch::post_countBatch,
+        routes::count_batch::post_count_batch,
         routes::lookup::get_lookup,
+        routes::metadata::get_metadata,
+        routes::phylopic::get_phylopic,
+        routes::phylopic::post_phylopic_batch,
         routes::record::get_record,
         routes::report::post_report,
         routes::result_fields::get_result_fields,
         routes::search::post_search,
-        routes::search_batch::post_searchBatch,
+        routes::search_batch::post_search_batch,
         routes::status::get_status,
         routes::summary::get_summary,
         routes::taxonomies::get_taxonomies_openapi,
@@ -50,11 +55,17 @@ pub struct AppState {
         routes::count_batch::CountBatchResultItem,
         routes::lookup::LookupResponse,
         routes::lookup::LookupResult,
+        phylopic_client::PhylopicRecord,
+        phylopic_client::PhylopicSource,
+        routes::phylopic::PhylopicBatchRequest,
+        routes::phylopic::PhylopicBatchResponse,
+        routes::phylopic::PhylopicResponse,
         routes::record::RecordItem,
         routes::record::RecordQuery,
         routes::record::RecordResponse,
         routes::report::ReportRequest,
         routes::report::ReportResponse,
+        routes::metadata::MetadataResponse,
         routes::result_fields::FieldMeta,
         routes::result_fields::ResultFieldsResponse,
         routes::search::SearchRequest,
@@ -152,6 +163,20 @@ async fn main() {
     // Create the HTTP client once and share it across handlers
     let client = reqwest::Client::new();
 
+    // Fetch initial PhyloPic build number (best-effort; 0 means "unknown").
+    let initial_build = phylopic_client::fetch_current_build(&client)
+        .await
+        .unwrap_or_else(|e| {
+            tracing::warn!(error = %e, "could not fetch initial PhyloPic build — starting at 0");
+            0
+        });
+
+    let phylopic_cache = Arc::new(tokio::sync::RwLock::new(phylopic_client::PhylopicCache {
+        current_build: initial_build,
+        ..Default::default()
+    }));
+    tracing::info!(build = initial_build, "PhyloPic build fetched");
+
     let state = Arc::new(AppState {
         es_base: es_base.clone(),
         default_result: default_result.clone(),
@@ -164,10 +189,32 @@ async fn main() {
             es_metadata::MetadataCache::default(),
         ))),
         client: client.clone(),
+        phylopic_cache: phylopic_cache.clone(),
     });
 
     // Log effective configuration for debugging
     tracing::info!(file = %cfg_path.display(), base_url = %es_base, default_result = %default_result, index_suffix = ?index_suffix, "ES config");
+
+    // Spawn background task to refresh the PhyloPic build number every 24 hours.
+    let refresh_client = client.clone();
+    let refresh_cache = phylopic_cache.clone();
+    tokio::spawn(async move {
+        let mut interval = tokio::time::interval(Duration::from_secs(86_400));
+        interval.tick().await; // skip the immediate first tick
+        loop {
+            interval.tick().await;
+            match phylopic_client::fetch_current_build(&refresh_client).await {
+                Ok(build) => {
+                    let mut cache = refresh_cache.write().await;
+                    cache.current_build = build;
+                    tracing::info!(build, "PhyloPic build number refreshed");
+                }
+                Err(e) => {
+                    tracing::warn!(error = %e, "PhyloPic build refresh failed; retaining current build");
+                }
+            }
+        }
+    });
 
     let openapi = ApiDoc::openapi();
 
@@ -184,38 +231,47 @@ async fn main() {
             axum::routing::post(routes::count::post_count),
         )
         .route(
-            "/api/v3/countBatch",
-            axum::routing::post(routes::count_batch::post_countBatch),
+            "/api/v3/count/batch",
+            axum::routing::post(routes::count_batch::post_count_batch),
         )
-        .route("/api/v3/indices", get(routes::indices::get_indices))
         .route("/api/v3/lookup", get(routes::lookup::get_lookup))
+        .route("/api/v3/metadata", get(routes::metadata::get_metadata))
+        .route(
+            "/api/v3/metadata/indices",
+            get(routes::indices::get_indices),
+        )
+        .route(
+            "/api/v3/metadata/fields",
+            get(routes::result_fields::get_result_fields),
+        )
+        .route(
+            "/api/v3/metadata/ranks",
+            get(routes::taxonomic_ranks::get_taxonomic_ranks),
+        )
+        .route(
+            "/api/v3/metadata/taxonomies",
+            get(routes::taxonomies::get_taxonomies),
+        )
+        .route("/api/v3/phylopic", get(routes::phylopic::get_phylopic))
+        .route(
+            "/api/v3/phylopic/batch",
+            axum::routing::post(routes::phylopic::post_phylopic_batch),
+        )
         .route("/api/v3/record", get(routes::record::get_record))
         .route(
             "/api/v3/report",
             axum::routing::post(routes::report::post_report),
         )
         .route(
-            "/api/v3/resultFields",
-            get(routes::result_fields::get_result_fields),
-        )
-        .route(
             "/api/v3/search",
             axum::routing::post(routes::search::post_search),
         )
         .route(
-            "/api/v3/searchBatch",
-            axum::routing::post(routes::search_batch::post_searchBatch),
+            "/api/v3/search/batch",
+            axum::routing::post(routes::search_batch::post_search_batch),
         )
         .route("/api/v3/status", get(routes::status::get_status))
         .route("/api/v3/summary", get(routes::summary::get_summary))
-        .route(
-            "/api/v3/taxonomicRanks",
-            get(routes::taxonomic_ranks::get_taxonomic_ranks),
-        )
-        .route(
-            "/api/v3/taxonomies",
-            get(routes::taxonomies::get_taxonomies),
-        )
         .layer(Extension(state))
         .merge(SwaggerUi::new("/swagger-ui").url("/api-doc/openapi.json", openapi.clone()));
 
@@ -264,6 +320,9 @@ mod tests {
             index_suffix: Some("--ncbi--goat--2021.10.15".to_string()),
             cache: Some(std::sync::Arc::new(tokio::sync::RwLock::new(cache))),
             client: reqwest::Client::new(),
+            phylopic_cache: Arc::new(tokio::sync::RwLock::new(
+                phylopic_client::PhylopicCache::default(),
+            )),
         });
 
         // status
@@ -286,6 +345,14 @@ mod tests {
         let Json(idx) = routes::indices::get_indices(Extension(state.clone())).await;
         assert!(idx.status.success);
         assert!(idx.indices.contains(&"attributes".to_string()));
+
+        // metadata (aggregated)
+        let Json(meta) = routes::metadata::get_metadata(Extension(state.clone())).await;
+        assert!(meta.status.success);
+        assert!(meta.indices.contains(&"taxon".to_string()));
+        assert!(meta.taxonomies.contains(&"ncbi".to_string()));
+        assert!(meta.ranks.contains(&"species".to_string()));
+        assert_eq!(meta.versions, vec!["2021.10.15".to_string()]);
 
         // resultFields
         let q = Query(routes::result_fields::ResultFieldsQuery {

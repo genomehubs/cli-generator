@@ -218,14 +218,13 @@ async fn resolve_lineage_taxon_ids(
 
 #[utoipa::path(
     post,
-    path = "/api/v3/searchBatch",
+    path = "/api/v3/search/batch",
     request_body = SearchBatchRequest,
     responses(
         (status = 200, description = "Batch search results", body = SearchBatchResponse)
     )
 )]
-#[allow(non_snake_case)]
-pub async fn post_searchBatch(
+pub async fn post_search_batch(
     Extension(state): Extension<Arc<AppState>>,
     Json(req): Json<SearchBatchRequest>,
 ) -> Json<SearchBatchResponse> {

@@ -1,202 +1,340 @@
-# Phase XX: Metadata Endpoint Methods
+# Phase XX: API URL Restructuring + Metadata Endpoint Methods
 
-**Status:** Design capture (not sequenced into ordered phases yet)
-**Rationale:** Discovery/introspection endpoints useful for programmatic SDK use but not required for core query workflows
-**Priority:** Post-6h nice-to-have; unblock before any "build a UI on top of the SDK" use case
-**Depends on:** Phase 6b (v3 SDK migration complete)
-
----
-
-## Overview
-
-The v3 API exposes four metadata endpoints that return information about the API itself — what indices exist, what fields are available, what taxonomies are loaded, what ranks are recognised. None of these are currently surfaced as SDK methods or CLI subcommands.
-
-They are pure GET requests with no query body, returning stable JSON that changes only when the API schema is updated. This makes them excellent candidates for client-side caching.
+**Status:** Design capture — ready to implement, pre-v3-launch blocking
+**Rationale:** Align all batch endpoints to the `/<resource>/batch` pattern established by phylopic; rationalise metadata endpoint names to lowercase, RESTful paths; surface metadata as SDK methods.
+**Priority:** Must complete before v3 API is declared stable. Breaking changes are acceptable — there are already many v2→v3 breaks.
+**Depends on:** Phase 14 (PhyloPic proxy, done) — establishes the `/<resource>/batch` pattern.
 
 ---
 
-## Endpoints
+## Part A: URL Renaming
 
-| Endpoint          | Method | Returns                                                   | SDK method name        |
-| ----------------- | ------ | --------------------------------------------------------- | ---------------------- |
-| `/indices`        | GET    | List of available index names                             | `indices()`            |
-| `/resultFields`   | GET    | Field metadata per index (name, type, units, description) | `result_fields(index)` |
-| `/taxonomies`     | GET    | List of available taxonomy names                          | `taxonomies()`         |
-| `/taxonomicRanks` | GET    | List of recognised taxonomic rank names                   | `taxonomic_ranks()`    |
+### A1. Batch endpoint alignment
 
-These are read-only, index-independent (except `/resultFields` which is filtered by index). They have no query or params YAML — the full response is the API's self-description.
+Phylopic correctly uses `/phylopic` + `/phylopic/batch`. Count and search still use the old camelCase suffix style. Align them.
+
+| Current URL           | New URL                | HTTP method |
+| --------------------- | ---------------------- | ----------- |
+| `/api/v3/countBatch`  | `/api/v3/count/batch`  | POST        |
+| `/api/v3/searchBatch` | `/api/v3/search/batch` | POST        |
+
+No change to `/api/v3/count` or `/api/v3/search` (single-query endpoints stay flat).
+
+### A2. Metadata endpoint rationalisation
+
+All metadata endpoints move under a `/metadata/` prefix. This groups them visually in API docs, makes the URL structure self-documenting, and enables the bare `/metadata` endpoint as a one-stop init call (see below).
+
+| Current URL              | New URL                       | HTTP method | Notes                           |
+| ------------------------ | ----------------------------- | ----------- | ------------------------------- |
+| `/api/v3/indices`        | `/api/v3/metadata/indices`    | GET         | List of index names             |
+| `/api/v3/resultFields`   | `/api/v3/metadata/fields`     | GET         | `?result=taxon` param unchanged |
+| `/api/v3/taxonomies`     | `/api/v3/metadata/taxonomies` | GET         | List of taxonomy names          |
+| `/api/v3/taxonomicRanks` | `/api/v3/metadata/ranks`      | GET         | Drops camelCase                 |
+| _(new)_                  | `/api/v3/metadata`            | GET         | Aggregated response (see below) |
+
+**Recommendation: bare `/metadata`** — Return a single JSON object containing the three non-parameterised resources:
+
+```json
+{ "indices": ["taxon","assembly","sample"], "taxonomies": ["ncbi","ott"], "ranks": ["species","genus",...] }
+```
+
+Fields are intentionally excluded: they require a `?result=<index>` qualifier so cannot be returned without parameters. The bare `/metadata` call gives clients everything needed to populate UI dropdowns or validate SDK inputs in a single round-trip. This is distinct from `/status` (which reports instance health/capability) — `/metadata` reports schema, not state.
+
+Implement this as a new `metadata.rs` route handler that calls the three sub-handlers and assembles the response. Do not aggregate fields here.
+
+### A3. Assessment: should `/lookup` move under `/search`?
+
+**Recommendation: keep `/lookup` at base level.**
+
+Rationale: `/lookup` is a name-resolution service — given a taxon name string, return matching taxon IDs and display names. It is used as a prerequisite for `/search`, `/count`, `/report`, and `/record` equally. Nesting it under `/search` would imply its output is search-like (it isn't — it returns ID resolution candidates, not records) and would mislead clients that need it before a `/count` or `/report` call.
+
+`/search/lookup` would also be anomalous: `/search` is a POST that queries records; nesting a GET resolution endpoint under it breaks the single-resource-per-path pattern. If the name is wrong, `/resolve` would be more accurate — but that is a pure rename with no structural benefit and a bigger migration cost.
+
+**Decision: no change to `/lookup`.**
 
 ---
 
-## Implementation
+## Part B: Metadata SDK methods (formerly the whole scope of this doc)
 
-### 1. Rust transport helpers
+Surface the five metadata endpoints as SDK methods across all three languages. Part A (URL renames) is a prerequisite.
 
-Add to `crates/genomehubs-query/src/` a new file `meta.rs`:
+---
+
+## Complete Touchpoint Inventory
+
+### Rust API (`crates/genomehubs-api/`)
+
+#### Route files to rename/move
+
+| Current file                     | Action                                                                                                                        |
+| -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `src/routes/countBatch.rs`       | Rename to `count_batch.rs`; update `path` to `/api/v3/count/batch`; rename handler `post_countBatch` → `post_count_batch`     |
+| `src/routes/searchBatch.rs`      | Rename to `search_batch.rs`; update `path` to `/api/v3/search/batch`; rename handler `post_searchBatch` → `post_search_batch` |
+| `src/routes/indices.rs`          | Update `path` annotation to `/api/v3/metadata/indices`                                                                        |
+| `src/routes/result_fields.rs`    | Update `path` annotation to `/api/v3/metadata/fields`                                                                         |
+| `src/routes/taxonomies.rs`       | Update `path` annotation to `/api/v3/metadata/taxonomies`                                                                     |
+| `src/routes/taxonomic_ranks.rs`  | Update `path` annotation to `/api/v3/metadata/ranks`                                                                          |
+| _(new)_ `src/routes/metadata.rs` | New handler for `GET /api/v3/metadata`; aggregates indices + taxonomies + ranks                                               |
+
+#### `src/routes/mod.rs`
+
+- Remove `#[path = "countBatch.rs"] pub mod count_batch;` → `pub mod count_batch;`
+- Remove `#[path = "searchBatch.rs"] pub mod search_batch;` → `pub mod search_batch;`
+- Add `pub mod metadata;`
+
+#### `src/main.rs`
+
+Route registration — 8 changes:
 
 ```rust
-//! Thin helpers that fetch metadata endpoints and return raw JSON strings.
-//! These are blocking (matching the rest of the SDK transport pattern).
+// Before:
+.route("/api/v3/countBatch", axum::routing::post(routes::count_batch::post_countBatch))
+.route("/api/v3/searchBatch", axum::routing::post(routes::search_batch::post_searchBatch))
+.route("/api/v3/indices", get(routes::indices::get_indices))
+.route("/api/v3/resultFields", get(routes::result_fields::get_result_fields))
+.route("/api/v3/taxonomies", get(routes::taxonomies::get_taxonomies))
+.route("/api/v3/taxonomicRanks", get(routes::taxonomic_ranks::get_taxonomic_ranks))
 
-use std::io::Read;
-
-/// Fetch the list of available indices from `{api_base}/v3/indices`.
-pub fn fetch_indices(api_base: &str) -> Result<String, String> { ... }
-
-/// Fetch field metadata for a given index from `{api_base}/v3/resultFields?result={index}`.
-pub fn fetch_result_fields(api_base: &str, index: &str) -> Result<String, String> { ... }
-
-/// Fetch the list of available taxonomies from `{api_base}/v3/taxonomies`.
-pub fn fetch_taxonomies(api_base: &str) -> Result<String, String> { ... }
-
-/// Fetch the list of taxonomic ranks from `{api_base}/v3/taxonomicRanks`.
-pub fn fetch_taxonomic_ranks(api_base: &str) -> Result<String, String> { ... }
+// After:
+.route("/api/v3/count/batch", axum::routing::post(routes::count_batch::post_count_batch))
+.route("/api/v3/search/batch", axum::routing::post(routes::search_batch::post_search_batch))
+.route("/api/v3/metadata", get(routes::metadata::get_metadata))
+.route("/api/v3/metadata/indices", get(routes::indices::get_indices))
+.route("/api/v3/metadata/fields", get(routes::result_fields::get_result_fields))
+.route("/api/v3/metadata/taxonomies", get(routes::taxonomies::get_taxonomies))
+.route("/api/v3/metadata/ranks", get(routes::taxonomic_ranks::get_taxonomic_ranks))
 ```
 
-All functions return `Result<String, String>` (raw JSON or error string) following the same pattern as `parse_*` functions.
+Handler use statements — update `post_countBatch` → `post_count_batch`, `post_searchBatch` → `post_search_batch`.
 
-**PyO3 exposure in `src/lib.rs`:**
+#### `src/routes/status.rs`
+
+The `SUPPORTED_PATHS` array — 6 entries change:
 
 ```rust
-#[pyfunction]
-fn fetch_indices(api_base: &str) -> PyResult<String> { ... }
+// Before:
+"/countBatch",
+"/searchBatch",
+"/indices",
+"/resultFields",
+"/taxonomies",
+"/taxonomicRanks",
 
-#[pyfunction]
-fn fetch_result_fields(api_base: &str, index: &str) -> PyResult<String> { ... }
-
-#[pyfunction]
-fn fetch_taxonomies(api_base: &str) -> PyResult<String> { ... }
-
-#[pyfunction]
-fn fetch_taxonomic_ranks(api_base: &str) -> PyResult<String> { ... }
+// After:
+"/count/batch",
+"/search/batch",
+"/metadata",
+"/metadata/indices",
+"/metadata/fields",
+"/metadata/taxonomies",
+"/metadata/ranks",
 ```
-
-**R extendr exposure in `templates/r/lib.rs.tera` and `extendr-wrappers.R.tera`** — same pattern as `parse_*` functions.
-
-**WASM exposure in `crates/genomehubs-query/src/lib.rs`** — `#[wasm_bindgen]` wrappers.
-
-> **Note:** These are blocking HTTP calls in the Rust helpers. For Python and R that is fine (both use blocking HTTP throughout). For JS/WASM the pattern needs an `async` wrapper (these endpoints are already called with `fetch` in the JS template directly where needed).
 
 ---
 
-### 2. Python SDK methods
+### SDK Templates
 
-Add to `python/cli_generator/query.py` and `templates/python/query.py.tera` — as **standalone functions** on the module, not `QueryBuilder` methods, since they are index-independent (except `result_fields`):
+#### `templates/python/query.py.tera`
+
+| Method           | Current URL fragment | New URL fragment  |
+| ---------------- | -------------------- | ----------------- |
+| `search_batch()` | `v3/searchBatch`     | `v3/search/batch` |
+| `count_batch()`  | `v3/countBatch`      | `v3/count/batch`  |
+
+#### `templates/js/query.js`
+
+| Method          | Current URL fragment | New URL fragment  |
+| --------------- | -------------------- | ----------------- |
+| `searchBatch()` | `v3/searchBatch`     | `v3/search/batch` |
+| `countBatch()`  | `v3/countBatch`      | `v3/count/batch`  |
+
+#### `templates/r/query.R`
+
+| Method           | Current URL fragment | New URL fragment  |
+| ---------------- | -------------------- | ----------------- |
+| `search_batch()` | `v3/searchBatch`     | `v3/search/batch` |
+| `count_batch()`  | `v3/countBatch`      | `v3/count/batch`  |
+
+#### `templates/rust/client.rs.tera`
+
+Not directly affected (CLI uses `/v3/search` and `/v3/count` single-query endpoints, not batch).
+
+---
+
+### Live Python SDK (`python/cli_generator/query.py`)
+
+Mirror the template changes exactly:
+
+| Method           | Line (approx) | Change                         |
+| ---------------- | ------------- | ------------------------------ |
+| `search_batch()` | ~1067         | `searchBatch` → `search/batch` |
+| `count_batch()`  | ~1121         | `countBatch` → `count/batch`   |
+
+---
+
+### Tests
+
+#### Python (`tests/python/`)
+
+| File                        | What to update                                                                                                                 |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `test_batch_operations.py`  | URL assertion strings: `v3/searchBatch` → `v3/search/batch`, `v3/countBatch` → `v3/count/batch` (lines 92, 109, 173, 219, 324) |
+| `test_batch_integration.py` | Test docstrings and any hardcoded URL strings                                                                                  |
+| `test_sdk_parity.py`        | No change — method names unchanged, only URLs change                                                                           |
+
+> **Note:** SDK method names (`search_batch`, `searchBatch`, `count_batch`, `countBatch`) do NOT change — only the URL paths they call change.
+
+#### JavaScript (`tests/javascript/`)
+
+| File                         | What to update                                                                                                 |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `test_batch_operations.mjs`  | URL strings: `v3/searchBatch` → `v3/search/batch`, `v3/countBatch` → `v3/count/batch` (lines 52, 72, 219, 324) |
+| `test_batch_integration.mjs` | Test description strings only (method calls unchanged)                                                         |
+
+#### R (`tests/r/`)
+
+| File                       | What to update         |
+| -------------------------- | ---------------------- |
+| `test_batch_integration.R` | Test descriptions only |
+
+#### Rust integration (`tests/api_endpoints.rs`)
+
+URL strings at lines 343, 412, 446, 487, 563 and surrounding:
+
+- `v3/searchBatch` → `v3/search/batch`
+- `v3/countBatch` → `v3/count/batch`
+- `v3/indices` → `v3/metadata/indices`
+- `v3/resultFields` → `v3/metadata/fields`
+- `v3/taxonomies` → `v3/metadata/taxonomies`
+- `v3/taxonomicRanks` → `v3/metadata/ranks`
+- File header comment (line 1)
+
+---
+
+### Examples / Scripts
+
+| File                                           | What to update                                                                                                                                     |
+| ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `examples/test-queries.sh`                     | curl URL strings: `$API/countBatch` → `$API/count/batch`, `$API/searchBatch` → `$API/search/batch`, `$API/indices` → `$API/metadata/indices`, etc. |
+| `examples/batch/query-batch-search.yaml`       | Header comment URLs                                                                                                                                |
+| `examples/batch/query-batch-count-multi.yaml`  | Header comment URLs                                                                                                                                |
+| `examples/batch/query-batch-count-single.yaml` | Header comment URLs                                                                                                                                |
+
+---
+
+### Documentation
+
+#### `templates/docs/reference/query-builder.qmd.tera`
+
+- curl examples for `search_batch` / `count_batch`: replace URL strings
+- curl examples for all four metadata methods: update to `/metadata/...` paths
+- Add `metadata()` method section
+
+#### `docs/resultfields-implementation-guide.md`
+
+All occurrences of `resultFields` in URL contexts → `metadata/fields` (many; bulk replace).
+
+#### `docs/api-audit-executive-summary.md`
+
+All old URL references → new paths.
+
+#### `GETTING_STARTED.md`
+
+`resultFields` reference (line ~351) → `metadata/fields`.
+
+---
+
+## Part B: Metadata SDK methods
+
+The five metadata endpoints (after Part A renames):
+
+| URL                                        | Returns                             | SDK method      | Rust fn name       |
+| ------------------------------------------ | ----------------------------------- | --------------- | ------------------ |
+| `GET /api/v3/metadata`                     | `{indices, taxonomies, ranks}` dict | `metadata()`    | `fetch_metadata`   |
+| `GET /api/v3/metadata/indices`             | `["taxon","assembly","sample"]`     | `indices()`     | `fetch_indices`    |
+| `GET /api/v3/metadata/fields?result=taxon` | field metadata dict                 | `fields(index)` | `fetch_fields`     |
+| `GET /api/v3/metadata/taxonomies`          | `["ncbi","ott",...]`                | `taxonomies()`  | `fetch_taxonomies` |
+| `GET /api/v3/metadata/ranks`               | `["species","genus",...]`           | `ranks()`       | `fetch_ranks`      |
+
+SDK method names are intentionally short (`fields`, `ranks`) — they live on `QueryBuilder` so context is clear. In JavaScript they are camelCase where needed: `fields(index)`, `ranks()`.
+
+### B1. Rust core (`crates/genomehubs-query/src/meta.rs` — new file)
+
+Five `pub fn` helpers returning `Result<String, String>` (raw JSON). Blocking HTTP, matching existing transport pattern.
+
+```rust
+pub fn fetch_metadata(api_base: &str, api_version: &str) -> Result<String, String>
+pub fn fetch_indices(api_base: &str, api_version: &str) -> Result<String, String>
+pub fn fetch_fields(api_base: &str, api_version: &str, index: &str) -> Result<String, String>
+pub fn fetch_taxonomies(api_base: &str, api_version: &str) -> Result<String, String>
+pub fn fetch_ranks(api_base: &str, api_version: &str) -> Result<String, String>
+```
+
+### B2. PyO3 / WASM / extendr exposure
+
+Follow the 6-touchpoint checklist (AGENTS.md):
+
+1. `src/lib.rs` — PyO3 wrappers + `add_function` registration
+2. `templates/rust/lib.rs.tera` — mirror wrappers
+3. `src/commands/new.rs` — `patch_python_init` imports + `__all__`
+4. `python/cli_generator/cli_generator.pyi` — stubs
+5. `python/cli_generator/__init__.py` — imports + `__all__`
+6. `crates/genomehubs-query/src/lib.rs` — WASM `#[wasm_bindgen]` exports
+7. `templates/r/lib.rs.tera` + `extendr-wrappers.R.tera` — extendr bindings
+
+### B3. SDK methods (all three languages)
+
+**Python** (`python/cli_generator/query.py` + `templates/python/query.py.tera`):
 
 ```python
-def indices(api_base: str = "https://goat.genomehubs.org/api") -> list[str]:
-    """Return the list of available indices from the API."""
-    ...
-
-def result_fields(
-    index: str,
-    api_base: str = "https://goat.genomehubs.org/api",
-) -> dict[str, Any]:
-    """Return field metadata for the given index."""
-    ...
-
-def taxonomies(api_base: str = "https://goat.genomehubs.org/api") -> list[str]:
-    """Return the list of available taxonomies."""
-    ...
-
-def taxonomic_ranks(api_base: str = "https://goat.genomehubs.org/api") -> list[str]:
-    """Return the list of recognised taxonomic ranks."""
-    ...
+def metadata(self, api_base=..., api_version=...) -> dict
+def indices(self, api_base=..., api_version=...) -> list[str]
+def fields(self, index: str, api_base=..., api_version=...) -> dict
+def taxonomies(self, api_base=..., api_version=...) -> list[str]
+def ranks(self, api_base=..., api_version=...) -> list[str]
 ```
 
-`result_fields` is also useful as a `QueryBuilder` method (`qb.result_fields()`) since it naturally scopes to the builder's index.
+**JavaScript** (`templates/js/query.js`): async instance methods. Names: `metadata()`, `indices()`, `fields(index)`, `taxonomies()`, `ranks()`.
 
----
+**R** (`templates/r/query.R`): R6 public methods. Names: `metadata()`, `indices()`, `fields(index)`, `taxonomies()`, `ranks()`.
 
-### 3. R SDK methods
+**R extendr wrappers** (`templates/r/extendr-wrappers.R.tera` + `templates/r/lib.rs.tera`): five `.Call` wrappers.
 
-Add as R6 public methods on `QueryBuilder` for `result_fields` (index-scoped), and as package-level functions for the others:
+### B4. Parity tests
 
-```r
-# Package-level functions
-goat_indices <- function(api_base = NULL) { ... }
-goat_taxonomies <- function(api_base = NULL) { ... }
-goat_taxonomic_ranks <- function(api_base = NULL) { ... }
-
-# QueryBuilder method
-qb$result_fields()
-```
-
----
-
-### 4. JS SDK methods
-
-Add as async static methods on `QueryBuilder` and as module-level exports:
-
-```js
-// Static methods (index-independent)
-static async indices(apiBase = API_BASE) { ... }
-static async taxonomies(apiBase = API_BASE) { ... }
-static async taxonomicRanks(apiBase = API_BASE) { ... }
-
-// Instance method (index-scoped)
-async resultFields(apiBase = API_BASE) { ... }
-```
-
----
-
-### 5. CLI subcommands (generated CLI)
-
-Add global (non-index-specific) subcommands to the generated CLI `main.rs.tera`:
-
-```
-goat-cli indices
-goat-cli taxonomies
-goat-cli taxonomic-ranks
-goat-cli result-fields --index taxon
-```
-
-These print JSON to stdout. No per-index nesting required since they are not index operations.
-
----
-
-### 6. Caching
-
-All four endpoints return data that is stable for the lifetime of a running API instance. The SDK should cache results in memory for the session:
-
-**Python:**
+Add five entries to `CANONICAL_METHODS` in `tests/python/test_sdk_parity.py`:
 
 ```python
-_METADATA_CACHE: dict[str, Any] = {}
-
-def _cached_get(url: str) -> Any:
-    if url not in _METADATA_CACHE:
-        _METADATA_CACHE[url] = json.loads(urllib.request.urlopen(url).read())
-    return _METADATA_CACHE[url]
+"metadata": {"params": [], "python_name": "metadata", "js_name": "metadata", "r_name": "metadata"},
+"indices": {"params": [], "python_name": "indices", "js_name": "indices", "r_name": "indices"},
+"fields": {"params": ["index"], "python_name": "fields", "js_name": "fields", "r_name": "fields"},
+"taxonomies": {"params": [], "python_name": "taxonomies", "js_name": "taxonomies", "r_name": "taxonomies"},
+"ranks": {"params": [], "python_name": "ranks", "js_name": "ranks", "r_name": "ranks"},
 ```
 
-**R:** use an environment-based cache (`pkg_env$metadata_cache`).
+### B5. Documentation
 
-**JS:** use a `Map` module-level constant.
-
-This is a simple optimisation — no TTL or invalidation needed; the cache lives for the Python process / R session / page load.
+Add five sections to `templates/docs/reference/query-builder.qmd.tera` following the existing `phylopic` section format, with Python/R/JS/API tab panels and curl examples pointing to the `/metadata/...` URLs.
 
 ---
 
-## Tests
+## Implementation order
 
-| Test                                                    | Location                                                    |
-| ------------------------------------------------------- | ----------------------------------------------------------- |
-| `test_fetch_indices_returns_list`                       | `tests/python/test_core.py`                                 |
-| `test_fetch_result_fields_returns_dict`                 | `tests/python/test_core.py`                                 |
-| `test_fetch_taxonomies_returns_list`                    | `tests/python/test_core.py`                                 |
-| `test_fetch_taxonomic_ranks_returns_list`               | `tests/python/test_core.py`                                 |
-| Integration: all four hit local API at `localhost:3000` | `tests/python/test_batch_integration.py` (skip without API) |
+### Phase A (URL renames — do first, no new functionality)
 
----
+1. Rename `countBatch.rs` → `count_batch.rs`; rename `searchBatch.rs` → `search_batch.rs`; update handlers inside.
+2. Update path annotations in `indices.rs`, `result_fields.rs`, `taxonomies.rs`, `taxonomic_ranks.rs`.
+3. Create `src/routes/metadata.rs` — new aggregating handler.
+4. Update `routes/mod.rs` — remove `#[path]` overrides; add `pub mod metadata;`.
+5. Update `main.rs` — route strings and use statements.
+6. Update `routes/status.rs` — `SUPPORTED_PATHS`.
+7. Update all three SDK templates (Python/JS/R) — URL strings in `search_batch` / `count_batch` methods.
+8. Update `python/cli_generator/query.py` — same two URL strings.
+9. Update tests: `api_endpoints.rs`, `test_batch_operations.py`, `test_batch_operations.mjs`.
+10. Update examples: `test-queries.sh`, batch YAML headers.
+11. Update documentation: `query-builder.qmd.tera`, `resultfields-implementation-guide.md`, `api-audit-executive-summary.md`, `GETTING_STARTED.md`.
+12. Run full CI (`bash scripts/verify_code.sh`). Regenerate workdir.
 
-## Ordering within phase
+### Phase B (Metadata SDK methods — after A is merged)
 
-1. Rust `meta.rs` helpers + unit tests (mock HTTP)
-2. PyO3 exposure + `.pyi` stubs
-3. Python module-level functions + `QueryBuilder.result_fields()`
-4. R package-level functions + `qb$result_fields()`
-5. JS static methods + `resultFields()` instance method
-6. Generated CLI subcommands in `main.rs.tera`
-7. In-memory caching across all three SDKs
-8. Tests
+Follow the B1→B5 sequence above, using the 6-touchpoint PyO3 checklist from AGENTS.md.

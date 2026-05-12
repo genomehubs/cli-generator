@@ -89,7 +89,7 @@ class TestSearchBatchHTTPHandling:
             # Verify the URL was called
             call_args = mock_urlopen.call_args
             request_obj = call_args[0][0]
-            assert "http://localhost:3000/api/v3/searchBatch" in request_obj.full_url
+            assert "http://localhost:3000/api/v3/search/batch" in request_obj.full_url
 
     def test_search_batch_uses_custom_api_version(self):
         """search_batch should respect custom api_version parameter."""
@@ -106,7 +106,7 @@ class TestSearchBatchHTTPHandling:
 
             call_args = mock_urlopen.call_args
             request_obj = call_args[0][0]
-            assert "v4/searchBatch" in request_obj.full_url
+            assert "v4/search/batch" in request_obj.full_url
 
     def test_search_batch_request_has_json_content_type(self):
         """search_batch should set Content-Type to application/json."""
@@ -170,7 +170,7 @@ class TestCountBatchHTTPHandling:
 
             call_args = mock_urlopen.call_args
             request_obj = call_args[0][0]
-            assert "v3/countBatch" in request_obj.full_url
+            assert "v3/count/batch" in request_obj.full_url
 
     def test_count_batch_returns_hit_counts(self):
         """count_batch should return list of hit counts."""

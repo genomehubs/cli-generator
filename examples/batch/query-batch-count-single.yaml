@@ -1,7 +1,7 @@
-## countBatch with single queries: get counts for multiple queries separately
+## count/batch with single queries: get counts for multiple queries separately
 ## Usage:
-##   POST /api/v3/countBatch
-##   curl -X POST http://localhost:3000/api/v3/countBatch \
+##   POST /api/v3/count/batch
+##   curl -X POST http://localhost:3000/api/v3/count/batch \
 ##     -H "Content-Type: application/json" \
 ##     -d @examples/query-batch-count-single.yaml
 

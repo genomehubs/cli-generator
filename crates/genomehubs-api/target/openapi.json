@@ -139,6 +139,76 @@
         }
       }
     },
+    "/api/v3/phylopic": {
+      "get": {
+        "tags": [
+          "routes::phylopic"
+        ],
+        "operationId": "get_phylopic",
+        "parameters": [
+          {
+            "name": "taxon_id",
+            "in": "query",
+            "description": "NCBI taxon ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "taxonomy",
+            "in": "query",
+            "description": "Taxonomy name (e.g. ncbi)",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "PhyloPic silhouette record",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhylopicResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v3/phylopic/batch": {
+      "post": {
+        "tags": [
+          "routes::phylopic"
+        ],
+        "operationId": "post_phylopic_batch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PhylopicBatchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Per-taxon PhyloPic results",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhylopicBatchResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v3/record": {
       "get": {
         "tags": [
@@ -657,6 +727,159 @@
             "type": "string"
           }
         }
+      },
+      "PhylopicBatchRequest": {
+        "type": "object",
+        "required": [
+          "taxon_ids",
+          "taxonomy"
+        ],
+        "properties": {
+          "taxon_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Up to 200 NCBI taxon IDs."
+          },
+          "taxonomy": {
+            "type": "string",
+            "description": "Taxonomy name (e.g. `\"ncbi\"`)."
+          }
+        }
+      },
+      "PhylopicBatchResponse": {
+        "type": "object",
+        "required": [
+          "status",
+          "results"
+        ],
+        "properties": {
+          "results": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/PhylopicResponse"
+            },
+            "propertyNames": {
+              "type": "string"
+            }
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          }
+        }
+      },
+      "PhylopicRecord": {
+        "type": "object",
+        "description": "A silhouette image resolved from PhyloPic for one taxon.",
+        "required": [
+          "taxon_id",
+          "raster_url",
+          "ratio",
+          "license",
+          "license_url",
+          "image_name",
+          "source_url",
+          "image_rank",
+          "source",
+          "build"
+        ],
+        "properties": {
+          "attribution": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Free-text attribution string from the contributor."
+          },
+          "build": {
+            "type": "integer",
+            "format": "int32",
+            "description": "PhyloPic build number at time of fetch.",
+            "minimum": 0
+          },
+          "contributor": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Display name of the contributor."
+          },
+          "image_name": {
+            "type": "string",
+            "description": "Scientific name of the taxon the image directly illustrates."
+          },
+          "image_rank": {
+            "type": "string",
+            "description": "Taxonomic rank of the node the image represents."
+          },
+          "license": {
+            "type": "string",
+            "description": "SPDX licence identifier (e.g. `\"CC0-1.0\"`) derived from the licence URL."
+          },
+          "license_url": {
+            "type": "string",
+            "description": "Licence URL."
+          },
+          "raster_url": {
+            "type": "string",
+            "description": "URL of a raster (PNG) file — second-largest, or largest if only one exists."
+          },
+          "ratio": {
+            "type": "number",
+            "format": "float",
+            "description": "Aspect ratio (width / height) of the raster image."
+          },
+          "source": {
+            "$ref": "#/components/schemas/PhylopicSource",
+            "description": "Resolution source: `Primary` | `Descendant` | `Ancestral`."
+          },
+          "source_url": {
+            "type": "string",
+            "description": "Canonical URL of this image on phylopic.org."
+          },
+          "taxon_id": {
+            "type": "string",
+            "description": "NCBI taxon ID the record was requested for."
+          },
+          "vector_url": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "URL of the SVG vector file (resolution-independent). Prefer over `raster_url` in UI."
+          }
+        }
+      },
+      "PhylopicResponse": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "phylopic": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PhylopicRecord"
+              }
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          }
+        }
+      },
+      "PhylopicSource": {
+        "type": "string",
+        "description": "How the image was resolved relative to the requested taxon.",
+        "enum": [
+          "Primary",
+          "Descendant",
+          "Ancestral"
+        ]
       },
       "RanksResponse": {
         "type": "object",

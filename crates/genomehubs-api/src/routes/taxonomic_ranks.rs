@@ -31,7 +31,7 @@ pub async fn get_taxonomic_ranks(
 
 #[utoipa::path(
     get,
-    path = "/api/v3/taxonomicRanks",
+    path = "/api/v3/metadata/ranks",
     responses(
         (status = 200, description = "Cached taxonomic ranks", body = RanksResponse)
     )

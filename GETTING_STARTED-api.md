@@ -24,6 +24,22 @@ docker run -d \
 
 The API will start on `http://localhost:3000` and attempt to connect to a local Elasticsearch at `http://localhost:9200` with default hub settings.
 
+### Pulling from GHCR (GitHub Container Registry)
+
+You can pull the official image from GitHub Container Registry. The repository image used by CI is:
+
+`ghcr.io/genomehubs/genomehubs-api-v3:develop`
+
+Pull and run:
+
+```bash
+docker pull ghcr.io/genomehubs/genomehubs-api-v3:develop
+docker run -d \
+  -p 3000:3000 \
+  -e ES_INTEGRATION_CONFIG=/app/config/es_integration.toml \
+  ghcr.io/genomehubs/genomehubs-api-v3:develop
+```
+
 ### 2. Run with Custom Configuration via TOML
 
 Create an `es_integration.toml` file with your settings:
@@ -221,7 +237,7 @@ curl http://localhost:3000/api/v3/taxonomies
 **Get indices:**
 
 ```bash
-curl http://localhost:3000/api/v3/indices
+curl http://localhost:3000/api/v3/metadata/indices
 ```
 
 **Search:**
@@ -399,21 +415,24 @@ docker run \
 
 ## API Endpoints
 
-| Method | Endpoint                 | Description                  |
-| ------ | ------------------------ | ---------------------------- |
-| GET    | `/api/v3/status`         | Health check and API version |
-| GET    | `/api/v3/taxonomies`     | List available taxonomies    |
-| GET    | `/api/v3/indices`        | List available indices       |
-| GET    | `/api/v3/taxonomicRanks` | List taxonomic ranks         |
-| POST   | `/api/v3/search`         | Search records               |
-| POST   | `/api/v3/searchBatch`    | Batch search                 |
-| POST   | `/api/v3/count`          | Count records                |
-| POST   | `/api/v3/countBatch`     | Batch count                  |
-| GET    | `/api/v3/lookup`         | Quick lookup by name/ID      |
-| GET    | `/api/v3/record`         | Get specific record          |
-| GET    | `/api/v3/resultFields`   | List available result fields |
-| POST   | `/api/v3/report`         | Generate reports             |
-| GET    | `/swagger-ui/`           | API documentation (Swagger)  |
+| Method | Endpoint                      | Description                   |
+| ------ | ----------------------------- | ----------------------------- |
+| GET    | `/api/v3/status`              | Health check and API version  |
+| GET    | `/api/v3/metadata`            | All metadata (one round-trip) |
+| GET    | `/api/v3/metadata/indices`    | List available indices        |
+| GET    | `/api/v3/metadata/taxonomies` | List available taxonomies     |
+| GET    | `/api/v3/metadata/ranks`      | List taxonomic ranks          |
+| GET    | `/api/v3/metadata/fields`     | List available result fields  |
+| POST   | `/api/v3/search`              | Search records                |
+| POST   | `/api/v3/search/batch`        | Batch search                  |
+| POST   | `/api/v3/count`               | Count records                 |
+| POST   | `/api/v3/count/batch`         | Batch count                   |
+| GET    | `/api/v3/lookup`              | Quick lookup by name/ID       |
+| GET    | `/api/v3/record`              | Get specific record           |
+| POST   | `/api/v3/report`              | Generate reports              |
+| GET    | `/api/v3/phylopic`            | PhyloPic image for a taxon    |
+| POST   | `/api/v3/phylopic/batch`      | Batch PhyloPic lookup         |
+| GET    | `/swagger-ui/`                | API documentation (Swagger)   |
 
 For detailed endpoint documentation, see the Swagger UI at `http://localhost:3000/swagger-ui/`.
 

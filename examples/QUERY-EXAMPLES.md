@@ -58,7 +58,7 @@ curl -X POST http://localhost:3000/api/v3/search \
 **Option 1: JSON objects (recommended for curl)**
 
 ```bash
-curl -X POST http://localhost:3000/api/v3/countBatch \
+curl -X POST http://localhost:3000/api/v3/count/batch \
   -H "Content-Type: application/json" \
   -d @examples/query-batch-count-multi-json-objects.json | jq '.results[] | {count: .count}'
 ```
@@ -66,7 +66,7 @@ curl -X POST http://localhost:3000/api/v3/countBatch \
 **Option 2: YAML strings**
 
 ```bash
-curl -X POST http://localhost:3000/api/v3/countBatch \
+curl -X POST http://localhost:3000/api/v3/count/batch \
   -H "Content-Type: application/json" \
   -d @examples/query-batch-count-multi.json | jq '.results[] | {count: .count}'
 ```
@@ -84,7 +84,7 @@ Expected output (example):
 Returns separate result arrays:
 
 ```bash
-curl -X POST http://localhost:3000/api/v3/searchBatch \
+curl -X POST http://localhost:3000/api/v3/search/batch \
   -H "Content-Type: application/json" \
   -d @examples/query-batch-search.json | jq '.results[] | {count: .count}'
 ```
@@ -99,7 +99,7 @@ Expected output (example):
 
 ## Key Differences
 
-| Feature               | `/search`          | `/countBatch`                   | `/searchBatch`                         |
+| Feature               | `/search`          | `/count/batch`                   | `/search/batch`                         |
 | --------------------- | ------------------ | ------------------------------- | -------------------------------------- |
 | Multi-query combining | ✅ OR/AND          | ✅ OR/AND per item              | ❌ Each separate                       |
 | Result combining      | ✅ Single ES query | ✅ Supports both total & unique | ❌ Independent                         |

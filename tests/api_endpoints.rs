@@ -1,4 +1,4 @@
-// Integration tests for genomehubs-api v3 endpoints: /record, /lookup, /searchBatch
+// Integration tests for genomehubs-api v3 endpoints: /record, /lookup, /search/batch
 //
 // These tests run against a live Elasticsearch instance when `config/es_integration.toml`
 // exists and contains ES connection details. The tests use the live ES data to verify
@@ -340,7 +340,7 @@ fn api_searchbatch_multiple_queries() {
         let client = reqwest::Client::new();
 
         // Test: Batch search with multiple queries
-        let url = format!("{}/api/v3/searchBatch", api_base);
+        let url = format!("{}/api/v3/search/batch", api_base);
         let body = json!({
             "searches": [
                 {
@@ -409,7 +409,7 @@ fn api_searchbatch_max_queries_limit() {
             }));
         }
 
-        let url = format!("{}/api/v3/searchBatch", api_base);
+        let url = format!("{}/api/v3/search/batch", api_base);
         let body = json!({ "searches": searches });
 
         let resp = client
@@ -443,7 +443,7 @@ fn api_searchbatch_invalid_yaml() {
         let client = reqwest::Client::new();
 
         // Test: Invalid YAML should be handled gracefully
-        let url = format!("{}/api/v3/searchBatch", api_base);
+        let url = format!("{}/api/v3/search/batch", api_base);
         let body = json!({
             "searches": [
                 {
@@ -484,7 +484,7 @@ fn api_count_batch_multiple_queries() {
         let client = reqwest::Client::new();
 
         // Test: Batch count with multiple queries
-        let url = format!("{}/api/v3/countBatch", api_base);
+        let url = format!("{}/api/v3/count/batch", api_base);
         let body = json!({
             "searches": [
                 {
@@ -560,7 +560,7 @@ fn api_count_batch_max_queries_limit() {
             }));
         }
 
-        let url = format!("{}/api/v3/countBatch", api_base);
+        let url = format!("{}/api/v3/count/batch", api_base);
         let body = json!({ "searches": searches });
 
         let resp = client
@@ -594,7 +594,7 @@ fn api_count_batch_invalid_yaml() {
         let client = reqwest::Client::new();
 
         // Test: Invalid YAML in query should be handled gracefully
-        let url = format!("{}/api/v3/countBatch", api_base);
+        let url = format!("{}/api/v3/count/batch", api_base);
         let body = json!({
             "searches": [
                 {
@@ -760,7 +760,7 @@ fn api_count_batch_multi_query_per_item() {
         let client = reqwest::Client::new();
 
         // Test: countBatch with multi-query per item
-        let url = format!("{}/api/v3/countBatch", api_base);
+        let url = format!("{}/api/v3/count/batch", api_base);
         let body = json!({
             "searches": [
                 {

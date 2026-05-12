@@ -787,7 +787,7 @@ QueryBuilder <- R6::R6Class(
         api_base <- private$api_base_url
       }
 
-      url <- paste0(api_base, "/", private$api_version, "/searchBatch")
+      url <- paste0(api_base, "/", private$api_version, "/search/batch")
       payload <- list(
         searches = lapply(queries, function(q) {
           list(
@@ -821,7 +821,7 @@ QueryBuilder <- R6::R6Class(
         api_base <- private$api_base_url
       }
 
-      url <- paste0(api_base, "/", private$api_version, "/countBatch")
+      url <- paste0(api_base, "/", private$api_version, "/count/batch")
       payload <- list(
         searches = lapply(queries, function(q) {
           list(
@@ -887,6 +887,104 @@ QueryBuilder <- R6::R6Class(
       httr::stop_for_status(resp)
       raw_text <- httr::content(resp, as = "text", encoding = "UTF-8")
       jsonlite::fromJSON(raw_text, simplifyVector = FALSE)
+    },
+
+    #' @description Fetch a PhyloPic silhouette record for a single taxon.
+    #' @param taxon_id NCBI taxon ID (required).
+    #' @param taxonomy Taxonomy name (default: "ncbi").
+    #' @return Silhouette record list, or NULL when no silhouette is found.
+    phylopic = function(taxon_id, taxonomy = "ncbi") {
+      if (is.null(taxon_id) || taxon_id == "") {
+        stop("phylopic() requires a taxon_id parameter")
+      }
+      params <- list(taxon_id = taxon_id, taxonomy = taxonomy)
+      url <- paste0(private$api_base_url, "/", private$api_version, "/phylopic?")
+      query_string <- paste(names(params), sapply(params, as.character), sep = "=", collapse = "&")
+      url <- paste0(url, query_string)
+
+      resp <- httr::GET(url, httr::accept("application/json"))
+      httr::stop_for_status(resp)
+      raw_text <- httr::content(resp, as = "text", encoding = "UTF-8")
+      jsonlite::fromJSON(parse_phylopic_json(raw_text), simplifyVector = FALSE)
+    },
+
+    #' @description Fetch PhyloPic silhouette records for multiple taxa in one request.
+    #' @param taxon_ids Character vector of NCBI taxon IDs (1-200, required).
+    #' @param taxonomy Taxonomy name (default: "ncbi").
+    #' @return List of silhouette record lists each with a taxon_id element.
+    phylopic_batch = function(taxon_ids, taxonomy = "ncbi") {
+      if (is.null(taxon_ids) || length(taxon_ids) == 0) {
+        stop("phylopic_batch() requires at least one taxon_id")
+      }
+      if (length(taxon_ids) > 200) {
+        stop("phylopic_batch() accepts at most 200 taxon IDs per request")
+      }
+      url <- paste0(private$api_base_url, "/", private$api_version, "/phylopic/batch")
+      payload <- jsonlite::toJSON(
+        list(taxon_ids = as.list(taxon_ids), taxonomy = taxonomy),
+        auto_unbox = TRUE
+      )
+      resp <- httr::POST(url,
+        body = payload,
+        httr::add_headers("Content-Type" = "application/json"),
+        httr::accept("application/json")
+      )
+      httr::stop_for_status(resp)
+      raw_text <- httr::content(resp, as = "text", encoding = "UTF-8")
+      jsonlite::fromJSON(parse_phylopic_batch_json(raw_text), simplifyVector = FALSE)
+    },
+
+    #' @description Fetch aggregated metadata in a single request.
+    #' @return List with indices, taxonomies, ranks, and versions elements.
+    metadata = function() {
+      url <- paste0(private$api_base_url, "/", private$api_version, "/metadata")
+      resp <- httr::GET(url, httr::accept("application/json"))
+      httr::stop_for_status(resp)
+      data <- jsonlite::fromJSON(httr::content(resp, as = "text", encoding = "UTF-8"), simplifyVector = FALSE)
+      keys <- c("indices", "taxonomies", "ranks", "versions")
+      data[intersect(keys, names(data))]
+    },
+
+    #' @description Return the list of available index names.
+    #' @return Character vector of index names.
+    indices = function() {
+      url <- paste0(private$api_base_url, "/", private$api_version, "/metadata/indices")
+      resp <- httr::GET(url, httr::accept("application/json"))
+      httr::stop_for_status(resp)
+      data <- jsonlite::fromJSON(httr::content(resp, as = "text", encoding = "UTF-8"), simplifyVector = TRUE)
+      data[["indices"]] %||% character(0)
+    },
+
+    #' @description Return field metadata for the given index.
+    #' @param index Index name (e.g. "taxon" or "assembly") (required).
+    #' @return Named list of field metadata.
+    fields = function(index) {
+      if (is.null(index) || index == "") stop("fields() requires an index name")
+      url <- paste0(private$api_base_url, "/", private$api_version, "/metadata/fields?result=", utils::URLencode(index, reserved = TRUE))
+      resp <- httr::GET(url, httr::accept("application/json"))
+      httr::stop_for_status(resp)
+      data <- jsonlite::fromJSON(httr::content(resp, as = "text", encoding = "UTF-8"), simplifyVector = FALSE)
+      data[["fields"]] %||% list()
+    },
+
+    #' @description Return the list of available taxonomy names.
+    #' @return Character vector of taxonomy names.
+    taxonomies = function() {
+      url <- paste0(private$api_base_url, "/", private$api_version, "/metadata/taxonomies")
+      resp <- httr::GET(url, httr::accept("application/json"))
+      httr::stop_for_status(resp)
+      data <- jsonlite::fromJSON(httr::content(resp, as = "text", encoding = "UTF-8"), simplifyVector = TRUE)
+      data[["taxonomies"]] %||% character(0)
+    },
+
+    #' @description Return the list of recognised taxonomic rank names.
+    #' @return Character vector of rank names.
+    ranks = function() {
+      url <- paste0(private$api_base_url, "/", private$api_version, "/metadata/ranks")
+      resp <- httr::GET(url, httr::accept("application/json"))
+      httr::stop_for_status(resp)
+      data <- jsonlite::fromJSON(httr::content(resp, as = "text", encoding = "UTF-8"), simplifyVector = TRUE)
+      data[["ranks"]] %||% character(0)
     },
 
     #' @description Fetch summary aggregations for specific fields.

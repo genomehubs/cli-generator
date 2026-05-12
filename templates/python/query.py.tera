@@ -810,7 +810,7 @@ class QueryBuilder:
         """Execute multiple searches in a single batch request."""
         import json
 
-        url = f"{API_BASE}/v3/searchBatch"
+        url = f"{API_BASE}/v3/search/batch"
         payload = {
             "searches": [
                 {
@@ -834,7 +834,7 @@ class QueryBuilder:
         """Get hit counts for multiple queries in a batch request."""
         import json
 
-        url = f"{API_BASE}/v3/countBatch"
+        url = f"{API_BASE}/v3/count/batch"
         payload = {
             "searches": [
                 {
@@ -912,6 +912,136 @@ class QueryBuilder:
             body_text = resp.read().decode("utf-8")
 
         return json.loads(body_text)
+
+    def phylopic(self, taxon_id: str, taxonomy: str = "ncbi") -> Any:
+        """Fetch a PhyloPic silhouette record for a single taxon.
+
+        Args:
+            taxon_id: NCBI taxon ID (required)
+            taxonomy: Taxonomy name (default: "ncbi")
+
+        Returns:
+            Silhouette record dict, or None when no silhouette is found
+        """
+        if not taxon_id:
+            raise ValueError("phylopic() requires a taxon_id parameter")
+        import json
+        import urllib.parse
+        import urllib.request
+
+        params = urllib.parse.urlencode({"taxon_id": taxon_id, "taxonomy": taxonomy})
+        url = f"{API_BASE}/v3/phylopic?{params}"
+
+        req = urllib.request.Request(url, method="GET")
+        with urllib.request.urlopen(req) as resp:
+            body_text = resp.read().decode("utf-8")
+
+        return json.loads(_ext.parse_phylopic_json(body_text))
+
+    def phylopic_batch(self, taxon_ids: list[str], taxonomy: str = "ncbi") -> list[Any]:
+        """Fetch PhyloPic silhouette records for multiple taxa in one request.
+
+        Args:
+            taxon_ids: List of NCBI taxon IDs (1–200, required)
+            taxonomy: Taxonomy name (default: "ncbi")
+
+        Returns:
+            List of silhouette record dicts each with a taxon_id key;
+            taxa with no silhouette are omitted
+        """
+        if not taxon_ids:
+            raise ValueError("phylopic_batch() requires at least one taxon_id")
+        if len(taxon_ids) > 200:
+            raise ValueError("phylopic_batch() accepts at most 200 taxon IDs per request")
+        import json
+        import urllib.request
+
+        url = f"{API_BASE}/v3/phylopic/batch"
+        payload = json.dumps({"taxon_ids": taxon_ids, "taxonomy": taxonomy}).encode("utf-8")
+        req = urllib.request.Request(
+            url,
+            data=payload,
+            headers={"Content-Type": "application/json"},
+        )
+        with urllib.request.urlopen(req) as resp:
+            body_text = resp.read().decode("utf-8")
+
+        return json.loads(_ext.parse_phylopic_batch_json(body_text))
+
+    def metadata(self) -> dict:
+        """Fetch aggregated metadata in a single request.
+
+        Returns indices, taxonomies, ranks, and versions.
+
+        Returns:
+            Dict with ``indices``, ``taxonomies``, ``ranks``, and ``versions`` keys.
+        """
+        import json
+        import urllib.request
+
+        url = f"{API_BASE}/v3/metadata"
+        with urllib.request.urlopen(url) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+        return {k: data[k] for k in ("indices", "taxonomies", "ranks", "versions") if k in data}
+
+    def indices(self) -> list[str]:
+        """Return the list of available index names.
+
+        Returns:
+            List of index name strings.
+        """
+        import json
+        import urllib.request
+
+        url = f"{API_BASE}/v3/metadata/indices"
+        with urllib.request.urlopen(url) as resp:
+            return json.loads(resp.read().decode("utf-8")).get("indices", [])
+
+    def fields(self, index: str) -> dict:
+        """Return field metadata for the given index.
+
+        Args:
+            index: Index name, e.g. ``"taxon"`` or ``"assembly"`` (required).
+
+        Returns:
+            Dict mapping field name to field metadata dict.
+        """
+        import json
+        import urllib.parse
+        import urllib.request
+
+        if not index:
+            raise ValueError("fields() requires a non-empty index name")
+        params = urllib.parse.urlencode({"result": index})
+        url = f"{API_BASE}/v3/metadata/fields?{params}"
+        with urllib.request.urlopen(url) as resp:
+            return json.loads(resp.read().decode("utf-8")).get("fields", {})
+
+    def taxonomies(self) -> list[str]:
+        """Return the list of available taxonomy names.
+
+        Returns:
+            List of taxonomy name strings.
+        """
+        import json
+        import urllib.request
+
+        url = f"{API_BASE}/v3/metadata/taxonomies"
+        with urllib.request.urlopen(url) as resp:
+            return json.loads(resp.read().decode("utf-8")).get("taxonomies", [])
+
+    def ranks(self) -> list[str]:
+        """Return the list of recognised taxonomic rank names.
+
+        Returns:
+            List of rank name strings.
+        """
+        import json
+        import urllib.request
+
+        url = f"{API_BASE}/v3/metadata/ranks"
+        with urllib.request.urlopen(url) as resp:
+            return json.loads(resp.read().decode("utf-8")).get("ranks", [])
 
     def summary(self, record_id: str, fields: str, result: str | None = None, summary_types: str = "min,max,mean") -> Any:
         """Fetch summary aggregations for specific fields.

@@ -444,6 +444,42 @@ def parse_lookup_json(raw: str) -> str:
     """
     ...
 
+def parse_phylopic_json(raw: str) -> str:
+    """Extract the ``phylopic`` record from a raw ``/phylopic`` API response.
+
+    Returns the ``phylopic`` object as a JSON string, or ``"null"`` when the
+    taxon has no silhouette registered in PhyloPic.
+
+    Args:
+        raw: Raw JSON string from the ``/phylopic`` API endpoint.
+
+    Returns:
+        JSON string of the silhouette record, or ``"null"``.
+
+    Raises:
+        ValueError: If the input is not valid JSON.
+    """
+    ...
+
+def parse_phylopic_batch_json(raw: str) -> str:
+    """Flatten the ``results`` map from a raw ``/phylopic/batch`` API response.
+
+    Converts the ``results`` object (keyed by taxon ID) into a JSON array where
+    each element is the silhouette record with an added ``taxon_id`` field.
+    Taxa that returned no silhouette are omitted.
+
+    Args:
+        raw: Raw JSON string from the ``/phylopic/batch`` API endpoint.
+
+    Returns:
+        JSON array string where each element is a silhouette record dictionary
+        with all response fields plus a ``taxon_id`` key.
+
+    Raises:
+        ValueError: If the input is not valid JSON or ``results`` is absent.
+    """
+    ...
+
 def parse_histogram_json(raw: str) -> str:
     """Extract histogram buckets from a raw ``/report`` JSON response.
 

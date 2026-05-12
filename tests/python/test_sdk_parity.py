@@ -296,6 +296,48 @@ CANONICAL_METHODS = {
         "js_name": "toTidyRecords",
         "r_name": "to_tidy_records",
     },
+    "phylopic": {
+        "params": ["taxon_id", "taxonomy"],
+        "python_name": "phylopic",
+        "js_name": "phylopic",
+        "r_name": "phylopic",
+    },
+    "phylopic_batch": {
+        "params": ["taxon_ids", "taxonomy"],
+        "python_name": "phylopic_batch",
+        "js_name": "phylopicBatch",
+        "r_name": "phylopic_batch",
+    },
+    "metadata": {
+        "params": [],
+        "python_name": "metadata",
+        "js_name": "metadata",
+        "r_name": "metadata",
+    },
+    "indices": {
+        "params": [],
+        "python_name": "indices",
+        "js_name": "indices",
+        "r_name": "indices",
+    },
+    "fields": {
+        "params": ["index"],
+        "python_name": "fields",
+        "js_name": "fields",
+        "r_name": "fields",
+    },
+    "taxonomies": {
+        "params": [],
+        "python_name": "taxonomies",
+        "js_name": "taxonomies",
+        "r_name": "taxonomies",
+    },
+    "ranks": {
+        "params": [],
+        "python_name": "ranks",
+        "js_name": "ranks",
+        "r_name": "ranks",
+    },
     "report": {
         "params": ["report"],
         "python_name": "report",

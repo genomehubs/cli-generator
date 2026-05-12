@@ -30,7 +30,7 @@ pub struct ResultFieldsResponse {
 
 #[utoipa::path(
     get,
-    path = "/api/v3/resultFields",
+    path = "/api/v3/metadata/fields",
     params(
         ("result" = Option<String>, Query, description = "Result type (taxon|assembly|sample)"),
 

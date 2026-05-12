@@ -312,6 +312,26 @@ pub fn parse_lookup_json(raw: &str) -> String {
     parse::parse_lookup_json(raw).unwrap_or_else(|e| format!(r#"{{"error":{e:?}}}"#))
 }
 
+/// Extract the `phylopic` record from a raw `/phylopic` API response.
+///
+/// Returns the `phylopic` object as a JSON string, or `"null"` if the response
+/// contains no silhouette.
+///
+/// Returns `{"error":"..."}` if the input is not valid JSON.
+pub fn parse_phylopic_json(raw: &str) -> String {
+    parse::parse_phylopic_json(raw).unwrap_or_else(|e| format!(r#"{{"error":{e:?}}}"#))
+}
+
+/// Flatten the `results` map from a raw `/phylopic/batch` API response.
+///
+/// Returns a JSON array of silhouette records, each with an added `taxon_id` field.
+/// Taxa that returned no silhouette are omitted.
+///
+/// Returns `{"error":"..."}` if the input is not valid JSON.
+pub fn parse_phylopic_batch_json(raw: &str) -> String {
+    parse::parse_phylopic_batch_json(raw).unwrap_or_else(|e| format!(r#"{{"error":{e:?}}}"#))
+}
+
 /// Extract histogram buckets from a raw `/report` JSON response.
 ///
 /// Returns a compact JSON array of bucket objects.  Categorised histograms

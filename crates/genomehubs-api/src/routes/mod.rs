@@ -49,17 +49,17 @@ impl ApiStatus {
 
 pub mod chain_executor;
 pub mod count;
-#[path = "countBatch.rs"]
 pub mod count_batch;
 pub mod deserialize_helpers;
 pub mod indices;
 pub mod lineage_agg;
 pub mod lookup;
+pub mod metadata;
+pub mod phylopic;
 pub mod record;
 pub mod report;
 pub mod result_fields;
 pub mod search;
-#[path = "searchBatch.rs"]
 pub mod search_batch;
 pub mod status;
 pub mod summary;

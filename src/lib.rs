@@ -325,6 +325,26 @@ fn parse_lookup_json(raw: &str) -> String {
     genomehubs_query::parse_lookup_json(raw)
 }
 
+/// Extract the `phylopic` record from a raw `/phylopic` API response.
+///
+/// Returns the `phylopic` object as a JSON string, or `"null"` when the taxon
+/// has no silhouette in PhyloPic.
+#[cfg(feature = "extension-module")]
+#[pyfunction]
+fn parse_phylopic_json(raw: &str) -> String {
+    genomehubs_query::parse_phylopic_json(raw)
+}
+
+/// Flatten the `results` map from a raw `/phylopic/batch` API response.
+///
+/// Returns a JSON array of silhouette records each with an added `taxon_id` field.
+/// Taxa with no silhouette are omitted from the output.
+#[cfg(feature = "extension-module")]
+#[pyfunction]
+fn parse_phylopic_batch_json(raw: &str) -> String {
+    genomehubs_query::parse_phylopic_batch_json(raw)
+}
+
 /// Extract histogram buckets from a raw `/report` JSON response.
 ///
 /// Returns a compact JSON array of bucket objects.
@@ -440,6 +460,8 @@ fn cli_generator(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(parse_batch_json, m)?)?;
     m.add_function(wrap_pyfunction!(parse_record_json, m)?)?;
     m.add_function(wrap_pyfunction!(parse_lookup_json, m)?)?;
+    m.add_function(wrap_pyfunction!(parse_phylopic_json, m)?)?;
+    m.add_function(wrap_pyfunction!(parse_phylopic_batch_json, m)?)?;
     m.add_function(wrap_pyfunction!(parse_histogram_json, m)?)?;
     m.add_function(wrap_pyfunction!(parse_tree_json, m)?)?;
     m.add_function(wrap_pyfunction!(query_yaml_from_url_params, m)?)?;

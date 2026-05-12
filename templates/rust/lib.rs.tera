@@ -231,6 +231,28 @@ fn parse_lookup_json(raw: &str) -> String {
     parse::parse_lookup_json(raw).unwrap_or_else(|e| {% raw %}format!(r#"{{"error":{e:?}}}"#){% endraw %})
 }
 
+/// Extract the `phylopic` record from a raw `/phylopic` API response.
+///
+/// Returns the `phylopic` object as a JSON string, or `"null"` when the taxon
+/// has no silhouette in PhyloPic.  Returns `{"error":"..."}` on parse failure.
+#[cfg(feature = "extension-module")]
+#[pyfunction]
+fn parse_phylopic_json(raw: &str) -> String {
+    use crate::embedded::core::parse;
+    parse::parse_phylopic_json(raw).unwrap_or_else(|e| {% raw %}format!(r#"{{"error":{e:?}}}"#){% endraw %})
+}
+
+/// Flatten the `results` map from a raw `/phylopic/batch` API response.
+///
+/// Returns a JSON array of silhouette records each with an added `taxon_id` field.
+/// Taxa with no silhouette are omitted.  Returns `{"error":"..."}` on failure.
+#[cfg(feature = "extension-module")]
+#[pyfunction]
+fn parse_phylopic_batch_json(raw: &str) -> String {
+    use crate::embedded::core::parse;
+    parse::parse_phylopic_batch_json(raw).unwrap_or_else(|e| {% raw %}format!(r#"{{"error":{e:?}}}"#){% endraw %})
+}
+
 /// Parse a `/record` API response into a flat JSON array of record dicts.
 ///
 /// Returns a JSON array string of flat record dicts with all `_source` fields
@@ -351,6 +373,8 @@ fn {{ sdk_name }}(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(to_tidy_records, m)?)?;
     m.add_function(wrap_pyfunction!(parse_search_with_lineage_summary, m)?)?;
     m.add_function(wrap_pyfunction!(parse_lookup_json, m)?)?;
+    m.add_function(wrap_pyfunction!(parse_phylopic_json, m)?)?;
+    m.add_function(wrap_pyfunction!(parse_phylopic_batch_json, m)?)?;
     m.add_function(wrap_pyfunction!(parse_record_json, m)?)?;
     m.add_function(wrap_pyfunction!(parse_paginated_json, m)?)?;
     m.add_function(wrap_pyfunction!(parse_histogram_json, m)?)?;

@@ -26,7 +26,7 @@ examples/
 │   ├── tree.json
 │   └── map.json
 │
-├── test-queries.sh             # Test search/countBatch endpoints
+├── test-queries.sh             # Test search/count/batch endpoints
 ├── test-report-queries.sh      # Test report endpoint
 ├── REPORT-TESTING.md           # Report testing guide
 └── README-STRUCTURE.md         # This file
@@ -51,11 +51,11 @@ See [REPORT-TESTING.md](REPORT-TESTING.md) for detailed guide.
 ### Test Query Endpoints
 
 ```bash
-# Run all query tests (search, countBatch, searchBatch)
+# Run all query tests (search, count/batch, search/batch)
 bash examples/test-queries.sh
 
 # Or test single batch query
-curl -X POST http://localhost:3000/api/v3/countBatch \
+curl -X POST http://localhost:3000/api/v3/count/batch \
   -H "Content-Type: application/yaml" \
   -d @examples/batch/query-batch-count-single.yaml
 ```

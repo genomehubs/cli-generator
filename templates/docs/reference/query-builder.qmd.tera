@@ -837,7 +837,7 @@ curl -s -X POST {{ api_base }}/v3/report \
 
 ### `search_batch(queries, api_base, api_version) -> list[list[dict]]`
 
-Execute up to 100 searches in a single request to `/v3/searchBatch`.  Returns
+Execute up to 100 searches in a single request to `/v3/search/batch`.  Returns
 a list of record lists, one per input query, in the same order.
 
 ::: {.panel-tabset group="language"}
@@ -870,7 +870,7 @@ const [mammals, reptiles] = await qb.searchBatch([q1, q2]);
 ## API
 
 ```bash
-curl -s -X POST {{ api_base }}/v3/searchBatch \
+curl -s -X POST {{ api_base }}/v3/search/batch \
   -H "Content-Type: application/json" \
   -d '{
     "searches": [
@@ -886,7 +886,7 @@ curl -s -X POST {{ api_base }}/v3/searchBatch \
 
 ### `count_batch(queries, api_base, api_version) -> list[int]`
 
-Get hit counts for up to 100 queries in a single request to `/v3/countBatch`.
+Get hit counts for up to 100 queries in a single request to `/v3/count/batch`.
 Returns a list of integers in the same order as the input queries.
 
 ::: {.panel-tabset group="language"}
@@ -920,7 +920,7 @@ console.log(counts);
 ## API
 
 ```bash
-curl -s -X POST {{ api_base }}/v3/countBatch \
+curl -s -X POST {{ api_base }}/v3/count/batch \
   -H "Content-Type: application/json" \
   -d '{
     "searches": [
@@ -997,6 +997,293 @@ const results = await qb.lookup("Homo");
 
 ```bash
 curl -s "{{ api_base }}/v3/lookup?searchTerm=Homo&result=taxon&size=10"
+```
+
+:::
+
+---
+
+### `phylopic(taxon_id, taxonomy="ncbi", api_base, api_version) -> dict | None`
+
+Resolve a PhyloPic silhouette for a single taxon via GET to `/v3/phylopic`.
+Returns a record with `uuid`, `raster_url`, `vector_url`, `ratio`, `attribution`,
+`license`, `license_url`, `source_url`, and `source` fields, or `None` / `NULL`
+when no silhouette is registered for the taxon.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `taxon_id` | str | NCBI taxon ID (required). |
+| `taxonomy` | str | Taxonomy name (default: `"ncbi"`). |
+
+::: {.panel-tabset group="language"}
+
+## Python
+
+```python
+record = qb.phylopic("9606", api_base="{{ api_base }}", api_version="{{ api_version }}")
+if record:
+    print(record["raster_url"])
+```
+
+## R
+
+```r
+record <- qb$phylopic("9606")
+if (!is.null(record)) {
+  cat(record$raster_url, "\n")
+}
+```
+
+## JavaScript
+
+```javascript
+const record = await qb.phylopic("9606");
+if (record) console.log(record.raster_url);
+```
+
+## API
+
+```bash
+curl -s "{{ api_base }}/v3/phylopic?taxon_id=9606&taxonomy=ncbi"
+```
+
+:::
+
+---
+
+### `phylopic_batch(taxon_ids, taxonomy="ncbi", api_base, api_version) -> list[dict]`
+
+Resolve PhyloPic silhouettes for up to 200 taxa in a single POST to
+`/v3/phylopic/batch`.  Each result includes a `taxon_id` field; taxa with no
+silhouette in PhyloPic are omitted from the list.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `taxon_ids` | list[str] | NCBI taxon IDs to resolve (1–200, required). |
+| `taxonomy` | str | Taxonomy name (default: `"ncbi"`). |
+
+::: {.panel-tabset group="language"}
+
+## Python
+
+```python
+records = qb.phylopic_batch(["9606", "9615", "9913"],
+                            api_base="{{ api_base }}", api_version="{{ api_version }}")
+for r in records:
+    print(r["taxon_id"], r["raster_url"])
+```
+
+## R
+
+```r
+records <- qb$phylopic_batch(c("9606", "9615", "9913"))
+for (r in records) {
+  cat(r$taxon_id, r$raster_url, "\n")
+}
+```
+
+## JavaScript
+
+```javascript
+const records = await qb.phylopicBatch(["9606", "9615", "9913"]);
+for (const r of records) console.log(r.taxon_id, r.raster_url);
+```
+
+## API
+
+```bash
+curl -s -X POST "{{ api_base }}/v3/phylopic/batch" \
+  -H "Content-Type: application/json" \
+  -d '{"taxon_ids":["9606","9615","9913"],"taxonomy":"ncbi"}'
+```
+
+:::
+
+---
+
+### `metadata(api_base, api_version) -> dict`
+
+Fetch aggregated hub metadata (indices, taxonomies, ranks, versions) via GET to `/v3/metadata`.
+
+::: {.panel-tabset group="language"}
+
+## Python
+
+```python
+meta = qb.metadata(api_base="{{ api_base }}", api_version="{{ api_version }}")
+print(meta["versions"], meta["indices"])
+```
+
+## R
+
+```r
+meta <- qb$metadata()
+cat(meta$versions, meta$indices)
+```
+
+## JavaScript
+
+```javascript
+const meta = await qb.metadata();
+console.log(meta.versions, meta.indices);
+```
+
+## API
+
+```bash
+curl -s "{{ api_base }}/v3/metadata"
+```
+
+:::
+
+---
+
+### `indices(api_base, api_version) -> list[str]`
+
+Fetch the list of available index names via GET to `/v3/metadata/indices`.
+
+::: {.panel-tabset group="language"}
+
+## Python
+
+```python
+names = qb.indices(api_base="{{ api_base }}", api_version="{{ api_version }}")
+print(names)
+```
+
+## R
+
+```r
+names <- qb$indices()
+print(names)
+```
+
+## JavaScript
+
+```javascript
+const names = await qb.indices();
+console.log(names);
+```
+
+## API
+
+```bash
+curl -s "{{ api_base }}/v3/metadata/indices"
+```
+
+:::
+
+---
+
+### `fields(index, api_base, api_version) -> dict`
+
+Fetch field definitions for the specified index via GET to `/v3/metadata/fields?result={index}`.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `index` | str | Index name (e.g. `"taxon"`, `"assembly"`). |
+
+::: {.panel-tabset group="language"}
+
+## Python
+
+```python
+flds = qb.fields("taxon", api_base="{{ api_base }}", api_version="{{ api_version }}")
+print(list(flds.keys())[:5])
+```
+
+## R
+
+```r
+flds <- qb$fields("taxon")
+print(names(flds)[1:5])
+```
+
+## JavaScript
+
+```javascript
+const flds = await qb.fields("taxon");
+console.log(Object.keys(flds).slice(0, 5));
+```
+
+## API
+
+```bash
+curl -s "{{ api_base }}/v3/metadata/fields?result=taxon"
+```
+
+:::
+
+---
+
+### `taxonomies(api_base, api_version) -> list[str]`
+
+Fetch the list of available taxonomy names via GET to `/v3/metadata/taxonomies`.
+
+::: {.panel-tabset group="language"}
+
+## Python
+
+```python
+txs = qb.taxonomies(api_base="{{ api_base }}", api_version="{{ api_version }}")
+print(txs)
+```
+
+## R
+
+```r
+txs <- qb$taxonomies()
+print(txs)
+```
+
+## JavaScript
+
+```javascript
+const txs = await qb.taxonomies();
+console.log(txs);
+```
+
+## API
+
+```bash
+curl -s "{{ api_base }}/v3/metadata/taxonomies"
+```
+
+:::
+
+---
+
+### `ranks(api_base, api_version) -> list[str]`
+
+Fetch the list of supported taxonomic ranks via GET to `/v3/metadata/ranks`.
+
+::: {.panel-tabset group="language"}
+
+## Python
+
+```python
+rnks = qb.ranks(api_base="{{ api_base }}", api_version="{{ api_version }}")
+print(rnks)
+```
+
+## R
+
+```r
+rnks <- qb$ranks()
+print(rnks)
+```
+
+## JavaScript
+
+```javascript
+const rnks = await qb.ranks();
+console.log(rnks);
+```
+
+## API
+
+```bash
+curl -s "{{ api_base }}/v3/metadata/ranks"
 ```
 
 :::

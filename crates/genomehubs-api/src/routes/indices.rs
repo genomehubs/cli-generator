@@ -29,7 +29,7 @@ pub async fn get_indices(Extension(state): Extension<Arc<AppState>>) -> Json<Ind
 
 #[utoipa::path(
     get,
-    path = "/api/v3/indices",
+    path = "/api/v3/metadata/indices",
     responses(
         (status = 200, description = "Cached indices", body = IndicesResponse)
     )

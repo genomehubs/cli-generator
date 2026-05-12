@@ -81,6 +81,12 @@ parse_record_json <- function(raw) .Call(wrap__parse_record_json, raw)
 #' Parse the `results` array from a raw `/lookup` API response.
 parse_lookup_json <- function(raw) .Call(wrap__parse_lookup_json, raw)
 
+#' Extract the `phylopic` record from a raw `/phylopic` API response.
+parse_phylopic_json <- function(raw) .Call(wrap__parse_phylopic_json, raw)
+
+#' Flatten the `results` map from a raw `/phylopic/batch` API response.
+parse_phylopic_batch_json <- function(raw) .Call(wrap__parse_phylopic_batch_json, raw)
+
 #' Extract histogram buckets from a raw `/report` JSON response.
 parse_histogram_json <- function(raw) .Call(wrap__parse_histogram_json, raw)
 
