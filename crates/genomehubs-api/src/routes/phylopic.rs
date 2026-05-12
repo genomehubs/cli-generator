@@ -10,8 +10,7 @@ use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, sync::Arc};
 
 use crate::{
-    fetch_records,
-    index_name,
+    fetch_records, index_name,
     phylopic_client::{self, PhylopicRecord, TaxonInfo, TaxonName},
     routes::ApiStatus,
     AppState,
@@ -217,14 +216,10 @@ async fn fetch_taxon_info(
     let idx = index_name::resolve_index_str("taxon", state);
     let doc_id = format!("taxon-{taxon_id}");
 
-    let sources = fetch_records::fetch_records_by_id(
-        &state.client,
-        &state.es_base,
-        &idx,
-        &[doc_id.as_str()],
-    )
-    .await
-    .map_err(|e| format!("ES returned {e} for taxon_id {taxon_id}"))?;
+    let sources =
+        fetch_records::fetch_records_by_id(&state.client, &state.es_base, &idx, &[doc_id.as_str()])
+            .await
+            .map_err(|e| format!("ES returned {e} for taxon_id {taxon_id}"))?;
 
     let source = sources
         .into_iter()
@@ -236,7 +231,10 @@ async fn fetch_taxon_info(
         .unwrap_or(taxon_id)
         .to_string();
 
-    let rank = source["taxon_rank"].as_str().unwrap_or("species").to_string();
+    let rank = source["taxon_rank"]
+        .as_str()
+        .unwrap_or("species")
+        .to_string();
 
     let taxon_names: Vec<TaxonName> = source["taxon_names"]
         .as_array()

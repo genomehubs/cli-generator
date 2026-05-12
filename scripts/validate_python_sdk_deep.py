@@ -75,7 +75,7 @@ def main() -> None:
         # Test 3: search()
         print("Test 3: Search (.search())")
         qb = QueryBuilder("taxon").set_taxa(["Mammalia"], filter_type="tree").add_field("genome_size").set_size(10)
-        raw = qb.search()
+        raw = json.dumps(qb.search())
         results = json.loads(parse_search_json(raw))
         assert isinstance(results, list) and len(results) > 0, "search() should return non-empty list"
         print(f"  ✓ search() works: returned {len(results)} results")
@@ -94,7 +94,7 @@ def main() -> None:
             .add_field("genome_size")
             .set_size(10)
         )
-        raw = qb.search()
+        raw = json.dumps(qb.search())
         results = json.loads(parse_search_json(raw))
         assert all("genome_size" in r for r in results), "All results should have genome_size"
         print(f"  ✓ add_attribute() works: {len(results)} results with genome_size >= 1G")
@@ -109,7 +109,7 @@ def main() -> None:
             .add_field("genome_size")
             .set_size(10)
         )
-        raw = qb.search()
+        raw = json.dumps(qb.search())
         results = json.loads(parse_search_json(raw))
         assert len(results) > 0, "Expected results in 1G-3G range"
         print(f"  ✓ Multiple filters work: {len(results)} results with 1G <= genome_size <= 3G")
@@ -117,7 +117,7 @@ def main() -> None:
         # Test 6: parse_response_status
         print("Test 6: Response parsing (parse_response_status())")
         qb = QueryBuilder("taxon").set_taxa(["Insecta"], filter_type="tree").add_field("genome_size").set_size(5)
-        raw = qb.search()
+        raw = json.dumps(qb.search())
         status_json = json.loads(parse_response_status(raw))
         assert "hits" in status_json, "Status should have 'hits' field"
         print("  ✓ parse_response_status() works")
@@ -142,7 +142,7 @@ def main() -> None:
 
         # Test 9: parsing helper coverage
         print("Test 9: Parsing helpers (annotate/split/values/annotated/tidy)")
-        raw = qb.search()
+        raw = json.dumps(qb.search())
         records_json = parse_search_json(raw)
         asl = json.loads(annotate_source_labels(records_json, mode="non_direct"))
         assert isinstance(asl, list), "annotate_source_labels should return JSON array"
