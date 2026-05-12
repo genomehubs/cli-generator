@@ -762,6 +762,9 @@ QueryBuilder <- R6::R6Class(
         params_yaml = self$to_params_yaml(),
         report_yaml = report$to_report_yaml()
       )
+      if (!is.null(report$.__enclos_env__$private$.display)) {
+        payload$display <- report$.__enclos_env__$private$.display
+      }
       resp <- httr::POST(url,
         body = jsonlite::toJSON(payload, auto_unbox = TRUE),
         httr::add_headers("Content-Type" = "application/json"),
@@ -1096,7 +1099,9 @@ ReportBuilder <- R6::R6Class("ReportBuilder",
     .doc = NULL,
     # Set by QueryBuilder$from_v2_url() for report URLs
     report_yaml_override = NULL,
-    embedded_query_builder = NULL
+    embedded_query_builder = NULL,
+    # Set via set_display(); passed as the `display` key in the POST body.
+    .display = NULL
   ),
   public = list(
     #' @description Initialise the builder with a report type.
@@ -1223,6 +1228,19 @@ ReportBuilder <- R6::R6Class("ReportBuilder",
     #' @param threshold Integer threshold.
     set_scatter_threshold = function(threshold) {
       private$.doc$scatter_threshold <- as.integer(threshold)
+      invisible(self)
+    },
+
+    #' @description Set display/presentation options for this report.
+    #' @details Accepts either a named list or a YAML string. The value is
+    #'   passed as the \code{display} field in the API request and returned
+    #'   in the response unchanged. Rendering is always client-side.
+    #' @param value Named list or YAML string with display options such as
+    #'   \code{title}, \code{width}, \code{height}, \code{color_scheme},
+    #'   \code{x_label}, etc.
+    #' @return Invisibly \code{self}.
+    set_display = function(value) {
+      private$.display <- value
       invisible(self)
     },
 

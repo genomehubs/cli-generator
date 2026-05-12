@@ -888,11 +888,13 @@ class QueryBuilder {
    * @returns {Promise<object>} - Raw report object from the response
    */
   async report(report, apiBase = API_BASE) {
-    const data = await this._postJson(`${apiBase}/v3/report`, {
+    const body = {
       query_yaml: this.toQueryYaml(),
       params_yaml: this.toParamsYaml(),
       report_yaml: report.toReportYaml(),
-    });
+    };
+    if (report._display !== null) body.display = report._display;
+    const data = await this._postJson(`${apiBase}/v3/report`, body);
     return data.report ?? data;
   }
 
@@ -1450,6 +1452,8 @@ class ReportBuilder {
     // Set by QueryBuilder.fromV2Url() for report URLs
     this._reportYamlOverride = null;
     this._embeddedQueryBuilder = null;
+    // Set via setDisplay(); passed as the `display` key in the POST body.
+    this._display = null;
   }
 
   /** Set the X-axis field. @param {string} field @param {string} [opts=""] @returns {this} */
@@ -1548,6 +1552,17 @@ class ReportBuilder {
   /** Set the max scatter points before switching to binned mode. @param {number} threshold @returns {this} */
   setScatterThreshold(threshold) {
     this._doc.scatter_threshold = threshold;
+    return this;
+  }
+
+  /**
+   * Set display/presentation options for this report.
+   * Accepts either an object or a YAML string.
+   * @param {object|string} value - Display options (title, width, height, colorScheme, etc.)
+   * @returns {this}
+   */
+  setDisplay(value) {
+    this._display = value;
     return this;
   }
 

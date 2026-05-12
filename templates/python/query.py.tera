@@ -799,6 +799,7 @@ class QueryBuilder:
                 "query_yaml": self.to_query_yaml(),
                 "params_yaml": self.to_params_yaml(),
                 "report_yaml": report.to_report_yaml(),
+                **({{"display": report._display}} if report._display is not None else {{}}),
             },
         )
         return data.get("report", data)
@@ -1264,6 +1265,8 @@ class ReportBuilder:
         # Set by QueryBuilder.from_v2_url() for report URLs; used by run() when
         # no explicit query_builder is passed.
         self._embedded_query_builder: "QueryBuilder | None" = None
+        # Set via set_display(); passed as the `display` key in the POST body.
+        self._display: dict[str, Any] | str | None = None
 
     def set_x(self, field: str, opts: str = "") -> "ReportBuilder":
         """Set the X-axis field (histogram, scatter, arc reports)."""
@@ -1349,6 +1352,20 @@ class ReportBuilder:
     def set_scatter_threshold(self, threshold: int) -> "ReportBuilder":
         """Set the max scatter points before switching to binned mode."""
         self._doc["scatter_threshold"] = threshold
+        return self
+
+    def set_display(self, value: "dict[str, Any] | str") -> "ReportBuilder":
+        """Set display/presentation options for this report.
+
+        Accepts either a dict of display options or a YAML string. The value is
+        passed as the ``display`` field in the API request and returned in the
+        response unchanged. Rendering is always client-side.
+
+        Args:
+            value: Dict or YAML string with display options such as ``title``,
+                ``width``, ``height``, ``color_scheme``, ``x_label``, etc.
+        """
+        self._display = value
         return self
 
     def to_report_yaml(self) -> str:
