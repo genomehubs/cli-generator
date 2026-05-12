@@ -1031,8 +1031,11 @@ class QueryBuilder:
                 "params_yaml": self.to_params_yaml(),
                 "report_yaml": report.to_report_yaml(),
                 **({"display": report._display} if report._display is not None else {}),
+                **({"include_plot_spec": True} if report._include_plot_spec else {}),
             },
         )
+        if data.get("plot_spec"):
+            return data
         return data.get("report", data)
 
     def search_batch(
@@ -1755,6 +1758,8 @@ class ReportBuilder:
         self._embedded_query_builder: "QueryBuilder | None" = None
         # Set via set_display(); passed as the `display` key in the POST body.
         self._display: dict[str, Any] | str | None = None
+        # Set via set_include_plot_spec(); requests a PlotSpec in the response.
+        self._include_plot_spec: bool = False
 
     def set_x(self, field: str, opts: str = "") -> "ReportBuilder":
         """Set the X-axis field (histogram, scatter, arc reports)."""
@@ -1856,6 +1861,19 @@ class ReportBuilder:
         self._display = value
         return self
 
+    def set_include_plot_spec(self, value: bool = True) -> "ReportBuilder":
+        """Request a ``plot_spec`` field in the API response.
+
+        When ``True``, the server builds and returns a fully-resolved
+        :class:`PlotSpec` object alongside the raw report data.  Pass the
+        result to :func:`plot_spec_to_vega_lite` to produce a Vega-Lite spec.
+
+        Args:
+            value: Whether to include the plot spec (default: ``True``).
+        """
+        self._include_plot_spec = value
+        return self
+
     def to_report_yaml(self) -> str:
         """Return the report configuration as a YAML string."""
         if self._report_yaml_override is not None:
@@ -1914,3 +1932,101 @@ class ReportBuilder:
                 "run() requires a QueryBuilder argument or a ReportBuilder " "created via QueryBuilder.from_v2_url()"
             )
         return qb.report(self, api_base=api_base, api_version=api_version)
+
+
+def plot_spec_to_vega_lite(spec: dict[str, Any]) -> dict[str, Any]:
+    """Convert a ``PlotSpec`` dict (from the API ``plot_spec`` field) to a Vega-Lite v5 spec.
+
+    The returned dict can be passed directly to any Vega-Lite renderer, e.g.
+    ``altair.Chart.from_dict()``.
+
+    Args:
+        spec: A ``PlotSpec`` dict from the API response ``plot_spec`` field.
+            Typically obtained via
+            ``ReportBuilder.set_include_plot_spec().run(qb)``.
+
+    Returns:
+        Vega-Lite v5 JSON-compatible dict.
+    """
+    display: dict[str, Any] = spec.get("display") or {}
+    base: dict[str, Any] = {
+        "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+        "width": display.get("width", 600),
+        "height": display.get("height", 400),
+        "config": {
+            "axis": {
+                "labelFontSize": display.get("font_size", 12),
+                "titleFontSize": display.get("font_size", 12),
+            },
+            "legend": {"labelFontSize": display.get("font_size", 12)},
+        },
+    }
+    title = display.get("title")
+    if title is not None:
+        base["title"] = title
+
+    report_type: str = spec.get("report_type", "")
+    x: dict[str, Any] = spec.get("x") or {}
+    y: dict[str, Any] = spec.get("y") or {}
+    data_vals: dict[str, Any] = spec.get("data") or {}
+
+    if report_type == "histogram":
+        hist = display.get("histogram") or {}
+        base.update(
+            {
+                "data": {"values": data_vals.get("buckets", [])},
+                "mark": {"type": "bar"},
+                "encoding": {
+                    "x": {
+                        "field": "key",
+                        "type": "quantitative",
+                        "scale": {"type": "log" if x.get("scale") == "log10" else "linear"},
+                        "axis": {"title": x.get("label") or x.get("field", "")},
+                    },
+                    "y": {
+                        "field": "doc_count",
+                        "type": "quantitative",
+                        "scale": {"type": "log" if hist.get("y_scale") == "log10" else "linear"},
+                        "axis": {"title": display.get("y_label", "Count")},
+                    },
+                },
+            }
+        )
+    elif report_type == "scatter":
+        base.update(
+            {
+                "data": {"values": data_vals.get("cells", [])},
+                "mark": "point",
+                "encoding": {
+                    "x": {
+                        "field": "x",
+                        "type": "quantitative",
+                        "scale": {"type": "log" if x.get("scale") == "log10" else "linear"},
+                        "axis": {"title": x.get("label") or x.get("field", "")},
+                    },
+                    "y": {
+                        "field": "y",
+                        "type": "quantitative",
+                        "scale": {"type": "log" if y.get("scale") == "log10" else "linear"},
+                        "axis": {"title": y.get("label") or y.get("field", "")},
+                    },
+                },
+            }
+        )
+    elif report_type in ("count_per_rank", "sources"):
+        base.update(
+            {
+                "data": {"values": data_vals.get("buckets", [])},
+                "mark": "bar",
+                "encoding": {
+                    "y": {
+                        "field": x.get("field", "rank"),
+                        "type": "nominal",
+                        "axis": {"title": x.get("label") or x.get("field", "")},
+                    },
+                    "x": {"field": "count", "type": "quantitative"},
+                },
+            }
+        )
+
+    return base

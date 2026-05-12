@@ -765,6 +765,9 @@ QueryBuilder <- R6::R6Class(
       if (!is.null(report$.__enclos_env__$private$.display)) {
         payload$display <- report$.__enclos_env__$private$.display
       }
+      if (isTRUE(report$.__enclos_env__$private$.include_plot_spec)) {
+        payload$include_plot_spec <- TRUE
+      }
       resp <- httr::POST(url,
         body = jsonlite::toJSON(payload, auto_unbox = TRUE),
         httr::add_headers("Content-Type" = "application/json"),
@@ -774,6 +777,7 @@ QueryBuilder <- R6::R6Class(
       data <- jsonlite::fromJSON(httr::content(resp, as = "text", encoding = "UTF-8"),
         simplifyVector = FALSE
       )
+      if (!is.null(data$plot_spec)) return(data)
       data$report %||% data
     },
 
@@ -1101,7 +1105,9 @@ ReportBuilder <- R6::R6Class("ReportBuilder",
     report_yaml_override = NULL,
     embedded_query_builder = NULL,
     # Set via set_display(); passed as the `display` key in the POST body.
-    .display = NULL
+    .display = NULL,
+    # Set via set_include_plot_spec(); requests a PlotSpec in the response.
+    .include_plot_spec = FALSE
   ),
   public = list(
     #' @description Initialise the builder with a report type.
@@ -1241,6 +1247,14 @@ ReportBuilder <- R6::R6Class("ReportBuilder",
     #' @return Invisibly \code{self}.
     set_display = function(value) {
       private$.display <- value
+      invisible(self)
+    },
+
+    #' @description Request a \code{plot_spec} field in the API response.
+    #' @param value Whether to include the plot spec (default: \code{TRUE}).
+    #' @return Invisibly \code{self}.
+    set_include_plot_spec = function(value = TRUE) {
+      private$.include_plot_spec <- value
       invisible(self)
     },
 

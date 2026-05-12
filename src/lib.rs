@@ -370,6 +370,19 @@ fn parse_tree_json(raw: &str) -> String {
     genomehubs_query::parse_tree_json(raw)
 }
 
+/// Extract the `plot_spec` field from a raw genomehubs `/report` API response.
+///
+/// Returns the `plot_spec` object as a JSON string, or `"null"` when the
+/// response contains no plot spec (i.e. `include_plot_spec` was not set in
+/// the request and no `display` field was provided).
+///
+/// Returns `{"error":"..."}` if the input is not valid JSON.
+#[cfg(feature = "extension-module")]
+#[pyfunction]
+fn parse_plot_spec_json(raw: &str) -> String {
+    genomehubs_query::parse_plot_spec_json(raw)
+}
+
 /// Validate a query against field metadata and configuration.
 ///
 /// Accepts YAML representations of the query and field metadata as JSON, and
@@ -464,6 +477,7 @@ fn cli_generator(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(parse_phylopic_batch_json, m)?)?;
     m.add_function(wrap_pyfunction!(parse_histogram_json, m)?)?;
     m.add_function(wrap_pyfunction!(parse_tree_json, m)?)?;
+    m.add_function(wrap_pyfunction!(parse_plot_spec_json, m)?)?;
     m.add_function(wrap_pyfunction!(query_yaml_from_url_params, m)?)?;
     m.add_function(wrap_pyfunction!(report_yaml_from_url_params, m)?)?;
     Ok(())

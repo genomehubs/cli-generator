@@ -395,6 +395,12 @@ CANONICAL_REPORT_BUILDER_METHODS = {
         "js_name": "setScatterThreshold",
         "r_name": "set_scatter_threshold",
     },
+    "set_display": {"python_name": "set_display", "js_name": "setDisplay", "r_name": "set_display"},
+    "set_include_plot_spec": {
+        "python_name": "set_include_plot_spec",
+        "js_name": "setIncludePlotSpec",
+        "r_name": "set_include_plot_spec",
+    },
     "to_report_yaml": {"python_name": "to_report_yaml", "js_name": "toReportYaml", "r_name": "to_report_yaml"},
     "validate": {"python_name": "validate", "js_name": "validate", "r_name": "validate"},
     "run": {"python_name": "run", "js_name": "run", "r_name": "run"},

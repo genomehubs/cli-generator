@@ -14,3 +14,4 @@ pub mod bounds;
 pub mod filter_expr;
 pub mod pipeline;
 pub mod report_types;
+pub mod spec_builder;

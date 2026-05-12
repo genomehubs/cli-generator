@@ -355,6 +355,27 @@ pub fn parse_tree_json(raw: &str) -> String {
     parse::parse_tree_json(raw).unwrap_or_else(|e| format!(r#"{{"error":{e:?}}}"#))
 }
 
+/// Extract the `plot_spec` field from a raw genomehubs `/report` API response.
+///
+/// Returns the `plot_spec` object as a JSON string, or `"null"` when the
+/// response contains no plot spec (i.e. `include_plot_spec` was not set in
+/// the request and no `display` field was provided).
+///
+/// Returns `{"error":"..."}` if the input is not valid JSON.
+#[cfg_attr(feature = "wasm", wasm_bindgen)]
+pub fn parse_plot_spec_json(raw: &str) -> String {
+    let v: serde_json::Value = match serde_json::from_str(raw) {
+        Ok(v) => v,
+        Err(e) => return format!(r#"{{"error":{e:?}}}"#),
+    };
+    match v.get("plot_spec") {
+        Some(spec) => {
+            serde_json::to_string(spec).unwrap_or_else(|e| format!(r#"{{"error":{e:?}}}"#))
+        }
+        None => "null".to_string(),
+    }
+}
+
 /// Describe a query in human-readable form.
 ///
 /// Generates a concise or verbose prose description of a genomehubs query,

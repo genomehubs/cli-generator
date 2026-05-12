@@ -7,12 +7,14 @@
 pub mod axis;
 pub mod bounds;
 pub mod display;
+pub mod plot_spec;
 
 pub use axis::{
     AxisOpts, AxisRole, AxisSpec, AxisSummary, DateInterval, Scale, SortMode, ValueType,
 };
 pub use bounds::BoundsResult;
 pub use display::DisplaySpec;
+pub use plot_spec::PlotSpec;
 
 /// Supported v3 report types.
 #[derive(Debug, Clone, PartialEq)]

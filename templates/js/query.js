@@ -894,7 +894,9 @@ class QueryBuilder {
       report_yaml: report.toReportYaml(),
     };
     if (report._display !== null) body.display = report._display;
+    if (report._includePlotSpec) body.include_plot_spec = true;
     const data = await this._postJson(`${apiBase}/v3/report`, body);
+    if (data.plot_spec) return data;
     return data.report ?? data;
   }
 
@@ -1454,6 +1456,8 @@ class ReportBuilder {
     this._embeddedQueryBuilder = null;
     // Set via setDisplay(); passed as the `display` key in the POST body.
     this._display = null;
+    // Set via setIncludePlotSpec(); requests a PlotSpec in the response.
+    this._includePlotSpec = false;
   }
 
   /** Set the X-axis field. @param {string} field @param {string} [opts=""] @returns {this} */
@@ -1567,6 +1571,21 @@ class ReportBuilder {
   }
 
   /**
+   * Request a `plot_spec` field in the API response.
+   *
+   * When set to `true`, the server builds and returns a fully-resolved
+   * `PlotSpec` object alongside the raw report data.  Pass the result to
+   * `plotSpecToVegaLite()` to produce a Vega-Lite specification.
+   *
+   * @param {boolean} [value=true]
+   * @returns {this}
+   */
+  setIncludePlotSpec(value = true) {
+    this._includePlotSpec = value;
+    return this;
+  }
+
+  /**
    * Return the report configuration as a YAML string.
    * @returns {string}
    */
@@ -1654,6 +1673,121 @@ function parseSearchWithLineageSummary(raw, configJson) {
   return JSON.parse(_parseSearchWithLineageSummary(str, configJson));
 }
 
+/**
+ * Convert a `PlotSpec` object (from the API `plot_spec` field) to a
+ * Vega-Lite v5 specification.
+ *
+ * The returned object can be passed directly to `vegaEmbed()` or any other
+ * Vega-Lite renderer.
+ *
+ * @param {object} plotSpec - A `PlotSpec` from the API response.
+ * @returns {object} Vega-Lite JSON specification.
+ */
+function plotSpecToVegaLite(plotSpec) {
+  const display = plotSpec.display ?? {};
+  const base = {
+    $schema: "https://vega.github.io/schema/vega-lite/v5.json",
+    title: display.title ?? undefined,
+    width: display.width ?? 600,
+    height: display.height ?? 400,
+    config: _vegaConfig(display),
+  };
+  switch (plotSpec.report_type) {
+    case "histogram":
+      return _histogramSpec(plotSpec, base);
+    case "scatter":
+      return _scatterSpec(plotSpec, base);
+    case "count_per_rank":
+      return _barSpec(plotSpec, base);
+    case "sources":
+      return _barSpec(plotSpec, base);
+    case "tree":
+      return { ...base, mark: "point", data: { values: [] } };
+    case "map":
+      return {
+        ...base,
+        projection: { type: display.map?.projection ?? "mercator" },
+      };
+    case "arc":
+      return { ...base, mark: "arc" };
+    default:
+      return base;
+  }
+}
+
+function _vegaConfig(display) {
+  const fontSize = display.font_size ?? 12;
+  return {
+    axis: { labelFontSize: fontSize, titleFontSize: fontSize },
+    legend: { labelFontSize: fontSize },
+  };
+}
+
+function _histogramSpec(plotSpec, base) {
+  const x = plotSpec.x ?? {};
+  const hist = plotSpec.display?.histogram ?? {};
+  return {
+    ...base,
+    data: { values: plotSpec.data?.buckets ?? [] },
+    mark: { type: "bar" },
+    encoding: {
+      x: {
+        field: "key",
+        type: "quantitative",
+        scale: { type: x.scale === "log10" ? "log" : "linear" },
+        axis: { title: x.label ?? x.field ?? "" },
+      },
+      y: {
+        field: "doc_count",
+        type: "quantitative",
+        scale: { type: hist.y_scale === "log10" ? "log" : "linear" },
+        axis: { title: plotSpec.display?.y_label ?? "Count" },
+      },
+    },
+  };
+}
+
+function _scatterSpec(plotSpec, base) {
+  const x = plotSpec.x ?? {};
+  const y = plotSpec.y ?? {};
+  return {
+    ...base,
+    data: { values: plotSpec.data?.cells ?? [] },
+    mark: "point",
+    encoding: {
+      x: {
+        field: "x",
+        type: "quantitative",
+        scale: { type: x.scale === "log10" ? "log" : "linear" },
+        axis: { title: x.label ?? x.field ?? "" },
+      },
+      y: {
+        field: "y",
+        type: "quantitative",
+        scale: { type: y.scale === "log10" ? "log" : "linear" },
+        axis: { title: y.label ?? y.field ?? "" },
+      },
+    },
+  };
+}
+
+function _barSpec(plotSpec, base) {
+  const x = plotSpec.x ?? {};
+  return {
+    ...base,
+    data: { values: plotSpec.data?.buckets ?? [] },
+    mark: "bar",
+    encoding: {
+      y: {
+        field: x.field ?? "rank",
+        type: "nominal",
+        axis: { title: x.label ?? x.field ?? "" },
+      },
+      x: { field: "count", type: "quantitative" },
+    },
+  };
+}
+
 export {
   QueryBuilder,
   ReportBuilder,
@@ -1661,6 +1795,7 @@ export {
   parseResponseStatus,
   parseHistogramJson,
   parseTreeJson,
+  plotSpecToVegaLite,
   annotateSourceLabels,
   splitSourceColumns,
   valuesOnly,

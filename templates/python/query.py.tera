@@ -799,9 +799,12 @@ class QueryBuilder:
                 "query_yaml": self.to_query_yaml(),
                 "params_yaml": self.to_params_yaml(),
                 "report_yaml": report.to_report_yaml(),
-                **({{"display": report._display}} if report._display is not None else {{}}),
+                **({"display": report._display} if report._display is not None else {}),
+                **({"include_plot_spec": True} if report._include_plot_spec else {}),
             },
         )
+        if data.get("plot_spec"):
+            return data
         return data.get("report", data)
 
     def search_batch(
@@ -1267,6 +1270,8 @@ class ReportBuilder:
         self._embedded_query_builder: "QueryBuilder | None" = None
         # Set via set_display(); passed as the `display` key in the POST body.
         self._display: dict[str, Any] | str | None = None
+        # Set via set_include_plot_spec(); requests a PlotSpec in the response.
+        self._include_plot_spec: bool = False
 
     def set_x(self, field: str, opts: str = "") -> "ReportBuilder":
         """Set the X-axis field (histogram, scatter, arc reports)."""
@@ -1366,6 +1371,18 @@ class ReportBuilder:
                 ``width``, ``height``, ``color_scheme``, ``x_label``, etc.
         """
         self._display = value
+        return self
+
+    def set_include_plot_spec(self, value: bool = True) -> "ReportBuilder":
+        """Request a ``plot_spec`` field in the API response.
+
+        When ``True``, the server builds and returns a fully-resolved
+        ``PlotSpec`` object alongside the raw report data.
+
+        Args:
+            value: Whether to include the plot spec (default: ``True``).
+        """
+        self._include_plot_spec = value
         return self
 
     def to_report_yaml(self) -> str:

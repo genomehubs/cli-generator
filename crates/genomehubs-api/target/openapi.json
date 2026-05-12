@@ -1132,9 +1132,20 @@
         "required": [
           "query_yaml",
           "params_yaml",
-          "report_yaml"
+          "report_yaml",
+          "include_plot_spec"
         ],
         "properties": {
+          "display_yaml": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "include_plot_spec": {
+            "type": "boolean",
+            "description": "When `true`, build and return a `PlotSpec` in the response.\n\nAlso implicitly set when a `display` field is present in the request."
+          },
           "params_yaml": {
             "type": "string"
           },
@@ -1153,6 +1164,18 @@
           "report"
         ],
         "properties": {
+          "display": {
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "plot_spec": {
+            "type": [
+              "object",
+              "null"
+            ]
+          },
           "report": {},
           "status": {
             "$ref": "#/components/schemas/ApiStatus"

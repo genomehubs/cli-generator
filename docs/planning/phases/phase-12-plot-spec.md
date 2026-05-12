@@ -5,10 +5,16 @@
 **Estimated scope:** 1 new module in `genomehubs-query`, 1 new module in `genomehubs-api`,
 CLI rendering via `plotters`, JS `plotSpecToVegaLite()` helper, SDK method additions
 
-Note: Phase 11 (positional family endpoint) is **deferred** — it does not block Phase
-12. The `PlotSpec` type is defined for histogram, scatter, countPerRank, sources, arc,
+Note: Phase 11 (positional family endpoint) is **deferred** — it does not block Phase 12. The `PlotSpec` type is defined for histogram, scatter, countPerRank, sources, arc,
 map, and tree only. Oxford/ribbon/painting variants of `PlotSpec` are added when
 Phase 11 lands.
+
+Note: Phase 10b added per-report-type `DisplaySpec` sub-structs (`histogram`,
+`scatter`, `map`, `tree`, etc.), a `TickLabelPlacement` enum, `AxisOptions` hints,
+and `equation_line`/`base_type` fields. `PlotSpec.display` carries these through to
+renderers unchanged. `AxisMeta` now includes resolved display fields
+(`tick_label_placement`, `tick_label_stride`, `tick_label_max_length`) so renderers
+never need to auto-detect axis label behaviour.
 
 ---
 
@@ -61,15 +67,36 @@ pub enum PlotReportType {
 }
 
 /// Axis metadata for a single axis.
+///
+/// All display fields here are **resolved** by the server — renderers consume
+/// them directly without any auto-detection. `tick_label_placement` and
+/// `tick_label_stride` are derived from `AxisOptions` hints (Phase 10b) plus
+/// `value_type`; they are never `Option`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AxisMeta {
     pub field: String,
     pub label: Option<String>,
-    pub scale: String,          // "linear" | "log10" | "log2" | "sqrt"
+    /// One of `"linear"` | `"log10"` | `"log2"` | `"sqrt"` | `"proportion"`.
+    /// `"proportion"` normalises the axis to 1.0.
+    /// `"sqrt"` is valid for scatter Z (heatmap density) axes.
+    pub scale: String,
     pub domain: [f64; 2],
     pub tick_values: Vec<f64>,
     pub tick_labels: Vec<String>,
-    pub value_type: String,     // "integer" | "float" | "keyword" | "coordinate"
+    /// One of `"integer"` | `"float"` | `"keyword"` | `"coordinate"`.
+    pub value_type: String,
+    /// Resolved label placement. Derived from `AxisOptions.tick_label_placement`
+    /// if set; otherwise auto-detected: `on_tick` for numeric/range axes,
+    /// `between_ticks` for keyword/category axes (`value_type == "keyword"`).
+    /// Tick marks always fall on bin boundaries regardless.
+    pub tick_label_placement: TickLabelPlacement,
+    /// Resolved label stride. Derived from `AxisOptions.tick_label_stride` if
+    /// set; otherwise the server picks the largest stride that fits the axis
+    /// width at the requested plot dimensions. `1` means show every label.
+    pub tick_label_stride: u32,
+    /// Maximum characters before truncation with `…`. Passed through from
+    /// `AxisOptions.tick_label_max_length`; `None` means no truncation.
+    pub tick_label_max_length: Option<usize>,
 }
 
 /// A category/series for multi-series plots.
@@ -150,6 +177,7 @@ be set via the object/YAML `params` field.
 ```rust
 // crates/genomehubs-api/src/report/spec_builder.rs
 use genomehubs_query::report::{DisplaySpec, PlotSpec, plot_spec::{AxisMeta, PlotReportType, SeriesMeta}};
+use genomehubs_query::report::display::{AxisOptions, TickLabelPlacement};
 use serde_json::Value;
 
 /// Build a `PlotSpec` from a completed report response.
@@ -174,11 +202,32 @@ pub fn build_plot_spec(
         data: report_data.clone(),
     }
 }
+
+/// Resolve `AxisMeta` display fields from the pipeline output and any user
+/// `AxisOptions` hint.
+///
+/// `value_type` comes from the pipeline (field schema). `opts` comes from the
+/// matching sub-struct in `DisplaySpec` (e.g. `display.histogram.x_axis`).
+/// The resolved `tick_label_placement` and `tick_label_stride` are written
+/// directly into the returned `AxisMeta`.
+pub fn resolve_axis_display(meta: &mut AxisMeta, opts: Option<&AxisOptions>) {
+    // Placement: user hint > auto from value_type
+    meta.tick_label_placement = opts
+        .and_then(|o| o.tick_label_placement)
+        .unwrap_or_else(|| match meta.value_type.as_str() {
+            "keyword" => TickLabelPlacement::BetweenTicks,
+            _ => TickLabelPlacement::OnTick,
+        });
+    // Stride: user hint > 1 (auto-fitting is a renderer concern)
+    meta.tick_label_stride = opts.and_then(|o| o.tick_label_stride).unwrap_or(1);
+    meta.tick_label_max_length = opts.and_then(|o| o.tick_label_max_length);
+}
 ```
 
 Axis metadata is already partially available from the `AxisSpec` and `BoundsResult`
 types produced by the report pipeline. `spec_builder.rs` bridges from the pipeline
-output to the `AxisMeta` wire format.
+output to the `AxisMeta` wire format. `resolve_axis_display` must be called on every
+`AxisMeta` after construction so that renderers never need to guess.
 
 ---
 
@@ -191,17 +240,17 @@ crates/genomehubs-api/src/report/spec_builder.rs    — PlotSpec construction fr
 
 ## Files to Modify
 
-| File                                           | Change                                             |
-| ---------------------------------------------- | -------------------------------------------------- |
-| `crates/genomehubs-query/src/report/mod.rs`    | `pub mod plot_spec; pub use plot_spec::PlotSpec;`  |
-| `crates/genomehubs-api/src/report/mod.rs`      | `pub mod spec_builder;`                            |
-| `crates/genomehubs-api/src/routes/report.rs`   | Build `PlotSpec` when requested; add to response   |
-| `crates/genomehubs-query/src/lib.rs`           | WASM export `to_plot_spec_json(response_json)`     |
-| `src/lib.rs`                                   | PyO3 export `to_plot_spec_json`                    |
-| `templates/js/query.js`                        | `plotSpecToVegaLite(spec)` helper function         |
-| `python/cli_generator/query.py`                | `QueryBuilder.report()` returns full response when `plot_spec` present |
-| `templates/python/query.py.tera`               | Mirror                                             |
-| `templates/r/query.R`                          | Mirror                                             |
+| File                                         | Change                                                                 |
+| -------------------------------------------- | ---------------------------------------------------------------------- |
+| `crates/genomehubs-query/src/report/mod.rs`  | `pub mod plot_spec; pub use plot_spec::PlotSpec;`                      |
+| `crates/genomehubs-api/src/report/mod.rs`    | `pub mod spec_builder;`                                                |
+| `crates/genomehubs-api/src/routes/report.rs` | Build `PlotSpec` when requested; add to response                       |
+| `crates/genomehubs-query/src/lib.rs`         | WASM export `to_plot_spec_json(response_json)`                         |
+| `src/lib.rs`                                 | PyO3 export `to_plot_spec_json`                                        |
+| `templates/js/query.js`                      | `plotSpecToVegaLite(spec)` helper function                             |
+| `python/cli_generator/query.py`              | `QueryBuilder.report()` returns full response when `plot_spec` present |
+| `templates/python/query.py.tera`             | Mirror                                                                 |
+| `templates/r/query.R`                        | Mirror                                                                 |
 
 CLI rendering (`genomehubs plot`) is included in this phase — see below.
 
@@ -222,17 +271,17 @@ genomehubs report --report report.yaml --plot --output genome_size.png
 
 ### Renderer dispatch
 
-| `report_type`       | Renderer                                          |
-| ------------------- | ------------------------------------------------- |
-| `histogram`         | `plotters::HistogramRenderer`                     |
-| `scatter`           | `plotters::ScatterRenderer`                       |
-| `map`               | `plotters::MapRenderer` (GeoJSON overlay)         |
-| `tree`              | Newick → SVG dendrogram (custom)                  |
-| `oxford` / `ribbon` | `plotters::ScatterRenderer` with chromosome track |
-| `painting`          | `plotters::PaintingRenderer`                      |
-| `xPerRank`          | `plotters::BarRenderer`                           |
-| `sources`           | `plotters::BarRenderer`                           |
-| `arc`               | `plotters::ArcRenderer` (3-circle Venn-like)      |
+| `report_type`       | Renderer                                                                                                             |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `histogram`         | `plotters::HistogramRenderer`                                                                                        |
+| `scatter`           | `plotters::ScatterRenderer`; `equation_line` from `display.scatter.equation_line` rendered as overlay curve          |
+| `map`               | `plotters::MapRenderer` (GeoJSON overlay); `base_type` from `display.map.base_type` selects flat vs globe projection |
+| `tree`              | Newick → SVG dendrogram (custom)                                                                                     |
+| `oxford` / `ribbon` | `plotters::ScatterRenderer` with chromosome track                                                                    |
+| `painting`          | `plotters::PaintingRenderer`                                                                                         |
+| `count_per_rank`    | `plotters::BarRenderer`                                                                                              |
+| `sources`           | `plotters::BarRenderer`                                                                                              |
+| `arc`               | `plotters::ArcRenderer` (3-circle Venn-like)                                                                         |
 
 ### `plotters` crate usage
 
@@ -276,14 +325,22 @@ export function plotSpecToVegaLite(plotSpec) {
     config: _buildVegaConfig(display),
   };
   switch (plotSpec.report_type) {
-    case "histogram":      return _buildHistogramSpec(plotSpec, base);
-    case "scatter":        return _buildScatterSpec(plotSpec, base);
-    case "count_per_rank": return _buildBarSpec(plotSpec, base);
-    case "sources":        return _buildBarSpec(plotSpec, base);
-    case "tree":           return _buildTreeSpec(plotSpec, base);
-    case "map":            return _buildMapSpec(plotSpec, base);
-    case "arc":            return _buildArcSpec(plotSpec, base);
-    default:               return base;
+    case "histogram":
+      return _buildHistogramSpec(plotSpec, base);
+    case "scatter":
+      return _buildScatterSpec(plotSpec, base);
+    case "count_per_rank":
+      return _buildBarSpec(plotSpec, base);
+    case "sources":
+      return _buildBarSpec(plotSpec, base);
+    case "tree":
+      return _buildTreeSpec(plotSpec, base);
+    case "map":
+      return _buildMapSpec(plotSpec, base);
+    case "arc":
+      return _buildArcSpec(plotSpec, base);
+    default:
+      return base;
   }
 }
 ```
@@ -315,15 +372,15 @@ if spec:
 
 ## Scope Boundaries
 
-| In scope                                        | Out of scope                                      |
-| ----------------------------------------------- | ------------------------------------------------- |
-| `PlotSpec` type in `genomehubs-query`           | Full Vega-Lite spec generation in Rust            |
-| `spec_builder.rs` in `genomehubs-api`           | PNG export from WASM (browser `canvas` concern)   |
-| SVG/PNG CLI rendering via `plotters`            | Animation / interactive filtering in Rust         |
-| `plotSpecToVegaLite()` in JS SDK                | Custom D3 renderers                               |
-| `plot_spec_to_vega_lite()` Python utility       | Oxford/ribbon/painting variants (Phase 11 dep)    |
-| `include_plot_spec` flag in `params`            | Streaming / incremental rendering                 |
-| `genomehubs plot` CLI subcommand (basic)        |                                                   |
+| In scope                                  | Out of scope                                    |
+| ----------------------------------------- | ----------------------------------------------- |
+| `PlotSpec` type in `genomehubs-query`     | Full Vega-Lite spec generation in Rust          |
+| `spec_builder.rs` in `genomehubs-api`     | PNG export from WASM (browser `canvas` concern) |
+| SVG/PNG CLI rendering via `plotters`      | Animation / interactive filtering in Rust       |
+| `plotSpecToVegaLite()` in JS SDK          | Custom D3 renderers                             |
+| `plot_spec_to_vega_lite()` Python utility | Oxford/ribbon/painting variants (Phase 11 dep)  |
+| `include_plot_spec` flag in `params`      | Streaming / incremental rendering               |
+| `genomehubs plot` CLI subcommand (basic)  |                                                 |
 
 ---
 

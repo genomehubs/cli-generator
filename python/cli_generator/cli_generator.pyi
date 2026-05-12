@@ -515,6 +515,22 @@ def parse_tree_json(raw: str) -> str:
     """
     ...
 
+def parse_plot_spec_json(raw: str) -> str:
+    """Extract the ``plot_spec`` field from a raw genomehubs ``/report`` API response.
+
+    Returns the ``plot_spec`` object as a JSON string, or ``"null"`` when the
+    response contains no plot spec (i.e. ``include_plot_spec`` was not set in
+    the request and no ``display`` field was provided).
+
+    Args:
+        raw: Raw JSON string from the ``/report`` API endpoint.
+
+    Returns:
+        JSON string of the ``plot_spec`` object, or ``"null"`` if absent.
+        Returns ``{"error":"..."}`` if the input is not valid JSON.
+    """
+    ...
+
 def validate_query_json(
     query_yaml: str,
     field_metadata_json: str,
