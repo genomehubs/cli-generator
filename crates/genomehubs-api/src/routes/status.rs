@@ -35,6 +35,9 @@ pub struct StatusResponse {
 #[utoipa::path(
     get,
     path = "/api/v3/status",
+    tag = "Status",
+    summary = "API health and supported endpoints",
+    description = "Returns health status of the API and lists all supported endpoint paths.",
     responses(
         (status = 200, description = "Health status", body = StatusResponse)
     )

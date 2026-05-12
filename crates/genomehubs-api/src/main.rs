@@ -2,7 +2,7 @@ use axum::{routing::get, Extension, Router};
 use std::{fs, net::SocketAddr, path::PathBuf, sync::Arc, time::Duration};
 // use toml;
 use utoipa::OpenApi;
-use utoipa_swagger_ui::SwaggerUi;
+use utoipa_swagger_ui::{SwaggerUi, Url};
 
 mod es_client;
 mod es_metadata;
@@ -11,6 +11,7 @@ mod index_name;
 mod phylopic_client;
 mod report;
 mod routes;
+mod swagger_customise;
 
 #[derive(Clone)]
 pub struct AppState {
@@ -28,6 +29,25 @@ pub struct AppState {
 
 #[derive(OpenApi)]
 #[openapi(
+    info(
+        title = "GenomeHubs API",
+        description = "GenomeHubs Application Programming Interface.\n\nProvides a low-level API to retrieve records, look up taxa, search and generate reports across all taxon, assembly, and sample data.\n\nSee the [GenomeHubs documentation](https://genomehubs.org) for further details.",
+        version = "3.0.0",
+        contact(
+            name = "GenomeHubs",
+            url = "https://genomehubs.org"
+        ),
+        license(
+            name = "MIT License",
+            url = "https://github.com/genomehubs/genomehubs/blob/main/LICENSE"
+        )
+    ),
+    tags(
+        (name = "Data", description = "Retrieve search results, records and reports"),
+        (name = "Metadata", description = "List available indices, fields, taxonomies and ranks"),
+        (name = "External", description = "Fetch external resources"),
+        (name = "Status", description = "API health and version information")
+    ),
     paths(
         routes::count::post_count,
         routes::count_batch::post_count_batch,
@@ -98,6 +118,8 @@ async fn main() {
         default_version: Option<String>,
         hub_name: Option<String>,
         index_separator: Option<String>,
+        /// Optional path to a swagger customisation YAML file.
+        swagger_examples: Option<String>,
     }
 
     // Locate config: env override -> search upwards for config/es_integration.toml -> example
@@ -125,6 +147,7 @@ async fn main() {
     let mut default_version = "2021.10.15".to_string();
     let mut hub_name = "goat".to_string();
     let mut index_separator = "--".to_string();
+    let mut swagger_examples_path: Option<String> = None;
 
     match fs::read_to_string(&cfg_path) {
         Ok(raw) => match toml::from_str::<EsConfig>(&raw) {
@@ -145,6 +168,7 @@ async fn main() {
                 if let Some(sep) = cfg.index_separator {
                     index_separator = sep;
                 }
+                swagger_examples_path = cfg.swagger_examples;
             }
             Err(e) => {
                 tracing::error!(path = %cfg_path.display(), error = %e, "Failed to parse ES integration config");
@@ -218,6 +242,21 @@ async fn main() {
 
     let openapi = ApiDoc::openapi();
 
+    // Build the runtime-patched OpenAPI JSON value.
+    // Apply site-specific customisations from the swagger_examples file (if set).
+    let mut openapi_val = serde_json::to_value(&openapi).expect("OpenAPI serialisation failed");
+    if let Some(ref path) = swagger_examples_path {
+        match swagger_customise::load(path) {
+            Ok(customisation) => {
+                swagger_customise::apply_to_json(&mut openapi_val, &customisation);
+                tracing::info!(path, "Swagger customisation applied");
+            }
+            Err(e) => {
+                tracing::warn!(error = %e, "Failed to load swagger customisation — using defaults");
+            }
+        }
+    }
+
     // Populate cache on startup (blocking with retry). If this errors the app will not start.
     // Spawn the populate step now and await it so server only starts when cache populated.
     match es_metadata::populate_with_retry(state.clone(), &state.client, None).await {
@@ -273,13 +312,19 @@ async fn main() {
         .route("/api/v3/status", get(routes::status::get_status))
         .route("/api/v3/summary", get(routes::summary::get_summary))
         .layer(Extension(state))
-        .merge(SwaggerUi::new("/swagger-ui").url("/api-doc/openapi.json", openapi.clone()));
+        .merge(
+            SwaggerUi::new("/swagger-ui")
+                .external_url_unchecked(
+                    Url::new("API Documentation", "/api-doc/openapi.json"),
+                    openapi_val,
+                ),
+        );
 
-    // Also write OpenAPI JSON to target for inspection.
-    let openapi_json = serde_json::to_string_pretty(&openapi).unwrap();
+    // Write the patched OpenAPI JSON to target/ for inspection.
     let out_path = "./target/openapi.json";
     std::fs::create_dir_all("./target").ok();
-    std::fs::write(out_path, openapi_json).expect("failed to write openapi.json");
+    std::fs::write(out_path, serde_json::to_string_pretty(&openapi).unwrap())
+        .expect("failed to write openapi.json");
     tracing::info!(path = %out_path, "Wrote OpenAPI");
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));

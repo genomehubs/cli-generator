@@ -32,6 +32,9 @@ pub async fn get_taxonomic_ranks(
 #[utoipa::path(
     get,
     path = "/api/v3/metadata/ranks",
+    tag = "Metadata",
+    summary = "List of valid taxonomic ranks",
+    description = "Returns all supported taxonomic ranks for this hub (e.g. species, genus, family).",
     responses(
         (status = 200, description = "Cached taxonomic ranks", body = RanksResponse)
     )

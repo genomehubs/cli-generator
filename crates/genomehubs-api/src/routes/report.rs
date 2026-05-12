@@ -72,6 +72,9 @@ pub struct ReportResponse {
 #[utoipa::path(
     post,
     path = "/api/v3/report",
+    tag = "Data",
+    summary = "Generate an aggregated report",
+    description = "Returns aggregated data for reports including histograms, scatter plots, trees, and other visualisations.",
     request_body = ReportRequest,
     responses((status = 200, description = "Report data", body = ReportResponse))
 )]

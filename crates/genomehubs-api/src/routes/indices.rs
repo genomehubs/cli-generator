@@ -30,6 +30,9 @@ pub async fn get_indices(Extension(state): Extension<Arc<AppState>>) -> Json<Ind
 #[utoipa::path(
     get,
     path = "/api/v3/metadata/indices",
+    tag = "Metadata",
+    summary = "List of available indices",
+    description = "Returns the names of all searchable indices available in this hub (e.g. taxon, assembly, sample).",
     responses(
         (status = 200, description = "Cached indices", body = IndicesResponse)
     )

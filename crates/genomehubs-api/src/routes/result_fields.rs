@@ -31,9 +31,11 @@ pub struct ResultFieldsResponse {
 #[utoipa::path(
     get,
     path = "/api/v3/metadata/fields",
+    tag = "Metadata",
+    summary = "Returns available fields for a given result type",
+    description = "Returns field definitions, types, and synonyms for the specified result index (taxon, assembly, or sample).",
     params(
         ("result" = Option<String>, Query, description = "Result type (taxon|assembly|sample)"),
-
     ),
     responses(
         (status = 200, description = "Field metadata", body = ResultFieldsResponse)

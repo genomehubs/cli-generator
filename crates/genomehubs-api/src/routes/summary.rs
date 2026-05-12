@@ -32,6 +32,9 @@ pub struct SummaryResponse {
 #[utoipa::path(
     get,
     path = "/api/v3/summary",
+    tag = "Data",
+    summary = "Fetch aggregated summary statistics for a record",
+    description = "Returns aggregated summary statistics (min, max, mean, etc.) for specific fields of a given record.",
     params(
         ("recordId" = String, Query, description = "Record ID"),
         ("result" = Option<String>, Query, description = "Result type (taxon|assembly|sample)"),

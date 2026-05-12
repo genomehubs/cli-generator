@@ -249,6 +249,9 @@ fn extract_lookup_results(resp: &serde_json::Value, reason: &str) -> Vec<LookupR
 #[utoipa::path(
     get,
     path = "/api/v3/lookup",
+    tag = "Data",
+    summary = "Find record IDs matching a search term",
+    description = "Find record IDs matching a search term based on full or partial matches to a record ID, name, synonym or other identifier.",
     params(
         ("searchTerm" = String, Query, description = "Search term for lookup"),
         ("result" = Option<String>, Query, description = "Result type (taxon|assembly|sample)"),

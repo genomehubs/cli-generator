@@ -219,7 +219,18 @@ async fn resolve_lineage_taxon_ids(
 #[utoipa::path(
     post,
     path = "/api/v3/search/batch",
-    request_body = SearchBatchRequest,
+    tag = "Data",
+    summary = "Fetch records for multiple search queries in a single request",
+    description = "Execute up to 100 search queries simultaneously using a single POST. Reduces network round-trips for parallel searches.",
+    request_body(
+        content = SearchBatchRequest,
+        examples(
+            ("Two searches" = (
+                summary = "Search Mammalia and Insecta in parallel",
+                value = json!({"queries": [{"query_yaml": "index: taxon\nquery: tax_tree(Mammalia)\n", "params_yaml": "size: 5\nfields: genome_size\ntaxonomy: ncbi\n"}, {"query_yaml": "index: taxon\nquery: tax_tree(Insecta)\n", "params_yaml": "size: 5\nfields: genome_size\ntaxonomy: ncbi\n"}]})
+            ))
+        )
+    ),
     responses(
         (status = 200, description = "Batch search results", body = SearchBatchResponse)
     )

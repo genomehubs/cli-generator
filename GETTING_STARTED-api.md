@@ -210,6 +210,191 @@ Then run:
 ./target/release/genomehubs-api
 ```
 
+## Running the API Locally for Development
+
+The fastest way to see the Swagger UI with the current examples is a dev build
+from the project root.  No extra flags are needed — the examples are compiled
+into the binary.
+
+### 1. Ensure Elasticsearch is running
+
+The API will refuse to start if it cannot populate the metadata cache from ES.
+If you don't have a running ES instance, start one with Docker:
+
+```bash
+docker run -d --name es-local \
+  -p 9200:9200 \
+  -e "discovery.type=single-node" \
+  -e "xpack.security.enabled=false" \
+  docker.elastic.co/elasticsearch/elasticsearch:8.10.0
+```
+
+### 2. Configure `config/es_integration.toml`
+
+If the file does not exist yet, copy the example:
+
+```bash
+cp config/es_integration.toml.example config/es_integration.toml
+```
+
+Edit it to match your instance — at minimum set `base_url`, `hub_name`, and
+`default_version`:
+
+```toml
+base_url        = "http://localhost:9200"
+hub_name        = "goat"
+default_version = "2021.10.15"
+index_separator = "--"
+default_taxonomy = "ncbi"
+```
+
+For docker-compose use with the bundled ES image, `base_url` should be
+`http://localhost:9200` (default).
+
+### 3. Start the API
+
+```bash
+# From the project root — auto-discovers config/es_integration.toml
+cargo run -p genomehubs-api
+```
+
+Or, to use a different config file:
+
+```bash
+ES_INTEGRATION_CONFIG=/path/to/my-site.toml cargo run -p genomehubs-api
+```
+
+The API will log:
+
+```
+INFO metadata cache populated
+INFO Listening on 127.0.0.1:3000
+```
+
+### 4. Open Swagger UI
+
+```
+http://localhost:3000/swagger-ui/
+```
+
+Endpoints are grouped into four tags matching the v2 documentation layout:
+
+| Tag | Endpoints |
+|-----|-----------|
+| **Data** | `/count`, `/count/batch`, `/search`, `/search/batch`, `/record`, `/report`, `/lookup`, `/summary` |
+| **Metadata** | `/metadata`, `/metadata/fields`, `/metadata/indices`, `/metadata/ranks`, `/metadata/taxonomies` |
+| **External** | `/phylopic`, `/phylopic/batch` |
+| **Status** | `/status` |
+
+Request body examples (e.g. "Mammalia with genome size") are shown inside the
+"Try it out" panel for POST endpoints.
+
+---
+
+## Swagger Customisation (Runtime)
+
+The Swagger UI title, description, contact block, and request-body examples
+are **loaded at runtime** from a YAML file.  This means any Docker deployment
+can be customised by mounting a single file — no rebuild required.
+
+### Enabling customisation
+
+Add one line to `es_integration.toml` (or the mounted override):
+
+```toml
+swagger_examples = "config/swagger-examples-goat.yaml"
+```
+
+The API reads this file at startup.  Restart the API to pick up edits.
+
+> Relative paths are resolved from the process working directory.  Inside a
+> Docker container, use an absolute path or mount the file to a predictable
+> location.
+
+### YAML file structure
+
+`config/swagger-examples-goat.yaml` is the canonical example for GoaT.  The
+file has two top-level keys:
+
+#### `info` — API info block override
+
+```yaml
+info:
+  title: "GoaT API"
+  description: |
+    **Genomes on a Tree** API description (Markdown supported).
+  contact:
+    name: "GoaT"
+    url: "https://goat.genomehubs.org"
+    email: "goat@genomehubs.org"
+  license:
+    name: "MIT License"
+    url: "https://github.com/genomehubs/genomehubs/blob/main/LICENSE"
+```
+
+All fields are optional.  Omitted fields keep their compiled defaults.
+
+#### `examples` — request-body examples
+
+```yaml
+examples:
+  - path: "/api/v3/count"
+    method: post
+    name: mammalia_species_count
+    summary: "Count Mammalia taxa with a genome size estimate"
+    value:
+      query_yaml: "index: taxon\nquery: tax_tree(Mammalia) AND genome_size\n"
+      params_yaml: "size: 0\ninclude_estimates: true\ntaxonomy: ncbi\n"
+
+  - path: "/api/v3/search"
+    method: post
+    name: mammalia_genome_size
+    summary: "Search Mammalia taxa with genome size, sorted descending"
+    value:
+      query_yaml: "index: taxon\nquery: tax_tree(Mammalia) AND genome_size\n"
+      params_yaml: "size: 10\nfields: genome_size,scientific_name\nsort_by: genome_size\nsort_order: desc\ninclude_estimates: true\ntaxonomy: ncbi\n"
+```
+
+* `path` — API path exactly as it appears in the OpenAPI spec.
+* `method` — HTTP method in lowercase (`post`, `get`, …).
+* `name` — key in the OpenAPI `examples` map (no spaces).
+* `summary` — one-line label shown in the Swagger UI dropdown.
+* `value` — the example request body as a YAML mapping.
+
+If the YAML provides **any** examples for a given `path`+`method` pair, those
+examples **replace** the compile-time defaults for that endpoint.  Endpoints
+not mentioned in the YAML keep their compiled defaults.
+
+### Docker deployment
+
+Mount the two config files at container start and set the path:
+
+```sh
+docker run \
+  -v /host/config/es_integration.toml:/app/config/es_integration.toml \
+  -v /host/config/swagger-examples-goat.yaml:/app/config/swagger-examples-goat.yaml \
+  genomehubs-api
+```
+
+with `es_integration.toml` containing:
+
+```toml
+swagger_examples = "/app/config/swagger-examples-goat.yaml"
+```
+
+### Adding a new site
+
+1. Copy `config/swagger-examples-goat.yaml` to
+   `config/swagger-examples-<site>.yaml`.
+2. Edit the `info` block and `examples` list for the new site.
+3. Mount it alongside `es_integration.toml` and point `swagger_examples` at it.
+
+The compile-time examples in the route source files (`routes/count.rs` etc.)
+remain as generic fallbacks for deployments that do not mount a customisation
+file.
+
+---
+
 ## Testing the API
 
 ### Health Check

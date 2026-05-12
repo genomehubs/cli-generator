@@ -29,6 +29,9 @@ pub struct RecordResponse {
 #[utoipa::path(
     get,
     path = "/api/v3/record",
+    tag = "Data",
+    summary = "Fetch a record by ID",
+    description = "Returns all field values for one or more specific records identified by their record ID.",
     params(
         ("recordId" = String, Query, description = "Record ID (comma-separated for multiple)"),
         ("result" = Option<String>, Query, description = "Result type (taxon|assembly|sample)"),

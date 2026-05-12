@@ -23,6 +23,9 @@ pub struct MetadataResponse {
 #[utoipa::path(
     get,
     path = "/api/v3/metadata",
+    tag = "Metadata",
+    summary = "Aggregated hub metadata",
+    description = "Returns available indices, taxonomies, taxonomic ranks, and API versions in a single response.",
     responses(
         (status = 200, description = "Aggregated metadata: indices, taxonomies, ranks, and versions", body = MetadataResponse)
     )

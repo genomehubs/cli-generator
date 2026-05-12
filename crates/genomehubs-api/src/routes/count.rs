@@ -54,7 +54,22 @@ pub struct CountResponse {
 #[utoipa::path(
     post,
     path = "/api/v3/count",
-    request_body = CountRequest,
+    tag = "Data",
+    summary = "Count records matching a search query",
+    description = "Fetch the record count for a search query without including any of the results.\n\n`/count` supports all relevant `/search` parameters to allow a record count to be obtained for a query prior to a full search.",
+    request_body(
+        content = CountRequest,
+        examples(
+            ("Mammalia species count" = (
+                summary = "Count species in Mammalia with a genome size estimate",
+                value = json!({"query_yaml": "index: taxon\nquery: tax_tree(Mammalia) AND genome_size\n", "params_yaml": "size: 0\ninclude_estimates: true\ntaxonomy: ncbi\n"})
+            )),
+            ("Assembly count" = (
+                summary = "Count assemblies for Mammalia",
+                value = json!({"query_yaml": "index: assembly\nquery: tax_tree(Mammalia)\n", "params_yaml": "size: 0\ntaxonomy: ncbi\n"})
+            ))
+        )
+    ),
     responses(
         (status = 200, description = "Count result", body = CountResponse)
     )

@@ -109,7 +109,22 @@ pub struct SearchResponse {
 #[utoipa::path(
     post,
     path = "/api/v3/search",
-    request_body = SearchRequest,
+    tag = "Data",
+    summary = "Fetch records matching a search query",
+    description = "Returns records matching a query. Supports all major query parameters including filtering, sorting, and pagination.",
+    request_body(
+        content = SearchRequest,
+        examples(
+            ("Mammalia with genome size" = (
+                summary = "Search for Mammalia taxa with a genome size estimate",
+                value = json!({"query_yaml": "index: taxon\nquery: tax_tree(Mammalia) AND genome_size\n", "params_yaml": "size: 10\nfields: genome_size\ninclude_estimates: true\ntaxonomy: ncbi\n"})
+            )),
+            ("Large mammal assemblies" = (
+                summary = "Search assemblies for mammals with genome >= 1 Gbp",
+                value = json!({"query_yaml": "index: assembly\nquery: tax_tree(Mammalia) AND assembly_span>=1000000000\n", "params_yaml": "size: 10\nfields: assembly_span,assembly_level\ntaxonomy: ncbi\n"})
+            ))
+        )
+    ),
     responses(
         (status = 200, description = "Search results", body = SearchResponse)
     )

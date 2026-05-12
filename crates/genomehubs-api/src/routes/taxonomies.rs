@@ -32,6 +32,9 @@ pub async fn get_taxonomies(
 #[utoipa::path(
     get,
     path = "/api/v3/metadata/taxonomies",
+    tag = "Metadata",
+    summary = "List of available taxonomies",
+    description = "Returns the names of all taxonomies available in this hub (e.g. ncbi).",
     responses(
         (status = 200, description = "Cached taxonomies", body = TaxonomiesResponse)
     )

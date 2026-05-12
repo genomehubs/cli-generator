@@ -1,0 +1,273 @@
+# Runtime Swagger UI customisation for GoaT (Genomes on a Tree).
+#
+# Reference this file from es_integration.toml:
+#
+#   swagger_examples = "config/swagger-examples-goat.yaml"
+#
+# The API loads it at startup and applies the overrides to the compiled OpenAPI
+# spec.  Restart the API after editing this file.
+#
+# Two sections are supported:
+#
+#   info     — overrides the OpenAPI info block (title, description, contact).
+#   examples — request-body examples for POST endpoints shown in Swagger UI.
+#              Examples listed here REPLACE any compile-time examples for that
+#              path + method pair.  Paths not mentioned keep their defaults.
+
+# ── API info block ────────────────────────────────────────────────────────────
+
+info:
+  title: "GoaT API"
+  description: |
+    **Genomes on a Tree** Application Programming Interface (GoaT API).
+
+    Provides a low-level API to retrieve records, look up taxa, search and
+    generate reports across all taxon and assembly data in GoaT.
+
+    See the [GoaT documentation](https://goat.genomehubs.org) for further
+    details, or use the SDK for Python, R and JavaScript to build queries
+    programmatically.
+  contact:
+    name: "GoaT"
+    url: "https://goat.genomehubs.org"
+    email: "goat@genomehubs.org"
+  license:
+    name: "MIT License"
+    url: "https://github.com/genomehubs/genomehubs/blob/main/LICENSE"
+
+# ── Request-body examples ─────────────────────────────────────────────────────
+#
+# Each entry requires:
+#   path    — API path exactly as it appears in the spec (e.g. /api/v3/count)
+#   method  — HTTP method in lowercase (post, get, …)
+#   name    — key in the OpenAPI examples map (no spaces)
+#   summary — one-line label shown in the Swagger UI dropdown (optional)
+#   value   — the example request body as a YAML mapping
+
+examples:
+
+  # ── POST /api/v3/count ─────────────────────────────────────────────────────
+
+  - path: "/api/v3/count"
+    method: post
+    name: mammalia_species_count
+    summary: "Count Mammalia taxa with a genome size estimate"
+    value:
+      query_yaml: "index: taxon\nquery: tax_tree(Mammalia) AND genome_size\n"
+      params_yaml: "size: 0\ninclude_estimates: true\ntaxonomy: ncbi\n"
+
+  - path: "/api/v3/count"
+    method: post
+    name: insecta_assembly_count
+    summary: "Count assemblies for insects"
+    value:
+      query_yaml: "index: assembly\nquery: tax_tree(Insecta)\n"
+      params_yaml: "size: 0\ntaxonomy: ncbi\n"
+
+  - path: "/api/v3/count"
+    method: post
+    name: vertebrate_c_value_count
+    summary: "Count vertebrates with a C-value estimate"
+    value:
+      query_yaml: "index: taxon\nquery: tax_tree(Vertebrata) AND c_value\n"
+      params_yaml: "size: 0\ninclude_estimates: true\ntaxonomy: ncbi\n"
+
+  # ── POST /api/v3/search ────────────────────────────────────────────────────
+
+  - path: "/api/v3/search"
+    method: post
+    name: mammalia_genome_size
+    summary: "Search Mammalia taxa with genome size, sorted descending"
+    value:
+      query_yaml: "index: taxon\nquery: tax_tree(Mammalia) AND genome_size\n"
+      params_yaml: "size: 10\nfields: genome_size,scientific_name\nsort_by: genome_size\nsort_order: desc\ninclude_estimates: true\ntaxonomy: ncbi\n"
+
+  - path: "/api/v3/search"
+    method: post
+    name: large_mammal_assemblies
+    summary: "Search assemblies for mammals with genome ≥ 1 Gbp"
+    value:
+      query_yaml: "index: assembly\nquery: tax_tree(Mammalia) AND assembly_span>=1000000000\n"
+      params_yaml: "size: 10\nfields: assembly_span,assembly_level,scientific_name\ntaxonomy: ncbi\n"
+
+  - path: "/api/v3/search"
+    method: post
+    name: vertebrate_c_value
+    summary: "Search vertebrates with C-value data"
+    value:
+      query_yaml: "index: taxon\nquery: tax_tree(Vertebrata) AND c_value\n"
+      params_yaml: "size: 10\nfields: c_value,genome_size,scientific_name\ninclude_estimates: true\ntaxonomy: ncbi\n"
+
+  # ── POST /api/v3/search/batch ──────────────────────────────────────────────
+
+  - path: "/api/v3/search/batch"
+    method: post
+    name: mammalia_and_insecta_parallel
+    summary: "Search Mammalia and Insecta taxa in parallel"
+    value:
+      queries:
+        - query_yaml: "index: taxon\nquery: tax_tree(Mammalia)\n"
+          params_yaml: "size: 5\nfields: genome_size\ntaxonomy: ncbi\n"
+        - query_yaml: "index: taxon\nquery: tax_tree(Insecta)\n"
+          params_yaml: "size: 5\nfields: genome_size\ntaxonomy: ncbi\n"
+
+  # ── POST /api/v3/count/batch ───────────────────────────────────────────────
+
+  - path: "/api/v3/count/batch"
+    method: post
+    name: vertebrate_and_invertebrate_counts
+    summary: "Count vertebrates and invertebrates in parallel"
+    value:
+      queries:
+        - query_yaml: "index: taxon\nquery: tax_tree(Vertebrata)\n"
+          params_yaml: "taxonomy: ncbi\n"
+        - query_yaml: "index: taxon\nquery: tax_tree(Insecta)\n"
+          params_yaml: "taxonomy: ncbi\n"
+
+#
+# These examples complement the default request-body examples embedded in the
+# route annotations and are intended to be incorporated into a future
+# site-customisation layer once the new API is connected to live GoaT data.
+#
+# Format mirrors the OpenAPI 3.0 `examples` object:
+#   <endpoint_key>:
+#     <example_name>:
+#       summary: <one-line description>
+#       value:   <JSON-serialisable request body>
+
+# ── POST /api/v3/count ────────────────────────────────────────────────────────
+count:
+  mammalia_species_count:
+    summary: Count Mammalia species with a genome size estimate
+    value:
+      query_yaml: |
+        index: taxon
+        query: "tax_tree(Mammalia) AND genome_size"
+      params_yaml: |
+        size: 0
+        include_estimates: true
+        taxonomy: ncbi
+
+  insecta_assembly_count:
+    summary: Count assemblies for insects
+    value:
+      query_yaml: |
+        index: assembly
+        query: "tax_tree(Insecta)"
+      params_yaml: |
+        size: 0
+        taxonomy: ncbi
+
+# ── POST /api/v3/search ───────────────────────────────────────────────────────
+search:
+  mammalia_genome_size:
+    summary: Search Mammalia taxa with genome size, sorted by genome size descending
+    value:
+      query_yaml: |
+        index: taxon
+        query: "tax_tree(Mammalia) AND genome_size"
+      params_yaml: |
+        size: 10
+        fields: genome_size,scientific_name
+        sort_by: genome_size
+        sort_order: desc
+        include_estimates: true
+        taxonomy: ncbi
+
+  large_mammal_assemblies:
+    summary: Search assemblies for mammals with genome ≥ 1 Gbp
+    value:
+      query_yaml: |
+        index: assembly
+        query: "tax_tree(Mammalia) AND assembly_span>=1000000000"
+      params_yaml: |
+        size: 10
+        fields: assembly_span,assembly_level,scientific_name
+        taxonomy: ncbi
+
+  vertebrate_c_value:
+    summary: Vertebrates with C-value data (GoaT-specific field)
+    value:
+      query_yaml: |
+        index: taxon
+        query: "tax_tree(Vertebrata) AND c_value"
+      params_yaml: |
+        size: 10
+        fields: c_value,genome_size,scientific_name
+        include_estimates: true
+        taxonomy: ncbi
+
+# ── POST /api/v3/search/batch ─────────────────────────────────────────────────
+search_batch:
+  two_clades_parallel:
+    summary: Search Mammalia and Insecta in parallel
+    value:
+      queries:
+        - query_yaml: |
+            index: taxon
+            query: "tax_tree(Mammalia)"
+          params_yaml: |
+            size: 5
+            fields: genome_size
+            taxonomy: ncbi
+        - query_yaml: |
+            index: taxon
+            query: "tax_tree(Insecta)"
+          params_yaml: |
+            size: 5
+            fields: genome_size
+            taxonomy: ncbi
+
+# ── POST /api/v3/count/batch ─────────────────────────────────────────────────
+count_batch:
+  vertebrate_and_invertebrate:
+    summary: Count vertebrates and invertebrates in parallel
+    value:
+      queries:
+        - query_yaml: |
+            index: taxon
+            query: "tax_tree(Vertebrata)"
+          params_yaml: |
+            taxonomy: ncbi
+        - query_yaml: |
+            index: taxon
+            query: "tax_tree(Invertebrata)"
+          params_yaml: |
+            taxonomy: ncbi
+
+# ── GET /api/v3/lookup ────────────────────────────────────────────────────────
+lookup:
+  human:
+    summary: Look up Homo sapiens by scientific name
+    value:
+      searchTerm: "Homo sapiens"
+      result: taxon
+  asm_accession:
+    summary: Look up an assembly by accession prefix
+    value:
+      searchTerm: "GCA_000001405"
+      result: assembly
+
+# ── GET /api/v3/record ────────────────────────────────────────────────────────
+record:
+  human_taxon:
+    summary: Fetch all fields for Homo sapiens (taxon_id 9606)
+    value:
+      recordId: "9606"
+      result: taxon
+  chicken_assembly:
+    summary: Fetch an assembly record by accession
+    value:
+      recordId: "GCA_000002315.5"
+      result: assembly
+
+# ── GET /api/v3/metadata/fields ──────────────────────────────────────────────
+metadata_fields:
+  taxon_fields:
+    summary: List all fields available for the taxon index
+    value:
+      result: taxon
+  assembly_fields:
+    summary: List all fields available for the assembly index
+    value:
+      result: assembly

@@ -1,25 +1,48 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "genomehubs-api",
-    "description": "",
-    "license": {
-      "name": ""
+    "title": "GenomeHubs API",
+    "description": "GenomeHubs Application Programming Interface.\n\nProvides a low-level API to retrieve records, look up taxa, search and generate reports across all taxon, assembly, and sample data.\n\nSee the [GenomeHubs documentation](https://genomehubs.org) for further details.",
+    "contact": {
+      "name": "GenomeHubs",
+      "url": "https://genomehubs.org"
     },
-    "version": "0.1.0"
+    "license": {
+      "name": "MIT License",
+      "url": "https://github.com/genomehubs/genomehubs/blob/main/LICENSE"
+    },
+    "version": "3.0.0"
   },
   "paths": {
     "/api/v3/count": {
       "post": {
         "tags": [
-          "routes::count"
+          "Data"
         ],
+        "summary": "Count records matching a search query",
+        "description": "Fetch the record count for a search query without including any of the results.\n\n`/count` supports all relevant `/search` parameters to allow a record count to be obtained for a query prior to a full search.",
         "operationId": "post_count",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/CountRequest"
+              },
+              "examples": {
+                "Assembly count": {
+                  "summary": "Count assemblies for Mammalia",
+                  "value": {
+                    "params_yaml": "size: 0\ntaxonomy: ncbi\n",
+                    "query_yaml": "index: assembly\nquery: tax_tree(Mammalia)\n"
+                  }
+                },
+                "Mammalia species count": {
+                  "summary": "Count species in Mammalia with a genome size estimate",
+                  "value": {
+                    "params_yaml": "size: 0\ninclude_estimates: true\ntaxonomy: ncbi\n",
+                    "query_yaml": "index: taxon\nquery: tax_tree(Mammalia) AND genome_size\n"
+                  }
+                }
               }
             }
           },
@@ -39,17 +62,36 @@
         }
       }
     },
-    "/api/v3/countBatch": {
+    "/api/v3/count/batch": {
       "post": {
         "tags": [
-          "routes::count_batch"
+          "Data"
         ],
-        "operationId": "post_countBatch",
+        "summary": "Count records for multiple queries in a single request",
+        "description": "Execute up to 100 count queries simultaneously using a single POST. Reduces network round-trips for parallel counts.",
+        "operationId": "post_count_batch",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/CountBatchRequest"
+              },
+              "examples": {
+                "Two counts": {
+                  "summary": "Count Mammalia and Insecta taxa in parallel",
+                  "value": {
+                    "queries": [
+                      {
+                        "params_yaml": "taxonomy: ncbi\n",
+                        "query_yaml": "index: taxon\nquery: tax_tree(Mammalia)\n"
+                      },
+                      {
+                        "params_yaml": "taxonomy: ncbi\n",
+                        "query_yaml": "index: taxon\nquery: tax_tree(Insecta)\n"
+                      }
+                    ]
+                  }
+                }
               }
             }
           },
@@ -69,31 +111,13 @@
         }
       }
     },
-    "/api/v3/indices": {
-      "get": {
-        "tags": [
-          "routes::indices"
-        ],
-        "operationId": "get_indices_openapi",
-        "responses": {
-          "200": {
-            "description": "Cached indices",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/IndicesResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/v3/lookup": {
       "get": {
         "tags": [
-          "routes::lookup"
+          "Data"
         ],
+        "summary": "Find record IDs matching a search term",
+        "description": "Find record IDs matching a search term based on full or partial matches to a record ID, name, synonym or other identifier.",
         "operationId": "get_lookup",
         "parameters": [
           {
@@ -139,11 +163,134 @@
         }
       }
     },
+    "/api/v3/metadata": {
+      "get": {
+        "tags": [
+          "Metadata"
+        ],
+        "summary": "Aggregated hub metadata",
+        "description": "Returns available indices, taxonomies, taxonomic ranks, and API versions in a single response.",
+        "operationId": "get_metadata",
+        "responses": {
+          "200": {
+            "description": "Aggregated metadata: indices, taxonomies, ranks, and versions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetadataResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v3/metadata/fields": {
+      "get": {
+        "tags": [
+          "Metadata"
+        ],
+        "summary": "Returns available fields for a given result type",
+        "description": "Returns field definitions, types, and synonyms for the specified result index (taxon, assembly, or sample).",
+        "operationId": "get_result_fields",
+        "parameters": [
+          {
+            "name": "result",
+            "in": "query",
+            "description": "Result type (taxon|assembly|sample)",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Field metadata",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultFieldsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v3/metadata/indices": {
+      "get": {
+        "tags": [
+          "Metadata"
+        ],
+        "summary": "List of available indices",
+        "description": "Returns the names of all searchable indices available in this hub (e.g. taxon, assembly, sample).",
+        "operationId": "get_indices_openapi",
+        "responses": {
+          "200": {
+            "description": "Cached indices",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IndicesResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v3/metadata/ranks": {
+      "get": {
+        "tags": [
+          "Metadata"
+        ],
+        "summary": "List of valid taxonomic ranks",
+        "description": "Returns all supported taxonomic ranks for this hub (e.g. species, genus, family).",
+        "operationId": "get_taxonomic_ranks_openapi",
+        "responses": {
+          "200": {
+            "description": "Cached taxonomic ranks",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RanksResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v3/metadata/taxonomies": {
+      "get": {
+        "tags": [
+          "Metadata"
+        ],
+        "summary": "List of available taxonomies",
+        "description": "Returns the names of all taxonomies available in this hub (e.g. ncbi).",
+        "operationId": "get_taxonomies_openapi",
+        "responses": {
+          "200": {
+            "description": "Cached taxonomies",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaxonomiesResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v3/phylopic": {
       "get": {
         "tags": [
-          "routes::phylopic"
+          "External"
         ],
+        "summary": "Get PhyloPic silhouette for a taxon",
+        "description": "Fetches a PhyloPic silhouette image record for a given NCBI taxon ID. Results are cached per API build cycle.",
         "operationId": "get_phylopic",
         "parameters": [
           {
@@ -182,8 +329,10 @@
     "/api/v3/phylopic/batch": {
       "post": {
         "tags": [
-          "routes::phylopic"
+          "External"
         ],
+        "summary": "Resolve PhyloPic silhouettes for up to 200 taxa",
+        "description": "Fetches PhyloPic silhouette image records for up to 200 NCBI taxon IDs in a single POST. Results are returned as a map keyed by taxon ID.",
         "operationId": "post_phylopic_batch",
         "requestBody": {
           "content": {
@@ -212,8 +361,10 @@
     "/api/v3/record": {
       "get": {
         "tags": [
-          "routes::record"
+          "Data"
         ],
+        "summary": "Fetch a record by ID",
+        "description": "Returns all field values for one or more specific records identified by their record ID.",
         "operationId": "get_record",
         "parameters": [
           {
@@ -252,8 +403,10 @@
     "/api/v3/report": {
       "post": {
         "tags": [
-          "routes::report"
+          "Data"
         ],
+        "summary": "Generate an aggregated report",
+        "description": "Returns aggregated data for reports including histograms, scatter plots, trees, and other visualisations.",
         "operationId": "post_report",
         "requestBody": {
           "content": {
@@ -279,48 +432,35 @@
         }
       }
     },
-    "/api/v3/resultFields": {
-      "get": {
-        "tags": [
-          "routes::result_fields"
-        ],
-        "operationId": "get_result_fields",
-        "parameters": [
-          {
-            "name": "result",
-            "in": "query",
-            "description": "Result type (taxon|assembly|sample)",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Field metadata",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ResultFieldsResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/v3/search": {
       "post": {
         "tags": [
-          "routes::search"
+          "Data"
         ],
+        "summary": "Fetch records matching a search query",
+        "description": "Returns records matching a query. Supports all major query parameters including filtering, sorting, and pagination.",
         "operationId": "post_search",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/SearchRequest"
+              },
+              "examples": {
+                "Large mammal assemblies": {
+                  "summary": "Search assemblies for mammals with genome >= 1 Gbp",
+                  "value": {
+                    "params_yaml": "size: 10\nfields: assembly_span,assembly_level\ntaxonomy: ncbi\n",
+                    "query_yaml": "index: assembly\nquery: tax_tree(Mammalia) AND assembly_span>=1000000000\n"
+                  }
+                },
+                "Mammalia with genome size": {
+                  "summary": "Search for Mammalia taxa with a genome size estimate",
+                  "value": {
+                    "params_yaml": "size: 10\nfields: genome_size\ninclude_estimates: true\ntaxonomy: ncbi\n",
+                    "query_yaml": "index: taxon\nquery: tax_tree(Mammalia) AND genome_size\n"
+                  }
+                }
               }
             }
           },
@@ -340,17 +480,36 @@
         }
       }
     },
-    "/api/v3/searchBatch": {
+    "/api/v3/search/batch": {
       "post": {
         "tags": [
-          "routes::search_batch"
+          "Data"
         ],
-        "operationId": "post_searchBatch",
+        "summary": "Fetch records for multiple search queries in a single request",
+        "description": "Execute up to 100 search queries simultaneously using a single POST. Reduces network round-trips for parallel searches.",
+        "operationId": "post_search_batch",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/SearchBatchRequest"
+              },
+              "examples": {
+                "Two searches": {
+                  "summary": "Search Mammalia and Insecta in parallel",
+                  "value": {
+                    "queries": [
+                      {
+                        "params_yaml": "size: 5\nfields: genome_size\ntaxonomy: ncbi\n",
+                        "query_yaml": "index: taxon\nquery: tax_tree(Mammalia)\n"
+                      },
+                      {
+                        "params_yaml": "size: 5\nfields: genome_size\ntaxonomy: ncbi\n",
+                        "query_yaml": "index: taxon\nquery: tax_tree(Insecta)\n"
+                      }
+                    ]
+                  }
+                }
               }
             }
           },
@@ -373,8 +532,10 @@
     "/api/v3/status": {
       "get": {
         "tags": [
-          "routes::status"
+          "Status"
         ],
+        "summary": "API health and supported endpoints",
+        "description": "Returns health status of the API and lists all supported endpoint paths.",
         "operationId": "get_status",
         "responses": {
           "200": {
@@ -393,8 +554,10 @@
     "/api/v3/summary": {
       "get": {
         "tags": [
-          "routes::summary"
+          "Data"
         ],
+        "summary": "Fetch aggregated summary statistics for a record",
+        "description": "Returns aggregated summary statistics (min, max, mean, etc.) for specific fields of a given record.",
         "operationId": "get_summary",
         "parameters": [
           {
@@ -441,46 +604,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/SummaryResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v3/taxonomicRanks": {
-      "get": {
-        "tags": [
-          "routes::taxonomic_ranks"
-        ],
-        "operationId": "get_taxonomic_ranks_openapi",
-        "responses": {
-          "200": {
-            "description": "Cached taxonomic ranks",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RanksResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v3/taxonomies": {
-      "get": {
-        "tags": [
-          "routes::taxonomies"
-        ],
-        "operationId": "get_taxonomies_openapi",
-        "responses": {
-          "200": {
-            "description": "Cached taxonomies",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TaxonomiesResponse"
                 }
               }
             }
@@ -725,6 +848,53 @@
           },
           "reason": {
             "type": "string"
+          }
+        }
+      },
+      "MetadataResponse": {
+        "type": "object",
+        "description": "Aggregated metadata response combining indices, taxonomies, ranks, and versions in a\nsingle round-trip. Fields are excluded because they require a `?result=`\nqualifier and cannot be returned without a parameter.",
+        "required": [
+          "status",
+          "indices",
+          "taxonomies",
+          "ranks",
+          "versions"
+        ],
+        "properties": {
+          "indices": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "last_updated": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ranks": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "taxonomies": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "versions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Known data release versions. Currently a single-element list; multi-version\nsupport will extend this when the API serves more than one release."
           }
         }
       },
@@ -1254,5 +1424,23 @@
         }
       }
     }
-  }
+  },
+  "tags": [
+    {
+      "name": "Data",
+      "description": "Retrieve search results, records and reports"
+    },
+    {
+      "name": "Metadata",
+      "description": "List available indices, fields, taxonomies and ranks"
+    },
+    {
+      "name": "External",
+      "description": "Fetch external resources"
+    },
+    {
+      "name": "Status",
+      "description": "API health and version information"
+    }
+  ]
 }

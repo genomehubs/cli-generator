@@ -52,6 +52,9 @@ pub struct PhylopicBatchResponse {
 #[utoipa::path(
     get,
     path = "/api/v3/phylopic",
+    tag = "External",
+    summary = "Get PhyloPic silhouette for a taxon",
+    description = "Fetches a PhyloPic silhouette image record for a given NCBI taxon ID. Results are cached per API build cycle.",
     params(
         ("taxon_id" = String, Query, description = "NCBI taxon ID"),
         ("taxonomy" = String, Query, description = "Taxonomy name (e.g. ncbi)"),
@@ -118,6 +121,9 @@ pub async fn get_phylopic(
 #[utoipa::path(
     post,
     path = "/api/v3/phylopic/batch",
+    tag = "External",
+    summary = "Resolve PhyloPic silhouettes for up to 200 taxa",
+    description = "Fetches PhyloPic silhouette image records for up to 200 NCBI taxon IDs in a single POST. Results are returned as a map keyed by taxon ID.",
     request_body = PhylopicBatchRequest,
     responses(
         (status = 200, description = "Per-taxon PhyloPic results", body = PhylopicBatchResponse)

@@ -220,7 +220,18 @@ async fn resolve_lineage_taxon_ids(
 #[utoipa::path(
     post,
     path = "/api/v3/count/batch",
-    request_body = CountBatchRequest,
+    tag = "Data",
+    summary = "Count records for multiple queries in a single request",
+    description = "Execute up to 100 count queries simultaneously using a single POST. Reduces network round-trips for parallel counts.",
+    request_body(
+        content = CountBatchRequest,
+        examples(
+            ("Two counts" = (
+                summary = "Count Mammalia and Insecta taxa in parallel",
+                value = json!({"queries": [{"query_yaml": "index: taxon\nquery: tax_tree(Mammalia)\n", "params_yaml": "taxonomy: ncbi\n"}, {"query_yaml": "index: taxon\nquery: tax_tree(Insecta)\n", "params_yaml": "taxonomy: ncbi\n"}]})
+            ))
+        )
+    ),
     responses(
         (status = 200, description = "Batch count results", body = CountBatchResponse)
     )
