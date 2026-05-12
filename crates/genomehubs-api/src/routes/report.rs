@@ -1,4 +1,7 @@
-use axum::{extract::Json, Extension};
+use axum::{
+    extract::{Json, OriginalUri},
+    Extension,
+};
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::Value;
 use std::sync::Arc;
@@ -83,6 +86,56 @@ pub async fn post_report(
     Extension(state): Extension<Arc<AppState>>,
     Json(req): Json<ReportRequest>,
 ) -> Json<ReportResponse> {
+    run_report(req, state).await
+}
+
+/// GET handler — parses v2 report URL params and delegates to [`run_report`].
+#[utoipa::path(
+    get,
+    path = "/api/v3/report",
+    tag = "Data",
+    summary = "Generate an aggregated report (URL query string)",
+    description = "Accepts v2-style URL query parameters (e.g. `report`, `x`, `result`, `tax_tree`) \
+                   and returns the same response shape as the POST endpoint.",
+    params(
+        ("report" = String, Query, description = "Report type (histogram|scatter|tree|map|countPerRank|sources|arc)"),
+        ("result" = Option<String>, Query, description = "Index type (taxon|assembly|sample)"),
+        ("x" = Option<String>, Query, description = "X-axis field"),
+        ("tax_tree" = Option<String>, Query, description = "Taxon tree filter"),
+        ("taxonomy" = Option<String>, Query, description = "Taxonomy backbone"),
+    ),
+    responses(
+        (status = 200, description = "Report data", body = ReportResponse)
+    )
+)]
+#[axum::debug_handler]
+pub async fn get_report(
+    OriginalUri(uri): OriginalUri,
+    Extension(state): Extension<Arc<AppState>>,
+) -> Json<ReportResponse> {
+    let url = format!("http://dummy{uri}");
+    let (query_yaml, params_yaml, report_yaml) =
+        match genomehubs_query::report::report_yaml_from_url_params(&url) {
+            Ok(triple) => triple,
+            Err(e) => {
+                return Json(ReportResponse {
+                    status: ApiStatus::error(e),
+                    report: Value::Null,
+                })
+            }
+        };
+    run_report(
+        ReportRequest {
+            query_yaml,
+            params_yaml,
+            report_yaml,
+        },
+        state,
+    )
+    .await
+}
+
+async fn run_report(req: ReportRequest, state: Arc<AppState>) -> Json<ReportResponse> {
     macro_rules! bail {
         ($msg:expr) => {
             return Json(ReportResponse {

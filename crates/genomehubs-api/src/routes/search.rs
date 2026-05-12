@@ -1,4 +1,7 @@
-use axum::{extract::Json, Extension};
+use axum::{
+    extract::{Json, OriginalUri},
+    Extension,
+};
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::Value;
 use std::sync::Arc;
@@ -106,6 +109,61 @@ pub struct SearchResponse {
     pub lineage_summary: Option<Value>,
 }
 
+impl SearchResponse {
+    /// Build an error response with empty results.
+    pub fn error(msg: impl Into<String>) -> Self {
+        Self {
+            status: ApiStatus::error(msg),
+            url: String::new(),
+            results: vec![],
+            search_after: None,
+            lineage_summary: None,
+        }
+    }
+}
+
+/// GET handler — parses query params from the URI and delegates to [`run_search`].
+#[utoipa::path(
+    get,
+    path = "/api/v3/search",
+    tag = "Data",
+    summary = "Fetch records matching a search query (URL query string)",
+    description = "Accepts v2-style URL query parameters (e.g. `tax_tree`, `fields`, `result`, `size`) \
+                   and returns the same response shape as the POST endpoint.",
+    params(
+        ("result" = Option<String>, Query, description = "Index type (taxon|assembly|sample)"),
+        ("tax_tree" = Option<String>, Query, description = "Taxon tree filter"),
+        ("tax_name" = Option<String>, Query, description = "Taxon name filter"),
+        ("fields" = Option<String>, Query, description = "Comma-separated fields to return"),
+        ("size" = Option<usize>, Query, description = "Page size"),
+        ("offset" = Option<usize>, Query, description = "Offset (converted to page)"),
+        ("taxonomy" = Option<String>, Query, description = "Taxonomy backbone"),
+    ),
+    responses(
+        (status = 200, description = "Search results", body = SearchResponse)
+    )
+)]
+#[axum::debug_handler]
+pub async fn get_search(
+    OriginalUri(uri): OriginalUri,
+    Extension(state): Extension<Arc<AppState>>,
+) -> Json<SearchResponse> {
+    let url = format!("http://dummy{uri}");
+    let (query_yaml, params_yaml) = match genomehubs_query::query::query_yaml_from_url_params(&url)
+    {
+        Ok(pair) => pair,
+        Err(e) => return Json(SearchResponse::error(e)),
+    };
+    run_search(
+        SearchRequest {
+            query_yaml,
+            params_yaml,
+        },
+        state,
+    )
+    .await
+}
+
 #[utoipa::path(
     post,
     path = "/api/v3/search",
@@ -134,15 +192,13 @@ pub async fn post_search(
     Extension(state): Extension<Arc<AppState>>,
     Json(req): Json<SearchRequest>,
 ) -> Json<SearchResponse> {
+    run_search(req, state).await
+}
+
+async fn run_search(req: SearchRequest, state: Arc<AppState>) -> Json<SearchResponse> {
     macro_rules! bail {
         ($msg:expr) => {
-            return Json(SearchResponse {
-                status: ApiStatus::error($msg),
-                url: String::new(),
-                results: vec![],
-                search_after: None,
-                lineage_summary: None,
-            })
+            return Json(SearchResponse::error($msg))
         };
     }
 
