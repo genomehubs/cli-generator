@@ -2,27 +2,40 @@
 
 **Depends on:** Phase 6 (report endpoint exists)
 **Blocks:** Phase 12 (PlotSpec uses DisplaySpec as its presentation layer)
-**Estimated scope:** 1 new type module, amendment to Phase 6 request schema, SDK method additions
+**Estimated scope:** 1 new type file, amendment to `ReportRequest`/`ReportResponse`, SDK method additions
 
 ---
 
 ## Goal
 
-Extend every report endpoint (`/api/v3/report`, `/api/v3/arc`, `/api/v3/positional`)
-with an optional `display_yaml` field that controls how the result should be presented.
+Extend the `/api/v3/report` endpoint with an optional `display` field that controls
+how the result should be presented.
 
 This separates two orthogonal concerns:
 
-- `report_yaml` — **what** data to aggregate and in what shape (histogram, scatter, etc.)
-- `display_yaml` — **how** to present that data (title, dimensions, colours, labels)
+- `report` — **what** data to aggregate and in what shape (histogram, scatter, etc.)
+- `display` — **how** to present that data (title, dimensions, colours, labels)
 
-`display_yaml` is optional everywhere. Servers process it passively: they parse it,
-attach a `DisplaySpec` to the response, and return it unchanged. Rendering is always
-client-side. The server never draws pixels.
+`display` is optional everywhere. The server parses it, attaches a `DisplaySpec` to
+the response, and returns it unchanged. Rendering is always client-side.
 
-**Do not add a separate `style_yaml`.** Layout and style are both presentation concerns
-and the consumer (CLI, browser, SDK) needs them together. Internal grouping (layout vs.
-visual) is handled by named subsections within `display_yaml`.
+**Do not add a separate `style` field.** Layout and style are both presentation concerns
+and the consumer needs them together.
+
+---
+
+## API Field Naming Convention
+
+Following the established pattern for `query`, `params`, and `report`:
+
+- The request field is named `display` (accepts **YAML string OR JSON object**)
+- The response field is named `display` (always a parsed object, never a raw string)
+- The `ReportBuilder` setter is named `set_display(value)` — consistent with all other setters
+- The deserialization helper `to_yaml()` in `deserialize_helpers.rs` already handles
+  both string and object inputs — the same pattern used for `query`, `params`, `report`
+
+There is no separate `display_yaml` vs `display` split in the wire format: the field
+is called `display` and accepts either form, just like `query` and `report`.
 
 ---
 
@@ -34,47 +47,70 @@ crates/genomehubs-query/src/report/display.rs   — DisplaySpec type
 
 ## Files to Modify
 
-| File                                            | Change                                                                         |
-| ----------------------------------------------- | ------------------------------------------------------------------------------ |
-| `crates/genomehubs-query/src/report/mod.rs`     | `pub mod display; pub use display::DisplaySpec;`                               |
-| `crates/genomehubs-api/src/routes/report.rs`    | Add `display_yaml: Option<String>` to request body; parse + attach to response |
-| `crates/genomehubs-query/src/report/builder.rs` | `display()` method on `ReportBuilder`                                          |
-| `python/cli_generator/query.py`                 | `display()` method                                                             |
-| `templates/python/query.py.tera`                | Mirror `display()`                                                             |
-| `templates/js/query.js`                         | `display()` method                                                             |
-| `templates/r/query.R`                           | `display()` method                                                             |
+| File                                         | Change                                                                          |
+| -------------------------------------------- | ------------------------------------------------------------------------------- |
+| `crates/genomehubs-query/src/report/mod.rs`  | `pub mod display; pub use display::DisplaySpec;`                                |
+| `crates/genomehubs-api/src/routes/report.rs` | Add `display: Option<String>` to `ReportRequest`; parse + attach to response   |
+| `python/cli_generator/query.py`              | `set_display()` method on `ReportBuilder`; pass in `QueryBuilder.report()`     |
+| `templates/python/query.py.tera`             | Mirror `set_display()`                                                          |
+| `templates/js/query.js`                      | `setDisplay()` method on `ReportBuilder`                                        |
+| `templates/r/query.R`                        | `set_display()` method on `ReportBuilder`                                       |
+
+Note: there is no `report/builder.rs` in `genomehubs-query` — the `ReportBuilder`
+lives in `python/cli_generator/query.py`, `templates/js/query.js`, and
+`templates/r/query.R`. Rust does not have a `ReportBuilder` type.
 
 ---
 
-## `display_yaml` Format
+## `display` Field Format
+
+The `display` field accepts either a YAML string or a JSON/dict object:
+
+```json
+// As a JSON object (preferred in programmatic use)
+{
+  "query": { "index": "taxon", ... },
+  "params": { "size": 10 },
+  "report": { "report": "histogram", "x": "genome_size" },
+  "display": {
+    "title": "Genome size distribution in Mammalia",
+    "width": 800,
+    "color_scheme": "tableau10"
+  }
+}
+
+// As a YAML string (same as query/params/report_yaml pattern)
+{
+  "report_yaml": "report: histogram\nx: genome_size\n",
+  "display_yaml": "title: Genome size\nwidth: 800\n"
+}
+```
+
+All keys are optional. Missing keys use renderer defaults.
+
+### Supported fields
 
 ```yaml
 # Presentation / layout
 title: "Genome size distribution in Mammalia"
-subtitle: "" # optional secondary title
-width: 800 # plot width in pixels (default: 600)
-height: 500 # plot height in pixels (default: 400)
-legend: right # none | top | right | bottom | left
+subtitle: ""                 # optional secondary title
+width: 800                   # plot width in pixels (default: 600)
+height: 500                  # plot height in pixels (default: 400)
+legend: right                # none | top | right | bottom | left
 x_label: "Genome size (Gb)"
 y_label: "Count"
 tooltip_fields:
   - assembly_level
   - assembly_span
-number_format: ".2s" # d3 format string; default auto
+number_format: ".2s"         # d3 format string; default auto
 
 # Visual style
-color_scheme: tableau10 # named Vega/ColorBrewer scheme, or list of hex values
+color_scheme: tableau10      # named Vega/ColorBrewer scheme, or list of hex values
 font_size: 12
 line_width: 1
 opacity: 0.8
-marker_size: 4 # for scatter points
+marker_size: 4               # for scatter points
 ```
-
-All keys are optional. Missing keys use renderer defaults.
-
-The split into presentation (title, dimensions, legend, labels) vs. visual style
-(colours, fonts, sizes) is logical, but both live in the same YAML to avoid asking
-the user "which file does this go in?".
 
 ---
 
@@ -97,8 +133,8 @@ pub enum LegendPosition {
 
 /// Presentation and visual style options for a report.
 ///
-/// Parsed from `display_yaml` in the API request and attached to the response
-/// unchanged. Rendering is always client-side.
+/// Parsed from the `display` field in the API request and attached to the
+/// response unchanged. Rendering is always client-side.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct DisplaySpec {
     pub title: Option<String>,
@@ -126,19 +162,24 @@ pub struct DisplaySpec {
 
 ## API Request / Response Amendment
 
-All endpoints that currently accept `{ query_yaml, params_yaml, report_yaml }` gain
-an optional fourth field:
+`ReportRequest` gains an optional `display` field. The `custom Deserialize` impl
+already uses `to_yaml()` for all fields — add the same pattern:
 
-```json
-{
-  "query_yaml": "...",
-  "params_yaml": "...",
-  "report_yaml": "...",
-  "display_yaml": "title: Genome size\nwidth: 800\ncolor_scheme: tableau10\n"
+```rust
+// In the ReportRequest Deserialize impl:
+let display_yaml = map.get("display").or_else(|| map.get("display_yaml"))
+    .map(|v| to_yaml(v))
+    .transpose()?;
+
+pub struct ReportRequest {
+    pub query_yaml: String,
+    pub params_yaml: String,
+    pub report_yaml: String,
+    pub display_yaml: Option<String>,   // new
 }
 ```
 
-The response includes a `display` key alongside `report`:
+The response includes a `display` key alongside `report` when `display_yaml` was present:
 
 ```json
 {
@@ -152,33 +193,62 @@ The response includes a `display` key alongside `report`:
 }
 ```
 
-If `display_yaml` is absent, the `display` key is omitted from the response.
+```rust
+pub struct ReportResponse {
+    pub status: ApiStatus,
+    pub report: Value,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub display: Option<DisplaySpec>,   // new
+}
+```
 
 ---
 
-## SDK: `ReportBuilder.display()` Method
+## SDK: `ReportBuilder.set_display()` Method
+
+Consistent with the existing `set_x()`, `set_rank()` etc. naming on `ReportBuilder`.
+Accepts either a dict/object or a YAML string — mirrors `QueryBuilder.set_query()`.
 
 ```python
-# Python
-builder = (
-    QueryBuilder()
-    .taxa(["Mammalia"])
-    .report("histogram")
-    .x("genome_size")
-    .display("title: Genome size\nwidth: 800\n")
+# Python — dict form (preferred)
+rb = (
+    ReportBuilder("histogram")
+    .set_x("genome_size")
+    .set_display({"title": "Genome size", "width": 800})
+)
+
+# Python — YAML string form
+rb = (
+    ReportBuilder("histogram")
+    .set_x("genome_size")
+    .set_display("title: Genome size\nwidth: 800\n")
 )
 ```
 
-The `display()` method on `ReportBuilder` accepts a YAML string (same interface as
-`query()`, `params()`, `report()`). The convenience overloads (`title()`, `width()`,
-etc.) are out of scope — keep the interface consistent with the existing builder pattern.
+`set_display()` stores the value in `self._display`. `to_display_yaml()` serialises it
+(same pattern as `to_report_yaml()`). `QueryBuilder.report()` passes it as the
+`display` key when non-None.
+
+```javascript
+// JavaScript
+const rb = new ReportBuilder("histogram")
+  .setX("genome_size")
+  .setDisplay({ title: "Genome size", width: 800 });
+```
+
+```r
+# R
+rb <- ReportBuilder$new("histogram")$
+  set_x("genome_size")$
+  set_display(list(title = "Genome size", width = 800L))
+```
 
 ---
 
-## Vega-Lite Mapping (JS SDK)
+## Vega-Lite Mapping (JS SDK only)
 
-When the JS SDK renders a report as Vega-Lite, it maps `DisplaySpec` fields to the
-Vega-Lite spec as follows:
+This mapping lives in the JS SDK layer (`templates/js/query.js`), not in Rust. It is
+used in Phase 12 when `plotSpecToVegaLite()` is called.
 
 | `DisplaySpec` field | Vega-Lite path              |
 | ------------------- | --------------------------- |
@@ -194,16 +264,21 @@ Vega-Lite spec as follows:
 | `opacity`           | `encoding.opacity.value`    |
 | `marker_size`       | `config.point.size`         |
 
-This mapping lives in the JS SDK layer, not in Rust. The Rust `PlotSpec` (Phase 12)
-exposes a `to_vega_lite(display: &DisplaySpec) -> Value` method that performs this
-mapping via WASM.
+---
+
+## CLI plotting note
+
+Phase 12 adds CLI rendering via `plotters`. `DisplaySpec` drives dimensions and style.
+No additional changes to `DisplaySpec` are needed for CLI support — `width`, `height`,
+`color_scheme`, `x_label`, `y_label` map directly to `plotters` chart configuration.
 
 ---
 
 ## Testing
 
 - Unit test: `DisplaySpec::default()` produces all-None struct
-- Unit test: round-trip YAML → `DisplaySpec` → serde_json
-- Proptest: fuzz YAML input, assert no panic on deserialization
-- API integration test: `POST /api/v3/report` with `display_yaml` returns `display` key
-- API integration test: `POST /api/v3/report` without `display_yaml` returns no `display` key
+- Unit test: round-trip `serde_yaml` → `DisplaySpec` → `serde_json`
+- Proptest: fuzz YAML input, assert no panic on deserialisation
+- Unit test: `to_yaml()` helper accepts both string and object for `display` field
+- API integration test: `POST /api/v3/report` with `display` returns `display` key in response
+- API integration test: `POST /api/v3/report` without `display` omits `display` key from response

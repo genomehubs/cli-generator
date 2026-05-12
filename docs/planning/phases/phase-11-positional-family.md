@@ -1,7 +1,16 @@
 # Phase 11: Positional Report Family (Oxford / Ribbon / Painting)
 
+> **DEFERRED** — This phase requires the positional family endpoint which does not
+> apply to GoaT. Phase 12 (PlotSpec infrastructure) and Phase 13 (hybrid local/remote
+> reports) have been rewritten to proceed **without** this dependency.
+>
+> When positional support is needed, implement Phase 11 before extending Phase 12 with
+> Oxford/ribbon/painting `PlotReportType` variants and the Phase 11 `PlotSpec` renderers.
+> The positional-hybrid SDK workflow is documented in
+> [phase-XX-positional-hybrid.md](phase-XX-positional-hybrid.md).
+
 **Depends on:** Phase 5 (es_client, bounds, pipeline), Phase 6 (report route pattern)
-**Blocks:** Phase 13 (hybrid mode extends this endpoint)
+**Blocks:** phase-XX-positional-hybrid (hybrid mode extends this endpoint)
 **Estimated scope:** 1 new endpoint, ~4 new Rust files, SDK method additions
 
 ---

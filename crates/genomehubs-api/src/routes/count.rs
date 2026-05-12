@@ -1,7 +1,4 @@
-use axum::{
-    extract::{Json, OriginalUri},
-    Extension,
-};
+use axum::{extract::Json, Extension};
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::{json, Value};
 use std::sync::Arc;
@@ -54,54 +51,6 @@ pub struct CountResponse {
     pub url: String,
 }
 
-impl CountResponse {
-    /// Build an error response.
-    pub fn error(msg: impl Into<String>) -> Self {
-        Self {
-            status: super::ApiStatus::error(msg),
-            url: String::new(),
-        }
-    }
-}
-
-/// GET handler — parses query params from the URI and delegates to [`run_count`].
-#[utoipa::path(
-    get,
-    path = "/api/v3/count",
-    tag = "Data",
-    summary = "Count records matching a search query (URL query string)",
-    description = "Accepts v2-style URL query parameters and returns the same response shape as the POST endpoint.",
-    params(
-        ("result" = Option<String>, Query, description = "Index type (taxon|assembly|sample)"),
-        ("tax_tree" = Option<String>, Query, description = "Taxon tree filter"),
-        ("tax_name" = Option<String>, Query, description = "Taxon name filter"),
-        ("taxonomy" = Option<String>, Query, description = "Taxonomy backbone"),
-    ),
-    responses(
-        (status = 200, description = "Count result", body = CountResponse)
-    )
-)]
-#[axum::debug_handler]
-pub async fn get_count(
-    OriginalUri(uri): OriginalUri,
-    Extension(state): Extension<Arc<AppState>>,
-) -> Json<CountResponse> {
-    let url = format!("http://dummy{uri}");
-    let (query_yaml, params_yaml) = match genomehubs_query::query::query_yaml_from_url_params(&url)
-    {
-        Ok(pair) => pair,
-        Err(e) => return Json(CountResponse::error(e)),
-    };
-    run_count(
-        CountRequest {
-            query_yaml,
-            params_yaml,
-        },
-        state,
-    )
-    .await
-}
-
 #[utoipa::path(
     post,
     path = "/api/v3/count",
@@ -130,28 +79,24 @@ pub async fn post_count(
     Extension(state): Extension<Arc<AppState>>,
     Json(req): Json<CountRequest>,
 ) -> Json<CountResponse> {
-    run_count(req, state).await
-}
-
-async fn run_count(req: CountRequest, state: Arc<AppState>) -> Json<CountResponse> {
     // Parse YAML inputs
     let query = match genomehubs_query::query::SearchQuery::from_yaml(&req.query_yaml) {
         Ok(q) => q,
         Err(e) => {
-            return Json(CountResponse::error(format!(
-                "failed to parse query_yaml: {}",
-                e
-            )))
+            return Json(CountResponse {
+                status: super::ApiStatus::error(format!("failed to parse query_yaml: {}", e)),
+                url: "".to_string(),
+            })
         }
     };
 
     let params = match genomehubs_query::query::QueryParams::from_yaml(&req.params_yaml) {
         Ok(p) => p,
         Err(e) => {
-            return Json(CountResponse::error(format!(
-                "failed to parse params_yaml: {}",
-                e
-            )))
+            return Json(CountResponse {
+                status: super::ApiStatus::error(format!("failed to parse params_yaml: {}", e)),
+                url: "".to_string(),
+            })
         }
     };
 

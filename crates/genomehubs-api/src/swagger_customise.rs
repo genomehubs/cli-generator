@@ -283,15 +283,13 @@ mod tests {
             }],
         };
         apply_to_json(&mut spec, &c);
-        let examples = &spec["paths"]["/api/v3/count"]["post"]["requestBody"]["content"]
-            ["application/json"]["examples"];
+        let examples =
+            &spec["paths"]["/api/v3/count"]["post"]["requestBody"]["content"]["application/json"]
+                ["examples"];
         // Compile-time example replaced
         assert!(examples["compile_time"].is_null());
         // New example present
-        assert_eq!(
-            examples["mammalia_count"]["summary"],
-            json!("Count Mammalia")
-        );
+        assert_eq!(examples["mammalia_count"]["summary"], json!("Count Mammalia"));
     }
 
     #[test]

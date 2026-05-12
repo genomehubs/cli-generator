@@ -213,7 +213,7 @@ Then run:
 ## Running the API Locally for Development
 
 The fastest way to see the Swagger UI with the current examples is a dev build
-from the project root.  No extra flags are needed — the examples are compiled
+from the project root. No extra flags are needed — the examples are compiled
 into the binary.
 
 ### 1. Ensure Elasticsearch is running
@@ -279,12 +279,12 @@ http://localhost:3000/swagger-ui/
 
 Endpoints are grouped into four tags matching the v2 documentation layout:
 
-| Tag | Endpoints |
-|-----|-----------|
-| **Data** | `/count`, `/count/batch`, `/search`, `/search/batch`, `/record`, `/report`, `/lookup`, `/summary` |
-| **Metadata** | `/metadata`, `/metadata/fields`, `/metadata/indices`, `/metadata/ranks`, `/metadata/taxonomies` |
-| **External** | `/phylopic`, `/phylopic/batch` |
-| **Status** | `/status` |
+| Tag          | Endpoints                                                                                         |
+| ------------ | ------------------------------------------------------------------------------------------------- |
+| **Data**     | `/count`, `/count/batch`, `/search`, `/search/batch`, `/record`, `/report`, `/lookup`, `/summary` |
+| **Metadata** | `/metadata`, `/metadata/fields`, `/metadata/indices`, `/metadata/ranks`, `/metadata/taxonomies`   |
+| **External** | `/phylopic`, `/phylopic/batch`                                                                    |
+| **Status**   | `/status`                                                                                         |
 
 Request body examples (e.g. "Mammalia with genome size") are shown inside the
 "Try it out" panel for POST endpoints.
@@ -294,7 +294,7 @@ Request body examples (e.g. "Mammalia with genome size") are shown inside the
 ## Swagger Customisation (Runtime)
 
 The Swagger UI title, description, contact block, and request-body examples
-are **loaded at runtime** from a YAML file.  This means any Docker deployment
+are **loaded at runtime** from a YAML file. This means any Docker deployment
 can be customised by mounting a single file — no rebuild required.
 
 ### Enabling customisation
@@ -305,15 +305,15 @@ Add one line to `es_integration.toml` (or the mounted override):
 swagger_examples = "config/swagger-examples-goat.yaml"
 ```
 
-The API reads this file at startup.  Restart the API to pick up edits.
+The API reads this file at startup. Restart the API to pick up edits.
 
-> Relative paths are resolved from the process working directory.  Inside a
+> Relative paths are resolved from the process working directory. Inside a
 > Docker container, use an absolute path or mount the file to a predictable
 > location.
 
 ### YAML file structure
 
-`config/swagger-examples-goat.yaml` is the canonical example for GoaT.  The
+`config/swagger-examples-goat.yaml` is the canonical example for GoaT. The
 file has two top-level keys:
 
 #### `info` — API info block override
@@ -332,7 +332,7 @@ info:
     url: "https://github.com/genomehubs/genomehubs/blob/main/LICENSE"
 ```
 
-All fields are optional.  Omitted fields keep their compiled defaults.
+All fields are optional. Omitted fields keep their compiled defaults.
 
 #### `examples` — request-body examples
 
@@ -355,14 +355,14 @@ examples:
       params_yaml: "size: 10\nfields: genome_size,scientific_name\nsort_by: genome_size\nsort_order: desc\ninclude_estimates: true\ntaxonomy: ncbi\n"
 ```
 
-* `path` — API path exactly as it appears in the OpenAPI spec.
-* `method` — HTTP method in lowercase (`post`, `get`, …).
-* `name` — key in the OpenAPI `examples` map (no spaces).
-* `summary` — one-line label shown in the Swagger UI dropdown.
-* `value` — the example request body as a YAML mapping.
+- `path` — API path exactly as it appears in the OpenAPI spec.
+- `method` — HTTP method in lowercase (`post`, `get`, …).
+- `name` — key in the OpenAPI `examples` map (no spaces).
+- `summary` — one-line label shown in the Swagger UI dropdown.
+- `value` — the example request body as a YAML mapping.
 
 If the YAML provides **any** examples for a given `path`+`method` pair, those
-examples **replace** the compile-time defaults for that endpoint.  Endpoints
+examples **replace** the compile-time defaults for that endpoint. Endpoints
 not mentioned in the YAML keep their compiled defaults.
 
 ### Docker deployment

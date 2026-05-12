@@ -45,7 +45,6 @@ info:
 #   value   — the example request body as a YAML mapping
 
 examples:
-
   # ── POST /api/v3/count ─────────────────────────────────────────────────────
 
   - path: "/api/v3/count"

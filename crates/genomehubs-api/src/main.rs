@@ -49,7 +49,6 @@ pub struct AppState {
         (name = "Status", description = "API health and version information")
     ),
     paths(
-        routes::count::get_count,
         routes::count::post_count,
         routes::count_batch::post_count_batch,
         routes::lookup::get_lookup,
@@ -57,10 +56,8 @@ pub struct AppState {
         routes::phylopic::get_phylopic,
         routes::phylopic::post_phylopic_batch,
         routes::record::get_record,
-        routes::report::get_report,
         routes::report::post_report,
         routes::result_fields::get_result_fields,
-        routes::search::get_search,
         routes::search::post_search,
         routes::search_batch::post_search_batch,
         routes::status::get_status,
@@ -270,7 +267,7 @@ async fn main() {
     let app = Router::<()>::new()
         .route(
             "/api/v3/count",
-            axum::routing::get(routes::count::get_count).post(routes::count::post_count),
+            axum::routing::post(routes::count::post_count),
         )
         .route(
             "/api/v3/count/batch",
@@ -302,11 +299,11 @@ async fn main() {
         .route("/api/v3/record", get(routes::record::get_record))
         .route(
             "/api/v3/report",
-            axum::routing::get(routes::report::get_report).post(routes::report::post_report),
+            axum::routing::post(routes::report::post_report),
         )
         .route(
             "/api/v3/search",
-            axum::routing::get(routes::search::get_search).post(routes::search::post_search),
+            axum::routing::post(routes::search::post_search),
         )
         .route(
             "/api/v3/search/batch",
