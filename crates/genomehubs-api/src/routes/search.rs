@@ -68,7 +68,9 @@ impl<'de> Deserialize<'de> for SearchRequest {
         let query_yaml = if let Some(query_val) = map.get("query").or_else(|| map.get("query_yaml"))
         {
             let normalized = deserialize_helpers::normalize_query(query_val.clone());
-            deserialize_helpers::to_yaml(&normalized)?
+            let yaml = deserialize_helpers::to_yaml(&normalized)?;
+            // Detect and inject v2-style queryA=... fields as named_queries.
+            deserialize_helpers::inject_legacy_named_queries(&yaml, &map)
         } else {
             return Err(de::Error::missing_field("query or query_yaml"));
         };
@@ -117,11 +119,11 @@ pub struct SearchResponse {
         examples(
             ("Mammalia with genome size" = (
                 summary = "Search for Mammalia taxa with a genome size estimate",
-                value = json!({"query_yaml": "index: taxon\nquery: tax_tree(Mammalia) AND genome_size\n", "params_yaml": "size: 10\nfields: genome_size\ninclude_estimates: true\ntaxonomy: ncbi\n"})
+                value = json!({"query_yaml": "index: taxon\ntaxa:\n  - Mammalia\ntaxon_filter_type: tree\nfields:\n  - name: genome_size\n", "params_yaml": "size: 10\nfields: genome_size\ninclude_estimates: true\ntaxonomy: ncbi\n"})
             )),
             ("Large mammal assemblies" = (
                 summary = "Search assemblies for mammals with genome >= 1 Gbp",
-                value = json!({"query_yaml": "index: assembly\nquery: tax_tree(Mammalia) AND assembly_span>=1000000000\n", "params_yaml": "size: 10\nfields: assembly_span,assembly_level\ntaxonomy: ncbi\n"})
+                value = json!({"query_yaml": "index: assembly\ntaxa:\n  - Mammalia\ntaxon_filter_type: tree\nfields:\n  - name: assembly_span\n    modifiers: [min=1000000000]\n", "params_yaml": "size: 10\nfields: assembly_span,assembly_level\ntaxonomy: ncbi\n"})
             ))
         )
     ),
@@ -397,6 +399,18 @@ pub async fn post_search(
         Ok(b) => b,
         Err(e) => bail!(format!("failed to build ES body: {}", e)),
     };
+
+    // Inject id_set terms filter when caller supplied a set of IDs.
+    if let Some(ids) = &params.id_set {
+        let index_str = match &query.index {
+            genomehubs_query::query::SearchIndex::Taxon => "taxon",
+            genomehubs_query::query::SearchIndex::Assembly => "assembly",
+            genomehubs_query::query::SearchIndex::Sample => "sample",
+        };
+        if let Some(field) = params.resolve_id_field(index_str) {
+            super::inject_id_set_filter(&mut body, &field, ids);
+        }
+    }
 
     // Inject lineage_rank_summary aggregations when requested
     if let Some(specs) = &query.lineage_rank_summary {

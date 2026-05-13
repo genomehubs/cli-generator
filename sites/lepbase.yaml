@@ -1,0 +1,34 @@
+# Site configuration for LepBase
+name: lepbase
+display_name: "LepBase"
+api_base: "https://lepbase.org/api"
+api_version: "v3"
+ui_base: "https://lepbase.org"
+
+enabled_sdks:
+  - python
+  - r
+  - javascript
+
+indexes:
+  - name: taxon
+  - name: assembly
+  - name: sample
+  - name: feature
+
+compat:
+  goat_cli: false
+
+# Validation rules for query parameters.  Override any list to customise for
+# a specific LepBase deployment.
+validation:
+  assembly_accession_prefixes: [gca_, gcf_, gcs_, gcn_, gcp_, gcr_, wgs, asm]
+  sample_accession_prefixes:
+    [srs, srr, srx, sam, ers, erp, erx, drr, drx, samea, sameg]
+  taxon_name_classes:
+    - scientific_name
+    - common_name
+    - synonym
+    - tolid_prefix
+    - authority
+  taxon_filter_types: [name, tree, lineage]

@@ -68,18 +68,7 @@ pub struct SearchBatchResponse {
 
 /// Build ES _msearch body (NDJSON format — alternating header + body lines).
 fn build_msearch_body(searches: &[(String, serde_json::Value)]) -> String {
-    searches
-        .iter()
-        .flat_map(|(index, body)| {
-            let header = serde_json::json!({ "index": index });
-            vec![
-                serde_json::to_string(&header).unwrap(),
-                serde_json::to_string(body).unwrap(),
-            ]
-        })
-        .collect::<Vec<_>>()
-        .join("\n")
-        + "\n"
+    crate::es_client::build_msearch_body(searches)
 }
 
 /// Execute batch search on ES using _msearch API.
@@ -88,16 +77,7 @@ async fn execute_msearch(
     es_base: &str,
     ndjson_body: &str,
 ) -> Result<serde_json::Value, String> {
-    let url = format!("{es_base}/_msearch");
-    let resp = client
-        .post(&url)
-        .header("Content-Type", "application/x-ndjson")
-        .body(ndjson_body.to_string())
-        .send()
-        .await
-        .map_err(|e| format!("msearch request failed: {e}"))?;
-
-    resp.json().await.map_err(|e| format!("parse error: {e}"))
+    crate::es_client::execute_msearch(client, es_base, ndjson_body).await
 }
 
 /// Combine multiple ES query bodies using bool.should (OR) or bool.must (AND).
@@ -513,6 +493,20 @@ pub async fn post_search_batch(
         };
 
         let idx = index_name::resolve_index(&query.index, &state);
+
+        // Inject id_set terms filter when caller supplied a set of IDs.
+        let mut body = body;
+        if let Some(ids) = &params.id_set {
+            let index_str = match &query.index {
+                genomehubs_query::query::SearchIndex::Taxon => "taxon",
+                genomehubs_query::query::SearchIndex::Assembly => "assembly",
+                genomehubs_query::query::SearchIndex::Sample => "sample",
+            };
+            if let Some(field) = params.resolve_id_field(index_str) {
+                super::inject_id_set_filter(&mut body, &field, ids);
+            }
+        }
+
         index_bodies.push((idx, body));
     }
 

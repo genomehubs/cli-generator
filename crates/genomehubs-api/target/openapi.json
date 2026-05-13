@@ -33,14 +33,14 @@
                   "summary": "Count assemblies for Mammalia",
                   "value": {
                     "params_yaml": "size: 0\ntaxonomy: ncbi\n",
-                    "query_yaml": "index: assembly\nquery: tax_tree(Mammalia)\n"
+                    "query_yaml": "index: assembly\ntaxa:\n  - Mammalia\ntaxon_filter_type: tree\n"
                   }
                 },
                 "Mammalia species count": {
                   "summary": "Count species in Mammalia with a genome size estimate",
                   "value": {
                     "params_yaml": "size: 0\ninclude_estimates: true\ntaxonomy: ncbi\n",
-                    "query_yaml": "index: taxon\nquery: tax_tree(Mammalia) AND genome_size\n"
+                    "query_yaml": "index: taxon\ntaxa:\n  - Mammalia\ntaxon_filter_type: tree\nfields:\n  - name: genome_size\n"
                   }
                 }
               }
@@ -156,6 +156,38 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/LookupResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v3/lookup/batch": {
+      "post": {
+        "tags": [
+          "Data"
+        ],
+        "summary": "Resolve up to 100 search terms to record IDs in one request",
+        "description": "Runs each item through the same three-stage waterfall (SAYT → wildcard → suggest) as `GET /lookup`, using at most 3 `_msearch` calls for the entire batch. Results are returned in input order.",
+        "operationId": "post_lookup_batch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LookupBatchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Batch lookup results",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LookupBatchResponse"
                 }
               }
             }
@@ -400,6 +432,38 @@
         }
       }
     },
+    "/api/v3/record/batch": {
+      "post": {
+        "tags": [
+          "Data"
+        ],
+        "summary": "Fetch up to 1,000 records by ID in one request",
+        "description": "Accepts an explicit array of record IDs and returns all found records in a single `_mget` call. Prefer this over repeated `GET /record` calls.",
+        "operationId": "post_record_batch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordBatchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Batch record results",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordBatchResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v3/report": {
       "post": {
         "tags": [
@@ -451,14 +515,14 @@
                   "summary": "Search assemblies for mammals with genome >= 1 Gbp",
                   "value": {
                     "params_yaml": "size: 10\nfields: assembly_span,assembly_level\ntaxonomy: ncbi\n",
-                    "query_yaml": "index: assembly\nquery: tax_tree(Mammalia) AND assembly_span>=1000000000\n"
+                    "query_yaml": "index: assembly\ntaxa:\n  - Mammalia\ntaxon_filter_type: tree\nfields:\n  - name: assembly_span\n    modifiers: [min=1000000000]\n"
                   }
                 },
                 "Mammalia with genome size": {
                   "summary": "Search for Mammalia taxa with a genome size estimate",
                   "value": {
                     "params_yaml": "size: 10\nfields: genome_size\ninclude_estimates: true\ntaxonomy: ncbi\n",
-                    "query_yaml": "index: taxon\nquery: tax_tree(Mammalia) AND genome_size\n"
+                    "query_yaml": "index: taxon\ntaxa:\n  - Mammalia\ntaxon_filter_type: tree\nfields:\n  - name: genome_size\n"
                   }
                 }
               }
@@ -808,6 +872,85 @@
           }
         }
       },
+      "LookupBatchItem": {
+        "type": "object",
+        "required": [
+          "search_term"
+        ],
+        "properties": {
+          "result": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Result type: `\"taxon\"`, `\"assembly\"`, or `\"sample\"`. Defaults to `\"taxon\"`."
+          },
+          "search_term": {
+            "type": "string",
+            "description": "Search term (required)."
+          },
+          "size": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "Maximum results per item (default 10).",
+            "minimum": 0
+          }
+        }
+      },
+      "LookupBatchRequest": {
+        "type": "object",
+        "required": [
+          "lookups"
+        ],
+        "properties": {
+          "lookups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LookupBatchItem"
+            },
+            "description": "Array of lookup items (max 100)."
+          }
+        }
+      },
+      "LookupBatchResponse": {
+        "type": "object",
+        "required": [
+          "status",
+          "results"
+        ],
+        "properties": {
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LookupBatchResultItem"
+            },
+            "description": "Per-item lookup results, in input order."
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          }
+        }
+      },
+      "LookupBatchResultItem": {
+        "type": "object",
+        "required": [
+          "status",
+          "results"
+        ],
+        "properties": {
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LookupResult"
+            }
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          }
+        }
+      },
       "LookupResponse": {
         "type": "object",
         "required": [
@@ -1068,6 +1211,46 @@
             "type": "array",
             "items": {
               "type": "string"
+            }
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          }
+        }
+      },
+      "RecordBatchRequest": {
+        "type": "object",
+        "required": [
+          "record_ids"
+        ],
+        "properties": {
+          "record_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Record IDs to fetch (max 1,000).\n\nIDs may be fully-qualified (e.g. `\"taxon-9606\"`) or bare numeric\nstrings; bare IDs are auto-prefixed with `\"<result>-\"`."
+          },
+          "result": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Result type: `\"taxon\"`, `\"assembly\"`, or `\"sample\"`. Defaults to `\"taxon\"`."
+          }
+        }
+      },
+      "RecordBatchResponse": {
+        "type": "object",
+        "required": [
+          "status",
+          "records"
+        ],
+        "properties": {
+          "records": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RecordItem"
             }
           },
           "status": {

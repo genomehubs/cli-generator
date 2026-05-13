@@ -62,11 +62,11 @@ pub struct CountResponse {
         examples(
             ("Mammalia species count" = (
                 summary = "Count species in Mammalia with a genome size estimate",
-                value = json!({"query_yaml": "index: taxon\nquery: tax_tree(Mammalia) AND genome_size\n", "params_yaml": "size: 0\ninclude_estimates: true\ntaxonomy: ncbi\n"})
+                value = json!({"query_yaml": "index: taxon\ntaxa:\n  - Mammalia\ntaxon_filter_type: tree\nfields:\n  - name: genome_size\n", "params_yaml": "size: 0\ninclude_estimates: true\ntaxonomy: ncbi\n"})
             )),
             ("Assembly count" = (
                 summary = "Count assemblies for Mammalia",
-                value = json!({"query_yaml": "index: assembly\nquery: tax_tree(Mammalia)\n", "params_yaml": "size: 0\ntaxonomy: ncbi\n"})
+                value = json!({"query_yaml": "index: assembly\ntaxa:\n  - Mammalia\ntaxon_filter_type: tree\n", "params_yaml": "size: 0\ntaxonomy: ncbi\n"})
             ))
         )
     ),
@@ -153,7 +153,7 @@ pub async fn post_count(
     let built_url =
         genomehubs_query::query::build_query_url(&query, &params, &state.es_base, "v3", "count");
 
-    let body = match cli_generator::core::query_builder::build_search_body(
+    let mut body = match cli_generator::core::query_builder::build_search_body(
         taxa_query.as_deref(),
         fields_slice.as_deref(),
         None,
@@ -176,6 +176,18 @@ pub async fn post_count(
             })
         }
     };
+
+    // Inject id_set terms filter when caller supplied a set of IDs.
+    if let Some(ids) = &params.id_set {
+        let index_str = match &query.index {
+            genomehubs_query::query::SearchIndex::Taxon => "taxon",
+            genomehubs_query::query::SearchIndex::Assembly => "assembly",
+            genomehubs_query::query::SearchIndex::Sample => "sample",
+        };
+        if let Some(field) = params.resolve_id_field(index_str) {
+            super::inject_id_set_filter(&mut body, &field, ids);
+        }
+    }
 
     // Extract only the query clause for the count endpoint (which expects {"query": {...}})
     let count_body = json!({

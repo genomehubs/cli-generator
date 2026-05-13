@@ -538,6 +538,28 @@ pub async fn post_count_batch(
             },
             &state,
         );
+
+        // Inject id_set terms filter when caller supplied a set of IDs.
+        let mut body = body;
+        if let Some(ids) = &params.id_set {
+            let index_for_field = if let Some(nested) = &query.queries {
+                match &nested[0].index {
+                    genomehubs_query::query::SearchIndex::Taxon => "taxon",
+                    genomehubs_query::query::SearchIndex::Assembly => "assembly",
+                    genomehubs_query::query::SearchIndex::Sample => "sample",
+                }
+            } else {
+                match &query.index {
+                    genomehubs_query::query::SearchIndex::Taxon => "taxon",
+                    genomehubs_query::query::SearchIndex::Assembly => "assembly",
+                    genomehubs_query::query::SearchIndex::Sample => "sample",
+                }
+            };
+            if let Some(field) = params.resolve_id_field(index_for_field) {
+                super::inject_id_set_filter(&mut body, &field, ids);
+            }
+        }
+
         index_bodies.push((idx, body));
     }
 

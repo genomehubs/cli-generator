@@ -52,10 +52,12 @@ pub struct AppState {
         routes::count::post_count,
         routes::count_batch::post_count_batch,
         routes::lookup::get_lookup,
+        routes::lookup_batch::post_lookup_batch,
         routes::metadata::get_metadata,
         routes::phylopic::get_phylopic,
         routes::phylopic::post_phylopic_batch,
         routes::record::get_record,
+        routes::record_batch::post_record_batch,
         routes::report::post_report,
         routes::result_fields::get_result_fields,
         routes::search::post_search,
@@ -75,6 +77,10 @@ pub struct AppState {
         routes::count_batch::CountBatchResultItem,
         routes::lookup::LookupResponse,
         routes::lookup::LookupResult,
+        routes::lookup_batch::LookupBatchItem,
+        routes::lookup_batch::LookupBatchRequest,
+        routes::lookup_batch::LookupBatchResponse,
+        routes::lookup_batch::LookupBatchResultItem,
         phylopic_client::PhylopicRecord,
         phylopic_client::PhylopicSource,
         routes::phylopic::PhylopicBatchRequest,
@@ -83,6 +89,8 @@ pub struct AppState {
         routes::record::RecordItem,
         routes::record::RecordQuery,
         routes::record::RecordResponse,
+        routes::record_batch::RecordBatchRequest,
+        routes::record_batch::RecordBatchResponse,
         routes::report::ReportRequest,
         routes::report::ReportResponse,
         routes::metadata::MetadataResponse,
@@ -274,6 +282,10 @@ async fn main() {
             axum::routing::post(routes::count_batch::post_count_batch),
         )
         .route("/api/v3/lookup", get(routes::lookup::get_lookup))
+        .route(
+            "/api/v3/lookup/batch",
+            axum::routing::post(routes::lookup_batch::post_lookup_batch),
+        )
         .route("/api/v3/metadata", get(routes::metadata::get_metadata))
         .route(
             "/api/v3/metadata/indices",
@@ -297,6 +309,10 @@ async fn main() {
             axum::routing::post(routes::phylopic::post_phylopic_batch),
         )
         .route("/api/v3/record", get(routes::record::get_record))
+        .route(
+            "/api/v3/record/batch",
+            axum::routing::post(routes::record_batch::post_record_batch),
+        )
         .route(
             "/api/v3/report",
             axum::routing::post(routes::report::post_report),
