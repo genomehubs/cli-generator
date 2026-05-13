@@ -1500,3 +1500,121 @@ def test_report_builder_chaining_returns_self() -> None:
     assert "scatter" in rb.to_report_yaml()
     assert "genome_size" in rb.to_report_yaml()
     assert "chromosome_count" in rb.to_report_yaml()
+
+
+# ── chain_query ───────────────────────────────────────────────────────────────
+
+
+def test_chain_query_yaml_contains_named_queries_key() -> None:
+    from cli_generator import QueryBuilder
+
+    qb = QueryBuilder("taxon").chain_query("queryA", "assembly_span>1000000000")
+    yaml_out = qb.to_query_yaml()
+    assert "named_queries" in yaml_out
+
+
+def test_chain_query_yaml_contains_query_key() -> None:
+    from cli_generator import QueryBuilder
+
+    qb = QueryBuilder("taxon").chain_query("queryA", "assembly_span>1000000000")
+    yaml_out = qb.to_query_yaml()
+    assert "queryA" in yaml_out
+
+
+def test_chain_query_yaml_contains_query_string() -> None:
+    from cli_generator import QueryBuilder
+
+    qb = QueryBuilder("taxon").chain_query("queryA", "assembly_span>1000000000")
+    yaml_out = qb.to_query_yaml()
+    assert "assembly_span" in yaml_out
+
+
+def test_chain_query_yaml_contains_index_when_given() -> None:
+    from cli_generator import QueryBuilder
+
+    qb = QueryBuilder("taxon").chain_query("queryA", "assembly_span>0", index="assembly")
+    yaml_out = qb.to_query_yaml()
+    assert "assembly" in yaml_out
+
+
+def test_chain_query_yaml_contains_limit_when_given() -> None:
+    from cli_generator import QueryBuilder
+
+    qb = QueryBuilder("taxon").chain_query("queryA", "genome_size>1e9", limit=200)
+    yaml_out = qb.to_query_yaml()
+    assert "200" in yaml_out or "limit" in yaml_out
+
+
+def test_chain_query_multiple_keys_all_appear() -> None:
+    from cli_generator import QueryBuilder
+
+    qb = QueryBuilder("taxon").chain_query("queryA", "assembly_span>1000000000").chain_query("queryB", "c_value>5")
+    yaml_out = qb.to_query_yaml()
+    assert "queryA" in yaml_out
+    assert "queryB" in yaml_out
+
+
+# ── arc builder methods ───────────────────────────────────────────────────────
+
+
+def test_arc_set_feature_appears_in_yaml() -> None:
+    from cli_generator import ReportBuilder
+
+    rb = ReportBuilder("arc").set_feature("genome_size>3000000000")
+    yaml_out = rb.to_report_yaml()
+    assert "genome_size" in yaml_out
+
+
+def test_arc_set_reference_appears_in_yaml() -> None:
+    from cli_generator import ReportBuilder
+
+    rb = ReportBuilder("arc").set_reference("genome_size>0")
+    yaml_out = rb.to_report_yaml()
+    assert "genome_size" in yaml_out
+
+
+def test_arc_set_context_appears_in_yaml() -> None:
+    from cli_generator import ReportBuilder
+
+    rb = ReportBuilder("arc").set_context("order")
+    yaml_out = rb.to_report_yaml()
+    assert "order" in yaml_out
+
+
+def test_arc_add_ring_appears_in_yaml() -> None:
+    from cli_generator import ReportBuilder
+
+    rb = ReportBuilder("arc").add_ring("genome_size>3000000000", label=">3 Gb")
+    yaml_out = rb.to_report_yaml()
+    assert "genome_size" in yaml_out
+    assert "rings" in yaml_out
+
+
+def test_arc_add_ring_label_appears_in_yaml() -> None:
+    from cli_generator import ReportBuilder
+
+    rb = ReportBuilder("arc").add_ring("genome_size>1e9", label=">1 Gb")
+    yaml_out = rb.to_report_yaml()
+    assert ">1 Gb" in yaml_out or "1 Gb" in yaml_out
+
+
+def test_arc_multiple_rings_all_appear() -> None:
+    from cli_generator import ReportBuilder
+
+    rb = (
+        ReportBuilder("arc")
+        .add_ring("genome_size>3000000000", label=">3 Gb")
+        .add_ring("genome_size>1000000000", label=">1 Gb")
+    )
+    yaml_out = rb.to_report_yaml()
+    assert yaml_out.count("genome_size") >= 2
+
+
+def test_arc_set_ranks_appears_in_yaml() -> None:
+    from cli_generator import ReportBuilder
+
+    rb = ReportBuilder("arc").set_arc_ranks(["order", "family", "genus"])
+    yaml_out = rb.to_report_yaml()
+    assert "order" in yaml_out
+    assert "family" in yaml_out
+    assert "genus" in yaml_out

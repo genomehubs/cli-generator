@@ -94,6 +94,7 @@ QueryBuilder <- R6::R6Class(
     query_yaml_override = NULL,
     params_yaml_override = NULL,
     lineage_rank_summary = list(),
+    named_queries = list(),
 
     # Return a copy of `fields` as a character vector, or character(0) if NULL.
     normalise_fields = function(fields) {
@@ -126,6 +127,7 @@ QueryBuilder <- R6::R6Class(
       private$tidy <- FALSE
       private$taxonomy <- "ncbi"
       private$lineage_rank_summary <- list()
+      private$named_queries <- list()
       invisible(self)
     },
 
@@ -150,6 +152,25 @@ QueryBuilder <- R6::R6Class(
     #' @param attributes A list of attribute filter items, each a named list with name, operator, value.
     set_attributes = function(attributes) {
       private$attributes <- as.list(attributes)
+      invisible(self)
+    },
+
+    #' @description Register a named sub-query for chain substitution.
+    #' @details Values in attribute filters may reference this query using
+    #'   dot-notation, e.g. \code{add_attribute("taxon_id", "eq", "queryA.taxon_id")}.
+    #' @param query_key Name for this sub-query, e.g. \code{"queryA"}.
+    #' @param query_string Filter expression, e.g. \code{"assembly_span>1e9"} or
+    #'   \code{"assembly--assembly_span>1e9"} (v2 cross-index format).
+    #' @param index Target index for the sub-query. \code{NULL} inherits the parent index.
+    #' @param limit Maximum results to fetch (default 500, max 10000).
+    #' @param inherit_scope Whether to scope the sub-query inside the parent taxon tree.
+    #' @return Invisibly \code{self}.
+    chain_query = function(query_key, query_string, index = NULL, limit = NULL, inherit_scope = NULL) {
+      spec <- list(filter_expr = query_string)
+      if (!is.null(index)) spec$index <- index
+      if (!is.null(limit)) spec$limit <- as.integer(limit)
+      if (!is.null(inherit_scope)) spec$inherit_scope <- isTRUE(inherit_scope)
+      private$named_queries[[query_key]] <- spec
       invisible(self)
     },
 
@@ -395,6 +416,10 @@ QueryBuilder <- R6::R6Class(
 
       if (length(private$lineage_rank_summary) > 0) {
         doc$lineage_rank_summary <- private$lineage_rank_summary
+      }
+
+      if (length(private$named_queries) > 0) {
+        doc$named_queries <- private$named_queries
       }
 
       if (length(private$attributes) > 0) {
@@ -1234,6 +1259,54 @@ ReportBuilder <- R6::R6Class("ReportBuilder",
     #' @param threshold Integer threshold.
     set_scatter_threshold = function(threshold) {
       private$.doc$scatter_threshold <- as.integer(threshold)
+      invisible(self)
+    },
+
+    # ── Arc report methods ───────────────────────────────────────────────────────────────
+
+    #' @description Set the feature filter (numerator) for an arc report.
+    #' @param term Filter expression, e.g. \code{"genome_size>3000000000"}.
+    #' @return Invisibly \code{self}.
+    set_feature = function(term) {
+      private$.doc$feature <- term
+      invisible(self)
+    },
+
+    #' @description Set the reference filter (denominator) for an arc report.
+    #' @param term Filter expression, e.g. \code{"genome_size>0"}.
+    #' @return Invisibly \code{self}.
+    set_reference = function(term) {
+      private$.doc$reference <- term
+      invisible(self)
+    },
+
+    #' @description Set the context filter (enables arc2 ratio) for an arc report.
+    #' @param term Filter expression for the broader backdrop.
+    #' @return Invisibly \code{self}.
+    set_context = function(term) {
+      private$.doc$context <- term
+      invisible(self)
+    },
+
+    #' @description Add a concentric ring to a multi-ring arc report.
+    #' @param feature_term Filter for this ring's numerator.
+    #' @param reference_term Override the outer reference for this ring only.
+    #' @param label Human-readable label for this ring.
+    #' @return Invisibly \code{self}.
+    add_ring = function(feature_term, reference_term = NULL, label = NULL) {
+      ring <- list(feature = feature_term)
+      if (!is.null(reference_term)) ring$reference <- reference_term
+      if (!is.null(label)) ring$label <- label
+      if (is.null(private$.doc$rings)) private$.doc$rings <- list()
+      private$.doc$rings[[length(private$.doc$rings) + 1]] <- ring
+      invisible(self)
+    },
+
+    #' @description Run the same feature/reference arc once per taxonomic rank.
+    #' @param ranks Character vector of rank names.
+    #' @return Invisibly \code{self}.
+    set_arc_ranks = function(ranks) {
+      private$.doc$ranks <- as.list(ranks)
       invisible(self)
     },
 

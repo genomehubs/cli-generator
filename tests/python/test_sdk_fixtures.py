@@ -170,7 +170,22 @@ FIXTURE_TO_BUILDER = {
     .add_attribute("assembly_level", "eq", "complete genome")
     .add_field("assembly_span")
     .add_field("assembly_level"),
+    "chain_query_cross_index": lambda: QueryBuilder("taxon")
+    .chain_query("queryA", "assembly--assembly_span>1000000000")
+    .add_attribute("taxon_id", "eq", "queryA.taxon_id"),
+    "chain_query_same_index_limit": lambda: QueryBuilder("taxon")
+    .chain_query("queryA", "genome_size>1000000000", limit=200)
+    .add_attribute("taxon_id", "eq", "queryA.taxon_id"),
 }
+
+# Fixtures that have no pre-recorded API response JSON (builder-only tests).
+# Fixture-response tests are skipped for these names.
+BUILDER_ONLY_FIXTURES: frozenset[str] = frozenset(
+    {
+        "chain_query_cross_index",
+        "chain_query_same_index_limit",
+    }
+)
 
 # ── Expected URL substrings per fixture ──────────────────────────────────────
 # Each entry maps a fixture name to substrings that MUST appear in the built URL.
@@ -204,6 +219,10 @@ FIXTURE_EXPECTED_URL_PARTS: dict[str, list[str]] = {
     "with_names_param": ["result=taxon", "names=scientific_name"],
     "with_ranks_param": ["result=taxon", "ranks=", "genus"],
     "assembly_index_with_filter": ["result=assembly", "assembly_level", "assembly_span"],
+    # chain_query fixtures: named_queries don't appear in v2 URLs; assert the
+    # attribute filter value (chain reference) appears in the query string.
+    "chain_query_cross_index": ["result=taxon", "taxon_id"],
+    "chain_query_same_index_limit": ["result=taxon", "taxon_id"],
 }
 
 
@@ -245,6 +264,8 @@ class TestFixtureValidation:
         Returns:
             Parsed API response dict.
         """
+        if fixture_name in BUILDER_ONLY_FIXTURES:
+            pytest.skip(f"Fixture {fixture_name} is builder-only (no pre-recorded API response)")
         return self.fixtures[fixture_name]
 
     # ── Parametrized tests covering all fixtures ──────────────────────────────

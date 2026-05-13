@@ -3,6 +3,8 @@ use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::Value;
 use std::sync::Arc;
 
+use genomehubs_query::query::chain::{collect_chain_refs, resolve_chain_refs};
+
 use super::deserialize_helpers;
 use crate::{es_client, index_name, routes::ApiStatus, AppState};
 
@@ -68,7 +70,9 @@ impl<'de> Deserialize<'de> for SearchRequest {
         let query_yaml = if let Some(query_val) = map.get("query").or_else(|| map.get("query_yaml"))
         {
             let normalized = deserialize_helpers::normalize_query(query_val.clone());
-            deserialize_helpers::to_yaml(&normalized)?
+            let yaml = deserialize_helpers::to_yaml(&normalized)?;
+            // Detect and inject v2-style queryA=... fields as named_queries.
+            deserialize_helpers::inject_legacy_named_queries(&yaml, &map)
         } else {
             return Err(de::Error::missing_field("query or query_yaml"));
         };
@@ -339,6 +343,32 @@ pub async fn post_search(
         genomehubs_query::query::SearchIndex::Assembly => "assembly",
         genomehubs_query::query::SearchIndex::Sample => "sample",
     };
+
+    // Chain substitution: if the query has named_queries, execute them and
+    // substitute resolved values into attribute filters before building the ES query.
+    let mut query = query;
+    if let Some(named_queries) = &query.named_queries.clone() {
+        let chain_refs = collect_chain_refs(&query.attributes.attributes);
+        if !chain_refs.is_empty() {
+            let resolved = match crate::routes::chain_executor::execute_named_queries(
+                named_queries,
+                &chain_refs,
+                &idx,
+                &Value::Object(Default::default()),
+                &state,
+            )
+            .await
+            {
+                Ok(r) => r,
+                Err(e) => bail!(format!("chain query failed: {e}")),
+            };
+            if let Err(e) =
+                resolve_chain_refs(&mut query.attributes.attributes, &resolved, named_queries)
+            {
+                bail!(format!("chain resolution failed: {e}"));
+            }
+        }
+    }
     let fields_slice: Option<Vec<&str>> = if query.attributes.fields.is_empty() {
         None
     } else {

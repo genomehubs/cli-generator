@@ -59,6 +59,64 @@ pub fn to_yaml<D: serde::de::Error>(val: &Value) -> Result<String, D> {
     }
 }
 
+/// Detect and extract v2-style `queryA=...` named-query params from a JSON
+/// request body and inject them as `named_queries` into the YAML string.
+///
+/// Keys matching the pattern `query` + one-or-more uppercase ASCII letters
+/// (e.g. `queryA`, `queryB`, `queryAB`) are converted via
+/// [`NamedQuerySpec::from_legacy_string`] and appended to the `named_queries`
+/// map in the YAML.  Unrecognised index prefixes are silently skipped.
+///
+/// Returns the (possibly unchanged) YAML string.
+pub fn inject_legacy_named_queries(query_yaml: &str, body: &Value) -> String {
+    use genomehubs_query::query::chain::NamedQuerySpec;
+
+    let Some(obj) = body.as_object() else {
+        return query_yaml.to_string();
+    };
+
+    let legacy_entries: Vec<(String, NamedQuerySpec)> = obj
+        .iter()
+        .filter_map(|(key, val)| {
+            // Key must start with "query" and have only uppercase letters after.
+            let suffix = key.strip_prefix("query")?;
+            if suffix.is_empty() || !suffix.chars().all(|c| c.is_ascii_uppercase()) {
+                return None;
+            }
+            let raw = val.as_str()?;
+            let spec = NamedQuerySpec::from_legacy_string(raw)?;
+            Some((key.clone(), spec))
+        })
+        .collect();
+
+    if legacy_entries.is_empty() {
+        return query_yaml.to_string();
+    }
+
+    // Parse the existing YAML, inject named_queries, re-serialise.
+    let mut doc: serde_yaml::Value = match serde_yaml::from_str(query_yaml) {
+        Ok(v) => v,
+        Err(_) => return query_yaml.to_string(),
+    };
+
+    if let serde_yaml::Value::Mapping(ref mut map) = doc {
+        let nq_key = serde_yaml::Value::String("named_queries".to_string());
+        let nq_map = map
+            .entry(nq_key)
+            .or_insert_with(|| serde_yaml::Value::Mapping(serde_yaml::Mapping::new()));
+
+        if let serde_yaml::Value::Mapping(ref mut nq) = nq_map {
+            for (key, spec) in legacy_entries {
+                if let Ok(spec_val) = serde_yaml::to_value(&spec) {
+                    nq.insert(serde_yaml::Value::String(key), spec_val);
+                }
+            }
+        }
+    }
+
+    serde_yaml::to_string(&doc).unwrap_or_else(|_| query_yaml.to_string())
+}
+
 /// Transform a raw Elasticsearch hit into a V3 result envelope.
 ///
 /// Mirrors V2 processHits.js logic:

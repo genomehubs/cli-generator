@@ -83,6 +83,15 @@ else
     check_fail "cargo fmt (run 'cargo fmt --all' to fix)" "$output"
 fi
 
+# Check compilation of all workspace crates
+echo "Checking cargo check for all crates..."
+if cargo check --workspace > /dev/null 2>&1; then
+    check_pass "cargo check --workspace (all crates compile)"
+else
+    output=$(cargo check --workspace 2>&1 || true)
+    check_fail "cargo check --workspace (see output above)" "$output"
+fi
+
 # Clippy linting
 echo "Running cargo clippy..."
 if cargo clippy --all-targets -- -D warnings > /dev/null 2>&1; then
@@ -94,11 +103,16 @@ fi
 
 # Tests
 echo "Running cargo tests..."
-if cargo test --lib 2>&1 | grep -q "test result: ok"; then
-    check_pass "cargo test (all tests pass)"
+if cargo test --workspace --lib 2>&1 > /tmp/cargo_test.log; then
+    if grep -q "test result: ok" /tmp/cargo_test.log; then
+        check_pass "cargo test --workspace (all tests pass)"
+    else
+        output=$(cat /tmp/cargo_test.log)
+        check_fail "cargo test --workspace (no test result found)" "$output"
+    fi
 else
-    output=$(cargo test --lib 2>&1 || true)
-    check_fail "cargo test (see output above)" "$output"
+    output=$(cat /tmp/cargo_test.log)
+    check_fail "cargo test --workspace (see output above)" "$output"
 fi
 
 # ==============================================================================

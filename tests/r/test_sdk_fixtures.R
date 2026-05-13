@@ -198,6 +198,16 @@ FIXTURE_TO_BUILDER <- list(
             add_attribute("assembly_level", "eq", "complete genome")$
             add_field("assembly_span")$
             add_field("assembly_level")
+    },
+    chain_query_cross_index = function() {
+        QueryBuilder$new("taxon")$
+            chain_query("queryA", "assembly--assembly_span>1000000000")$
+            add_attribute("taxon_id", "eq", "queryA.taxon_id")
+    },
+    chain_query_same_index_limit = function() {
+        QueryBuilder$new("taxon")$
+            chain_query("queryA", "genome_size>1000000000", limit = 200L)$
+            add_attribute("taxon_id", "eq", "queryA.taxon_id")
     }
 )
 
@@ -232,7 +242,11 @@ FIXTURE_EXPECTED_URL_PARTS <- list(
     with_taxonomy_param             = c("result=taxon", "taxonomy=ncbi", "assembly_level"),
     with_names_param                = c("result=taxon", "names=scientific_name"),
     with_ranks_param                = c("result=taxon", "ranks=", "genus"),
-    assembly_index_with_filter      = c("result=assembly", "assembly_level", "assembly_span")
+    assembly_index_with_filter      = c("result=assembly", "assembly_level", "assembly_span"),
+    # chain_query fixtures: named_queries don't appear in v2 URLs; assert the
+    # attribute filter value (chain reference) appears in the query string.
+    chain_query_cross_index         = c("result=taxon", "taxon_id"),
+    chain_query_same_index_limit    = c("result=taxon", "taxon_id")
 )
 
 # ── Tests ──────────────────────────────────────────────────────────────────────

@@ -187,6 +187,14 @@ const FIXTURE_TO_BUILDER = {
       .addAttribute("assembly_level", "eq", "complete genome")
       .addField("assembly_span")
       .addField("assembly_level"),
+  chain_query_cross_index: () =>
+    new QueryBuilder("taxon")
+      .chainQuery("queryA", "assembly--assembly_span>1000000000")
+      .addAttribute("taxon_id", "eq", "queryA.taxon_id"),
+  chain_query_same_index_limit: () =>
+    new QueryBuilder("taxon")
+      .chainQuery("queryA", "genome_size>1000000000", { limit: 200 })
+      .addAttribute("taxon_id", "eq", "queryA.taxon_id"),
 };
 
 // ── Expected URL substrings per fixture ───────────────────────────────────────
@@ -267,6 +275,10 @@ const FIXTURE_EXPECTED_URL_PARTS = {
     "assembly_level",
     "assembly_span",
   ],
+  // chain_query fixtures: named_queries don't appear in v2 URLs; assert the
+  // attribute filter value (chain reference) appears in the query string.
+  chain_query_cross_index: ["result=taxon", "taxon_id"],
+  chain_query_same_index_limit: ["result=taxon", "taxon_id"],
 };
 
 const API_BASE = "https://goat.genomehubs.org/api";

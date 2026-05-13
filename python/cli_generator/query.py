@@ -107,8 +107,47 @@ class QueryBuilder:
         # Pre-parsed YAML overrides (set by from_v2_url; take priority in to_*_yaml)
         self._query_yaml_override: str | None = None
         self._params_yaml_override: str | None = None
+        # Named sub-queries for chain substitution (queryA= style).
+        self._named_queries: dict[str, dict[str, Any]] | None = None
 
     # ── Identifiers ──────────────────────────────────────────────────────────
+
+    def chain_query(
+        self,
+        query_key: str,
+        query_string: str,
+        *,
+        index: str | None = None,
+        limit: int | None = None,
+        inherit_scope: bool | None = None,
+    ) -> "QueryBuilder":
+        """Register a named sub-query for chain substitution.
+
+        Values in attribute filters may reference this query using dot-notation:
+        ``add_attribute("taxon_id", "eq", "queryA.taxon_id")``.
+
+        Args:
+            query_key: Name for this sub-query, e.g. ``"queryA"``.
+            query_string: Filter expression, e.g.
+                ``"assembly_span>1000000000"`` or
+                ``"assembly--assembly_span>1000000000"`` (v2 cross-index format).
+            index: Target index for the sub-query.  ``None`` inherits the
+                parent query's index.
+            limit: Maximum results to fetch (default 500, max 10 000).
+            inherit_scope: Whether to scope the sub-query inside the parent
+                taxon tree.  ``None`` uses the default (same-index → inherit).
+        """
+        spec: dict[str, Any] = {"filter_expr": query_string}
+        if index is not None:
+            spec["index"] = index
+        if limit is not None:
+            spec["limit"] = limit
+        if inherit_scope is not None:
+            spec["inherit_scope"] = inherit_scope
+        if self._named_queries is None:
+            self._named_queries = {}
+        self._named_queries[query_key] = spec
+        return self
 
     def set_taxa(
         self,
@@ -572,6 +611,8 @@ class QueryBuilder:
             doc["exclude_missing"] = self._exclude_missing
         if self._lineage_rank_summary:
             doc["lineage_rank_summary"] = self._lineage_rank_summary
+        if self._named_queries:
+            doc["named_queries"] = self._named_queries
 
         return yaml.safe_dump(doc, sort_keys=False)
 
@@ -1845,6 +1886,78 @@ class ReportBuilder:
     def set_scatter_threshold(self, threshold: int) -> "ReportBuilder":
         """Set the max scatter points before switching to binned mode."""
         self._doc["scatter_threshold"] = threshold
+        return self
+
+    # ── Arc report methods ────────────────────────────────────────────────────
+
+    def set_feature(self, term: str) -> "ReportBuilder":
+        """Set the feature filter for an arc report (the numerator condition).
+
+        Args:
+            term: Filter expression, e.g. ``\"genome_size>3000000000\"`` or
+                a chain reference ``\"taxon_id=queryA.taxon_id\"``.
+        """
+        self._doc["feature"] = term
+        return self
+
+    def set_reference(self, term: str) -> "ReportBuilder":
+        """Set the reference filter for an arc report (the denominator condition).
+
+        Args:
+            term: Filter expression, e.g. ``\"genome_size>0\"``.
+        """
+        self._doc["reference"] = term
+        return self
+
+    def set_context(self, term: str) -> "ReportBuilder":
+        """Set the context filter for an arc report (enables ``arc2`` ratio).
+
+        Args:
+            term: Filter expression for the broader backdrop, e.g.
+                ``\"assembly_level=Chromosome\"``.
+        """
+        self._doc["context"] = term
+        return self
+
+    def add_ring(
+        self,
+        feature_term: str,
+        *,
+        reference_term: str | None = None,
+        label: str | None = None,
+    ) -> "ReportBuilder":
+        """Add a concentric ring to a multi-ring arc report.
+
+        When rings are added, the ``feature`` key on the report is ignored and
+        each ring's ``feature_term`` is used instead.  All rings share the
+        outer ``reference`` filter unless overridden per-ring.
+
+        Args:
+            feature_term: Filter for the numerator of this ring, e.g.
+                ``\"genome_size>0\"``.
+            reference_term: Override the outer reference for this ring only.
+                ``None`` uses the outer ``reference`` filter.
+            label: Human-readable label for this ring in the response.
+        """
+        ring: dict[str, Any] = {"feature": feature_term}
+        if reference_term is not None:
+            ring["reference"] = reference_term
+        if label is not None:
+            ring["label"] = label
+        self._doc.setdefault("rings", []).append(ring)
+        return self
+
+    def set_arc_ranks(self, ranks: list[str]) -> "ReportBuilder":
+        """Run the same feature/reference arc once per taxonomic rank.
+
+        Each rank becomes one concentric ring.  Mutually exclusive with
+        :meth:`add_ring`.
+
+        Args:
+            ranks: List of rank names, e.g.
+                ``[\"genus\", \"family\", \"order\"]``.
+        """
+        self._doc["ranks"] = list(ranks)
         return self
 
     def set_display(self, value: "dict[str, Any] | str") -> "ReportBuilder":

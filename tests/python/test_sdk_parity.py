@@ -344,6 +344,12 @@ CANONICAL_METHODS = {
         "js_name": "report",
         "r_name": "report",
     },
+    "chain_query": {
+        "params": ["query_key", "query_string"],
+        "python_name": "chain_query",
+        "js_name": "chainQuery",
+        "r_name": "chain_query",
+    },
 }
 
 CONSTRUCTOR_PARAMS: dict[str, dict[str, str]] = {}
@@ -404,6 +410,11 @@ CANONICAL_REPORT_BUILDER_METHODS = {
     "to_report_yaml": {"python_name": "to_report_yaml", "js_name": "toReportYaml", "r_name": "to_report_yaml"},
     "validate": {"python_name": "validate", "js_name": "validate", "r_name": "validate"},
     "run": {"python_name": "run", "js_name": "run", "r_name": "run"},
+    "set_feature": {"python_name": "set_feature", "js_name": "setFeature", "r_name": "set_feature"},
+    "set_reference": {"python_name": "set_reference", "js_name": "setReference", "r_name": "set_reference"},
+    "set_context": {"python_name": "set_context", "js_name": "setContext", "r_name": "set_context"},
+    "add_ring": {"python_name": "add_ring", "js_name": "addRing", "r_name": "add_ring"},
+    "set_arc_ranks": {"python_name": "set_arc_ranks", "js_name": "setArcRanks", "r_name": "set_arc_ranks"},
 }
 
 # ── Introspection functions ──────────────────────────────────────────────────

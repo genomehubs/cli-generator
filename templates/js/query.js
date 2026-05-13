@@ -161,6 +161,7 @@ class QueryBuilder {
     this._queryYamlOverride = null;
     this._paramsYamlOverride = null;
     this._lineageRankSummary = [];
+    this._namedQueries = {};
   }
 
   // ── Identifiers ────────────────────────────────────────────────────────────
@@ -517,6 +518,26 @@ class QueryBuilder {
     return this;
   }
 
+  /**
+   * Add a named sub-query whose results can be referenced via ``queryKey.*``
+   * in attribute filters of the parent query.
+   * @param {string} queryKey - Identifier for this sub-query (e.g. "queryA").
+   * @param {string} queryString - Filter expression for the sub-query (e.g. "assembly_span>1e9").
+   * @param {Object} [opts]
+   * @param {string} [opts.index] - Target index (defaults to parent index).
+   * @param {number} [opts.limit] - Maximum hits to resolve from sub-query.
+   * @param {boolean} [opts.inheritScope] - Whether to inherit taxa/rank from parent.
+   * @returns {QueryBuilder}
+   */
+  chainQuery(queryKey, queryString, opts = {}) {
+    const spec = { query: queryString };
+    if (opts.index != null) spec.index = opts.index;
+    if (opts.limit != null) spec.limit = opts.limit;
+    if (opts.inheritScope != null) spec.inherit_scope = opts.inheritScope;
+    this._namedQueries[queryKey] = spec;
+    return this;
+  }
+
   // ── Serialization ──────────────────────────────────────────────────────────
 
   /**
@@ -621,6 +642,17 @@ class QueryBuilder {
             }
           }
         }
+      }
+    }
+    if (Object.keys(this._namedQueries).length > 0) {
+      lines.push("named_queries:");
+      for (const [key, spec] of Object.entries(this._namedQueries)) {
+        lines.push(`  ${key}:`);
+        lines.push(`    filter_expr: "${spec.filter_expr}"`);
+        if (spec.index != null) lines.push(`    index: ${spec.index}`);
+        if (spec.limit != null) lines.push(`    limit: ${spec.limit}`);
+        if (spec.inherit_scope != null)
+          lines.push(`    inherit_scope: ${spec.inherit_scope}`);
       }
     }
     return lines.join("\n") + "\n";
@@ -1557,6 +1589,51 @@ class ReportBuilder {
   /** Set the max scatter points before switching to binned mode. @param {number} threshold @returns {this} */
   setScatterThreshold(threshold) {
     this._doc.scatter_threshold = threshold;
+    return this;
+  }
+
+  // ── Arc report methods ─────────────────────────────────────────────────
+
+  /** Set the feature filter (numerator) for an arc report. @param {string} term @returns {this} */
+  setFeature(term) {
+    this._doc.feature = term;
+    return this;
+  }
+
+  /** Set the reference filter (denominator) for an arc report. @param {string} term @returns {this} */
+  setReference(term) {
+    this._doc.reference = term;
+    return this;
+  }
+
+  /** Set the context filter (enables arc2 ratio) for an arc report. @param {string} term @returns {this} */
+  setContext(term) {
+    this._doc.context = term;
+    return this;
+  }
+
+  /**
+   * Add a concentric ring to a multi-ring arc report.
+   * @param {string} featureTerm - Filter for this ring's numerator.
+   * @param {object} [opts] - Options: { referenceTerm, label }
+   * @returns {this}
+   */
+  addRing(featureTerm, opts = {}) {
+    const ring = { feature: featureTerm };
+    if (opts.referenceTerm != null) ring.reference = opts.referenceTerm;
+    if (opts.label != null) ring.label = opts.label;
+    if (!this._doc.rings) this._doc.rings = [];
+    this._doc.rings.push(ring);
+    return this;
+  }
+
+  /**
+   * Run the same feature/reference arc once per taxonomic rank.
+   * @param {string[]} ranks - Rank names, e.g. ["genus", "family", "order"].
+   * @returns {this}
+   */
+  setArcRanks(ranks) {
+    this._doc.ranks = [...ranks];
     return this;
   }
 
