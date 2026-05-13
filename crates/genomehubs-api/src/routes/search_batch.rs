@@ -268,13 +268,6 @@ pub async fn post_search_batch(
             }
         };
 
-        if let Err(e) = params.validate_id_set() {
-            return Json(SearchBatchResponse {
-                status: ApiStatus::error(e),
-                results: vec![],
-            });
-        }
-
         // Check if this is multi-query mode (nested queries with OR/AND combining)
         let body = if let Some(nested_queries) = &query.queries {
             if nested_queries.is_empty() {
@@ -418,21 +411,7 @@ pub async fn post_search_batch(
             }
 
             // Combine the bodies with OR or AND
-            let mut combined_body = combine_es_bodies(bodies, &query.combine_with);
-
-            // Inject id_set filter if provided
-            let multi_group = match &nested_queries[0].index {
-                genomehubs_query::query::SearchIndex::Taxon => "taxon",
-                genomehubs_query::query::SearchIndex::Assembly => "assembly",
-                genomehubs_query::query::SearchIndex::Sample => "sample",
-            };
-            if let Some(id_field) = params.resolve_id_field(multi_group) {
-                if let Some(ids) = &params.id_set {
-                    super::inject_id_set_filter(&mut combined_body, &id_field, ids);
-                }
-            }
-
-            combined_body
+            combine_es_bodies(bodies, &query.combine_with)
         } else {
             // Single-query mode (existing behavior)
             let group = match query.index {
@@ -532,19 +511,6 @@ pub async fn post_search_batch(
                 }
             }
         };
-
-        // Inject id_set filter if provided
-        let mut body = body;
-        let item_group = match query.index {
-            genomehubs_query::query::SearchIndex::Taxon => "taxon",
-            genomehubs_query::query::SearchIndex::Assembly => "assembly",
-            genomehubs_query::query::SearchIndex::Sample => "sample",
-        };
-        if let Some(id_field) = params.resolve_id_field(item_group) {
-            if let Some(ids) = &params.id_set {
-                super::inject_id_set_filter(&mut body, &id_field, ids);
-            }
-        }
 
         let idx = index_name::resolve_index(&query.index, &state);
         index_bodies.push((idx, body));

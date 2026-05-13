@@ -266,11 +266,23 @@ CANONICAL_METHODS = {
         "js_name": "record",
         "r_name": "record",
     },
+    "record_batch": {
+        "params": ["record_ids"],
+        "python_name": "record_batch",
+        "js_name": "recordBatch",
+        "r_name": "record_batch",
+    },
     "lookup": {
         "params": ["api_base", "api_version"],
         "python_name": "lookup",
         "js_name": "lookup",
         "r_name": "lookup",
+    },
+    "lookup_batch": {
+        "params": ["lookups"],
+        "python_name": "lookup_batch",
+        "js_name": "lookupBatch",
+        "r_name": "lookup_batch",
     },
     "summary": {
         "params": ["api_base", "api_version"],

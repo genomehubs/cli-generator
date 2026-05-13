@@ -1054,6 +1054,31 @@ class QueryBuilder {
   }
 
   /**
+   * Fetch up to 1,000 records by ID in a single request.
+   * @param {string[]} recordIds - Array of record IDs (max 1,000)
+   * @param {string} [result] - Result type (taxon|assembly|sample), default from index
+   * @returns {Promise<object>} - Parsed batch record response
+   */
+  async recordBatch(recordIds, result = null) {
+    if (!recordIds || recordIds.length === 0)
+      throw new Error("recordBatch() requires a non-empty recordIds array");
+
+    const resultType = result || this._index || "taxon";
+    const url = `${API_BASE}/v3/record/batch`;
+
+    const resp = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ record_ids: recordIds, result: resultType }),
+    });
+
+    if (!resp.ok)
+      throw new Error(`API request failed: ${resp.status} ${resp.statusText}`);
+
+    return JSON.parse(await resp.text());
+  }
+
+  /**
    * Lookup records by alternative identifiers (autocomplete/search-as-you-type).
    * @param {string} searchTerm - Search term for lookup
    * @param {string} [result] - Result type (taxon|assembly|sample), default from index
@@ -1073,6 +1098,42 @@ class QueryBuilder {
     const url = `${API_BASE}/v3/lookup?${params.toString()}`;
 
     const resp = await fetch(url, { method: "GET" });
+
+    if (!resp.ok)
+      throw new Error(`API request failed: ${resp.status} ${resp.statusText}`);
+
+    return JSON.parse(await resp.text());
+  }
+
+  /**
+   * Resolve multiple search terms to record IDs in a single request.
+   * @param {Array<string|object>} lookups - Items as strings or {search_term, result?, size?}
+   * @param {string} [result] - Default result type for items that omit it
+   * @param {number} [size=10] - Default page size for items that omit it
+   * @returns {Promise<object>} - Batch lookup response with results array in input order
+   */
+  async lookupBatch(lookups, result = null, size = 10) {
+    if (!lookups || lookups.length === 0)
+      throw new Error("lookupBatch() requires a non-empty lookups array");
+
+    const defaultResult = result || this._index || "taxon";
+
+    const normalise = (item) => {
+      if (typeof item === "string")
+        return { search_term: item, result: defaultResult, size };
+      return {
+        search_term: item.search_term,
+        result: item.result ?? defaultResult,
+        size: item.size ?? size,
+      };
+    };
+
+    const url = `${API_BASE}/v3/lookup/batch`;
+    const resp = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lookups: lookups.map(normalise) }),
+    });
 
     if (!resp.ok)
       throw new Error(`API request failed: ${resp.status} ${resp.statusText}`);
@@ -1204,12 +1265,7 @@ class QueryBuilder {
    * @param {string} [summaryTypes="min,max,mean"] - Summary types to compute
    * @returns {Promise<object>} - Parsed summary object
    */
-  async summary(
-    recordId,
-    fields,
-    result = null,
-    summaryTypes = "min,max,mean",
-  ) {
+  async summary(recordId, fields, result = null, summary = "histogram") {
     if (!recordId) throw new Error("summary() requires a recordId parameter");
     if (!fields) throw new Error("summary() requires a fields parameter");
 
@@ -1218,7 +1274,7 @@ class QueryBuilder {
       recordId,
       result: resultType,
       fields,
-      summary: summaryTypes,
+      summary,
     });
     const url = `${API_BASE}/v3/summary?${params.toString()}`;
 

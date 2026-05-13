@@ -1676,3 +1676,114 @@ def test_query_builder_id_set_converts_to_strings() -> None:
     # Integers are coerced to strings
     assert "'1'" in yaml_out
     assert "'2'" in yaml_out
+
+
+# ── lookup_batch tests ────────────────────────────────────────────────────────
+
+
+def test_lookup_batch_normalises_strings() -> None:
+    """String items should expand to full dicts with default result and size."""
+    import json
+
+    from cli_generator.query import QueryBuilder
+
+    qb = QueryBuilder("taxon")
+    # Intercept the payload by patching urllib.request.urlopen
+    captured: list[bytes] = []
+
+    class FakeResp:
+        def read(self) -> bytes:
+            return b'{"status":{"ok":true,"hits":0},"results":[]}'
+
+        def __enter__(self) -> "FakeResp":
+            return self
+
+        def __exit__(self, *args: object) -> None:
+            pass
+
+    import urllib.request
+
+    original_urlopen = urllib.request.urlopen
+
+    def fake_urlopen(req: object, **kwargs: object) -> FakeResp:
+        import urllib.request as _ur
+
+        if isinstance(req, _ur.Request) and req.get_full_url().endswith("/lookup/batch"):
+            data = req.data
+            assert isinstance(data, bytes)
+            captured.append(data)
+        return FakeResp()
+
+    urllib.request.urlopen = fake_urlopen  # type: ignore[assignment]
+    try:
+        qb.lookup_batch(["Homo sapiens", "Mus musculus"])
+    finally:
+        urllib.request.urlopen = original_urlopen  # type: ignore[assignment]
+
+    assert len(captured) == 1
+    payload = json.loads(captured[0])
+    assert len(payload["lookups"]) == 2
+    assert payload["lookups"][0]["search_term"] == "Homo sapiens"
+    assert payload["lookups"][0]["result"] == "taxon"
+    assert payload["lookups"][0]["size"] == 10
+    assert payload["lookups"][1]["search_term"] == "Mus musculus"
+
+
+def test_lookup_batch_normalises_dicts() -> None:
+    """Dict items should merge with provided defaults."""
+    import json
+
+    from cli_generator.query import QueryBuilder
+
+    qb = QueryBuilder("taxon")
+    captured: list[bytes] = []
+
+    class FakeResp:
+        def read(self) -> bytes:
+            return b'{"status":{"ok":true,"hits":0},"results":[]}'
+
+        def __enter__(self) -> "FakeResp":
+            return self
+
+        def __exit__(self, *args: object) -> None:
+            pass
+
+    import urllib.request
+
+    original_urlopen = urllib.request.urlopen
+
+    def fake_urlopen(req: object, **kwargs: object) -> FakeResp:
+        import urllib.request as _ur
+
+        if isinstance(req, _ur.Request):
+            data = req.data
+            assert isinstance(data, bytes)
+            captured.append(data)
+        return FakeResp()
+
+    urllib.request.urlopen = fake_urlopen  # type: ignore[assignment]
+    try:
+        qb.lookup_batch(
+            [{"search_term": "Homo sapiens", "size": 3}, {"search_term": "GCA_000001405", "result": "assembly"}],
+            result="taxon",
+            size=5,
+        )
+    finally:
+        urllib.request.urlopen = original_urlopen  # type: ignore[assignment]
+
+    payload = json.loads(captured[0])
+    items = payload["lookups"]
+    assert items[0]["size"] == 3  # per-item override
+    assert items[0]["result"] == "taxon"  # inherited default
+    assert items[1]["result"] == "assembly"  # per-item override
+    assert items[1]["size"] == 5  # inherited default
+
+
+def test_lookup_batch_empty_raises() -> None:
+    """Empty lookups list should raise ValueError before making any HTTP call."""
+    import pytest
+
+    from cli_generator.query import QueryBuilder
+
+    with pytest.raises(ValueError, match="non-empty"):
+        QueryBuilder("taxon").lookup_batch([])

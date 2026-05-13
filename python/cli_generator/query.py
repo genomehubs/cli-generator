@@ -1270,6 +1270,52 @@ class QueryBuilder:
             body_text = resp.read().decode("utf-8")
         return json.loads(parse_record_json(body_text))
 
+    def record_batch(
+        self,
+        record_ids: "list[str]",
+        result: str | None = None,
+        api_base: str = "https://goat.genomehubs.org/api",
+        api_version: str = "v3",
+    ) -> Any:
+        """Fetch up to 1,000 records by ID in a single request.
+
+        Uses the ``POST /record/batch`` endpoint which issues a single ES ``_mget``
+        call, making it far more efficient than repeated ``record()`` calls.
+
+        Args:
+            record_ids: List of record IDs to fetch (max 1,000; required).
+            result: Result type (``"taxon"``, ``"assembly"``, ``"sample"``); defaults to the
+                builder's current index.
+            api_base: Base URL of the API.
+            api_version: API version string (default: ``"v3"``).
+
+        Returns:
+            Parsed batch record response with a ``records`` list.
+
+        Example::
+
+            ids = ["taxon-9606", "taxon-10090"]
+            resp = QueryBuilder("taxon").record_batch(ids)
+            for item in resp["records"]:
+                print(item["recordId"], item["record"])
+        """
+        if not record_ids:
+            raise ValueError("record_batch() requires a non-empty record_ids list")
+        import json
+        import urllib.request
+
+        result_type = result or self._index or "taxon"
+        payload = json.dumps({"record_ids": record_ids, "result": result_type}).encode("utf-8")
+        url = f"{api_base}/{api_version}/record/batch"
+        req = urllib.request.Request(
+            url,
+            data=payload,
+            headers={"Content-Type": "application/json"},
+        )
+        with urllib.request.urlopen(req) as resp:
+            body_text = resp.read().decode("utf-8")
+        return json.loads(body_text)
+
     def lookup(
         self,
         search_term: str,
@@ -1311,6 +1357,68 @@ class QueryBuilder:
         with urllib.request.urlopen(url) as resp:
             body_text = resp.read().decode("utf-8")
         return json.loads(parse_lookup_json(body_text))
+
+    def lookup_batch(
+        self,
+        lookups: "list[str | dict[str, Any]]",
+        result: str | None = None,
+        size: int = 10,
+        api_base: str = "https://goat.genomehubs.org/api",
+        api_version: str = "v3",
+    ) -> Any:
+        """Resolve multiple search terms to record IDs in a single request.
+
+        Each element of ``lookups`` is either a plain search-term string or a
+        dict with keys ``search_term`` (required), ``result`` (optional), and
+        ``size`` (optional).  Per-item values override the method-level
+        ``result`` and ``size`` defaults.
+
+        Args:
+            lookups: List of search terms (strings or dicts).
+            result: Default result type for items that don't specify one;
+                defaults to the builder's current index (``"taxon"``).
+            size: Default page size for items that don't specify one (default 10).
+            api_base: Base URL of the API.
+            api_version: API version string (default: ``"v3"``).
+
+        Returns:
+            Parsed batch lookup response object with a ``results`` list parallel
+            to the input.
+
+        Example::
+
+            names = ["Homo sapiens", "Mus musculus"]
+            resp = QueryBuilder("taxon").lookup_batch(names)
+            for item in resp["results"]:
+                for hit in item["results"]:
+                    print(hit["id"], hit["name"])
+        """
+        if not lookups:
+            raise ValueError("lookup_batch() requires a non-empty lookups list")
+        import json
+        import urllib.request
+
+        default_result = result or self._index or "taxon"
+
+        def normalise(item: "str | dict[str, Any]") -> "dict[str, Any]":
+            if isinstance(item, str):
+                return {"search_term": item, "result": default_result, "size": size}
+            return {
+                "search_term": item["search_term"],
+                "result": item.get("result", default_result),
+                "size": item.get("size", size),
+            }
+
+        payload = json.dumps({"lookups": [normalise(x) for x in lookups]}).encode("utf-8")
+        url = f"{api_base}/{api_version}/lookup/batch"
+        req = urllib.request.Request(
+            url,
+            data=payload,
+            headers={"Content-Type": "application/json"},
+        )
+        with urllib.request.urlopen(req) as resp:
+            body_text = resp.read().decode("utf-8")
+        return json.loads(body_text)
 
     def phylopic(
         self,
@@ -1514,18 +1622,21 @@ class QueryBuilder:
         record_id: str,
         fields: str,
         result: str | None = None,
-        summary_types: str = "min,max,mean",
+        summary: str = "histogram",
         api_base: str = "https://goat.genomehubs.org/api",
         api_version: str = "v3",
     ) -> Any:
         """Fetch summary aggregations for specific fields.
 
+        Runs a clade-level ES aggregation (all taxa under ``record_id``) and
+        returns either a histogram or a terms distribution for the requested field.
+
         Args:
-            record_id: Record ID to summarize (required).
-            fields: Comma-separated field names to summarize (required).
+            record_id: Taxon ID whose clade is aggregated (required).
+            fields: Field name to aggregate (required).
             result: Result type (``"taxon"``, ``"assembly"``, ``"sample"``); defaults to the
                 builder's current index.
-            summary_types: Summary types to compute (default: ``"min,max,mean"``).
+            summary: Aggregation type — ``"histogram"`` (default) or ``"terms"``.
             api_base: Base URL of the API.
             api_version: API version string (default: ``"v3"``).
 
@@ -1546,7 +1657,7 @@ class QueryBuilder:
                 "recordId": record_id,
                 "result": result_type,
                 "fields": fields,
-                "summary": summary_types,
+                "summary": summary,
             }
         )
         url = f"{api_base}/{api_version}/summary?{params}"

@@ -973,6 +973,31 @@ class QueryBuilder:
 
         return json.loads(body_text)
 
+    def record_batch(self, record_ids: "list[str]", result: str | None = None) -> Any:
+        """Fetch up to 1,000 records by ID in a single request.
+
+        Args:
+            record_ids: List of record IDs to fetch (max 1,000; required)
+            result: Result type (taxon|assembly|sample); defaults to index type
+
+        Returns:
+            Parsed batch record response with a ``records`` list
+        """
+        if not record_ids:
+            raise ValueError("record_batch() requires a non-empty record_ids list")
+        import json
+        import urllib.request
+
+        result_type = result or self._index or "taxon"
+
+        payload = json.dumps({"record_ids": record_ids, "result": result_type}).encode("utf-8")
+        url = f"{API_BASE}/v3/record/batch"
+        req = urllib.request.Request(url, data=payload, headers={"Content-Type": "application/json"})
+        with urllib.request.urlopen(req) as resp:
+            body_text = resp.read().decode("utf-8")
+
+        return json.loads(body_text)
+
     def lookup(self, search_term: str, result: str | None = None, size: int = 10) -> Any:
         """Lookup records by alternative identifiers (autocomplete/search-as-you-type).
 
@@ -1003,6 +1028,44 @@ class QueryBuilder:
         with urllib.request.urlopen(req) as resp:
             body_text = resp.read().decode("utf-8")
 
+        return json.loads(body_text)
+
+    def lookup_batch(self, lookups: "list[str | dict[str, Any]]", result: str | None = None, size: int = 10) -> Any:
+        """Resolve multiple search terms to record IDs in a single request.
+
+        Args:
+            lookups: List of search terms (strings or dicts with search_term/result/size keys).
+            result: Default result type for items that don't specify one.
+            size: Default page size for items that don't specify one (default: 10).
+
+        Returns:
+            Parsed batch lookup response with a ``results`` list parallel to the input.
+        """
+        if not lookups:
+            raise ValueError("lookup_batch() requires a non-empty lookups list")
+        import json
+        import urllib.request
+
+        default_result = result or self._index or "taxon"
+
+        def normalise(item: "str | dict[str, Any]") -> "dict[str, Any]":
+            if isinstance(item, str):
+                return {"search_term": item, "result": default_result, "size": size}
+            return {
+                "search_term": item["search_term"],
+                "result": item.get("result", default_result),
+                "size": item.get("size", size),
+            }
+
+        payload = json.dumps({"lookups": [normalise(x) for x in lookups]}).encode("utf-8")
+        url = f"{API_BASE}/v3/lookup/batch"
+        req = urllib.request.Request(
+            url,
+            data=payload,
+            headers={"Content-Type": "application/json"},
+        )
+        with urllib.request.urlopen(req) as resp:
+            body_text = resp.read().decode("utf-8")
         return json.loads(body_text)
 
     def phylopic(self, taxon_id: str, taxonomy: str = "ncbi") -> Any:
@@ -1135,14 +1198,17 @@ class QueryBuilder:
         with urllib.request.urlopen(url) as resp:
             return json.loads(resp.read().decode("utf-8")).get("ranks", [])
 
-    def summary(self, record_id: str, fields: str, result: str | None = None, summary_types: str = "min,max,mean") -> Any:
+    def summary(self, record_id: str, fields: str, result: str | None = None, summary: str = "histogram") -> Any:
         """Fetch summary aggregations for specific fields.
 
+        Runs a clade-level ES aggregation (all taxa under ``record_id``) and
+        returns either a histogram or a terms distribution for the requested field.
+
         Args:
-            record_id: Record ID to summarize (required)
-            fields: Comma-separated field names to summarize (required)
+            record_id: Taxon ID whose clade is aggregated (required)
+            fields: Field name to aggregate (required)
             result: Result type (taxon|assembly|sample); defaults to index type
-            summary_types: Summary types to compute (default: "min,max,mean")
+            summary: Aggregation type — ``"histogram"`` (default) or ``"terms"``
 
         Returns:
             Parsed summary object
@@ -1161,7 +1227,7 @@ class QueryBuilder:
             "recordId": record_id,
             "result": result_type,
             "fields": fields,
-            "summary": summary_types,
+            "summary": summary,
         })
         url = f"{API_BASE}/v3/summary?{params}"
 

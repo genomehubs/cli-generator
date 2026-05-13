@@ -997,6 +997,52 @@ curl -s "{{ api_base }}/v3/record?recordId=9606&result=taxon"
 
 ---
 
+### `record_batch(record_ids, result=None) -> dict`
+
+Fetch up to 1,000 records by ID in a single POST to `/v3/record/batch`.
+More efficient than repeated `record()` calls.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `record_ids` | list | Record IDs to fetch (max 1,000; required). |
+| `result` | str | Result type: `"taxon"`, `"assembly"`, `"sample"` (default: index type). |
+
+::: {.panel-tabset group="language"}
+
+## Python
+
+```python
+ids = ["taxon-9606", "taxon-10090"]
+resp = qb.record_batch(ids)
+for item in resp["records"]:
+    print(item["recordId"])
+```
+
+## R
+
+```r
+ids <- c("taxon-9606", "taxon-10090")
+resp <- qb$record_batch(ids)
+```
+
+## JavaScript
+
+```javascript
+const resp = await qb.recordBatch(["taxon-9606", "taxon-10090"]);
+```
+
+## API
+
+```bash
+curl -s -X POST {{ api_base }}/v3/record/batch \
+  -H "Content-Type: application/json" \
+  -d '{"record_ids":["taxon-9606","taxon-10090"],"result":"taxon"}'
+```
+
+:::
+
+---
+
 ### `lookup(search_term, result=None, size=10, api_base, api_version) -> dict`
 
 Search for records by alternative identifiers (autocomplete) via GET to
@@ -1026,6 +1072,55 @@ const results = await qb.lookup("Homo");
 
 ```bash
 curl -s "{{ api_base }}/v3/lookup?searchTerm=Homo&result=taxon&size=10"
+```
+
+:::
+
+---
+
+### `lookup_batch(lookups, result=None, size=10) -> dict`
+
+Resolve multiple search terms to record IDs in one POST to `/v3/lookup/batch`.
+Each element of `lookups` is a string or a dict with `search_term` (required),
+`result` (optional), and `size` (optional). Results are returned in input order.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `lookups` | list | Search terms (strings) or dicts with `search_term`/`result`/`size` keys. |
+| `result` | str | Default result type for items that omit it (default: index type). |
+| `size` | int | Default page size for items that omit it (default: 10). |
+
+::: {.panel-tabset group="language"}
+
+## Python
+
+```python
+names = ["Homo sapiens", "Mus musculus", "Danio rerio"]
+resp = qb.lookup_batch(names)
+for item in resp["results"]:
+    for hit in item["results"]:
+        print(hit["id"], hit["name"])
+```
+
+## R
+
+```r
+names <- c("Homo sapiens", "Mus musculus", "Danio rerio")
+resp <- qb$lookup_batch(names)
+```
+
+## JavaScript
+
+```javascript
+const resp = await qb.lookupBatch(["Homo sapiens", "Mus musculus"]);
+```
+
+## API
+
+```bash
+curl -s -X POST {{ api_base }}/v3/lookup/batch \
+  -H "Content-Type: application/json" \
+  -d '{"lookups":[{"search_term":"Homo sapiens"},{"search_term":"Mus musculus"}]}'
 ```
 
 :::

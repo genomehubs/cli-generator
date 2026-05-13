@@ -934,6 +934,25 @@ QueryBuilder <- R6::R6Class(
       jsonlite::fromJSON(raw_text, simplifyVector = FALSE)
     },
 
+    #' @description Fetch up to 1,000 records by ID in a single POST request.
+    #' @param record_ids Character vector of record IDs (max 1,000; required).
+    #' @param result Result type (taxon|assembly|sample); defaults to index type.
+    #' @return Parsed batch record response list with a \code{records} element.
+    record_batch = function(record_ids, result = NULL) {
+      if (is.null(record_ids) || length(record_ids) == 0) {
+        stop("record_batch() requires a non-empty record_ids vector")
+      }
+      result_type <- if (is.null(result)) private$index_name else result
+
+      payload <- jsonlite::toJSON(list(record_ids = as.list(record_ids), result = result_type), auto_unbox = TRUE)
+      url <- paste0(private$api_base_url, "/", private$api_version, "/record/batch")
+
+      resp <- httr::POST(url, body = payload, httr::content_type_json(), httr::accept("application/json"))
+      httr::stop_for_status(resp)
+      raw_text <- httr::content(resp, as = "text", encoding = "UTF-8")
+      jsonlite::fromJSON(raw_text, simplifyVector = FALSE)
+    },
+
     #' @description Lookup records by alternative identifiers (autocomplete/search-as-you-type).
     #' @param search_term Search term for lookup (required).
     #' @param result Result type (taxon|assembly|sample); defaults to index type.
@@ -951,6 +970,39 @@ QueryBuilder <- R6::R6Class(
       url <- paste0(url, query_string)
 
       resp <- httr::GET(url, httr::accept("application/json"))
+      httr::stop_for_status(resp)
+      raw_text <- httr::content(resp, as = "text", encoding = "UTF-8")
+      jsonlite::fromJSON(raw_text, simplifyVector = FALSE)
+    },
+
+    #' @description Resolve multiple search terms to record IDs in a single POST.
+    #' @param lookups Character vector of search terms, or a list of named lists
+    #'   each containing \code{search_term} (required), \code{result} (optional),
+    #'   and \code{size} (optional).
+    #' @param result Default result type for items that omit it (default: index type).
+    #' @param size Default page size for items that omit it (default: 10).
+    #' @return Parsed batch lookup response list.
+    lookup_batch = function(lookups, result = NULL, size = 10) {
+      if (is.null(lookups) || length(lookups) == 0) {
+        stop("lookup_batch() requires a non-empty lookups argument")
+      }
+      default_result <- if (is.null(result)) private$index_name else result
+
+      normalise_item <- function(item) {
+        if (is.character(item)) {
+          return(list(search_term = item, result = default_result, size = size))
+        }
+        list(
+          search_term = item[["search_term"]],
+          result = if (!is.null(item[["result"]])) item[["result"]] else default_result,
+          size = if (!is.null(item[["size"]])) item[["size"]] else size
+        )
+      }
+
+      normalised <- lapply(lookups, normalise_item)
+      payload <- jsonlite::toJSON(list(lookups = normalised), auto_unbox = TRUE)
+      url <- paste0(private$api_base_url, "/", private$api_version, "/lookup/batch")
+      resp <- httr::POST(url, httr::content_type_json(), body = payload, encode = "raw")
       httr::stop_for_status(resp)
       raw_text <- httr::content(resp, as = "text", encoding = "UTF-8")
       jsonlite::fromJSON(raw_text, simplifyVector = FALSE)
@@ -1060,7 +1112,13 @@ QueryBuilder <- R6::R6Class(
     #' @param result Result type (taxon|assembly|sample); defaults to index type.
     #' @param summary_types Summary types to compute (default: "min,max,mean").
     #' @return Parsed summary object.
-    summary = function(record_id, fields, result = NULL, summary_types = "min,max,mean") {
+    summary = function(record_id, fields, result = NULL, summary = "histogram") {
+      #' @description Fetch summary aggregations for a field across a taxon clade.
+      #' @param record_id Taxon ID whose clade is aggregated (required).
+      #' @param fields Field name to aggregate (required).
+      #' @param result Result type (default: index type).
+      #' @param summary Aggregation type: \code{"histogram"} (default) or \code{"terms"}.
+      #' @return Parsed summary response list.
       if (is.null(record_id) || record_id == "") {
         stop("summary() requires a record_id parameter")
       }
@@ -1069,7 +1127,7 @@ QueryBuilder <- R6::R6Class(
       }
       result_type <- if (is.null(result)) private$index_name else result
 
-      params <- list(recordId = record_id, result = result_type, fields = fields, summary = summary_types)
+      params <- list(recordId = record_id, result = result_type, fields = fields, summary = summary)
       url <- paste0(private$api_base_url, "/", private$api_version, "/summary?")
       query_string <- paste(names(params), sapply(params, as.character), sep = "=", collapse = "&")
       url <- paste0(url, query_string)
