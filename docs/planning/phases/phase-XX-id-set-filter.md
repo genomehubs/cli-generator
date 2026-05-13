@@ -254,20 +254,20 @@ because it is an execution filter rather than a semantic query specification.
 Full Python usage:
 
 ```python
-from cli_generator import QueryBuilder
+from goat_sdk import QueryBuilder
 
 # Load target IDs from any external source
-target_ids = [10090, 10116, 9606, 7955, 3702, 6239, 7227]
+target_ids = ["9612","9615"]
 
 results = (
     QueryBuilder("taxon")
     .set_fields(["assembly_level", "genome_size", "busco_completeness"])
     .set_id_set(target_ids)
-    .run()
+    .search()
 )
 
 for hit in results["results"]:
-    print(hit["taxon_id"], hit.get("assembly_level"))
+    print(hit["id"])
 ```
 
 Combining with a clade filter:

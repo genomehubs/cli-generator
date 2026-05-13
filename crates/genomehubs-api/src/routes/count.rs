@@ -100,13 +100,6 @@ pub async fn post_count(
         }
     };
 
-    if let Err(e) = params.validate_id_set() {
-        return Json(CountResponse {
-            status: super::ApiStatus::error(e),
-            url: "".to_string(),
-        });
-    }
-
     // Resolve index name using shared helper
     let idx = index_name::resolve_index(&query.index, &state);
 
@@ -183,14 +176,6 @@ pub async fn post_count(
             })
         }
     };
-
-    // Inject id_set filter if provided
-    let mut body = body;
-    if let Some(id_field) = params.resolve_id_field(group) {
-        if let Some(ids) = &params.id_set {
-            super::inject_id_set_filter(&mut body, &id_field, ids);
-        }
-    }
 
     // Extract only the query clause for the count endpoint (which expects {"query": {...}})
     let count_body = json!({

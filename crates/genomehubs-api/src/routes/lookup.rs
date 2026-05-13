@@ -29,7 +29,7 @@ pub struct LookupResponse {
 
 /// Build ES query for SAYT prefix match (Stage 1).
 /// Searches scientific_name (high boost) and nested taxon_names.name.live (lower boost).
-fn build_sayt_query(term: &str, size: usize) -> serde_json::Value {
+pub(crate) fn build_sayt_query(term: &str, size: usize) -> serde_json::Value {
     json!({
         "size": size,
         "query": {
@@ -71,7 +71,7 @@ fn build_sayt_query(term: &str, size: usize) -> serde_json::Value {
 
 /// Build ES suggest query for phrase suggestion (Stage 3).
 /// Requires taxon_names.name.trigram field for trigram-based matching.
-fn build_suggest_query(term: &str) -> serde_json::Value {
+pub(crate) fn build_suggest_query(term: &str) -> serde_json::Value {
     json!({
         "suggest": {
             "name_suggest": {
@@ -144,7 +144,7 @@ async fn execute_suggest(
 }
 
 /// Extract lookup results from ES suggest response.
-fn extract_suggest_results(resp: &serde_json::Value) -> Vec<LookupResult> {
+pub(crate) fn extract_suggest_results(resp: &serde_json::Value) -> Vec<LookupResult> {
     let mut results = Vec::new();
 
     if let Some(suggestions) = resp
@@ -174,7 +174,7 @@ fn extract_suggest_results(resp: &serde_json::Value) -> Vec<LookupResult> {
 }
 
 /// Build ES query for exact/wildcard match (Stage 2).
-fn build_lookup_query(term: &str, size: usize) -> serde_json::Value {
+pub(crate) fn build_lookup_query(term: &str, size: usize) -> serde_json::Value {
     let wildcard_term = if term.contains('*') {
         term.to_string()
     } else {
@@ -206,7 +206,7 @@ fn build_lookup_query(term: &str, size: usize) -> serde_json::Value {
 }
 
 /// Extract lookup results from ES response.
-fn extract_lookup_results(resp: &serde_json::Value, reason: &str) -> Vec<LookupResult> {
+pub(crate) fn extract_lookup_results(resp: &serde_json::Value, reason: &str) -> Vec<LookupResult> {
     let mut results = Vec::new();
 
     if let Some(hits) = resp
@@ -215,7 +215,7 @@ fn extract_lookup_results(resp: &serde_json::Value, reason: &str) -> Vec<LookupR
         .and_then(|h| h.as_array())
     {
         for hit in hits {
-            if let Some(result) = hit.get("result") {
+            if let Some(result) = hit.get("_source") {
                 let id = result
                     .get("taxon_id")
                     .and_then(|v| v.as_str())

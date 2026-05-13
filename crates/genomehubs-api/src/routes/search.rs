@@ -3,8 +3,6 @@ use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::Value;
 use std::sync::Arc;
 
-use genomehubs_query::query::chain::{collect_chain_refs, resolve_chain_refs};
-
 use super::deserialize_helpers;
 use crate::{es_client, index_name, routes::ApiStatus, AppState};
 
@@ -70,9 +68,7 @@ impl<'de> Deserialize<'de> for SearchRequest {
         let query_yaml = if let Some(query_val) = map.get("query").or_else(|| map.get("query_yaml"))
         {
             let normalized = deserialize_helpers::normalize_query(query_val.clone());
-            let yaml = deserialize_helpers::to_yaml(&normalized)?;
-            // Detect and inject v2-style queryA=... fields as named_queries.
-            deserialize_helpers::inject_legacy_named_queries(&yaml, &map)
+            deserialize_helpers::to_yaml(&normalized)?
         } else {
             return Err(de::Error::missing_field("query or query_yaml"));
         };
@@ -159,10 +155,6 @@ pub async fn post_search(
         Ok(p) => p,
         Err(e) => bail!(format!("failed to parse params_yaml: {e}")),
     };
-
-    if let Err(e) = params.validate_id_set() {
-        bail!(e);
-    }
 
     // Derive a TypesMap from the startup metadata cache so build_search_body can pick
     // the single correct typed-value docvalue field (e.g. half_float_value) per attribute
@@ -267,19 +259,7 @@ pub async fn post_search(
         }
 
         // Combine the bodies with bool.should or bool.must
-        let mut combined_body = combine_es_bodies(bodies, &query.combine_with);
-
-        // Inject id_set filter if provided
-        let multi_group = match first_index {
-            genomehubs_query::query::SearchIndex::Taxon => "taxon",
-            genomehubs_query::query::SearchIndex::Assembly => "assembly",
-            genomehubs_query::query::SearchIndex::Sample => "sample",
-        };
-        if let Some(id_field) = params.resolve_id_field(multi_group) {
-            if let Some(ids) = &params.id_set {
-                super::inject_id_set_filter(&mut combined_body, &id_field, ids);
-            }
-        }
+        let combined_body = combine_es_bodies(bodies, &query.combine_with);
 
         // Get the index name for the first query (we validated they're all the same)
         let idx = index_name::resolve_index(first_index, &state);
@@ -359,32 +339,6 @@ pub async fn post_search(
         genomehubs_query::query::SearchIndex::Assembly => "assembly",
         genomehubs_query::query::SearchIndex::Sample => "sample",
     };
-
-    // Chain substitution: if the query has named_queries, execute them and
-    // substitute resolved values into attribute filters before building the ES query.
-    let mut query = query;
-    if let Some(named_queries) = &query.named_queries.clone() {
-        let chain_refs = collect_chain_refs(&query.attributes.attributes);
-        if !chain_refs.is_empty() {
-            let resolved = match crate::routes::chain_executor::execute_named_queries(
-                named_queries,
-                &chain_refs,
-                &idx,
-                &Value::Object(Default::default()),
-                &state,
-            )
-            .await
-            {
-                Ok(r) => r,
-                Err(e) => bail!(format!("chain query failed: {e}")),
-            };
-            if let Err(e) =
-                resolve_chain_refs(&mut query.attributes.attributes, &resolved, named_queries)
-            {
-                bail!(format!("chain resolution failed: {e}"));
-            }
-        }
-    }
     let fields_slice: Option<Vec<&str>> = if query.attributes.fields.is_empty() {
         None
     } else {
@@ -443,13 +397,6 @@ pub async fn post_search(
         Ok(b) => b,
         Err(e) => bail!(format!("failed to build ES body: {}", e)),
     };
-
-    // Inject id_set filter if provided
-    if let Some(id_field) = params.resolve_id_field(group) {
-        if let Some(ids) = &params.id_set {
-            super::inject_id_set_filter(&mut body, &id_field, ids);
-        }
-    }
 
     // Inject lineage_rank_summary aggregations when requested
     if let Some(specs) = &query.lineage_rank_summary {

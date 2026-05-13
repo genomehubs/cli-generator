@@ -6,9 +6,7 @@ use std::sync::Arc;
 use genomehubs_query::query::chain::{collect_chain_refs, resolve_chain_refs};
 use genomehubs_query::query::{QueryParams, SearchQuery};
 
-use crate::{
-    index_name, report::report_types, routes::deserialize_helpers, routes::ApiStatus, AppState,
-};
+use crate::{index_name, report::report_types, routes::ApiStatus, AppState};
 
 #[derive(utoipa::ToSchema)]
 pub struct ReportRequest {
@@ -36,9 +34,7 @@ impl<'de> Deserialize<'de> for ReportRequest {
         // Get query from either "query" or "query_yaml" field
         let query_yaml = if let Some(query_val) = map.get("query").or_else(|| map.get("query_yaml"))
         {
-            let yaml = to_yaml(query_val)?;
-            // Detect and inject v2-style queryA=... fields as named_queries.
-            deserialize_helpers::inject_legacy_named_queries(&yaml, &map)
+            to_yaml(query_val)?
         } else {
             return Err(de::Error::missing_field("query or query_yaml"));
         };
