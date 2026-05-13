@@ -65,3 +65,29 @@ pub mod status;
 pub mod summary;
 pub mod taxonomic_ranks;
 pub mod taxonomies;
+
+/// Inject an `id_set` terms filter into an ES query body.
+///
+/// Wraps the existing `query` clause in a `bool.must` alongside a `terms`
+/// filter, restricting results to exactly the supplied IDs.
+///
+/// If the body has no `query` clause, `match_all` is used as the base.
+pub fn inject_id_set_filter(body: &mut serde_json::Value, field: &str, ids: &[String]) {
+    let existing_query = body
+        .get("query")
+        .cloned()
+        .unwrap_or_else(|| serde_json::json!({"match_all": {}}));
+
+    let new_query = serde_json::json!({
+        "bool": {
+            "must": [
+                existing_query,
+                { "terms": { field: ids } }
+            ]
+        }
+    });
+
+    if let Some(obj) = body.as_object_mut() {
+        obj.insert("query".to_string(), new_query);
+    }
+}

@@ -365,6 +365,32 @@ QueryBuilder <- R6::R6Class(
       invisible(self)
     },
 
+    #' @description Restrict results to exactly the supplied taxon IDs.
+    #' @details Injected as an ES \code{terms} filter ANDed with the main query.
+    #'   Maximum 65,536 IDs (ES hard limit).
+    #' @param taxon_ids Character vector of IDs to include.
+    #' @return Invisibly \code{self}.
+    set_id_set = function(taxon_ids) {
+      private$id_set <- as.character(taxon_ids)
+      invisible(self)
+    },
+
+    #' @description Specify which ID field to filter on when using \code{set_id_set}.
+    #' @details Determines the ES field to filter on:
+    #'   \itemize{
+    #'     \item "taxon" → taxon_id
+    #'     \item "assembly" → assembly_id
+    #'     \item "sample" → sample_id
+    #'     \item "feature" → feature_id
+    #'   }
+    #'   Defaults to the current index type if not specified.
+    #' @param id_type One of "taxon", "assembly", "sample", "feature".
+    #' @return Invisibly \code{self}.
+    set_id_type = function(id_type) {
+      private$id_type <- id_type
+      invisible(self)
+    },
+
     #' @description Serialise the query state to a YAML string for the Rust engine.
     #' @return A character string.
     to_query_yaml = function() {
@@ -455,6 +481,15 @@ QueryBuilder <- R6::R6Class(
           paste0("sort_by: ", private$sort_key),
           paste0("sort_order: ", private$sort_order)
         )
+      }
+      if (!is.null(private$id_set) && length(private$id_set) > 0) {
+        lines <- c(lines, "id_set:")
+        for (id in private$id_set) {
+          lines <- c(lines, paste0("  - ", id))
+        }
+      }
+      if (!is.null(private$id_type)) {
+        lines <- c(lines, paste0("id_type: ", private$id_type))
       }
       paste(c(lines, ""), collapse = "\n")
     },

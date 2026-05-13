@@ -198,6 +198,23 @@ pub struct QueryParams {
     /// Include taxon_names array in each result (default false — heavyweight).
     #[serde(default)]
     pub include_taxon_names: bool,
+    /// Filter results to exactly this set of IDs.
+    ///
+    /// Injected as an ES `terms` clause ANDed with the main query.
+    /// Maximum 65,536 entries (ES hard limit for `terms` filters).
+    /// Which field is used depends on `id_type` (defaults to current index).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub id_set: Option<Vec<String>>,
+    /// Which ID field to filter on when `id_set` is provided.
+    ///
+    /// One of `"taxon"`, `"assembly"`, `"sample"`, `"feature"`.
+    /// Defaults to the current index type if not specified.
+    /// - `taxon` index → `taxon_id` field
+    /// - `assembly` index → `assembly_id` field (or `taxon_id` if id_type=taxon)
+    /// - `sample` index → `sample_id` field (or `taxon_id`, `assembly_id` if specified)
+    /// - `feature` index → `feature_id` field (or `taxon_id`, `assembly_id` if specified)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub id_type: Option<String>,
 }
 
 impl Default for QueryParams {
@@ -213,6 +230,8 @@ impl Default for QueryParams {
             search_after: None,
             include_lineage: false,
             include_taxon_names: false,
+            id_set: None,
+            id_type: None,
         }
     }
 }
@@ -230,6 +249,49 @@ impl QueryParams {
     /// Parse a [`QueryParams`] from a YAML string.
     pub fn from_yaml(yaml: &str) -> Result<Self, serde_yaml::Error> {
         serde_yaml::from_str(yaml)
+    }
+
+    /// Validate that `id_set` is within acceptable bounds.
+    ///
+    /// Returns `Err` if the set exceeds the ES hard limit of 65,536.
+    /// This is the hard limit for ES `terms` filter clauses.
+    pub fn validate_id_set(&self) -> Result<(), String> {
+        const ES_TERMS_LIMIT: usize = 65_536;
+
+        if let Some(ids) = &self.id_set {
+            if ids.len() > ES_TERMS_LIMIT {
+                return Err(format!(
+                    "id_set contains {} IDs, which exceeds the ES terms clause limit of {}",
+                    ids.len(),
+                    ES_TERMS_LIMIT
+                ));
+            }
+        }
+        Ok(())
+    }
+
+    /// Resolve the ID field name based on the current index and id_type.
+    ///
+    /// If `id_set` is not present, returns `None`.
+    /// Otherwise, returns the ES field name to filter on:
+    /// - If `id_type` is specified, uses the field for that type
+    /// - Otherwise, defaults to the index type (taxon → taxon_id, assembly → assembly_id, etc.)
+    pub fn resolve_id_field(&self, index: &str) -> Option<String> {
+        self.id_set.as_ref().map(|_| {
+            let id_type = self.id_type.as_deref().unwrap_or(match index {
+                "assembly" => "assembly",
+                "sample" => "sample",
+                "feature" => "feature",
+                _ => "taxon",
+            });
+
+            match id_type {
+                "assembly" => "assembly_id".to_string(),
+                "sample" => "sample_id".to_string(),
+                "feature" => "feature_id".to_string(),
+                _ => "taxon_id".to_string(),
+            }
+        })
     }
 }
 
@@ -848,5 +910,120 @@ taxa: []
         assert_eq!(p.sort_order, SortOrder::Desc);
         assert_eq!(p.taxonomy, "ott");
         assert!(!p.include_estimates);
+    }
+
+    #[test]
+    fn validate_id_set_under_limit() {
+        let params = QueryParams {
+            id_set: Some(vec![
+                "1".into(),
+                "2".into(),
+                "3".into(),
+                "4".into(),
+                "5".into(),
+            ]),
+            ..Default::default()
+        };
+        assert!(params.validate_id_set().is_ok());
+    }
+
+    #[test]
+    fn validate_id_set_at_limit() {
+        let params = QueryParams {
+            id_set: Some(vec!["1".to_string(); 65_536]),
+            ..Default::default()
+        };
+        assert!(params.validate_id_set().is_ok());
+    }
+
+    #[test]
+    fn validate_id_set_over_limit() {
+        let params = QueryParams {
+            id_set: Some(vec!["1".to_string(); 65_537]),
+            ..Default::default()
+        };
+        let err = params.validate_id_set();
+        assert!(err.is_err());
+        assert!(err.unwrap_err().contains("65536"));
+    }
+
+    #[test]
+    fn validate_id_set_none() {
+        let params = QueryParams::default();
+        assert!(params.validate_id_set().is_ok());
+    }
+
+    #[test]
+    fn resolve_id_field_taxon_default() {
+        let params = QueryParams {
+            id_set: Some(vec!["1".into(), "2".into(), "3".into()]),
+            id_type: None,
+            ..Default::default()
+        };
+        assert_eq!(
+            params.resolve_id_field("taxon"),
+            Some("taxon_id".to_string())
+        );
+    }
+
+    #[test]
+    fn resolve_id_field_assembly_default() {
+        let params = QueryParams {
+            id_set: Some(vec!["1".into(), "2".into(), "3".into()]),
+            id_type: None,
+            ..Default::default()
+        };
+        assert_eq!(
+            params.resolve_id_field("assembly"),
+            Some("assembly_id".to_string())
+        );
+    }
+
+    #[test]
+    fn resolve_id_field_sample_default() {
+        let params = QueryParams {
+            id_set: Some(vec!["1".into(), "2".into(), "3".into()]),
+            id_type: None,
+            ..Default::default()
+        };
+        assert_eq!(
+            params.resolve_id_field("sample"),
+            Some("sample_id".to_string())
+        );
+    }
+
+    #[test]
+    fn resolve_id_field_explicit_type() {
+        let params = QueryParams {
+            id_set: Some(vec!["1".into(), "2".into(), "3".into()]),
+            id_type: Some("taxon".to_string()),
+            ..Default::default()
+        };
+        assert_eq!(
+            params.resolve_id_field("assembly"),
+            Some("taxon_id".to_string())
+        );
+    }
+
+    #[test]
+    fn resolve_id_field_no_id_set() {
+        let params = QueryParams::default();
+        assert_eq!(params.resolve_id_field("taxon"), None);
+    }
+
+    #[test]
+    fn query_params_id_set_serde_roundtrip() {
+        let yaml =
+            "size: 10\npage: 1\nid_set:\n  - '10090'\n  - '10116'\n  - '9606'\nid_type: taxon\n";
+        let params: QueryParams = serde_yaml::from_str(yaml).expect("parse");
+        assert_eq!(
+            params.id_set,
+            Some(vec![
+                "10090".to_string(),
+                "10116".to_string(),
+                "9606".to_string()
+            ])
+        );
+        assert_eq!(params.id_type, Some("taxon".to_string()));
     }
 }

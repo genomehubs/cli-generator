@@ -350,6 +350,18 @@ CANONICAL_METHODS = {
         "js_name": "chainQuery",
         "r_name": "chain_query",
     },
+    "set_id_set": {
+        "params": ["taxon_ids"],
+        "python_name": "set_id_set",
+        "js_name": "setIdSet",
+        "r_name": "set_id_set",
+    },
+    "set_id_type": {
+        "params": ["id_type"],
+        "python_name": "set_id_type",
+        "js_name": "setIdType",
+        "r_name": "set_id_type",
+    },
 }
 
 CONSTRUCTOR_PARAMS: dict[str, dict[str, str]] = {}

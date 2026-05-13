@@ -1618,3 +1618,61 @@ def test_arc_set_ranks_appears_in_yaml() -> None:
     assert "order" in yaml_out
     assert "family" in yaml_out
     assert "genus" in yaml_out
+
+
+# ── ID-set filter tests ────────────────────────────────────────────────────────
+
+
+def test_query_builder_set_id_set_stores_ids() -> None:
+    """set_id_set should store the provided ID list."""
+    q = QueryBuilder("taxon").set_id_set([1, 2, 3, 4, 5])
+    yaml_out = q.to_params_yaml()
+    assert "id_set:" in yaml_out
+    assert "'1'" in yaml_out
+    assert "'2'" in yaml_out
+    assert "'5'" in yaml_out
+
+
+def test_query_builder_set_id_set_returns_self() -> None:
+    """set_id_set should return self for method chaining."""
+    q = QueryBuilder("taxon")
+    result = q.set_id_set([1, 2, 3])
+    assert result is q
+
+
+def test_query_builder_set_id_type_stores_type() -> None:
+    """set_id_type should store the ID type field."""
+    q = QueryBuilder("assembly").set_id_type("taxon")
+    yaml_out = q.to_params_yaml()
+    assert "id_type: taxon" in yaml_out
+
+
+def test_query_builder_set_id_type_returns_self() -> None:
+    """set_id_type should return self for method chaining."""
+    q = QueryBuilder("assembly")
+    result = q.set_id_type("assembly")
+    assert result is q
+
+
+def test_query_builder_id_set_and_id_type_chaining() -> None:
+    """set_id_set and set_id_type should chain together."""
+    q = QueryBuilder("assembly").set_id_set([100, 101, 102]).set_id_type("taxon")
+    yaml_out = q.to_params_yaml()
+    assert "id_set:" in yaml_out
+    assert "id_type: taxon" in yaml_out
+
+
+def test_query_builder_empty_id_set_not_in_yaml() -> None:
+    """Empty id_set should not appear in params YAML."""
+    q = QueryBuilder("taxon")
+    yaml_out = q.to_params_yaml()
+    assert "id_set:" not in yaml_out
+
+
+def test_query_builder_id_set_converts_to_strings() -> None:
+    """set_id_set should convert IDs to strings."""
+    q = QueryBuilder("taxon").set_id_set([1, 2, 3])
+    yaml_out = q.to_params_yaml()
+    # Integers are coerced to strings
+    assert "'1'" in yaml_out
+    assert "'2'" in yaml_out

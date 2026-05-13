@@ -275,6 +275,15 @@ pub async fn post_count_batch(
             }
         };
 
+        if let Err(e) = params.validate_id_set() {
+            return Json(CountBatchResponse {
+                status: ApiStatus::error(e),
+                total: 0,
+                unique: None,
+                results: vec![],
+            });
+        }
+
         // Check if this is multi-query mode (nested queries)
         let body = if let Some(nested_queries) = &query.queries {
             if nested_queries.is_empty() {
@@ -428,7 +437,21 @@ pub async fn post_count_batch(
             }
 
             // Combine the bodies
-            combine_es_bodies(bodies, &query.combine_with)
+            let mut combined_body = combine_es_bodies(bodies, &query.combine_with);
+
+            // Inject id_set filter if provided
+            let multi_group = match &nested_queries[0].index {
+                genomehubs_query::query::SearchIndex::Taxon => "taxon",
+                genomehubs_query::query::SearchIndex::Assembly => "assembly",
+                genomehubs_query::query::SearchIndex::Sample => "sample",
+            };
+            if let Some(id_field) = params.resolve_id_field(multi_group) {
+                if let Some(ids) = &params.id_set {
+                    super::inject_id_set_filter(&mut combined_body, &id_field, ids);
+                }
+            }
+
+            combined_body
         } else {
             // Single-query mode (existing behavior)
             let _idx = index_name::resolve_index(&query.index, &state);
@@ -529,6 +552,19 @@ pub async fn post_count_batch(
                 }
             }
         };
+
+        // Inject id_set filter if provided
+        let mut body = body;
+        let item_group = match query.index {
+            genomehubs_query::query::SearchIndex::Taxon => "taxon",
+            genomehubs_query::query::SearchIndex::Assembly => "assembly",
+            genomehubs_query::query::SearchIndex::Sample => "sample",
+        };
+        if let Some(id_field) = params.resolve_id_field(item_group) {
+            if let Some(ids) = &params.id_set {
+                super::inject_id_set_filter(&mut body, &id_field, ids);
+            }
+        }
 
         let idx = index_name::resolve_index(
             if let Some(nested) = &query.queries {

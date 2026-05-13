@@ -160,6 +160,10 @@ pub async fn post_search(
         Err(e) => bail!(format!("failed to parse params_yaml: {e}")),
     };
 
+    if let Err(e) = params.validate_id_set() {
+        bail!(e);
+    }
+
     // Derive a TypesMap from the startup metadata cache so build_search_body can pick
     // the single correct typed-value docvalue field (e.g. half_float_value) per attribute
     // rather than requesting all possible typed-value fields.
@@ -263,7 +267,19 @@ pub async fn post_search(
         }
 
         // Combine the bodies with bool.should or bool.must
-        let combined_body = combine_es_bodies(bodies, &query.combine_with);
+        let mut combined_body = combine_es_bodies(bodies, &query.combine_with);
+
+        // Inject id_set filter if provided
+        let multi_group = match first_index {
+            genomehubs_query::query::SearchIndex::Taxon => "taxon",
+            genomehubs_query::query::SearchIndex::Assembly => "assembly",
+            genomehubs_query::query::SearchIndex::Sample => "sample",
+        };
+        if let Some(id_field) = params.resolve_id_field(multi_group) {
+            if let Some(ids) = &params.id_set {
+                super::inject_id_set_filter(&mut combined_body, &id_field, ids);
+            }
+        }
 
         // Get the index name for the first query (we validated they're all the same)
         let idx = index_name::resolve_index(first_index, &state);
@@ -427,6 +443,13 @@ pub async fn post_search(
         Ok(b) => b,
         Err(e) => bail!(format!("failed to build ES body: {}", e)),
     };
+
+    // Inject id_set filter if provided
+    if let Some(id_field) = params.resolve_id_field(group) {
+        if let Some(ids) = &params.id_set {
+            super::inject_id_set_filter(&mut body, &id_field, ids);
+        }
+    }
 
     // Inject lineage_rank_summary aggregations when requested
     if let Some(specs) = &query.lineage_rank_summary {

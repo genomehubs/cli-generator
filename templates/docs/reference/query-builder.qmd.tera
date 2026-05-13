@@ -283,7 +283,36 @@ Sort results.  `order` is `"asc"` or `"desc"`.
 
 ### `set_taxonomy(name)` — taxonomy name, e.g. `"ncbi"` or `"ott"` (default `"ncbi"`)
 
-### `set_lineage_rank_summary(specs)`
+### `set_id_set(taxon_ids)`
+
+Restrict results to exactly the supplied integer IDs.  Injected as an ES `terms`
+filter ANDed with the main query.  Maximum 65,536 IDs (ES hard limit).
+
+Use `set_id_type` to control which field the IDs are matched against.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `taxon_ids` | list[int] | List of integer IDs to include. |
+
+### `set_id_type(id_type)`
+
+Specify which ID field is used when filtering by `set_id_set`.
+
+| Value | ES field |
+|---|---|
+| `"taxon"` | `taxon_id` |
+| `"assembly"` | `assembly_id` |
+| `"sample"` | `sample_id` |
+| `"feature"` | `feature_id` |
+
+Defaults to the current index type if not specified (e.g. querying the `taxon`
+index defaults to `taxon_id`).
+
+| Parameter | Type | Description |
+|---|---|---|
+| `id_type` | str | One of `"taxon"`, `"assembly"`, `"sample"`, `"feature"`. |
+
+
 
 Configure per-rank ancestor aggregation for lineage rank summary columns.
 Each spec must have a `"rank"` key and a `"fields"` key listing attribute names

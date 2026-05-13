@@ -89,6 +89,8 @@ class QueryBuilder:
         self._include_estimates: bool = True
         self._tidy: bool = False
         self._taxonomy: str = "ncbi"
+        self._id_set: list[str] | None = None
+        self._id_type: str | None = None
         # Pre-parsed YAML overrides (set by from_v2_url; take priority in to_*_yaml)
         self._query_yaml_override: str | None = None
         self._params_yaml_override: str | None = None
@@ -417,6 +419,47 @@ class QueryBuilder:
         self._taxonomy = taxonomy
         return self
 
+    def set_id_set(self, taxon_ids: list[str | int]) -> "QueryBuilder":
+        """Restrict results to exactly the supplied taxon IDs.
+
+        Injected as an ES ``terms`` filter ANDed with the main query.
+        Maximum 65,536 IDs (ES hard limit). A structured error is returned
+        for larger sets.
+
+        Args:
+            taxon_ids: List of integer taxon IDs to include.
+
+        Example::
+
+            qb.set_id_set([10090, 10116, 9606])
+
+        Returns:
+            Self for chaining.
+        """
+        self._id_set = [str(x) for x in taxon_ids]
+        return self
+
+    def set_id_type(self, id_type: str) -> "QueryBuilder":
+        """Specify which ID field to filter on when using ``set_id_set``.
+
+        When combined with ``set_id_set``, determines the ES field to filter on:
+        - ``"taxon"`` → ``taxon_id``
+        - ``"assembly"`` → ``assembly_id``
+        - ``"sample"`` → ``sample_id``
+        - ``"feature"`` → ``feature_id``
+
+        If not specified, defaults to the current index type.
+
+        Args:
+            id_type: One of ``"taxon"``, ``"assembly"``, ``"sample"``,
+                ``"feature"``.
+
+        Returns:
+            Self for chaining.
+        """
+        self._id_type = id_type
+        return self
+
     # ── Serialisation ────────────────────────────────────────────────────────
 
     def to_query_yaml(self) -> str:
@@ -476,6 +519,10 @@ class QueryBuilder:
         if self._sort_by:
             doc["sort_by"] = self._sort_by
             doc["sort_order"] = self._sort_order
+        if self._id_set:
+            doc["id_set"] = self._id_set
+        if self._id_type:
+            doc["id_type"] = self._id_type
         return yaml.safe_dump(doc, sort_keys=False)
 
     def reset(self) -> "QueryBuilder":

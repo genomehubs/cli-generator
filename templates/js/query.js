@@ -519,6 +519,39 @@ class QueryBuilder {
   }
 
   /**
+   * Restrict results to exactly the supplied taxon IDs.
+   *
+   * Injected as an ES `terms` filter ANDed with the main query.
+   * Maximum 65,536 IDs (ES hard limit).
+   *
+   * @param {number[]} taxonIds - List of integer taxon IDs to include.
+   * @returns {QueryBuilder}
+   */
+  setIdSet(taxonIds) {
+    this._idSet = [...taxonIds];
+    return this;
+  }
+
+  /**
+   * Specify which ID field to filter on when using ``setIdSet``.
+   *
+   * Determines the ES field to filter on:
+   * - "taxon" → taxon_id
+   * - "assembly" → assembly_id
+   * - "sample" → sample_id
+   * - "feature" → feature_id
+   *
+   * If not specified, defaults to the current index type.
+   *
+   * @param {string} idType - One of "taxon", "assembly", "sample", "feature".
+   * @returns {QueryBuilder}
+   */
+  setIdType(idType) {
+    this._idType = idType;
+    return this;
+  }
+
+  /**
    * Add a named sub-query whose results can be referenced via ``queryKey.*``
    * in attribute filters of the parent query.
    * @param {string} queryKey - Identifier for this sub-query (e.g. "queryA").
@@ -674,6 +707,15 @@ class QueryBuilder {
     if (this._sortBy) {
       lines.push(`sort_by: "${this._sortBy}"`);
       lines.push(`sort_order: ${this._sortOrder}`);
+    }
+    if (this._idSet && this._idSet.length > 0) {
+      lines.push("id_set:");
+      for (const id of this._idSet) {
+        lines.push(`  - ${id}`);
+      }
+    }
+    if (this._idType) {
+      lines.push(`id_type: ${this._idType}`);
     }
     return lines.join("\n") + "\n";
   }
