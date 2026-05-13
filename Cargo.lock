@@ -712,6 +712,7 @@ dependencies = [
  "serde_json",
  "serde_yaml",
  "tera",
+ "thiserror 1.0.69",
  "wasm-bindgen",
 ]
 

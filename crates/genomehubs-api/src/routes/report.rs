@@ -5,25 +5,14 @@ use std::sync::Arc;
 
 use genomehubs_query::query::chain::{collect_chain_refs, resolve_chain_refs};
 use genomehubs_query::query::{QueryParams, SearchQuery};
-use genomehubs_query::report::{DisplaySpec, PlotSpec};
 
-use crate::{
-    index_name,
-    report::{report_types, spec_builder},
-    routes::ApiStatus,
-    AppState,
-};
+use crate::{index_name, report::report_types, routes::ApiStatus, AppState};
 
 #[derive(utoipa::ToSchema)]
 pub struct ReportRequest {
     pub query_yaml: String,
     pub params_yaml: String,
     pub report_yaml: String,
-    pub display_yaml: Option<String>,
-    /// When `true`, build and return a `PlotSpec` in the response.
-    ///
-    /// Also implicitly set when a `display` field is present in the request.
-    pub include_plot_spec: bool,
 }
 
 impl<'de> Deserialize<'de> for ReportRequest {
@@ -66,24 +55,10 @@ impl<'de> Deserialize<'de> for ReportRequest {
                 return Err(de::Error::missing_field("report or report_yaml"));
             };
 
-        // Get optional display from either "display" or "display_yaml" field
-        let display_yaml = map
-            .get("display")
-            .or_else(|| map.get("display_yaml"))
-            .map(to_yaml)
-            .transpose()?;
-
-        let include_plot_spec = map
-            .get("include_plot_spec")
-            .and_then(|v| v.as_bool())
-            .unwrap_or(false);
-
         Ok(ReportRequest {
             query_yaml,
             params_yaml,
             report_yaml,
-            display_yaml,
-            include_plot_spec,
         })
     }
 }
@@ -92,12 +67,6 @@ impl<'de> Deserialize<'de> for ReportRequest {
 pub struct ReportResponse {
     pub status: ApiStatus,
     pub report: Value,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[schema(value_type = Option<Object>)]
-    pub display: Option<DisplaySpec>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[schema(value_type = Option<Object>)]
-    pub plot_spec: Option<PlotSpec>,
 }
 
 #[utoipa::path(
@@ -119,8 +88,6 @@ pub async fn post_report(
             return Json(ReportResponse {
                 status: ApiStatus::error($msg),
                 report: Value::Null,
-                display: None,
-                plot_spec: None,
             })
         };
     }
@@ -141,15 +108,6 @@ pub async fn post_report(
     let report_config: serde_yaml::Value = match serde_yaml::from_str(&req.report_yaml) {
         Ok(v) => v,
         Err(e) => bail!(format!("invalid report_yaml: {e}")),
-    };
-
-    // Parse optional display YAML
-    let display: Option<DisplaySpec> = match req.display_yaml {
-        Some(ref yaml) => match serde_yaml::from_str(yaml) {
-            Ok(d) => Some(d),
-            Err(e) => bail!(format!("invalid display: {e}")),
-        },
-        None => None,
     };
 
     // Resolve index name from search_query
@@ -252,31 +210,14 @@ pub async fn post_report(
     };
 
     // Return response
-    let want_plot_spec = req.include_plot_spec || display.is_some();
     match result {
-        Ok((hits, took, report_data)) => {
-            let plot_spec = if want_plot_spec {
-                let spec = spec_builder::build_plot_spec(
-                    report_type,
-                    &report_data,
-                    display.clone().unwrap_or_default(),
-                );
-                Some(spec)
-            } else {
-                None
-            };
-            Json(ReportResponse {
-                status: ApiStatus::query_ok(hits, took),
-                report: report_data,
-                display,
-                plot_spec,
-            })
-        }
+        Ok((hits, took, report_data)) => Json(ReportResponse {
+            status: ApiStatus::query_ok(hits, took),
+            report: report_data,
+        }),
         Err(e) => Json(ReportResponse {
             status: ApiStatus::error(e),
             report: Value::Null,
-            display: None,
-            plot_spec: None,
         }),
     }
 }

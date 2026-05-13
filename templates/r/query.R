@@ -1291,3 +1291,76 @@ ReportBuilder <- R6::R6Class("ReportBuilder",
     }
   )
 )
+
+#' Build a PlotSpec from local delimited text content without an API call.
+#'
+#' Reads TSV/CSV content in-memory — no API call required.  Column types are
+#' auto-detected: columns where every non-empty value is numeric become
+#' numeric; everything else remains character.
+#'
+#' @param content Character scalar. Full text of the TSV/CSV file. Read from
+#'   a file with \code{readr::read_file()} or \code{readLines()}.
+#' @param report_type Character scalar. One of \code{"histogram"},
+#'   \code{"scatter"}, or \code{"bar"}.  Defaults to \code{"histogram"}.
+#' @param column_map Named character vector. Maps axis roles (\code{"x"},
+#'   \code{"y"}) to column names in the file, e.g.
+#'   \code{c(x = "genome_size", y = "c_value")}.  Pass \code{NULL} or
+#'   \code{character(0)} for positional defaults (first column → x, second
+#'   column → y).
+#' @param display Named list of display options (title, width, height, etc.).
+#'   Defaults to an empty list.
+#' @param delimiter Character scalar. Field separator: \code{"\t"} for TSV,
+#'   \code{","} for CSV.  Defaults to \code{"\t"}.
+#' @return Named list representing the PlotSpec.
+#' @export
+local_plot_spec <- function(
+    content,
+    report_type = "histogram",
+    column_map = NULL,
+    display = list(),
+    delimiter = "\t") {
+  col_map <- if (is.null(column_map)) list() else as.list(column_map)
+  col_map_json <- jsonlite::toJSON(col_map, auto_unbox = TRUE)
+  display_json <- jsonlite::toJSON(display, auto_unbox = TRUE)
+  raw <- local_plot_spec_json(content, report_type, col_map_json, display_json, delimiter)
+  parsed <- jsonlite::fromJSON(raw, simplifyVector = FALSE)
+  if (!is.null(parsed[["error"]])) {
+    stop(parsed[["error"]])
+  }
+  parsed
+}
+
+#' Merge annotation lists into plot_spec data rows by a shared key.
+#'
+#' For each row in \code{plot_spec$data$rows} whose value for \code{join_key}
+#' matches an annotation entry, the annotation's fields are added to the row
+#' (annotation fields take precedence on key collision).  Rows with no
+#' matching annotation are left unchanged.
+#'
+#' @param plot_spec Named list. A PlotSpec object (from the API or from
+#'   \code{\link{local_plot_spec}}).
+#' @param annotations List of named lists. Each must contain at least
+#'   \code{join_key} and the fields to add.
+#' @param join_key Character scalar. Name of the column used to match rows
+#'   to annotation entries.
+#' @return The modified \code{plot_spec} list (same object, modified in place).
+#' @export
+merge_annotations <- function(plot_spec, annotations, join_key) {
+  index <- stats::setNames(
+    annotations,
+    vapply(annotations, function(a) as.character(a[[join_key]]), character(1L))
+  )
+  rows <- plot_spec[["data"]][["rows"]]
+  if (is.null(rows)) {
+    return(plot_spec)
+  }
+  plot_spec[["data"]][["rows"]] <- lapply(rows, function(row) {
+    key_val <- as.character(row[[join_key]])
+    if (!is.null(key_val) && key_val %in% names(index)) {
+      modifyList(row, index[[key_val]])
+    } else {
+      row
+    }
+  })
+  plot_spec
+}

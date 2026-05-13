@@ -19,6 +19,7 @@ percent-encoding = "2"
 wasm-bindgen = { version = "0.2", optional = true }
 tera = "1"
 anyhow = "1"
+thiserror = "1"
 
 # getrandom needs the "js" feature when targeting wasm32
 [target.'cfg(target_arch = "wasm32")'.dependencies]

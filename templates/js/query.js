@@ -41,6 +41,7 @@ const {
   values_only: _valuesOnly,
   query_yaml_from_url_params: _queryYamlFromUrlParams,
   report_yaml_from_url_params: _reportYamlFromUrlParams,
+  local_plot_spec_json: _localPlotSpecJson,
   build_url,
   parse_response_status,
   version,
@@ -1788,6 +1789,75 @@ function _barSpec(plotSpec, base) {
   };
 }
 
+/**
+ * Build a PlotSpec from local delimited text content without an API call.
+ *
+ * Auto-detects column types from the data: columns where every non-empty value
+ * is numeric are treated as numbers; everything else is treated as strings.
+ *
+ * @param {string} content - Full text of the TSV/CSV file.
+ * @param {string} reportType - One of "histogram", "scatter", or "bar".
+ * @param {Record<string, string>} [columnMap={}] - Mapping of axis roles to
+ *   column names, e.g. `{ x: "genome_size", y: "c_value" }`.  Pass `{}` to
+ *   use positional defaults (first column → x, second → y).
+ * @param {Record<string, unknown>} [display={}] - Display options (title,
+ *   width, height, etc.).
+ * @param {string} [delimiter="\t"] - Field separator: `"\t"` for TSV, `","` for CSV.
+ * @returns {Record<string, unknown>} PlotSpec object compatible with
+ *   {@link plotSpecToVegaLite}.
+ * @throws {Error} When the report type is unknown, a required column is
+ *   missing, or a numeric-axis column contains non-numeric data.
+ */
+function localPlotSpec(
+  content,
+  reportType = "histogram",
+  columnMap = {},
+  display = {},
+  delimiter = "\t",
+) {
+  const result = _localPlotSpecJson(
+    content,
+    reportType,
+    JSON.stringify(columnMap),
+    JSON.stringify(display),
+    delimiter,
+  );
+  const parsed = JSON.parse(result);
+  if (parsed.error) {
+    throw new Error(parsed.error);
+  }
+  return parsed;
+}
+
+/**
+ * Merge annotation dicts into `plotSpec.data.rows` by a shared key.
+ *
+ * For each row in `plotSpec.data.rows` whose value for `joinKey` matches an
+ * annotation entry, the annotation's fields are added to the row (annotation
+ * fields take precedence on key collision).  Rows with no matching annotation
+ * are left unchanged.
+ *
+ * @param {Record<string, unknown>} plotSpec - A PlotSpec object (from the API
+ *   or from {@link localPlotSpec}).
+ * @param {Record<string, unknown>[]} annotations - Array of annotation objects,
+ *   each containing at least `joinKey` and the fields to add.
+ * @param {string} joinKey - Column name used to match rows to annotations.
+ * @returns {Record<string, unknown>} The modified `plotSpec` (same object).
+ */
+function mergeAnnotations(plotSpec, annotations, joinKey) {
+  const index = Object.fromEntries(
+    annotations.filter((a) => joinKey in a).map((a) => [a[joinKey], a]),
+  );
+  const rows = (plotSpec.data ?? {}).rows ?? [];
+  for (const row of rows) {
+    const keyVal = row[joinKey];
+    if (keyVal != null && keyVal in index) {
+      Object.assign(row, index[keyVal]);
+    }
+  }
+  return plotSpec;
+}
+
 export {
   QueryBuilder,
   ReportBuilder,
@@ -1796,6 +1866,8 @@ export {
   parseHistogramJson,
   parseTreeJson,
   plotSpecToVegaLite,
+  localPlotSpec,
+  mergeAnnotations,
   annotateSourceLabels,
   splitSourceColumns,
   valuesOnly,

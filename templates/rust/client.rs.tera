@@ -331,24 +331,39 @@ pub fn ui_url(
 ///
 /// Uses v3 POST when the configured `API_VERSION` is `"v3"`, otherwise falls
 /// back to a v2 GET request.  Returns the hit count as a `u64`.
-pub fn count(index: super::indexes::Index, query: &str) -> Result<u64> {
+pub fn count(index: super::indexes::Index, query: &str, opts: &SearchOptions) -> Result<u64> {
     if is_v3() {
-        count_v3(index, query)
+        count_v3(index, opts)
     } else {
         count_v2(index, query)
     }
 }
 
 /// Count using the v3 POST `/count` endpoint.
-fn count_v3(index: super::indexes::Index, query: &str) -> Result<u64> {
+///
+/// Builds the query object from `opts` — mirrors `build_search_post_body`.
+fn count_v3(index: super::indexes::Index, opts: &SearchOptions) -> Result<u64> {
     let url = format!("{API_BASE_URL}/v3/count");
+    let mut query_obj = serde_json::Map::new();
+    query_obj.insert("index".to_string(), serde_json::json!(index.as_str()));
+    if !opts.taxa.is_empty() {
+        query_obj.insert("taxa".to_string(), serde_json::json!(opts.taxa));
+        if opts.taxon_filter_type != "name" {
+            query_obj.insert("taxon_filter_type".to_string(), serde_json::json!(opts.taxon_filter_type));
+        }
+    }
+    if let Some(ref rank) = opts.rank_filter {
+        query_obj.insert("rank".to_string(), serde_json::json!(rank));
+    }
+    if !opts.attributes.is_empty() {
+        query_obj.insert("attributes".to_string(), serde_json::json!(opts.attributes));
+    }
     let body = serde_json::json!({
-        "query": {
-            "index": index.as_str(),
-            "query": query,
+        "query": serde_json::Value::Object(query_obj),
+        "params": {
             "size": 0,
+            "taxonomy": opts.taxonomy,
         },
-        "params": {},
     });
     let raw = post_json(&url, &body)?;
     let status = crate::embedded::core::parse::parse_response_status(&raw)
@@ -746,6 +761,13 @@ pub struct ReportOptions {
     pub map_threshold: Option<u32>,
     /// Result count threshold above which the report switches to scatter mode.
     pub scatter_threshold: Option<u32>,
+    /// When `true`, the API returns a `plot_spec` in the response.
+    pub include_plot_spec: bool,
+    /// Display options JSON string (e.g. `{"title":"My plot","width":900}`).
+    ///
+    /// When non-empty, the API uses these options to build the `PlotSpec`.
+    /// Setting `display` implicitly enables `include_plot_spec`.
+    pub display: Option<String>,
 }
 
 /// Run a report query against the v3 `/report` endpoint.
@@ -757,7 +779,7 @@ pub struct ReportOptions {
 /// Only available when `API_VERSION == "v3"`.
 pub fn report(
     index: super::indexes::Index,
-    query: &str,
+    _query: &str,
     report_type: &str,
     opts: &SearchOptions,
     report_opts: &ReportOptions,
@@ -805,18 +827,40 @@ pub fn report(
         cfg.insert("countRank".to_string(), serde_json::Value::String(count_rank.clone()));
     }
 
-    let query_obj = serde_json::json!({
-        "index": index.as_str(),
-        "query": query,
-    });
+    // Build query object from structured opts — mirrors build_search_post_body.
+    let mut query_obj = serde_json::Map::new();
+    query_obj.insert("index".to_string(), serde_json::json!(index.as_str()));
+    if !opts.taxa.is_empty() {
+        query_obj.insert("taxa".to_string(), serde_json::json!(opts.taxa));
+        if opts.taxon_filter_type != "name" {
+            query_obj.insert("taxon_filter_type".to_string(), serde_json::json!(opts.taxon_filter_type));
+        }
+    }
+    if let Some(ref rank) = opts.rank_filter {
+        query_obj.insert("rank".to_string(), serde_json::json!(rank));
+    }
+    if !opts.attributes.is_empty() {
+        query_obj.insert("attributes".to_string(), serde_json::json!(opts.attributes));
+    }
+
+    let include_plot_spec = report_opts.include_plot_spec || report_opts.display.is_some();
     let params_obj = serde_json::json!({
         "taxonomy": opts.taxonomy,
     });
-    let body = serde_json::json!({
-        "query": query_obj,
+
+    let mut body = serde_json::json!({
+        "query": serde_json::Value::Object(query_obj),
         "params": params_obj,
         "report": report_cfg,
     });
+    if include_plot_spec {
+        body["include_plot_spec"] = serde_json::Value::Bool(true);
+    }
+    if let Some(ref display_str) = report_opts.display {
+        if let Ok(display_val) = serde_json::from_str::<serde_json::Value>(display_str) {
+            body["display"] = display_val;
+        }
+    }
 
     post_json(&url, &body)
 }

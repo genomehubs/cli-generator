@@ -83,6 +83,38 @@ enum Commands {
         #[arg(default_value = ".")]
         repo: PathBuf,
     },
+
+    /// Generate a plot spec from a local TSV/CSV data file (no API call).
+    #[command(name = "local-report")]
+    LocalReport {
+        /// Input data file (.tsv, .tab, or .csv).  Reads stdin when omitted.
+        #[arg(short, long, value_name = "FILE")]
+        input: Option<PathBuf>,
+
+        /// Report type: histogram, scatter, or bar.
+        #[arg(short, long, default_value = "histogram")]
+        report: String,
+
+        /// Column to use for the x axis (defaults to first column).
+        #[arg(long)]
+        x: Option<String>,
+
+        /// Column to use for the y axis (defaults to second column).
+        #[arg(long)]
+        y: Option<String>,
+
+        /// Display options as a JSON string (e.g. `'{"title":"My plot"}'`).
+        #[arg(short, long)]
+        display: Option<String>,
+
+        /// Override auto-detected field delimiter (`\t` or `,`).
+        #[arg(long)]
+        delimiter: Option<char>,
+
+        /// Write the PlotSpec JSON to this file instead of stdout.
+        #[arg(short, long, value_name = "FILE")]
+        output: Option<PathBuf>,
+    },
 }
 
 fn main() {
@@ -139,5 +171,23 @@ fn run(command: Commands) -> anyhow::Result<()> {
         }
 
         Commands::Validate { repo } => commands::validate::run(&repo),
+
+        Commands::LocalReport {
+            input,
+            report,
+            x,
+            y,
+            display,
+            delimiter,
+            output,
+        } => commands::local_report::run(
+            input.as_deref(),
+            &report,
+            x.as_deref(),
+            y.as_deref(),
+            display.as_deref(),
+            delimiter,
+            output.as_deref(),
+        ),
     }
 }

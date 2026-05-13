@@ -102,15 +102,15 @@ impl SiteConfig {
         })
     }
 
-    /// Return the `resultFields` endpoint URL for a given index.
+    /// Return the `metadata/fields` endpoint URL for a given index.
     ///
     /// Uses the index's `result_fields_endpoint` override when present;
-    /// otherwise falls back to `{api_base}/{api_version}/resultFields`.
+    /// otherwise falls back to `{api_base}/{api_version}/metadata/fields`.
     pub fn result_fields_url(&self, index: &IndexDef) -> String {
         if let Some(ref ep) = index.result_fields_endpoint {
             return ep.clone();
         }
-        format!("{}/{}/resultFields", self.api_base, self.api_version)
+        format!("{}/{}/metadata/fields", self.api_base, self.api_version)
     }
 }
 
@@ -119,9 +119,9 @@ impl SiteConfig {
 pub struct IndexDef {
     /// Index name recognised by the API, e.g. `"taxon"`.
     pub name: String,
-    /// Optional full URL override for the `resultFields` endpoint.
+    /// Optional full URL override for the `metadata/fields` endpoint.
     ///
-    /// When absent the standard `{api_base}/{api_version}/resultFields` URL
+    /// When absent the standard `{api_base}/{api_version}/metadata/fields` URL
     /// is constructed by [`SiteConfig::result_fields_url`].
     #[serde(default)]
     pub result_fields_endpoint: Option<String>,
@@ -317,7 +317,7 @@ indexes:
     fn result_fields_url_uses_standard_pattern_by_default() {
         let cfg = SiteConfig::parse_yaml(MINIMAL_SITE_YAML).unwrap();
         let url = cfg.result_fields_url(&cfg.indexes[0]);
-        assert_eq!(url, "https://example.com/api/v2/resultFields");
+        assert_eq!(url, "https://example.com/api/v2/metadata/fields");
     }
 
     #[test]

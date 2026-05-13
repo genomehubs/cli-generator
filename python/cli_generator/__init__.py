@@ -25,7 +25,9 @@ with contextlib.suppress(ImportError):
         parse_search_json,
         parse_search_with_lineage_summary,
         parse_tree_json,
+        local_plot_spec_json,
         parse_plot_spec_json,
+        plot_spec_to_vega_lite_json,
         query_yaml_from_url_params,
         render_snippet,
         report_yaml_from_url_params,
@@ -38,7 +40,14 @@ with contextlib.suppress(ImportError):
     )
 
 from .multi_query_builder import MultiQueryBuilder, from_file
-from .query import QueryBuilder, ReportBuilder, plot_spec_to_vega_lite, probe_api_capability
+from .query import (
+    QueryBuilder,
+    ReportBuilder,
+    local_plot_spec,
+    merge_annotations,
+    plot_spec_to_vega_lite,
+    probe_api_capability,
+)
 
 __all__ = [
     "annotate_source_labels",
@@ -59,8 +68,12 @@ __all__ = [
     "parse_search_json",
     "parse_search_with_lineage_summary",
     "parse_tree_json",
+    "local_plot_spec",
+    "local_plot_spec_json",
+    "merge_annotations",
     "parse_plot_spec_json",
     "plot_spec_to_vega_lite",
+    "plot_spec_to_vega_lite_json",
     "QueryBuilder",
     "ReportBuilder",
     "probe_api_capability",

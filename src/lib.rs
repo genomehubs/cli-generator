@@ -383,6 +383,49 @@ fn parse_plot_spec_json(raw: &str) -> String {
     genomehubs_query::parse_plot_spec_json(raw)
 }
 
+/// Convert a PlotSpec JSON string (or full ``/report`` response) to a Vega-Lite v5 specification.
+///
+/// Accepts the full ``/report`` response envelope (extracts ``plot_spec`` automatically)
+/// or a bare ``PlotSpec`` object. Returns the Vega-Lite JSON string, or ``{"error":"..."}``
+/// on failure.
+#[cfg(feature = "extension-module")]
+#[pyfunction]
+fn plot_spec_to_vega_lite_json(input: &str) -> String {
+    genomehubs_query::plot_spec_to_vega_lite_json(input)
+}
+
+/// Build a plot spec from local delimited data and return it as JSON.
+///
+/// Reads TSV/CSV content in-memory — no API call required.
+///
+/// Arguments:
+/// - `content`: full text of the delimited file.
+/// - `report_type_str`: one of ``"histogram"``, ``"scatter"``, ``"bar"``.
+/// - `column_map_json`: JSON object mapping axis roles to column names.
+///   Pass ``"{}"`` for positional defaults (first column → x, second → y).
+/// - `display_json`: serialised DisplaySpec; pass ``"{}"`` for defaults.
+/// - `delimiter_str`: field separator — ``"\t"`` for TSV, ``","`` for CSV.
+///   Pass ``""`` to default to ``"\t"``.
+///
+/// Returns the serialised PlotSpec on success, or ``{"error":"..."}`` on failure.
+#[cfg(feature = "extension-module")]
+#[pyfunction]
+fn local_plot_spec_json(
+    content: &str,
+    report_type_str: &str,
+    column_map_json: &str,
+    display_json: &str,
+    delimiter_str: &str,
+) -> String {
+    genomehubs_query::local_plot_spec_json(
+        content,
+        report_type_str,
+        column_map_json,
+        display_json,
+        delimiter_str,
+    )
+}
+
 /// Validate a query against field metadata and configuration.
 ///
 /// Accepts YAML representations of the query and field metadata as JSON, and
@@ -478,6 +521,8 @@ fn cli_generator(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(parse_histogram_json, m)?)?;
     m.add_function(wrap_pyfunction!(parse_tree_json, m)?)?;
     m.add_function(wrap_pyfunction!(parse_plot_spec_json, m)?)?;
+    m.add_function(wrap_pyfunction!(plot_spec_to_vega_lite_json, m)?)?;
+    m.add_function(wrap_pyfunction!(local_plot_spec_json, m)?)?;
     m.add_function(wrap_pyfunction!(query_yaml_from_url_params, m)?)?;
     m.add_function(wrap_pyfunction!(report_yaml_from_url_params, m)?)?;
     Ok(())

@@ -1,6 +1,6 @@
 //! API field fetching and local disk caching.
 //!
-//! [`FieldFetcher`] fetches the `resultFields` JSON from a genomehubs API
+//! [`FieldFetcher`] fetches the `metadata/fields` JSON from a genomehubs API
 //! endpoint and deserialises it into [`FieldDef`] structs.  Results are
 //! cached on disk (under `~/.cache/genomehubs-cli-generator/{site}/`) with a
 //! 24-hour TTL so subsequent runs are instant without network access.

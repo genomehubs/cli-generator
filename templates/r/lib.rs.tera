@@ -353,6 +353,39 @@ fn report_yaml_from_url_params(url: &str) -> String {
     }
 }
 
+/// Extract the `plot_spec` field from a raw genomehubs `/report` API response.
+#[extendr]
+fn parse_plot_spec_json(raw: &str) -> String {
+    let v: serde_json::Value = match serde_json::from_str(raw) {
+        Ok(v) => v,
+        Err(e) => return format!("{{\"error\":{:?}}}", e.to_string()),
+    };
+    match v.get("plot_spec") {
+        Some(spec) => serde_json::to_string(spec)
+            .unwrap_or_else(|e| format!("{{\"error\":{:?}}}", e.to_string())),
+        None => "null".to_string(),
+    }
+}
+
+/// Build a PlotSpec from local delimited data and return it as JSON.
+#[extendr]
+fn local_plot_spec_json(
+    content: &str,
+    report_type_str: &str,
+    column_map_json: &str,
+    display_json: &str,
+    delimiter_str: &str,
+) -> String {
+    use crate::embedded::core::local_report;
+    local_report::local_plot_spec_json(
+        content,
+        report_type_str,
+        column_map_json,
+        display_json,
+        delimiter_str,
+    )
+}
+
 // Register all exported functions with R.
 extendr_module! {
     mod {% endraw %}{{ r_package_name }}{% raw %};
@@ -378,5 +411,7 @@ extendr_module! {
     fn parse_tree_json;
     fn query_yaml_from_url_params;
     fn report_yaml_from_url_params;
+    fn parse_plot_spec_json;
+    fn local_plot_spec_json;
 }
 {% endraw %}

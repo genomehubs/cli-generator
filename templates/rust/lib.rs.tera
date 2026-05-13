@@ -304,6 +304,41 @@ fn parse_tree_json(raw: &str) -> String {
     parse::parse_tree_json(raw).unwrap_or_else(|e| {% raw %}format!(r#"{{"error":{e:?}}}"#){% endraw %})
 }
 
+/// Extract the `plot_spec` field from a raw genomehubs `/report` API response.
+#[cfg(feature = "extension-module")]
+#[pyfunction]
+fn parse_plot_spec_json(raw: &str) -> String {
+    let v: serde_json::Value = match serde_json::from_str(raw) {
+        Ok(v) => v,
+        Err(e) => return {% raw %}format!(r#"{{"error":{e:?}}}"#){% endraw %},
+    };
+    match v.get("plot_spec") {
+        Some(spec) => serde_json::to_string(spec)
+            .unwrap_or_else(|e| {% raw %}format!(r#"{{"error":{e:?}}}"#){% endraw %}),
+        None => "null".to_string(),
+    }
+}
+
+/// Build a PlotSpec from local delimited data and return it as JSON.
+#[cfg(feature = "extension-module")]
+#[pyfunction]
+fn local_plot_spec_json(
+    content: &str,
+    report_type_str: &str,
+    column_map_json: &str,
+    display_json: &str,
+    delimiter_str: &str,
+) -> String {
+    use crate::embedded::core::local_report;
+    local_report::local_plot_spec_json(
+        content,
+        report_type_str,
+        column_map_json,
+        display_json,
+        delimiter_str,
+    )
+}
+
 /// Validate a query against field metadata and configuration.
 ///
 /// Returns a JSON array of error strings. An empty array means the query is valid.
@@ -379,6 +414,8 @@ fn {{ sdk_name }}(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(parse_paginated_json, m)?)?;
     m.add_function(wrap_pyfunction!(parse_histogram_json, m)?)?;
     m.add_function(wrap_pyfunction!(parse_tree_json, m)?)?;
+    m.add_function(wrap_pyfunction!(parse_plot_spec_json, m)?)?;
+    m.add_function(wrap_pyfunction!(local_plot_spec_json, m)?)?;
     m.add_function(wrap_pyfunction!(validate_query_json, m)?)?;
     m.add_function(wrap_pyfunction!(validate_report_yaml, m)?)?;
     m.add_function(wrap_pyfunction!(query_yaml_from_url_params, m)?)?;

@@ -18,6 +18,7 @@
 
 pub mod describe;
 pub mod lineage_summary;
+pub mod local_report;
 pub mod parse;
 pub mod query;
 pub mod report;
@@ -374,6 +375,44 @@ pub fn parse_plot_spec_json(raw: &str) -> String {
         }
         None => "null".to_string(),
     }
+}
+
+/// Convert a `PlotSpec` JSON string (or a full `/report` response) to a Vega-Lite v5 specification.
+///
+/// Returns the Vega-Lite JSON as a string, or `{"error":"..."}` on failure.
+#[cfg_attr(feature = "wasm", wasm_bindgen)]
+pub fn plot_spec_to_vega_lite_json(input: &str) -> String {
+    crate::report::plot_spec_to_vega_lite_json(input)
+}
+
+/// Build a [`crate::report::plot_spec::PlotSpec`] from local delimited data and return it as JSON.
+///
+/// Reads TSV/CSV content entirely in-memory — no API call required.
+///
+/// # Arguments
+/// - `content`: full text of the delimited file.
+/// - `report_type_str`: one of `"histogram"`, `"scatter"`, `"bar"`.
+/// - `column_map_json`: JSON object mapping axis roles to column names, e.g.
+///   `{"x":"genome_size","y":"c_value"}`. Pass `"{}"` for positional defaults.
+/// - `display_json`: serialised [`crate::report::display::DisplaySpec`]; pass `"{}"` for defaults.
+/// - `delimiter_str`: field separator — `"\t"` for TSV, `","` for CSV.  Pass `""` to default to `"\t"`.
+///
+/// Returns the serialised `PlotSpec` on success, or `{"error":"..."}` on failure.
+#[cfg_attr(feature = "wasm", wasm_bindgen)]
+pub fn local_plot_spec_json(
+    content: &str,
+    report_type_str: &str,
+    column_map_json: &str,
+    display_json: &str,
+    delimiter_str: &str,
+) -> String {
+    local_report::local_plot_spec_json(
+        content,
+        report_type_str,
+        column_map_json,
+        display_json,
+        delimiter_str,
+    )
 }
 
 /// Describe a query in human-readable form.

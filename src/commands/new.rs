@@ -244,11 +244,13 @@ from .{} import (
     parse_paginated_json,
     parse_phylopic_json,
     parse_phylopic_batch_json,
+    parse_plot_spec_json,
     parse_record_json,
     parse_response_status,
     parse_search_json,
     parse_search_with_lineage_summary,
     parse_tree_json,
+    local_plot_spec_json,
     render_snippet,
     search,
     split_source_columns,
@@ -273,11 +275,13 @@ __all__ = [
     "parse_paginated_json",
     "parse_phylopic_json",
     "parse_phylopic_batch_json",
+    "parse_plot_spec_json",
     "parse_record_json",
     "parse_response_status",
     "parse_search_json",
     "parse_search_with_lineage_summary",
     "parse_tree_json",
+    "local_plot_spec_json",
     "QueryBuilder",
     "query_yaml_from_url_params",
     "render_snippet",
@@ -458,6 +462,37 @@ fn copy_embedded_modules(repo_dir: &Path) -> Result<()> {
         }
     }
 
+    // Copy the local_report/ directory (mod.rs, tsv.rs, builder.rs).
+    let local_report_src_dir = subcrate_src.join("local_report");
+    let local_report_dest_dir = embedded_dir.join("core/local_report");
+    if local_report_src_dir.is_dir() {
+        std::fs::create_dir_all(&local_report_dest_dir)
+            .context("creating core/local_report directory")?;
+        for entry in
+            std::fs::read_dir(&local_report_src_dir).context("reading local_report directory")?
+        {
+            let entry = entry.context("reading local_report directory entry")?;
+            let path = entry.path();
+            if let Some(file_name) = path.file_name() {
+                let dest_file = local_report_dest_dir.join(file_name);
+                let content = std::fs::read_to_string(&path)
+                    .with_context(|| {
+                        format!(
+                            "reading local_report/{}",
+                            path.file_name().unwrap_or_default().to_string_lossy()
+                        )
+                    })?
+                    .replace("crate::", "crate::embedded::core::");
+                std::fs::write(&dest_file, content).with_context(|| {
+                    format!(
+                        "writing local_report/{}",
+                        path.file_name().unwrap_or_default().to_string_lossy()
+                    )
+                })?;
+            }
+        }
+    }
+
     // validation.rs is cli-generator-specific and not in the subcrate's mod.rs.
     let query_mod_path = embedded_dir.join("core/query/mod.rs");
     let mut query_mod =
@@ -509,6 +544,7 @@ pub mod config;
 pub mod describe;
 pub mod fetch;
 pub mod lineage_summary;
+pub mod local_report;
 pub mod parse;
 pub mod query;
 pub mod report;
@@ -900,6 +936,37 @@ fn copy_r_embedded_modules(rust_src_dir: &Path) -> Result<()> {
         }
     }
 
+    // Copy the local_report/ directory.
+    let local_report_src_dir = subcrate_src.join("local_report");
+    let local_report_dest_dir = embedded_dir.join("core/local_report");
+    if local_report_src_dir.is_dir() {
+        std::fs::create_dir_all(&local_report_dest_dir)
+            .context("creating core/local_report directory")?;
+        for entry in
+            std::fs::read_dir(&local_report_src_dir).context("reading local_report directory")?
+        {
+            let entry = entry.context("reading local_report directory entry")?;
+            let path = entry.path();
+            if let Some(file_name) = path.file_name() {
+                let dest_file = local_report_dest_dir.join(file_name);
+                let content = std::fs::read_to_string(&path)
+                    .with_context(|| {
+                        format!(
+                            "reading local_report/{}",
+                            path.file_name().unwrap_or_default().to_string_lossy()
+                        )
+                    })?
+                    .replace("crate::", "crate::embedded::core::");
+                std::fs::write(&dest_file, content).with_context(|| {
+                    format!(
+                        "writing local_report/{}",
+                        path.file_name().unwrap_or_default().to_string_lossy()
+                    )
+                })?;
+            }
+        }
+    }
+
     let query_mod_path = embedded_dir.join("core/query/mod.rs");
     let mut query_mod =
         std::fs::read_to_string(&query_mod_path).context("reading embedded query/mod.rs")?;
@@ -917,7 +984,7 @@ fn copy_r_embedded_modules(rust_src_dir: &Path) -> Result<()> {
 
     std::fs::write(
         embedded_dir.join("core/mod.rs"),
-        "//! Core cli_generator modules.\n\npub mod config;\npub mod describe;\npub mod fetch;\npub mod lineage_summary;\npub mod parse;\npub mod query;\npub mod report;\npub mod snippet;\npub mod validation;\n",
+        "//! Core cli_generator modules.\n\npub mod config;\npub mod describe;\npub mod fetch;\npub mod lineage_summary;\npub mod local_report;\npub mod parse;\npub mod query;\npub mod report;\npub mod snippet;\npub mod validation;\n",
     )
     .context("writing embedded/core/mod.rs")?;
 
@@ -1277,6 +1344,13 @@ fn inject_generated_deps(mut text: String) -> String {
         "extension-module = [\"pyo3/extension-module\"]",
         "extension-module = [\"dep:pyo3\", \"pyo3/extension-module\"]",
     );
+    // Add vl-convert feature gate (opt-in SVG/PNG rendering via Deno/V8).
+    if text.contains("extension-module =") && !text.contains("vl-convert =") {
+        text = text.replace(
+            "extension-module = [\"dep:pyo3\", \"pyo3/extension-module\"]",
+            "extension-module = [\"dep:pyo3\", \"pyo3/extension-module\"]\nvl-convert       = [\"dep:vl-convert-rs\", \"dep:futures\"]",
+        );
+    }
 
     // Append missing deps after the serde line.
     let required_deps = [
@@ -1301,6 +1375,14 @@ fn inject_generated_deps(mut text: String) -> String {
         (
             "tera",
             "tera       = { version = \"1\", default-features = false }",
+        ),
+        (
+            "vl-convert-rs =",
+            "vl-convert-rs = { version = \"2.0.0-rc1\", optional = true }",
+        ),
+        (
+            "futures       =",
+            "futures       = { version = \"0.3\", default-features = false, features = [\"executor\"], optional = true }",
         ),
     ];
     for (key, dep_line) in required_deps {

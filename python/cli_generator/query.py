@@ -2030,3 +2030,80 @@ def plot_spec_to_vega_lite(spec: dict[str, Any]) -> dict[str, Any]:
         )
 
     return base
+
+
+def local_plot_spec(
+    content: str,
+    report_type: str = "histogram",
+    column_map: dict[str, str] | None = None,
+    display: dict[str, Any] | None = None,
+    delimiter: str = "\t",
+) -> dict[str, Any]:
+    """Build a PlotSpec from local delimited text content without an API call.
+
+    Auto-detects column types: columns where every non-empty value is numeric
+    are stored as numbers; everything else is stored as strings.
+
+    Args:
+        content: Full text of the TSV/CSV file.
+        report_type: One of ``"histogram"``, ``"scatter"``, or ``"bar"``.
+        column_map: Mapping of axis roles to column names, e.g.
+            ``{"x": "genome_size", "y": "c_value"}``.  Pass ``None`` or an
+            empty dict to use positional defaults (first column → x, second
+            column → y).
+        display: Display options dict (title, width, height, etc.).  ``None``
+            means defaults.
+        delimiter: Field separator: ``"\\t"`` for TSV, ``","`` for CSV.
+            Defaults to ``"\\t"``.
+
+    Returns:
+        PlotSpec dict compatible with :func:`plot_spec_to_vega_lite`.
+
+    Raises:
+        ValueError: When the report type is unknown, a required column is
+            missing, or a numeric-axis column contains non-numeric data.
+    """
+    import json
+
+    from cli_generator import local_plot_spec_json as _local_plot_spec_json
+
+    col_map = column_map or {}
+    display_json = json.dumps(display) if display else "{}"
+    result = _local_plot_spec_json(content, report_type, json.dumps(col_map), display_json, delimiter)
+    parsed: dict[str, Any] = json.loads(result)
+    if "error" in parsed:
+        raise ValueError(parsed["error"])
+    return parsed
+
+
+def merge_annotations(
+    plot_spec: dict[str, Any],
+    annotations: list[dict[str, Any]],
+    join_key: str,
+) -> dict[str, Any]:
+    """Merge annotation dicts into ``plot_spec.data`` rows by a shared key.
+
+    For each row in ``plot_spec["data"]["rows"]`` that has a value for
+    ``join_key`` matching an annotation entry, the annotation's fields are
+    added to the row (annotation fields take precedence on key collision).
+    Rows with no matching annotation are left unchanged.
+
+    The ``plot_spec`` dict is modified in-place and also returned.
+
+    Args:
+        plot_spec: A PlotSpec dict (from the API or from :func:`local_plot_spec`).
+        annotations: A list of dicts, each containing at least ``join_key``
+            and any additional fields to add.
+        join_key: The column name used to match rows to annotation entries.
+
+    Returns:
+        The modified ``plot_spec`` dict (same object).
+    """
+    annotation_index: dict[Any, dict[str, Any]] = {entry[join_key]: entry for entry in annotations if join_key in entry}
+    data = plot_spec.get("data") or {}
+    rows: list[dict[str, Any]] = data.get("rows", [])
+    for row in rows:
+        key_val = row.get(join_key)
+        if key_val is not None and key_val in annotation_index:
+            row.update(annotation_index[key_val])
+    return plot_spec

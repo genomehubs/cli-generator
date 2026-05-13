@@ -531,6 +531,48 @@ def parse_plot_spec_json(raw: str) -> str:
     """
     ...
 
+def plot_spec_to_vega_lite_json(input: str) -> str:
+    """Convert a PlotSpec JSON string (or full ``/report`` response) to a Vega-Lite v5 specification.
+
+    Accepts the full ``/report`` response envelope (extracts ``plot_spec`` automatically)
+    or a bare ``PlotSpec`` object.
+
+    Args:
+        input: JSON string — either a full ``/report`` API response or a bare ``PlotSpec`` dict.
+
+    Returns:
+        Vega-Lite v5 specification as a JSON string.
+        Returns ``{"error":"..."}`` on failure.
+    """
+    ...
+
+def local_plot_spec_json(
+    content: str,
+    report_type_str: str,
+    column_map_json: str,
+    display_json: str,
+    delimiter_str: str,
+) -> str:
+    """Build a PlotSpec from local delimited data and return it as JSON.
+
+    Reads TSV/CSV content in-memory — no API call required.
+
+    Args:
+        content: Full text of the delimited file.
+        report_type_str: One of ``"histogram"``, ``"scatter"``, or ``"bar"``.
+        column_map_json: JSON object mapping axis roles to column names, e.g.
+            ``'{"x":"genome_size","y":"c_value"}'``.  Pass ``"{}"`` for
+            positional defaults.
+        display_json: Serialised DisplaySpec; pass ``"{}"`` for defaults.
+        delimiter_str: Field separator — ``"\\t"`` for TSV, ``","`` for CSV.
+            Pass ``""`` to default to ``"\\t"``.
+
+    Returns:
+        Serialised PlotSpec JSON string on success, or ``{"error":"..."}``
+        on failure.
+    """
+    ...
+
 def validate_query_json(
     query_yaml: str,
     field_metadata_json: str,

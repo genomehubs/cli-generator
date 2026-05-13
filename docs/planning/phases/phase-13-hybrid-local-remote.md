@@ -1,6 +1,6 @@
 # Phase 13: Hybrid Local + Remote Reports
 
-**Depends on:** Phase 12 (PlotSpec exists)
+**Depends on:** Phase 12 (PlotSpec exists) ✅ **complete**
 **Blocks:** nothing downstream
 **Estimated scope:** SDK-side data loading helpers, `local_plot_spec()` Rust function, `genomehubs local-report` CLI subcommand; no new API endpoints
 
@@ -8,6 +8,65 @@
 > files) is deferred to [phase-XX-positional-hybrid.md](phase-XX-positional-hybrid.md)
 > because it depends on Phase 11 (the positional endpoint) which does not apply to GoaT.
 > This phase covers hybrid workflows that **do not** require the positional endpoint.
+
+---
+
+## Amendments vs. original plan (based on Phase 10/10b/12 implementation)
+
+### Phase 12 is complete — update references
+
+- `PlotSpec`, `AxisMeta`, `SeriesMeta`, `PlotReportType` all exist in
+  `crates/genomehubs-query/src/report/plot_spec.rs`.
+- `parse_plot_spec_json` is exported as WASM + PyO3.
+- `plotSpecToVegaLite()` exists in `templates/js/query.js`.
+- `plot_spec_to_vega_lite()` exists in `python/cli_generator/query.py`.
+- `ReportBuilder.set_include_plot_spec()` / `setIncludePlotSpec()` are in all three SDKs.
+- `QueryBuilder.report()` returns the full response dict when `plot_spec` is present.
+
+### `PlotReportType::parse()` not `from_str()`
+
+The enum method is `parse()` (renamed from `from_str` to satisfy Clippy's
+`should_implement_trait` lint). Use `PlotReportType::parse(s)` everywhere.
+
+### Phase 11 report types deferred
+
+`oxford`, `ribbon`, `painting` are **not** in `PlotReportType` yet. The `local_report`
+module for Phase 13 only needs to handle `histogram`, `scatter`, and `bar`
+(a simplified countPerRank-style chart). Do not add stubs for Phase 11 types.
+
+### File-type auto-detection (user addition)
+
+`local_plot_spec_json` and the `genomehubs local-report` CLI must **auto-detect the
+file format** from the file extension:
+
+- `.tsv`, `.tab` → TSV (tab separator)
+- `.csv` → CSV (comma separator)
+- unknown / stdin → default to TSV, log a warning
+
+An explicit `--delimiter` / `delimiter` argument overrides auto-detection.
+
+### `DisplaySpec` structure (Phase 10b)
+
+`DisplaySpec` has per-report-type sub-structs (`histogram`, `scatter`, etc.) and
+`AxisOptions` with `tick_label_placement`, `tick_label_stride`, `tick_label_max_length`.
+`local_plot_spec()` accepts a `DisplaySpec` and passes it through to `build_plot_spec()`
+in `genomehubs-api/src/report/spec_builder.rs`; for local reports we call
+`resolve_axis_display()` directly from `spec_builder` instead of going via the API.
+
+### `spec_builder::resolve_axis_display` is in `genomehubs-api`
+
+`resolve_axis_display` lives in `crates/genomehubs-api/src/report/spec_builder.rs`.
+The local report builder lives in `crates/genomehubs-query` (WASM-compatible) so it
+cannot depend on `genomehubs-api`. Therefore:
+
+- Extract `resolve_axis_display` into `genomehubs-query` (move to
+  `crates/genomehubs-query/src/report/spec_builder.rs` — a new file in that crate)
+- `genomehubs-api/src/report/spec_builder.rs` re-exports or delegates to it
+- `local_report/builder.rs` calls the `genomehubs-query`-side version
+
+### `merge_annotations()` is pure Python/JS/R — no Rust needed
+
+Confirmed: plain dict/list mutation in each SDK. No WASM/PyO3 binding required.
 
 ---
 
@@ -35,6 +94,16 @@ No new API endpoint is required.
 ---
 
 ## Supported Local File Formats
+
+| Extension         | Format | Separator | Notes                        |
+| ----------------- | ------ | --------- | ---------------------------- |
+| `.tsv`, `.tab`    | TSV    | `\t`      | Default for unknown/stdin    |
+| `.csv`            | CSV    | `,`       |                              |
+| _(explicit flag)_ | either | any       | `--delimiter` overrides auto |
+
+Auto-detection is done in `tsv.rs` via `detect_delimiter(path: Option<&Path>) -> char`.
+When reading from stdin (no path), the delimiter defaults to `\t` with a stderr warning.
+
 ---
 
 ## Scenario 1: Local Render of Remote Data
@@ -61,11 +130,13 @@ genomehubs plot --input response.json --output plot.svg --format png
 ```
 
 The `genomehubs report` CLI subcommand gains:
+
 - `--display` flag (string or @file path) → sets `display` in the request body
 - `--include-plot-spec` flag → sets `include_plot_spec: true` in `params`
 - `--display` implies `--include-plot-spec`
 
 The `genomehubs plot` subcommand (introduced in Phase 12) gains:
+
 - `--format svg|png` (default: `svg`)
 - `--width` / `--height` overrides (override `display.width`/`display.height`)
 
@@ -108,11 +179,11 @@ Build a `PlotSpec` entirely from a local TSV/CSV file, with no API call.
 
 ### Supported report types from local data
 
-| Report type  | Minimum columns required                     |
-| ------------ | -------------------------------------------- |
-| `histogram`  | One numeric column (`x`)                     |
-| `scatter`    | Two numeric columns (`x`, `y`)               |
-| `bar`        | One keyword column (`x`) + one numeric (`y`) |
+| Report type | Minimum columns required                     |
+| ----------- | -------------------------------------------- |
+| `histogram` | One numeric column (`x`)                     |
+| `scatter`   | Two numeric columns (`x`, `y`)               |
+| `bar`       | One keyword column (`x`) + one numeric (`y`) |
 
 ### API (Rust)
 
@@ -223,29 +294,29 @@ crates/genomehubs-query/src/local_report/
 
 ## Files to Modify
 
-| File                                       | Change                                                              |
-| ------------------------------------------ | ------------------------------------------------------------------- |
-| `crates/genomehubs-query/src/lib.rs`       | WASM export `local_plot_spec_json`                                  |
-| `src/lib.rs`                               | PyO3 export `local_plot_spec_json`                                  |
-| `templates/r/lib.rs.tera`                  | extendr export                                                      |
-| `templates/r/extendr-wrappers.R.tera`      | R wrapper                                                           |
-| `src/main.rs`                              | Register `local-report` subcommand                                  |
-| `python/cli_generator/query.py`            | `local_plot_spec()` wrapper; `merge_annotations()` helper           |
-| `templates/python/query.py.tera`           | Mirror                                                              |
-| `templates/js/query.js`                    | `localPlotSpec()` wrapper; `mergeAnnotations()` helper              |
-| `templates/r/query.R`                      | `local_plot_spec()` wrapper; `merge_annotations()` helper           |
+| File                                  | Change                                                    |
+| ------------------------------------- | --------------------------------------------------------- |
+| `crates/genomehubs-query/src/lib.rs`  | WASM export `local_plot_spec_json`                        |
+| `src/lib.rs`                          | PyO3 export `local_plot_spec_json`                        |
+| `templates/r/lib.rs.tera`             | extendr export                                            |
+| `templates/r/extendr-wrappers.R.tera` | R wrapper                                                 |
+| `src/main.rs`                         | Register `local-report` subcommand                        |
+| `python/cli_generator/query.py`       | `local_plot_spec()` wrapper; `merge_annotations()` helper |
+| `templates/python/query.py.tera`      | Mirror                                                    |
+| `templates/js/query.js`               | `localPlotSpec()` wrapper; `mergeAnnotations()` helper    |
+| `templates/r/query.R`                 | `local_plot_spec()` wrapper; `merge_annotations()` helper |
 
 ---
 
 ## Scope Boundaries
 
-| In scope                                              | Out of scope                                               |
-| ----------------------------------------------------- | ---------------------------------------------------------- |
-| Local render of remote `PlotSpec` (CLI + SDK)         | Positional (oxford/ribbon/painting) hybrid — phase-XX      |
-| `local_plot_spec()` from TSV/CSV                      | Database joins or multi-file merges                        |
-| `merge_annotations()` helper (pure Python/JS/R)       | Server-side local data upload                              |
-| `genomehubs local-report` CLI subcommand              | Streaming/large file support                               |
-| `--display` and `--include-plot-spec` CLI flags       |                                                            |
+| In scope                                        | Out of scope                                          |
+| ----------------------------------------------- | ----------------------------------------------------- |
+| Local render of remote `PlotSpec` (CLI + SDK)   | Positional (oxford/ribbon/painting) hybrid — phase-XX |
+| `local_plot_spec()` from TSV/CSV                | Database joins or multi-file merges                   |
+| `merge_annotations()` helper (pure Python/JS/R) | Server-side local data upload                         |
+| `genomehubs local-report` CLI subcommand        | Streaming/large file support                          |
+| `--display` and `--include-plot-spec` CLI flags |                                                       |
 
 ---
 
@@ -259,7 +330,6 @@ crates/genomehubs-query/src/local_report/
 - Proptest: `local_plot_spec()` with fuzzed TSV input never panics
 - Integration test: `genomehubs local-report` CLI writes valid SVG for a histogram
 - Integration test: `genomehubs report ... | genomehubs plot` pipeline produces a file
-
 
 ```
 # Busco id   Status     Sequence   Gene Start  Gene End  Strand  Score  Length  OrthoDB url  Description

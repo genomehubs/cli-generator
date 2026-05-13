@@ -8,6 +8,7 @@ pub mod axis;
 pub mod bounds;
 pub mod display;
 pub mod plot_spec;
+pub mod spec_builder;
 
 pub use axis::{
     AxisOpts, AxisRole, AxisSpec, AxisSummary, DateInterval, Scale, SortMode, ValueType,
@@ -15,6 +16,7 @@ pub use axis::{
 pub use bounds::BoundsResult;
 pub use display::DisplaySpec;
 pub use plot_spec::PlotSpec;
+pub use spec_builder::resolve_axis_display;
 
 /// Supported v3 report types.
 #[derive(Debug, Clone, PartialEq)]
@@ -194,6 +196,239 @@ pub fn report_yaml_from_url_params(url: &str) -> Result<(String, String, String)
 
     let report_yaml = serde_yaml::to_string(&doc).map_err(|e| e.to_string())?;
     Ok((query_yaml, params_yaml, report_yaml))
+}
+
+// ── Vega-Lite conversion ──────────────────────────────────────────────────────
+
+/// Convert a `PlotSpec` JSON string into a Vega-Lite v5 specification JSON string.
+///
+/// Accepts the full `/report` response envelope (extracts `plot_spec` automatically)
+/// or a bare `PlotSpec` object.  Returns an error JSON on failure.
+pub fn plot_spec_to_vega_lite_json(input: &str) -> String {
+    let parsed: serde_json::Value = match serde_json::from_str(input) {
+        Ok(v) => v,
+        Err(e) => return format!("{{\"error\":\"invalid JSON: {e}\"}}"),
+    };
+
+    // Accept either a full report response or a bare PlotSpec.
+    let spec_val = if parsed.get("report_type").is_some() {
+        &parsed
+    } else if let Some(ps) = parsed.get("plot_spec") {
+        ps
+    } else {
+        return "{\"error\":\"no plot_spec found in input\"}".to_string();
+    };
+
+    let report_type = spec_val
+        .get("report_type")
+        .and_then(|v| v.as_str())
+        .unwrap_or("histogram");
+
+    let display = spec_val.get("display").unwrap_or(&serde_json::Value::Null);
+    let title = display.get("title").and_then(|v| v.as_str());
+    let width = display.get("width").and_then(|v| v.as_u64()).unwrap_or(600);
+    let height = display
+        .get("height")
+        .and_then(|v| v.as_u64())
+        .unwrap_or(400);
+    let font_size = display
+        .get("font_size")
+        .and_then(|v| v.as_f64())
+        .unwrap_or(12.0);
+
+    let mut base = serde_json::json!({
+        "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+        "width": width,
+        "height": height,
+        "config": {
+            "axis": {"labelFontSize": font_size, "titleFontSize": font_size},
+            "legend": {"labelFontSize": font_size}
+        }
+    });
+    if let Some(t) = title {
+        base["title"] = serde_json::Value::String(t.to_string());
+    }
+
+    let vl = match report_type {
+        "histogram" => vl_histogram(spec_val, base),
+        "scatter" => vl_scatter(spec_val, base),
+        "count_per_rank" | "countPerRank" | "sources" => vl_bar(spec_val, base),
+        "tree" => {
+            base["mark"] = serde_json::Value::String("point".to_string());
+            base["data"] = serde_json::json!({"values": []});
+            base
+        }
+        "map" => {
+            let projection = display
+                .get("map")
+                .and_then(|m| m.get("projection"))
+                .and_then(|p| p.as_str())
+                .unwrap_or("mercator");
+            base["projection"] = serde_json::json!({"type": projection});
+            base
+        }
+        "arc" => {
+            base["mark"] = serde_json::Value::String("arc".to_string());
+            base
+        }
+        _ => base,
+    };
+
+    match serde_json::to_string(&vl) {
+        Ok(s) => s,
+        Err(e) => format!("{{\"error\":\"serialisation failed: {e}\"}}"),
+    }
+}
+
+fn vl_histogram(spec: &serde_json::Value, mut base: serde_json::Value) -> serde_json::Value {
+    let x_meta = spec.get("x").unwrap_or(&serde_json::Value::Null);
+    let x_field = x_meta
+        .get("field")
+        .and_then(|v| v.as_str())
+        .unwrap_or("key");
+    let x_label = x_meta
+        .get("label")
+        .and_then(|v| v.as_str())
+        .unwrap_or(x_field);
+    let x_scale_str = x_meta
+        .get("scale")
+        .and_then(|v| v.as_str())
+        .unwrap_or("linear");
+    let x_vl_scale = if x_scale_str == "log10" {
+        "log"
+    } else {
+        "linear"
+    };
+
+    let display = spec.get("display").unwrap_or(&serde_json::Value::Null);
+    let hist = display.get("histogram").unwrap_or(&serde_json::Value::Null);
+    let y_scale_str = hist
+        .get("y_scale")
+        .and_then(|v| v.as_str())
+        .unwrap_or("linear");
+    let y_vl_scale = if y_scale_str == "log10" {
+        "log"
+    } else {
+        "linear"
+    };
+    let y_label = display
+        .get("y_label")
+        .and_then(|v| v.as_str())
+        .unwrap_or("Count");
+
+    let buckets = spec
+        .get("data")
+        .and_then(|d| d.get("buckets"))
+        .cloned()
+        .unwrap_or_else(|| serde_json::json!([]));
+
+    base["data"] = serde_json::json!({"values": buckets});
+    base["mark"] = serde_json::json!({"type": "bar"});
+    base["encoding"] = serde_json::json!({
+        "x": {
+            "field": "key",
+            "type": "quantitative",
+            "scale": {"type": x_vl_scale},
+            "axis": {"title": x_label}
+        },
+        "y": {
+            "field": "doc_count",
+            "type": "quantitative",
+            "scale": {"type": y_vl_scale},
+            "axis": {"title": y_label}
+        }
+    });
+    let _ = x_field;
+    base
+}
+
+fn vl_scatter(spec: &serde_json::Value, mut base: serde_json::Value) -> serde_json::Value {
+    let x_meta = spec.get("x").unwrap_or(&serde_json::Value::Null);
+    let x_field = x_meta.get("field").and_then(|v| v.as_str()).unwrap_or("x");
+    let x_label = x_meta
+        .get("label")
+        .and_then(|v| v.as_str())
+        .unwrap_or(x_field);
+    let x_scale_str = x_meta
+        .get("scale")
+        .and_then(|v| v.as_str())
+        .unwrap_or("linear");
+    let x_vl_scale = if x_scale_str == "log10" {
+        "log"
+    } else {
+        "linear"
+    };
+
+    let y_meta = spec.get("y").unwrap_or(&serde_json::Value::Null);
+    let y_field = y_meta.get("field").and_then(|v| v.as_str()).unwrap_or("y");
+    let y_label = y_meta
+        .get("label")
+        .and_then(|v| v.as_str())
+        .unwrap_or(y_field);
+    let y_scale_str = y_meta
+        .get("scale")
+        .and_then(|v| v.as_str())
+        .unwrap_or("linear");
+    let y_vl_scale = if y_scale_str == "log10" {
+        "log"
+    } else {
+        "linear"
+    };
+
+    let cells = spec
+        .get("data")
+        .and_then(|d| d.get("cells"))
+        .cloned()
+        .unwrap_or_else(|| serde_json::json!([]));
+
+    base["data"] = serde_json::json!({"values": cells});
+    base["mark"] = serde_json::Value::String("point".to_string());
+    base["encoding"] = serde_json::json!({
+        "x": {
+            "field": "x",
+            "type": "quantitative",
+            "scale": {"type": x_vl_scale},
+            "axis": {"title": x_label}
+        },
+        "y": {
+            "field": "y",
+            "type": "quantitative",
+            "scale": {"type": y_vl_scale},
+            "axis": {"title": y_label}
+        }
+    });
+    let _ = (x_field, y_field);
+    base
+}
+
+fn vl_bar(spec: &serde_json::Value, mut base: serde_json::Value) -> serde_json::Value {
+    let x_meta = spec.get("x").unwrap_or(&serde_json::Value::Null);
+    let x_field = x_meta
+        .get("field")
+        .and_then(|v| v.as_str())
+        .unwrap_or("rank");
+    let x_label = x_meta
+        .get("label")
+        .and_then(|v| v.as_str())
+        .unwrap_or(x_field);
+
+    let buckets = spec
+        .get("data")
+        .and_then(|d| d.get("buckets"))
+        .cloned()
+        .unwrap_or_else(|| serde_json::json!([]));
+
+    base["data"] = serde_json::json!({"values": buckets});
+    base["mark"] = serde_json::Value::String("bar".to_string());
+    base["encoding"] = serde_json::json!({
+        "y": {
+            "field": x_field,
+            "type": "nominal",
+            "axis": {"title": x_label}
+        },
+        "x": {"field": "count", "type": "quantitative"}
+    });
+    base
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────

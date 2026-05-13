@@ -1438,3 +1438,161 @@ class ReportBuilder:
                 "created via QueryBuilder.from_v2_url()"
             )
         return qb.report(self)
+
+
+def plot_spec_to_vega_lite(spec: dict[str, Any]) -> dict[str, Any]:
+    """Convert a ``PlotSpec`` dict (from the API ``plot_spec`` field) to a Vega-Lite v5 spec.
+
+    The returned dict can be passed directly to any Vega-Lite renderer, e.g.
+    ``altair.Chart.from_dict()``.
+
+    Args:
+        spec: A ``PlotSpec`` dict from the API response ``plot_spec`` field.
+
+    Returns:
+        Vega-Lite v5 JSON-compatible dict.
+    """
+    display: dict[str, Any] = spec.get("display") or {}
+    base: dict[str, Any] = {
+        "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+        "width": display.get("width", 600),
+        "height": display.get("height", 400),
+        "config": {
+            "axis": {
+                "labelFontSize": display.get("font_size", 12),
+                "titleFontSize": display.get("font_size", 12),
+            },
+            "legend": {"labelFontSize": display.get("font_size", 12)},
+        },
+    }
+    title = display.get("title")
+    if title is not None:
+        base["title"] = title
+
+    report_type: str = spec.get("report_type", "")
+    x: dict[str, Any] = spec.get("x") or {}
+    y: dict[str, Any] = spec.get("y") or {}
+    data_vals: dict[str, Any] = spec.get("data") or {}
+
+    if report_type == "histogram":
+        hist = display.get("histogram") or {}
+        base.update(
+            {
+                "data": {"values": data_vals.get("buckets", [])},
+                "mark": {"type": "bar"},
+                "encoding": {
+                    "x": {
+                        "field": "key",
+                        "type": "quantitative",
+                        "scale": {"type": "log" if x.get("scale") == "log10" else "linear"},
+                        "axis": {"title": x.get("label") or x.get("field", "")},
+                    },
+                    "y": {
+                        "field": "doc_count",
+                        "type": "quantitative",
+                        "scale": {"type": "log" if hist.get("y_scale") == "log10" else "linear"},
+                        "axis": {"title": display.get("y_label", "Count")},
+                    },
+                },
+            }
+        )
+    elif report_type == "scatter":
+        base.update(
+            {
+                "data": {"values": data_vals.get("cells", [])},
+                "mark": "point",
+                "encoding": {
+                    "x": {
+                        "field": "x",
+                        "type": "quantitative",
+                        "scale": {"type": "log" if x.get("scale") == "log10" else "linear"},
+                        "axis": {"title": x.get("label") or x.get("field", "")},
+                    },
+                    "y": {
+                        "field": "y",
+                        "type": "quantitative",
+                        "scale": {"type": "log" if y.get("scale") == "log10" else "linear"},
+                        "axis": {"title": y.get("label") or y.get("field", "")},
+                    },
+                },
+            }
+        )
+    elif report_type in ("count_per_rank", "sources"):
+        base.update(
+            {
+                "data": {"values": data_vals.get("buckets", [])},
+                "mark": "bar",
+                "encoding": {
+                    "y": {
+                        "field": x.get("field", "rank"),
+                        "type": "nominal",
+                        "axis": {"title": x.get("label") or x.get("field", "")},
+                    },
+                    "x": {"field": "count", "type": "quantitative"},
+                },
+            }
+        )
+
+    return base
+
+
+def local_plot_spec(
+    content: str,
+    report_type: str = "histogram",
+    column_map: dict[str, str] | None = None,
+    display: dict[str, Any] | None = None,
+    delimiter: str = "\t",
+) -> dict[str, Any]:
+    """Build a PlotSpec from local delimited text content without an API call.
+
+    Args:
+        content: Full text of the TSV/CSV file.
+        report_type: One of ``"histogram"``, ``"scatter"``, or ``"bar"``.
+        column_map: Mapping of axis roles to column names. ``None`` uses
+            positional defaults (first column → x, second column → y).
+        display: Display options dict.  ``None`` means defaults.
+        delimiter: Field separator: ``"\\t"`` for TSV, ``","`` for CSV.
+
+    Returns:
+        PlotSpec dict compatible with :func:`plot_spec_to_vega_lite`.
+
+    Raises:
+        ValueError: When the report type is unknown, a required column is
+            missing, or a numeric-axis column contains non-numeric data.
+    """
+    import json
+
+    col_map = column_map or {}
+    display_json = json.dumps(display) if display else "{}"
+    result = _ext.local_plot_spec_json(content, report_type, json.dumps(col_map), display_json, delimiter)
+    parsed: dict[str, Any] = json.loads(result)
+    if "error" in parsed:
+        raise ValueError(parsed["error"])
+    return parsed
+
+
+def merge_annotations(
+    plot_spec: dict[str, Any],
+    annotations: list[dict[str, Any]],
+    join_key: str,
+) -> dict[str, Any]:
+    """Merge annotation dicts into ``plot_spec.data`` rows by a shared key.
+
+    Args:
+        plot_spec: A PlotSpec dict.
+        annotations: List of annotation dicts, each containing ``join_key``.
+        join_key: Column name used to match rows to annotation entries.
+
+    Returns:
+        The modified ``plot_spec`` dict.
+    """
+    annotation_index: dict[Any, dict[str, Any]] = {
+        entry[join_key]: entry for entry in annotations if join_key in entry
+    }
+    data = plot_spec.get("data") or {}
+    rows: list[dict[str, Any]] = data.get("rows", [])
+    for row in rows:
+        key_val = row.get(join_key)
+        if key_val is not None and key_val in annotation_index:
+            row.update(annotation_index[key_val])
+    return plot_spec

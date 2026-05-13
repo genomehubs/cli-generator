@@ -98,3 +98,9 @@ query_yaml_from_url_params <- function(url) .Call(wrap__query_yaml_from_url_para
 
 #' Parse a v2 report URL into a JSON triple `[query_yaml, params_yaml, report_yaml]`.
 report_yaml_from_url_params <- function(url) .Call(wrap__report_yaml_from_url_params, url)
+
+#' Extract the `plot_spec` field from a raw genomehubs `/report` API response.
+parse_plot_spec_json <- function(raw) .Call(wrap__parse_plot_spec_json, raw)
+
+#' Build a PlotSpec from local delimited data and return it as JSON.
+local_plot_spec_json <- function(content, report_type_str, column_map_json, display_json, delimiter_str) .Call(wrap__local_plot_spec_json, content, report_type_str, column_map_json, display_json, delimiter_str)

@@ -40,6 +40,67 @@ enum Commands {
         subcommand: {{ index.name | capitalize }}Commands,
     },
 {% endfor %}
+    /// Convert a report response (or PlotSpec) to Vega-Lite JSON, SVG, or PNG.
+    ///
+    /// Reads a JSON report response from stdin or `--input`.
+    /// Outputs to stdout or `--output`.  Pipe the output of a
+    /// `report --include-plot-spec` command directly to `plot`.
+    ///
+    /// SVG/PNG output requires building with: `cargo build --features vl-convert`
+    Plot {
+        /// Output format: json (Vega-Lite, default), svg, or png.
+        #[arg(long, default_value = "json", value_parser = ["json", "svg", "png"])]
+        format: String,
+
+        /// Input file path (reads from stdin if omitted).
+        #[arg(long, short = 'i')]
+        input: Option<std::path::PathBuf>,
+
+        /// Output file path (writes to stdout if omitted).
+        #[arg(long, short = 'o')]
+        output: Option<std::path::PathBuf>,
+    },
+
+    /// Build a plot spec from a local TSV/CSV file (no API call).
+    ///
+    /// Reads a delimited file, builds a PlotSpec, and writes Vega-Lite JSON,
+    /// SVG, or PNG to stdout or `--output`.  File format is auto-detected from
+    /// the extension (`.tsv`/`.tab` → TSV, `.csv` → CSV; unknown defaults to TSV).
+    ///
+    /// SVG/PNG output requires building with: `cargo build --features vl-convert`
+    LocalReport {
+        /// Input file path (reads from stdin if omitted).
+        #[arg(long, short = 'i')]
+        input: Option<std::path::PathBuf>,
+
+        /// Report type: histogram, scatter, bar.
+        #[arg(long, default_value = "histogram")]
+        report_type: String,
+
+        /// Column to use as the X axis.
+        #[arg(long)]
+        x: Option<String>,
+
+        /// Column to use as the Y axis (scatter only).
+        #[arg(long)]
+        y: Option<String>,
+
+        /// Display options as a JSON string (e.g. `'{"title":"My plot","width":900}'`).
+        #[arg(long)]
+        display: Option<String>,
+
+        /// Field delimiter override (e.g. `\t` or `,`).
+        #[arg(long)]
+        delimiter: Option<char>,
+
+        /// Output format: json (Vega-Lite, default), svg, or png.
+        #[arg(long, default_value = "json", value_parser = ["json", "svg", "png"])]
+        format: String,
+
+        /// Output file path (writes to stdout if omitted).
+        #[arg(long, short = 'o')]
+        output: Option<std::path::PathBuf>,
+    },
 }
 
 {% for index in indexes %}
@@ -331,6 +392,15 @@ enum {{ index.name | capitalize }}Commands {
         /// Collapse monotypic nodes in tree reports.
         #[arg(long)]
         collapse_monotypic: bool,
+
+        /// Request a `plot_spec` in the API response (needed for `| plot`).
+        #[arg(long)]
+        include_plot_spec: bool,
+
+        /// Display options as a JSON string (e.g. `'{"title":"My plot","width":900}'`).
+        /// Implies `--include-plot-spec`.
+        #[arg(long)]
+        display: Option<String>,
 
         /// Taxonomy source to use (default: ncbi).
         #[arg(long, default_value = "ncbi")]
@@ -650,13 +720,31 @@ fn run(cli: Cli) -> anyhow::Result<()> {
                 include_estimates, file, no_query_column, suppress_divergence_warnings,
                 took, flags,
             } => {
-                let taxon_clause = taxon.as_deref().map(|t| match taxon_filter {
-                    TaxonFilter::Name     => format!("tax_name({t})"),
-                    TaxonFilter::Tree     => format!("tax_tree({t})"),
-                    TaxonFilter::Lineage  => format!("tax_lineage({t})"),
+                let taxon_filter_type_str = match taxon_filter {
+                    TaxonFilter::Name     => "name",
+                    TaxonFilter::Tree     => "tree",
+                    TaxonFilter::Lineage  => "lineage",
+                }.to_string();
+                let taxa_for_post: Vec<String> =
+                    taxon.as_ref().map(|t| vec![t.clone()]).unwrap_or_default();
+                let taxon_clause = taxon.as_deref().map(|t| match taxon_filter_type_str.as_str() {
+                    "tree"    => format!("tax_tree({t})"),
+                    "lineage" => format!("tax_lineage({t})"),
+                    _         => format!("tax_name({t})"),
                 });
 
                 let filter_fragments = cli_filter_fragments(&filter);
+                let structured_attributes: Vec<serde_json::Value> = filter
+                    .chunks(3)
+                    .filter_map(|chunk| {
+                        if chunk.len() < 3 { return None; }
+                        Some(serde_json::json!({
+                            "name":     chunk[0],
+                            "operator": chunk[1],
+                            "value":    chunk[2],
+                        }))
+                    })
+                    .collect();
 
                 // Parse --exclude FIELD TYPE pairs.
                 let mut exclude_ancestral = Vec::new();
@@ -695,6 +783,10 @@ fn run(cli: Cli) -> anyhow::Result<()> {
                 );
 
                 let opts = generated::client::SearchOptions {
+                    taxa: taxa_for_post,
+                    taxon_filter_type: taxon_filter_type_str,
+                    rank_filter: rank.clone(),
+                    attributes: structured_attributes,
                     exclude_ancestral,
                     exclude_descendant,
                     exclude_direct,
@@ -704,7 +796,7 @@ fn run(cli: Cli) -> anyhow::Result<()> {
                     taxonomy,
                     ..Default::default()
                 };
-                let _ = (include_estimates, &fields, &opts); // available for future v3 count enhancements
+                let _ = (include_estimates, &fields); // available for future v3 count enhancements
 
                 if let Some(ref file_path) = file {
                     // ── Batch mode: one count per query in the file ───────────
@@ -724,7 +816,8 @@ fn run(cli: Cli) -> anyhow::Result<()> {
                         let n = generated::client::count(
                             generated::indexes::Index::{{ index.name | capitalize }},
                             batch_q,
-                        )?;
+                            &opts,
+                        )?;;
                         let mut obj = serde_json::json!({ "count": n });
                         if include_query_col {
                             obj["query_index"] = serde_json::Value::Number(qi.into());
@@ -738,6 +831,7 @@ fn run(cli: Cli) -> anyhow::Result<()> {
                     let n = generated::client::count(
                         generated::indexes::Index::{{ index.name | capitalize }},
                         &full_query,
+                        &opts,
                     )?;
                     if took {
                         println!("{n}\ttook=?");
@@ -748,24 +842,31 @@ fn run(cli: Cli) -> anyhow::Result<()> {
             }
             {{ index.name | capitalize }}Commands::Report {
                 report_type, taxon, taxon_filter, filter, rank, query,
-                x, x_opts, y, cat, cat_rank, count_rank, collapse_monotypic, taxonomy,
+                x, x_opts, y, cat, cat_rank, count_rank, collapse_monotypic,
+                include_plot_spec, display, taxonomy,
             } => {
-                let taxon_clause = taxon.as_deref().map(|t| match taxon_filter {
-                    TaxonFilter::Name     => format!("tax_name({t})"),
-                    TaxonFilter::Tree     => format!("tax_tree({t})"),
-                    TaxonFilter::Lineage  => format!("tax_lineage({t})"),
+                let taxon_filter_type_str = match taxon_filter {
+                    TaxonFilter::Name     => "name",
+                    TaxonFilter::Tree     => "tree",
+                    TaxonFilter::Lineage  => "lineage",
+                }.to_string();
+                let taxa_for_post: Vec<String> =
+                    taxon.as_ref().map(|t| vec![t.clone()]).unwrap_or_default();
+                let taxon_clause = taxon.as_deref().map(|t| match taxon_filter_type_str.as_str() {
+                    "tree"    => format!("tax_tree({t})"),
+                    "lineage" => format!("tax_lineage({t})"),
+                    _         => format!("tax_name({t})"),
                 });
-                let filter_fragments: Vec<String> = filter
+                let filter_fragments = cli_filter_fragments(&filter);
+                let structured_attributes: Vec<serde_json::Value> = filter
                     .chunks(3)
                     .filter_map(|chunk| {
                         if chunk.len() < 3 { return None; }
-                        let op_symbol = match chunk[1].as_str() {
-                            "eq" | "==" | "=" => "=", "ne" | "!=" => "!=",
-                            "gt" | ">" => ">", "ge" | ">=" => ">=",
-                            "lt" | "<" => "<", "le" | "<=" => "<=",
-                            other => other,
-                        };
-                        Some(format!("{}{}{}", chunk[0], op_symbol, chunk[2]))
+                        Some(serde_json::json!({
+                            "name":     chunk[0],
+                            "operator": chunk[1],
+                            "value":    chunk[2],
+                        }))
                     })
                     .collect();
                 let full_query = {
@@ -777,12 +878,18 @@ fn run(cli: Cli) -> anyhow::Result<()> {
                     parts.join(" AND ")
                 };
                 let opts = generated::client::SearchOptions {
+                    taxa: taxa_for_post,
+                    taxon_filter_type: taxon_filter_type_str,
+                    rank_filter: rank.clone(),
+                    attributes: structured_attributes,
                     taxonomy,
                     ..Default::default()
                 };
                 let report_opts = generated::client::ReportOptions {
                     x, x_opts, y, cat, cat_rank, count_rank,
                     collapse_monotypic,
+                    include_plot_spec,
+                    display,
                     ..Default::default()
                 };
                 let raw = generated::client::report(
@@ -820,8 +927,186 @@ fn run(cli: Cli) -> anyhow::Result<()> {
             }
         },
 {% endfor %}
+        Commands::Plot { input, output, format } => {
+            let raw = match input {
+                Some(ref path) => std::fs::read_to_string(path)
+                    .with_context(|| format!("reading input file '{}'", path.display()))?,
+                None => {
+                    use std::io::Read;
+                    let mut buf = String::new();
+                    std::io::stdin()
+                        .read_to_string(&mut buf)
+                        .context("reading from stdin")?;
+                    buf
+                }
+            };
+            let vl_json = {{ sdk_name }}::embedded::core::report::plot_spec_to_vega_lite_json(&raw);
+            if let Ok(v) = serde_json::from_str::<serde_json::Value>(&vl_json) {
+                if let Some(err) = v.get("error").and_then(|e| e.as_str()) {
+                    anyhow::bail!("plot error: {err}");
+                }
+            }
+            match format.as_str() {
+                "svg" | "png" => {
+                    let vl_spec = serde_json::from_str::<serde_json::Value>(&vl_json)
+                        .context("parsing Vega-Lite JSON")?;
+                    let rendered = vl_convert_render(&vl_spec, &format)
+                        .context("rendering with vl-convert")?;
+                    match output {
+                        Some(ref path) => std::fs::write(path, &rendered)
+                            .with_context(|| format!("writing {} to '{}'", format, path.display()))?,
+                        None => {
+                            use std::io::Write;
+                            std::io::stdout().write_all(&rendered)
+                                .context("writing to stdout")?;
+                        }
+                    }
+                }
+                _ => {
+                    match output {
+                        Some(ref path) => std::fs::write(path, &vl_json)
+                            .with_context(|| format!("writing output to '{}'", path.display()))?,
+                        None => println!("{vl_json}"),
+                    }
+                }
+            }
+        }
+        Commands::LocalReport { input, report_type, x, y, display, delimiter, format, output } => {
+            let content = match input {
+                Some(ref path) => std::fs::read_to_string(path)
+                    .with_context(|| format!("reading input file '{}'", path.display()))?,
+                None => {
+                    use std::io::Read;
+                    eprintln!("warning: reading from stdin; defaulting to TSV format");
+                    let mut buf = String::new();
+                    std::io::stdin()
+                        .read_to_string(&mut buf)
+                        .context("reading from stdin")?;
+                    buf
+                }
+            };
+            let inferred_delimiter = delimiter.unwrap_or_else(|| {
+                {{ sdk_name }}::embedded::core::local_report::detect_delimiter(
+                    input.as_deref(),
+                )
+            });
+            let delimiter_str = if inferred_delimiter == ',' { "," } else { "\t" };
+            let mut col_map = std::collections::HashMap::new();
+            if let Some(ref xc) = x { col_map.insert("x", xc.as_str()); }
+            if let Some(ref yc) = y { col_map.insert("y", yc.as_str()); }
+            let col_map_json = serde_json::to_string(&col_map)
+                .context("serialising column map")?;
+            let display_str = display.as_deref().unwrap_or("{}");
+            let plot_spec_json = {{ sdk_name }}::embedded::core::local_report::local_plot_spec_json(
+                &content, &report_type, &col_map_json, display_str, delimiter_str,
+            );
+            if let Ok(v) = serde_json::from_str::<serde_json::Value>(&plot_spec_json) {
+                if let Some(err) = v.get("error").and_then(|e| e.as_str()) {
+                    anyhow::bail!("local-report error: {err}");
+                }
+            }
+            let vl_json = {{ sdk_name }}::embedded::core::report::plot_spec_to_vega_lite_json(&plot_spec_json);
+            match format.as_str() {
+                "svg" | "png" => {
+                    let vl_spec = serde_json::from_str::<serde_json::Value>(&vl_json)
+                        .context("parsing Vega-Lite JSON")?;
+                    let rendered = vl_convert_render(&vl_spec, &format)
+                        .context("rendering with vl-convert")?;
+                    match output {
+                        Some(ref path) => std::fs::write(path, &rendered)
+                            .with_context(|| format!("writing {} to '{}'", format, path.display()))?,
+                        None => {
+                            use std::io::Write;
+                            std::io::stdout().write_all(&rendered)
+                                .context("writing to stdout")?;
+                        }
+                    }
+                }
+                _ => {
+                    match output {
+                        Some(ref path) => std::fs::write(path, &vl_json)
+                            .with_context(|| format!("writing output to '{}'", path.display()))?,
+                        None => println!("{vl_json}"),
+                    }
+                }
+            }
+        }
     }
     Ok(())
+}
+
+/// Render a Vega-Lite spec to SVG or PNG bytes.
+///
+/// Tries backends in order:
+///   1. `vl-convert` binary  (`cargo install vl-convert` or bundled in npm package)
+///   2. `python3 -c "import vl_convert …"` (`pip install vl-convert-python`)
+///
+/// Install (choose one):
+///   pip install vl-convert-python          ← simplest, pre-built wheels
+///   npm install -g @vega/vl-convert        ← if you already have Node
+///   cargo install vl-convert               ← if you already have Rust
+fn vl_convert_render(vl_spec: &serde_json::Value, format: &str) -> anyhow::Result<Vec<u8>> {
+    let spec_json = serde_json::to_string(vl_spec).context("serialising Vega-Lite spec")?;
+
+    // --- Backend 1: vl-convert binary ---
+    let subcommand = if format == "svg" { "vl2svg" } else { "vl2png" };
+    let bin_result = std::process::Command::new("vl-convert")
+        .arg(subcommand)
+        .arg("--input")
+        .arg("-")
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn();
+
+    if let Ok(mut child) = bin_result {
+        use std::io::Write;
+        if let Some(ref mut stdin) = child.stdin.take() {
+            stdin.write_all(spec_json.as_bytes()).ok();
+        }
+        let out = child.wait_with_output().context("waiting for vl-convert")?;
+        if out.status.success() {
+            return Ok(out.stdout);
+        }
+        let stderr = String::from_utf8_lossy(&out.stderr);
+        anyhow::bail!("vl-convert failed: {stderr}");
+    }
+
+    // --- Backend 2: vl-convert-python (pip install vl-convert-python) ---
+    let py_expr = if format == "svg" {
+        "import vl_convert as vlc, json, sys; spec=json.loads(sys.stdin.read()); print(vlc.vegalite_to_svg(spec), end='')"
+    } else {
+        "import vl_convert as vlc, json, sys; spec=json.loads(sys.stdin.read()); sys.stdout.buffer.write(vlc.vegalite_to_png(spec))"
+    };
+    let py_result = std::process::Command::new("python3")
+        .args(["-c", py_expr])
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn();
+
+    if let Ok(mut child) = py_result {
+        use std::io::Write;
+        if let Some(ref mut stdin) = child.stdin.take() {
+            stdin.write_all(spec_json.as_bytes()).ok();
+        }
+        let out = child.wait_with_output().context("waiting for python3")?;
+        if out.status.success() {
+            return Ok(out.stdout);
+        }
+        let stderr = String::from_utf8_lossy(&out.stderr);
+        if !stderr.contains("ModuleNotFoundError") && !stderr.contains("No module named") {
+            anyhow::bail!("vl-convert-python failed: {stderr}");
+        }
+    }
+
+    // --- Neither backend found ---
+    anyhow::bail!(
+        "No vl-convert backend found. Install one of:\n\n  \
+         pip install vl-convert-python   (simplest, pre-built wheels)\n  \
+         npm install -g @vega/vl-convert  (if you have Node)\n  \
+         cargo install vl-convert         (if you have Rust)"
+    )
 }
 
 /// Parse a query string and generate a human-readable description.

@@ -3,6 +3,7 @@
 //! Each subcommand lives in its own submodule.  The functions here receive
 //! already-parsed clap arguments and delegate all logic to `core`.
 
+pub mod local_report;
 pub mod new;
 pub mod preview;
 pub mod update;
