@@ -1310,6 +1310,48 @@ ReportBuilder <- R6::R6Class("ReportBuilder",
       invisible(self)
     },
 
+    #' @description Set custom boundaries for a histogram axis (x, y, or cat).
+    #' @details For numeric axes, boundaries define explicit breakpoints. For date
+    #'   axes, provide ISO 8601 date strings or interval names ("week", "month",
+    #'   "quarter").
+    #' @param axis_role Axis to configure — one of \code{"x"}, \code{"y"}, or
+    #'   \code{"cat"}.
+    #' @param boundaries For numeric: numeric vector in ascending order.
+    #'   For date: character vector of ISO 8601 strings or interval names.
+    #' @param labels Optional character vector of custom bucket labels. Count
+    #'   must equal \code{length(boundaries) - 1} for numeric, or the number
+    #'   of resolved intervals for dates.
+    #' @return Invisibly \code{self}.
+    set_axis_boundaries = function(axis_role, boundaries, labels = NULL) {
+      key <- paste0(axis_role, "_opts")
+      if (is.null(private$.doc[[key]])) {
+        private$.doc[[key]] <- list()
+      }
+      private$.doc[[key]]$boundaries <- boundaries
+      if (!is.null(labels)) {
+        private$.doc[[key]]$labels <- labels
+      }
+      invisible(self)
+    },
+
+    #' @description Set date-based intervals for a date-scaled axis.
+    #' @details Convenience method for setting standard calendar intervals on a
+    #'   date axis. Intervals are expanded server-side to boundaries for the
+    #'   current time window.
+    #' @param axis_role Axis to configure — one of \code{"x"}, \code{"y"}, or
+    #'   \code{"cat"}.
+    #' @param intervals Character vector of interval names, e.g.
+    #'   \code{c("week", "month", "quarter")}.
+    #' @return Invisibly \code{self}.
+    set_axis_date_intervals = function(axis_role, intervals) {
+      key <- paste0(axis_role, "_opts")
+      if (is.null(private$.doc[[key]])) {
+        private$.doc[[key]] <- list()
+      }
+      private$.doc[[key]]$boundaries <- list(intervals = as.list(intervals))
+      invisible(self)
+    },
+
     #' @description Set display/presentation options for this report.
     #' @details Accepts either a named list or a YAML string. The value is
     #'   passed as the \code{display} field in the API request and returned

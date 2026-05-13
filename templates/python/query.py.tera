@@ -1462,6 +1462,49 @@ class ReportBuilder:
         self._doc["ranks"] = list(ranks)
         return self
 
+    def set_axis_boundaries(self, axis_role: str, boundaries: list[float | str], *, labels: list[str] | None = None) -> "ReportBuilder":
+        """Set custom boundaries for a histogram axis (x, y, or cat).
+
+        For numeric axes, boundaries define explicit breakpoints. For date axes,
+        provide ISO 8601 date strings or interval names ("week", "month", "quarter").
+
+        Args:
+            axis_role: Axis to configure — one of ``"x"``, ``"y"``, or ``"cat"``.
+            boundaries: For numeric: list of floats in ascending order.
+                For date: list of ISO 8601 strings or interval names.
+            labels: Optional custom bucket labels. Count must equal ``len(boundaries) - 1``
+                for numeric boundaries, or the number of resolved intervals for dates.
+
+        Returns:
+            Self for chaining.
+        """
+        key = f"{axis_role}_opts"
+        if key not in self._doc:
+            self._doc[key] = {}
+        self._doc[key]["boundaries"] = boundaries
+        if labels is not None:
+            self._doc[key]["labels"] = labels
+        return self
+
+    def set_axis_date_intervals(self, axis_role: str, intervals: list[str]) -> "ReportBuilder":
+        """Set date-based intervals for a date-scaled axis.
+
+        Convenience method for setting standard calendar intervals on a date axis.
+        Intervals are expanded server-side to boundaries for the current time window.
+
+        Args:
+            axis_role: Axis to configure — one of ``"x"``, ``"y"``, or ``"cat"``.
+            intervals: List of interval names, e.g. ``["week", "month", "quarter"]``.
+
+        Returns:
+            Self for chaining.
+        """
+        key = f"{axis_role}_opts"
+        if key not in self._doc:
+            self._doc[key] = {}
+        self._doc[key]["boundaries"] = {"intervals": intervals}
+        return self
+
     def set_display(self, value: "dict[str, Any] | str") -> "ReportBuilder":
         """Set display/presentation options for this report.
 

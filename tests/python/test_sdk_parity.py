@@ -415,6 +415,16 @@ CANONICAL_REPORT_BUILDER_METHODS = {
     "set_context": {"python_name": "set_context", "js_name": "setContext", "r_name": "set_context"},
     "add_ring": {"python_name": "add_ring", "js_name": "addRing", "r_name": "add_ring"},
     "set_arc_ranks": {"python_name": "set_arc_ranks", "js_name": "setArcRanks", "r_name": "set_arc_ranks"},
+    "set_axis_boundaries": {
+        "python_name": "set_axis_boundaries",
+        "js_name": "setAxisBoundaries",
+        "r_name": "set_axis_boundaries",
+    },
+    "set_axis_date_intervals": {
+        "python_name": "set_axis_date_intervals",
+        "js_name": "setAxisDateIntervals",
+        "r_name": "set_axis_date_intervals",
+    },
 }
 
 # ── Introspection functions ──────────────────────────────────────────────────

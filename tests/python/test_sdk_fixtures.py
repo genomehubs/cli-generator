@@ -536,6 +536,27 @@ YAML_FIXTURE_BUILDERS: dict[str, tuple[Any, Any]] = {
         lambda: QueryBuilder("taxon").set_taxa(["Primates"], filter_type="ancestor").set_rank("species"),
         lambda: ReportBuilder("histogram").set_x("genome_size").set_rank("species"),
     ),
+    "histogram_numeric_boundaries": (
+        lambda: QueryBuilder("taxon").set_taxa(["Mammalia"]).set_rank("species"),
+        lambda: ReportBuilder("histogram")
+        .set_x("genome_size")
+        .set_rank("species")
+        .set_axis_boundaries("x", [1e6, 10e6, 100e6, 1e9]),
+    ),
+    "histogram_date_intervals": (
+        lambda: QueryBuilder("assembly"),
+        lambda: ReportBuilder("histogram")
+        .set_x("release_date")
+        .set_rank("species")
+        .set_axis_date_intervals("x", ["week", "month", "quarter"]),
+    ),
+    "histogram_boundaries_custom_labels": (
+        lambda: QueryBuilder("taxon").set_rank("species"),
+        lambda: ReportBuilder("histogram")
+        .set_x("genome_size")
+        .set_rank("species")
+        .set_axis_boundaries("x", [1e6, 10e6, 100e6, 1e9], labels=[">1M-10M", ">10M-100M", ">100M-1B", ">1B+"]),
+    ),
 }
 
 # ── Expected YAML substrings per YAML fixture ─────────────────────────────────
@@ -546,6 +567,18 @@ FIXTURE_EXPECTED_YAML_PARTS: dict[str, dict[str, list[str]]] = {
     "report_histogram_primates": {
         "query_yaml": ["taxa:", "Primates"],
         "report_yaml": ["report: histogram", "x: genome_size"],
+    },
+    "histogram_numeric_boundaries": {
+        "query_yaml": ["taxa:", "Mammalia"],
+        "report_yaml": ["report: histogram", "x: genome_size", "boundaries:", "1000000"],
+    },
+    "histogram_date_intervals": {
+        "query_yaml": ["index: assembly"],
+        "report_yaml": ["report: histogram", "x: release_date", "intervals:", "week"],
+    },
+    "histogram_boundaries_custom_labels": {
+        "query_yaml": ["index: taxon", "rank: species"],
+        "report_yaml": ["report: histogram", "boundaries:", "labels:", ">1M-10M"],
     },
 }
 
@@ -574,6 +607,105 @@ class TestYamlFixtures:
         expected = FIXTURE_EXPECTED_YAML_PARTS.get(fixture_name, {}).get("report_yaml", [])
         for part in expected:
             assert part in report_yaml, f"{fixture_name}: expected '{part}' in report_yaml — got: {report_yaml}"
+
+
+class TestReportBuilderBoundaries:
+    """Test set_axis_boundaries and set_axis_date_intervals methods."""
+
+    def test_set_axis_boundaries_numeric(self):
+        """Verify set_axis_boundaries() correctly sets numeric boundaries."""
+        rb = ReportBuilder("histogram").set_x("genome_size").set_axis_boundaries("x", [1e6, 10e6, 100e6])
+        yaml = rb.to_report_yaml()
+
+        assert "boundaries:" in yaml
+        assert "1000000" in yaml or "1e6" in yaml or "1000000.0" in yaml
+
+    def test_set_axis_boundaries_with_labels(self):
+        """Verify set_axis_boundaries() correctly sets custom labels."""
+        labels = ["Small", "Medium", "Large"]
+        rb = ReportBuilder("histogram").set_x("genome_size").set_axis_boundaries("x", [1e6, 10e6, 100e6], labels=labels)
+        yaml = rb.to_report_yaml()
+
+        assert "boundaries:" in yaml
+        assert "labels:" in yaml
+        for label in labels:
+            assert label in yaml
+
+    def test_set_axis_date_intervals(self):
+        """Verify set_axis_date_intervals() correctly sets date intervals."""
+        intervals = ["week", "month", "quarter"]
+        rb = ReportBuilder("histogram").set_x("release_date").set_axis_date_intervals("x", intervals)
+        yaml = rb.to_report_yaml()
+
+        assert "boundaries:" in yaml
+        assert "intervals:" in yaml
+        for interval in intervals:
+            assert interval in yaml
+
+    def test_set_axis_boundaries_multiple_axes(self):
+        """Verify boundaries can be set on different axes."""
+        rb = (
+            ReportBuilder("scatter")
+            .set_x("genome_size")
+            .set_y("chromosome_count")
+            .set_axis_boundaries("x", [1e6, 10e6, 100e6])
+            .set_axis_boundaries("y", [10, 50, 100])
+        )
+        yaml = rb.to_report_yaml()
+
+        assert "x_opts:" in yaml
+        assert "y_opts:" in yaml
+        assert "boundaries:" in yaml
+
+    def test_set_axis_boundaries_cat_axis(self):
+        """Verify boundaries can be set on category axis."""
+        rb = ReportBuilder("histogram").set_cat("assembly_level").set_axis_boundaries("cat", ["value1", "value2"])
+        yaml = rb.to_report_yaml()
+
+        assert "cat_opts:" in yaml
+        assert "boundaries:" in yaml
+
+    def test_set_axis_boundaries_chaining(self):
+        """Verify set_axis_boundaries() returns self for method chaining."""
+        rb = ReportBuilder("histogram")
+        result = rb.set_x("genome_size").set_axis_boundaries("x", [1e6, 10e6, 100e6])
+
+        assert result is rb
+        yaml = rb.to_report_yaml()
+        assert "boundaries:" in yaml
+
+    def test_set_axis_date_intervals_chaining(self):
+        """Verify set_axis_date_intervals() returns self for method chaining."""
+        rb = ReportBuilder("histogram")
+        result = rb.set_x("release_date").set_axis_date_intervals("x", ["week", "month"])
+
+        assert result is rb
+        yaml = rb.to_report_yaml()
+        assert "intervals:" in yaml
+
+    def test_set_axis_boundaries_replaces_previous(self):
+        """Verify setting boundaries twice replaces the previous value."""
+        rb = ReportBuilder("histogram")
+        rb.set_x("genome_size")
+        rb.set_axis_boundaries("x", [1e6, 10e6])
+        rb.set_axis_boundaries("x", [1e3, 1e6, 1e9])
+
+        yaml = rb.to_report_yaml()
+        # Should contain the newer values
+        assert "1000000" in yaml or "1e6" in yaml
+        # Count occurrences of "boundaries:" to ensure there's only one
+        assert yaml.count("boundaries:") == 1
+
+    def test_set_axis_date_intervals_replaces_numeric_boundaries(self):
+        """Verify date intervals replaces previously set numeric boundaries."""
+        rb = ReportBuilder("histogram").set_x("release_date")
+        rb.set_axis_boundaries("x", [1e6, 10e6])
+        rb.set_axis_date_intervals("x", ["week", "month"])
+
+        yaml = rb.to_report_yaml()
+        assert "intervals:" in yaml
+        # boundaries should still be there but now contain intervals
+        assert "boundaries:" in yaml
 
 
 if __name__ == "__main__":

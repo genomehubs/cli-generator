@@ -453,6 +453,154 @@ fn validate_report_impl(report_yaml: &str, field_meta_json: &str) -> Result<Vec<
     Ok(errors)
 }
 
+/// Validate custom histogram boundaries in axis options.
+///
+/// Checks:
+/// - Numeric boundaries are sorted in ascending order
+/// - Date boundaries (explicit) are valid ISO 8601 and sorted
+/// - Label count matches bucket count if provided
+pub fn validate_axis_boundaries(
+    axis_role: &str,
+    axis_value: &serde_json::Value,
+) -> Result<(), Vec<String>> {
+    let mut errors = Vec::new();
+
+    // Check if boundaries are specified
+    let boundaries = match axis_value.get("boundaries") {
+        Some(b) => b,
+        None => return Ok(()),
+    };
+
+    // Numeric boundaries
+    if let Some(numeric_vals) = boundaries.as_array() {
+        // All numeric: check sorted
+        if numeric_vals.iter().all(|v| v.is_number()) {
+            let values: Vec<f64> = numeric_vals.iter().filter_map(|v| v.as_f64()).collect();
+
+            if values.len() != numeric_vals.len() {
+                errors.push(format!(
+                    "axis {} boundaries: mixed numeric and non-numeric values",
+                    axis_role
+                ));
+            } else {
+                // Check sorted
+                for i in 1..values.len() {
+                    if values[i] <= values[i - 1] {
+                        errors.push(format!(
+                            "axis {} boundaries must be strictly increasing; got {} after {}",
+                            axis_role,
+                            values[i],
+                            values[i - 1]
+                        ));
+                    }
+                }
+            }
+        }
+    } else if let Some(obj) = boundaries.as_object() {
+        // Date boundaries with explicit timestamps
+        if let Some(explicit) = obj.get("explicit").and_then(|e| e.as_array()) {
+            let mut dates = Vec::new();
+            for (i, date_str) in explicit.iter().enumerate() {
+                if let Some(s) = date_str.as_str() {
+                    // Validate ISO 8601 format (YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS)
+                    // Simple validation: check format is YYYY-MM-DD with numeric parts
+                    if s.len() >= 10 {
+                        let date_part = &s[..10];
+                        if !is_valid_iso_date(date_part) {
+                            errors.push(format!(
+                                "axis {} date boundary [{}]: invalid date format (expected YYYY-MM-DD), got '{}'",
+                                axis_role, i, s
+                            ));
+                        } else {
+                            dates.push(date_part.to_string());
+                        }
+                    } else {
+                        errors.push(format!(
+                            "axis {} date boundary [{}]: invalid date format (expected YYYY-MM-DD), got '{}'",
+                            axis_role, i, s
+                        ));
+                    }
+                } else {
+                    errors.push(format!(
+                        "axis {} date boundary [{}]: expected string",
+                        axis_role, i
+                    ));
+                }
+            }
+
+            // Check dates are sorted (lexicographic since YYYY-MM-DD format sorts correctly)
+            for i in 1..dates.len() {
+                if dates[i] <= dates[i - 1] {
+                    errors.push(format!(
+                        "axis {} dates must be strictly increasing; got {} after {}",
+                        axis_role,
+                        dates[i],
+                        dates[i - 1]
+                    ));
+                }
+            }
+        }
+    }
+
+    // Check labels if provided
+    if let Some(labels) = axis_value.get("labels").and_then(|l| l.as_array()) {
+        // Calculate expected bucket count
+        let expected_buckets = if let Some(numeric_vals) = boundaries.as_array() {
+            if numeric_vals.iter().all(|v| v.is_number()) {
+                numeric_vals.len().saturating_sub(1)
+            } else {
+                0
+            }
+        } else if let Some(obj) = boundaries.as_object() {
+            if let Some(explicit) = obj.get("explicit").and_then(|e| e.as_array()) {
+                explicit.len().saturating_sub(1)
+            } else {
+                0
+            }
+        } else {
+            0
+        };
+
+        if expected_buckets > 0 && labels.len() != expected_buckets {
+            errors.push(format!(
+                "axis {} labels mismatch: provided {} labels but have {} buckets",
+                axis_role,
+                labels.len(),
+                expected_buckets
+            ));
+        }
+    }
+
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(errors)
+    }
+}
+
+/// Simple validation of ISO 8601 date format (YYYY-MM-DD).
+///
+/// Does not perform full date validation (e.g., Feb 30), just format check.
+fn is_valid_iso_date(date_str: &str) -> bool {
+    if date_str.len() != 10 {
+        return false;
+    }
+
+    let parts: Vec<&str> = date_str.split('-').collect();
+    if parts.len() != 3 {
+        return false;
+    }
+
+    // Check format: digits-digits-digits (YYYY-MM-DD)
+    if parts[0].len() != 4 || parts[1].len() != 2 || parts[2].len() != 2 {
+        return false;
+    }
+
+    parts[0].chars().all(|c| c.is_numeric())
+        && parts[1].chars().all(|c| c.is_numeric())
+        && parts[2].chars().all(|c| c.is_numeric())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

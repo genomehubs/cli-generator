@@ -91,6 +91,24 @@ pub enum SortMode {
     Alpha,
 }
 
+/// Custom boundaries for histogram binning.
+///
+/// For numeric axes: explicit breakpoints defining bucket ranges.
+/// For date axes: calendar intervals or explicit ISO 8601 timestamps.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum Boundaries {
+    /// Numeric boundaries: sorted list of breakpoints
+    Numeric(Vec<f64>),
+    /// Date boundaries: intervals, explicit timestamps, or both
+    Date {
+        #[serde(default)]
+        intervals: Option<Vec<String>>, // ["day", "week", "month", etc.]
+        #[serde(default)]
+        explicit: Option<Vec<String>>, // ISO 8601 timestamps ["2020-01-01", ...]
+    },
+}
+
 /// Per-axis display and aggregation options.
 ///
 /// **Numeric axis format** (either `;` or `,` separated):
@@ -126,6 +144,12 @@ pub struct AxisOpts {
     pub scale: Scale,
     pub sort: SortMode,
     pub interval: Option<DateInterval>,
+    /// Custom boundaries for binning (new)
+    #[serde(default)]
+    pub boundaries: Option<Boundaries>,
+    /// Custom labels for boundary buckets (new)
+    #[serde(default)]
+    pub labels: Option<Vec<String>>,
 }
 
 impl Default for AxisOpts {
@@ -139,6 +163,8 @@ impl Default for AxisOpts {
             scale: Scale::Linear,
             sort: SortMode::Count,
             interval: None,
+            boundaries: None,
+            labels: None,
         }
     }
 }
@@ -495,6 +521,8 @@ impl AxisInput {
                 scale,
                 sort: self.sort.unwrap_or_default(),
                 interval: self.interval,
+                boundaries: None,
+                labels: None,
             },
         }
     }

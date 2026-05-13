@@ -1638,6 +1638,43 @@ class ReportBuilder {
   }
 
   /**
+   * Set custom boundaries for a histogram axis (x, y, or cat).
+   *
+   * For numeric axes, boundaries define explicit breakpoints. For date axes,
+   * provide ISO 8601 date strings or interval names ("week", "month", "quarter").
+   *
+   * @param {string} axisRole - Axis to configure: "x", "y", or "cat".
+   * @param {(number|string)[]} boundaries - For numeric: floats in ascending order.
+   *                                          For date: ISO 8601 strings or interval names.
+   * @param {object} [opts] - Options: { labels: string[] }
+   * @returns {this}
+   */
+  setAxisBoundaries(axisRole, boundaries, opts = {}) {
+    const key = `${axisRole}_opts`;
+    if (!(key in this._doc)) this._doc[key] = {};
+    this._doc[key].boundaries = boundaries;
+    if (opts.labels != null) this._doc[key].labels = opts.labels;
+    return this;
+  }
+
+  /**
+   * Set date-based intervals for a date-scaled axis.
+   *
+   * Convenience method for setting standard calendar intervals on a date axis.
+   * Intervals are expanded server-side to boundaries for the current time window.
+   *
+   * @param {string} axisRole - Axis to configure: "x", "y", or "cat".
+   * @param {string[]} intervals - Interval names, e.g. ["week", "month", "quarter"].
+   * @returns {this}
+   */
+  setAxisDateIntervals(axisRole, intervals) {
+    const key = `${axisRole}_opts`;
+    if (!(key in this._doc)) this._doc[key] = {};
+    this._doc[key].boundaries = { intervals };
+    return this;
+  }
+
+  /**
    * Set display/presentation options for this report.
    * Accepts either an object or a YAML string.
    * @param {object|string} value - Display options (title, width, height, colorScheme, etc.)
