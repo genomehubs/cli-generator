@@ -57,6 +57,7 @@ pub mod lookup;
 pub mod lookup_batch;
 pub mod metadata;
 pub mod phylopic;
+pub mod positional;
 pub mod record;
 pub mod record_batch;
 pub mod report;

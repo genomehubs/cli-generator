@@ -390,6 +390,66 @@
         }
       }
     },
+    "/api/v3/positional": {
+      "post": {
+        "tags": [
+          "Data"
+        ],
+        "summary": "Generate a positional report (oxford / ribbon / painting)",
+        "description": "Returns positional comparison data for one or more assemblies. Supports oxford (2-assembly dot-plot), ribbon (N-assembly synteny), and painting (single-assembly chromosome map).\n\n`query_yaml` is **optional**. When omitted, features are filtered by the `group_by` value (used as `primary_type`) automatically.\n\nSet `index: feature` in `query_yaml` to apply attribute filters directly to the feature index (e.g. `sequence_length >= 1000000`).\nSet `index: taxon` + `taxa:` to restrict features to a given taxon subtree.",
+        "operationId": "post_positional",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PositionalRequest"
+              },
+              "examples": {
+                "Oxford — feature attribute filter": {
+                  "summary": "Oxford dot-plot filtered to large scaffolds only",
+                  "value": {
+                    "positional_yaml": "report: oxford\ngroup_by: busco_gene\nassemblies:\n  - GCA_905147045.1\n  - GCA_902806685.2\n",
+                    "query_yaml": "index: feature\nattributes:\n  - name: sequence_length\n    operator: ge\n    value: \"1000000\"\n"
+                  }
+                },
+                "Oxford — no query filter": {
+                  "summary": "Oxford dot-plot, features filtered by group_by only",
+                  "value": {
+                    "positional_yaml": "report: oxford\ngroup_by: busco_gene\nassemblies:\n  - GCA_905147045.1\n  - GCA_902806685.2\nwindow_size: 1000000\n"
+                  }
+                },
+                "Oxford — taxon filter": {
+                  "summary": "Oxford dot-plot with taxon subtree filter",
+                  "value": {
+                    "positional_yaml": "report: oxford\ngroup_by: busco_gene\nassemblies:\n  - GCA_905147045.1\n  - GCA_902806685.2\nwindow_size: 1000000\n",
+                    "query_yaml": "index: taxon\ntaxa:\n  - Lepidoptera\ntaxon_filter_type: tree\n"
+                  }
+                },
+                "Painting": {
+                  "summary": "Chromosome painting coloured by BUSCO status",
+                  "value": {
+                    "positional_yaml": "report: painting\ngroup_by: busco_gene\nassemblies:\n  - GCA_905147045.1\ncat: busco_status\nwindow_size: 500000\n"
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Positional report data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PositionalResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v3/record": {
       "get": {
         "tags": [
@@ -1002,9 +1062,17 @@
           "indices",
           "taxonomies",
           "ranks",
-          "versions"
+          "versions",
+          "feature_types"
         ],
         "properties": {
+          "feature_types": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Distinct `feature_type` attribute values from the feature index."
+          },
           "indices": {
             "type": "array",
             "items": {
@@ -1193,6 +1261,37 @@
           "Descendant",
           "Ancestral"
         ]
+      },
+      "PositionalRequest": {
+        "type": "object",
+        "required": [
+          "positional_yaml"
+        ],
+        "properties": {
+          "positional_yaml": {
+            "type": "string"
+          },
+          "query_yaml": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Optional query filter.  When omitted features are filtered only by\n`group_by` (as `primary_type`) and the `assemblies` list."
+          }
+        }
+      },
+      "PositionalResponse": {
+        "type": "object",
+        "required": [
+          "status",
+          "report"
+        ],
+        "properties": {
+          "report": {},
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          }
+        }
       },
       "RanksResponse": {
         "type": "object",

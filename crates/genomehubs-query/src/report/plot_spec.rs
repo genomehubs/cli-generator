@@ -30,6 +30,9 @@ pub enum PlotReportType {
     Tree,
     Map,
     Arc,
+    Oxford,
+    Ribbon,
+    Painting,
 }
 
 impl PlotReportType {
@@ -46,6 +49,9 @@ impl PlotReportType {
             "tree" => Some(Self::Tree),
             "map" => Some(Self::Map),
             "arc" => Some(Self::Arc),
+            "oxford" => Some(Self::Oxford),
+            "ribbon" => Some(Self::Ribbon),
+            "painting" => Some(Self::Painting),
             _ => None,
         }
     }

@@ -185,7 +185,10 @@ fn validate_query_impl(
     // Validate index exists
     if query.index.is_empty() {
         errors.push("index not specified".to_string());
-    } else if !matches!(query.index.as_str(), "taxon" | "assembly" | "sample") {
+    } else if !matches!(
+        query.index.as_str(),
+        "taxon" | "assembly" | "sample" | "feature"
+    ) {
         errors.push(format!("unknown search index '{}'", query.index));
     }
 

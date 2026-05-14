@@ -477,6 +477,7 @@ impl super::SearchIndex {
             super::SearchIndex::Taxon => "taxon",
             super::SearchIndex::Assembly => "assembly",
             super::SearchIndex::Sample => "sample",
+            super::SearchIndex::Feature => "feature",
         }
     }
 }

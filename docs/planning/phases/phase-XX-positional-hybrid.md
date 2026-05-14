@@ -5,9 +5,12 @@
 **Estimated scope:** 1 new Rust parser module (`parse_local/`), SDK `hybrid_positional()` method,
 `positional_from_features()` pure computation function; no new API endpoints
 
-> **Deferred** — Phase 11 is deferred for GoaT. This phase must wait until Phase 11 lands.
-> The non-positional hybrid workflow (TSV/CSV local reports, annotation merging) is in Phase 13
-> and does not depend on this phase.
+> **Waiting on Phase 18 completion.** Phase 11 core is implemented (server is live), but
+> `POST /api/v3/positional` is gated on a v2 feature index (Phase 18). The hybrid
+> workflow POSTs remote assembly data through the same endpoint; it cannot be fully
+> tested against production data until the v2 index and Phase 18 endpoint gate are in
+> place. Local-file parsing (`parse_local/`) can be developed and unit-tested
+> independently without the v2 index.
 
 ---
 
@@ -318,7 +321,7 @@ const result = await builder
     localFiles: [
       {
         busco: tsvContent, // string (read by caller — WASM cannot access fs)
-        fai: faiContent,   // string, optional
+        fai: faiContent, // string, optional
         assemblyId: "my_assembly",
       },
     ],
@@ -377,29 +380,29 @@ crates/genomehubs-query/src/report/
 
 ## Files to Modify
 
-| File                                       | Change                                                                                         |
-| ------------------------------------------ | ---------------------------------------------------------------------------------------------- |
-| `crates/genomehubs-query/src/lib.rs`       | WASM exports: `parse_busco_tsv`, `parse_fai`, `parse_lengths_tsv`, `positional_from_features` |
-| `src/lib.rs`                               | PyO3 exports: same                                                                             |
-| `templates/r/lib.rs.tera`                  | extendr exports                                                                                |
-| `templates/r/extendr-wrappers.R.tera`      | R wrappers                                                                                     |
-| `python/cli_generator/query.py`            | `hybrid_positional()` method on `QueryBuilder`                                                 |
-| `templates/python/query.py.tera`           | Mirror                                                                                         |
-| `templates/js/query.js`                    | `hybridPositional()` method                                                                    |
-| `templates/r/query.R`                      | `hybrid_positional()` method                                                                   |
+| File                                  | Change                                                                                        |
+| ------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `crates/genomehubs-query/src/lib.rs`  | WASM exports: `parse_busco_tsv`, `parse_fai`, `parse_lengths_tsv`, `positional_from_features` |
+| `src/lib.rs`                          | PyO3 exports: same                                                                            |
+| `templates/r/lib.rs.tera`             | extendr exports                                                                               |
+| `templates/r/extendr-wrappers.R.tera` | R wrappers                                                                                    |
+| `python/cli_generator/query.py`       | `hybrid_positional()` method on `QueryBuilder`                                                |
+| `templates/python/query.py.tera`      | Mirror                                                                                        |
+| `templates/js/query.js`               | `hybridPositional()` method                                                                   |
+| `templates/r/query.R`                 | `hybrid_positional()` method                                                                  |
 
 ---
 
 ## Scope Boundaries
 
-| In scope                                            | Out of scope                                         |
-| --------------------------------------------------- | ---------------------------------------------------- |
-| `LocalFeatureSet` type + all parsers                | Parsing BAM/CRAM alignment files                     |
-| `positional_from_features()` all-local mode         | Server-side local data upload                        |
-| `hybrid_positional()` remote + local mix            | Streaming/large file support                         |
-| `hybrid_positional()` SDK method (Python/JS/R)      | Custom sequence ordering algorithms                  |
-| `.fai` and lengths TSV length sources               | Building a standalone BUSCO pipeline                 |
-| Derived-lengths fallback with warning               |                                                      |
+| In scope                                       | Out of scope                         |
+| ---------------------------------------------- | ------------------------------------ |
+| `LocalFeatureSet` type + all parsers           | Parsing BAM/CRAM alignment files     |
+| `positional_from_features()` all-local mode    | Server-side local data upload        |
+| `hybrid_positional()` remote + local mix       | Streaming/large file support         |
+| `hybrid_positional()` SDK method (Python/JS/R) | Custom sequence ordering algorithms  |
+| `.fai` and lengths TSV length sources          | Building a standalone BUSCO pipeline |
+| Derived-lengths fallback with warning          |                                      |
 
 ---
 

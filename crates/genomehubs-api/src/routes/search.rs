@@ -191,6 +191,7 @@ pub async fn post_search(
                 genomehubs_query::query::SearchIndex::Taxon => "taxon",
                 genomehubs_query::query::SearchIndex::Assembly => "assembly",
                 genomehubs_query::query::SearchIndex::Sample => "sample",
+                genomehubs_query::query::SearchIndex::Feature => "feature",
             };
 
             let offset = (params.page.saturating_sub(1)) * params.size;
@@ -293,6 +294,7 @@ pub async fn post_search(
             genomehubs_query::query::SearchIndex::Taxon => "taxon",
             genomehubs_query::query::SearchIndex::Assembly => "assembly",
             genomehubs_query::query::SearchIndex::Sample => "sample",
+            genomehubs_query::query::SearchIndex::Feature => "feature",
         };
 
         let es_hits = raw
@@ -340,6 +342,7 @@ pub async fn post_search(
         genomehubs_query::query::SearchIndex::Taxon => "taxon",
         genomehubs_query::query::SearchIndex::Assembly => "assembly",
         genomehubs_query::query::SearchIndex::Sample => "sample",
+        genomehubs_query::query::SearchIndex::Feature => "feature",
     };
     let fields_slice: Option<Vec<&str>> = if query.attributes.fields.is_empty() {
         None
@@ -406,6 +409,7 @@ pub async fn post_search(
             genomehubs_query::query::SearchIndex::Taxon => "taxon",
             genomehubs_query::query::SearchIndex::Assembly => "assembly",
             genomehubs_query::query::SearchIndex::Sample => "sample",
+            genomehubs_query::query::SearchIndex::Feature => "feature",
         };
         if let Some(field) = params.resolve_id_field(index_str) {
             super::inject_id_set_filter(&mut body, &field, ids);

@@ -953,6 +953,65 @@ QueryBuilder <- R6::R6Class(
       jsonlite::fromJSON(raw_text, simplifyVector = FALSE)
     },
 
+    #' @description Run a positional report (oxford / ribbon / painting).
+    #' @param report Sub-type: "oxford", "ribbon", or "painting".
+    #' @param group_by Attribute key for shared marker (e.g. "busco_gene").
+    #' @param assemblies Character vector of assembly IDs.
+    #' @param feature_type Optional primary_type filter.
+    #' @param window_size Regional binning in bp (NULL = individual positions).
+    #' @param reorient Auto-orient comparison sequences (default TRUE).
+    #' @param max_features Hard cap on features fetched (default 10000).
+    #' @param cat Optional category field for colour.
+    #' @param cat_opts Category axis options string (list values explicitly).
+    #' @return Raw report list from the response.
+    positional = function(report, group_by, assemblies, feature_type = NULL,
+                          window_size = NULL, reorient = TRUE, max_features = 10000L,
+                          cat = NULL, cat_opts = NULL) {
+      doc <- list(report = report, group_by = group_by, assemblies = as.list(assemblies))
+      if (!is.null(feature_type)) doc$feature_type <- feature_type
+      if (!is.null(window_size)) doc$window_size <- as.integer(window_size)
+      if (!reorient) doc$reorient <- FALSE
+      if (max_features != 10000L) doc$max_features <- as.integer(max_features)
+      if (!is.null(cat)) doc$cat <- cat
+      if (!is.null(cat_opts)) doc$cat_opts <- cat_opts
+
+      positional_yaml <- yaml::as.yaml(doc)
+      payload <- jsonlite::toJSON(list(
+        query_yaml = self$to_query_yaml(),
+        positional_yaml = positional_yaml
+      ), auto_unbox = TRUE)
+      url <- paste0(private$api_base_url, "/", private$api_version, "/positional")
+      resp <- httr::POST(url, body = payload, httr::content_type_json(), httr::accept("application/json"))
+      httr::stop_for_status(resp)
+      raw_text <- httr::content(resp, as = "text", encoding = "UTF-8")
+      data <- jsonlite::fromJSON(raw_text, simplifyVector = FALSE)
+      if (!is.null(data$report)) data$report else data
+    },
+
+    #' @description Oxford dot-plot (exactly 2 assemblies). Wrapper around positional().
+    oxford = function(group_by, assemblies, feature_type = NULL, window_size = NULL,
+                      reorient = TRUE, max_features = 10000L, cat = NULL, cat_opts = NULL) {
+      self$positional("oxford", group_by, assemblies, feature_type = feature_type,
+                      window_size = window_size, reorient = reorient,
+                      max_features = max_features, cat = cat, cat_opts = cat_opts)
+    },
+
+    #' @description Ribbon/synteny report (N >= 2 assemblies). Wrapper around positional().
+    ribbon = function(group_by, assemblies, feature_type = NULL, window_size = NULL,
+                      reorient = TRUE, max_features = 10000L, cat = NULL, cat_opts = NULL) {
+      self$positional("ribbon", group_by, assemblies, feature_type = feature_type,
+                      window_size = window_size, reorient = reorient,
+                      max_features = max_features, cat = cat, cat_opts = cat_opts)
+    },
+
+    #' @description Chromosome painting (1 assembly). Wrapper around positional().
+    painting = function(group_by, assembly, feature_type = NULL, window_size = NULL,
+                        max_features = 10000L, cat = NULL, cat_opts = NULL) {
+      self$positional("painting", group_by, list(assembly), feature_type = feature_type,
+                      window_size = window_size, max_features = max_features,
+                      cat = cat, cat_opts = cat_opts)
+    },
+
     #' @description Lookup records by alternative identifiers (autocomplete/search-as-you-type).
     #' @param search_term Search term for lookup (required).
     #' @param result Result type (taxon|assembly|sample); defaults to index type.

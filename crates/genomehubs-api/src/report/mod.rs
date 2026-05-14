@@ -13,4 +13,5 @@ pub mod arc;
 pub mod bounds;
 pub mod filter_expr;
 pub mod pipeline;
+pub mod positional;
 pub mod report_types;

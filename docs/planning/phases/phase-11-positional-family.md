@@ -1,17 +1,45 @@
 # Phase 11: Positional Report Family (Oxford / Ribbon / Painting)
 
-> **DEFERRED** — This phase requires the positional family endpoint which does not
-> apply to GoaT. Phase 12 (PlotSpec infrastructure) and Phase 13 (hybrid local/remote
-> reports) have been rewritten to proceed **without** this dependency.
+> **Status: Core implementation complete.**
+> `POST /api/v3/positional` is registered and serving. `feature_query.rs` and
+> `layout.rs` are implemented. SDK methods (`positional()`, `oxford()`, `ribbon()`,
+> `painting()`) exist in Python, JS, and R templates and in `python/cli_generator/`.
 >
-> When positional support is needed, implement Phase 11 before extending Phase 12 with
-> Oxford/ribbon/painting `PlotReportType` variants and the Phase 11 `PlotSpec` renderers.
-> The positional-hybrid SDK workflow is documented in
-> [phase-XX-positional-hybrid.md](phase-XX-positional-hybrid.md).
+> **Blocking gap:** The endpoint requires a v2 feature index (Phase 18). On v1 indices
+> it falls back to the two-stage `resolve_sequence_ids_from_filters` workaround, which
+> Phase 18 Step A will replace with a hard gate and structured error.
+>
+> **Remaining wiring gaps** (see section "Wiring Status" below):
+>
+> - No CLI subcommand: `positional`/`oxford`/`ribbon`/`painting` are not in the
+>   generated project YAML config. Users must call the SDK methods directly or POST
+>   manually.
+> - `PositionalSpec` does not yet include Phase 18 fields (`filter`, `regions`,
+>   `max_connections_per_group`).
+> - `PositionalReportType` does not yet include `Circos`.
+> - Phase XX (local hybrid) not started; depends on this phase being fully wired.
 
 **Depends on:** Phase 5 (es_client, bounds, pipeline), Phase 6 (report route pattern)
-**Blocks:** phase-XX-positional-hybrid (hybrid mode extends this endpoint)
-**Estimated scope:** 1 new endpoint, ~4 new Rust files, SDK method additions
+**Blocks:** Phase 18 (v2 index, chain queries, regions, circos), Phase XX (hybrid mode)
+**Estimated scope:** core done; residual work is CLI wiring + Phase 18 spec fields
+
+---
+
+## Wiring Status
+
+| Component                                                            | Status         | Notes                                              |
+| -------------------------------------------------------------------- | -------------- | -------------------------------------------------- |
+| `POST /api/v3/positional` route                                      | ✅ Implemented | `crates/genomehubs-api/src/routes/positional.rs`   |
+| `feature_query.rs`                                                   | ✅ Implemented | v1 attribute queries; v2 rewrite is Phase 18       |
+| `layout.rs`                                                          | ✅ Implemented | Sequence ordering, offset, windowing               |
+| Python SDK `positional()` / `oxford()` / `ribbon()` / `painting()`   | ✅ Implemented | `python/cli_generator/query.py` + template         |
+| JS template equivalents                                              | ✅ Implemented | `templates/js/query.js`                            |
+| R template equivalents                                               | ✅ Implemented | `templates/r/query.R`                              |
+| `PositionalSpec` Rust type                                           | ✅ Implemented | `crates/genomehubs-query/src/report/positional.rs` |
+| CLI subcommand (`goat-cli positional`)                               | ❌ Missing     | No config YAML entry; not generated                |
+| `filter`, `regions`, `max_connections_per_group` in `PositionalSpec` | ❌ Missing     | Added in Phase 18                                  |
+| `Circos` variant in `PositionalReportType`                           | ❌ Missing     | Added in Phase 18                                  |
+| Phase XX hybrid (`positional_from_features()`, `parse_local/`)       | ❌ Not started | Depends on Phase 18 gate                           |
 
 ---
 

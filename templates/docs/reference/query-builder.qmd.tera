@@ -1542,6 +1542,172 @@ final <- combine_builders(id_qb, attr_qb)
 
 ---
 
+## Positional reports (Oxford / Ribbon / Painting)
+
+Positional reports compare genomic marker positions across one or more assemblies.
+They POST to `/v3/positional` and require a **v2 feature index** (see
+`feature_index_version` in `/v3/status`).
+
+---
+
+### `positional(report, group_by, assemblies, *, feature_type=None, window_size=None, reorient=True, max_features=10000, cat=None, cat_opts=None, api_base, api_version) -> dict`
+
+Run a positional report.  `report` must be one of `"oxford"`, `"ribbon"`,
+`"painting"`, or `"circos"`.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `report` | str | Sub-type: `"oxford"`, `"ribbon"`, `"painting"`, or `"circos"`. |
+| `group_by` | str | Shared marker identifier field (e.g. `"busco_gene"`). |
+| `assemblies` | list[str] | Assembly IDs. Oxford needs exactly 2; painting needs 1; ribbon ≥ 2. |
+| `feature_type` | str \| None | `primary_type` filter. Defaults to `group_by`. |
+| `window_size` | int \| None | Regional binning in bp. `None` = individual positions. |
+| `reorient` | bool | Auto-orient comparison sequences (default `True`). |
+| `max_features` | int | Hard cap on features fetched (default 10 000). |
+| `cat` | str \| None | Category field for colour (e.g. `"busco_status"`). |
+| `cat_opts` | str \| None | Category axis options in the standard axis DSL. |
+
+---
+
+### `oxford(group_by, assemblies, *, ...) -> dict`
+
+Convenience wrapper — `positional("oxford", group_by, assemblies, ...)`.
+Exactly 2 assemblies required.
+
+::: {.panel-tabset group="language"}
+
+## Python
+
+```python
+data = qb.oxford(
+    "metazoa_odb10-busco-gene",
+    ["GCA_905147045.1", "GCA_902806685.2"],
+    window_size=1_000_000,
+    api_base="{{ api_base }}",
+)
+```
+
+## R
+
+```r
+data <- qb$oxford(
+  "metazoa_odb10-busco-gene",
+  c("GCA_905147045.1", "GCA_902806685.2"),
+  window_size = 1000000
+)
+```
+
+## JavaScript
+
+```javascript
+const data = await qb.oxford(
+  "metazoa_odb10-busco-gene",
+  ["GCA_905147045.1", "GCA_902806685.2"],
+  { windowSize: 1_000_000 }
+);
+```
+
+:::
+
+---
+
+### `ribbon(group_by, assemblies, *, ...) -> dict`
+
+Convenience wrapper — `positional("ribbon", group_by, assemblies, ...)`.
+Requires ≥ 2 assemblies.
+
+---
+
+### `painting(group_by, assembly, *, ...) -> dict`
+
+Convenience wrapper — `positional("painting", group_by, [assembly], ...)`.
+Single assembly only.
+
+---
+
+## Positional reports (Oxford / Ribbon / Painting)
+
+Positional reports compare genomic marker positions across one or more assemblies.
+They POST to `/v3/positional` and require a **v2 feature index** (see
+`feature_index_version` in `/v3/status`).
+
+---
+
+### `positional(report, group_by, assemblies, *, feature_type=None, window_size=None, reorient=True, max_features=10000, cat=None, cat_opts=None, api_base, api_version) -> dict`
+
+Run a positional report.  `report` must be one of `"oxford"`, `"ribbon"`,
+`"painting"`, or `"circos"`.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `report` | str | Sub-type: `"oxford"`, `"ribbon"`, `"painting"`, or `"circos"`. |
+| `group_by` | str | Shared marker identifier field (e.g. `"busco_gene"`). |
+| `assemblies` | list[str] | Assembly IDs. Oxford needs exactly 2; painting needs 1; ribbon ≥ 2. |
+| `feature_type` | str \| None | `primary_type` filter. Defaults to `group_by`. |
+| `window_size` | int \| None | Regional binning in bp. `None` = individual positions. |
+| `reorient` | bool | Auto-orient comparison sequences (default `True`). |
+| `max_features` | int | Hard cap on features fetched (default 10 000). |
+| `cat` | str \| None | Category field for colour (e.g. `"busco_status"`). |
+| `cat_opts` | str \| None | Category axis options in the standard axis DSL. |
+
+---
+
+### `oxford(group_by, assemblies, *, ...) -> dict`
+
+Convenience wrapper — `positional("oxford", group_by, assemblies, ...)`.
+Exactly 2 assemblies required.
+
+::: {.panel-tabset group="language"}
+
+## Python
+
+```python
+data = qb.oxford(
+    "metazoa_odb10-busco-gene",
+    ["GCA_905147045.1", "GCA_902806685.2"],
+    window_size=1_000_000,
+    api_base="{{ api_base }}",
+)
+```
+
+## R
+
+```r
+data <- qb$oxford(
+  "metazoa_odb10-busco-gene",
+  c("GCA_905147045.1", "GCA_902806685.2"),
+  window_size = 1000000
+)
+```
+
+## JavaScript
+
+```javascript
+const data = await qb.oxford(
+  "metazoa_odb10-busco-gene",
+  ["GCA_905147045.1", "GCA_902806685.2"],
+  { windowSize: 1_000_000 }
+);
+```
+
+:::
+
+---
+
+### `ribbon(group_by, assemblies, *, ...) -> dict`
+
+Convenience wrapper — `positional("ribbon", group_by, assemblies, ...)`.
+Requires ≥ 2 assemblies.
+
+---
+
+### `painting(group_by, assembly, *, ...) -> dict`
+
+Convenience wrapper — `positional("painting", group_by, [assembly], ...)`.
+Single assembly only.
+
+---
+
 ## ReportBuilder
 
 `ReportBuilder` constructs the report configuration for `/v3/report` queries.

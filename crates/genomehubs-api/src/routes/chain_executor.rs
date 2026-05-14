@@ -105,6 +105,7 @@ fn index_for_search_index(idx: &SearchIndex, parent_index: &str, state: &AppStat
         SearchIndex::Taxon => "taxon",
         SearchIndex::Assembly => "assembly",
         SearchIndex::Sample => "sample",
+        SearchIndex::Feature => "feature",
     };
     // Use the same index-name derivation as the parent index, replacing the
     // result-type prefix while keeping the suffix (taxonomy, date, etc.).

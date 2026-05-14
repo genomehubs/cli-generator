@@ -1316,6 +1316,212 @@ class QueryBuilder:
             body_text = resp.read().decode("utf-8")
         return json.loads(body_text)
 
+    def positional(
+        self,
+        report: str,
+        group_by: str,
+        assemblies: list[str],
+        *,
+        feature_type: str | None = None,
+        window_size: int | None = None,
+        reorient: bool = True,
+        max_features: int = 10_000,
+        cat: str | None = None,
+        cat_opts: str | None = None,
+        api_base: str = "https://goat.genomehubs.org/api",
+        api_version: str = "v3",
+    ) -> Any:
+        """Run a positional report (oxford / ribbon / painting) via ``POST /positional``.
+
+        The feature index only supports ``taxon_id`` and ``ancestors`` for taxon
+        filtering.  Taxon names in the current query are automatically resolved to
+        taxon IDs via a lookup against the taxon index.
+
+        Args:
+            report: Sub-type — one of ``"oxford"``, ``"ribbon"``, or ``"painting"``.
+            group_by: Attribute key used as shared marker identifier (e.g. ``"busco_gene"``).
+            assemblies: Assembly IDs to compare.  Oxford requires exactly 2; painting
+                requires exactly 1; ribbon requires ≥ 2.
+            feature_type: Optional ``primary_type`` filter (e.g. ``"busco"``).
+            window_size: Regional binning in base-pairs.  ``None`` returns individual positions.
+            reorient: Auto-orient comparison sequences (default ``True``).
+            max_features: Hard cap on features fetched (default 10 000).
+            cat: Optional category field for colour (e.g. ``"busco_status"``).
+            cat_opts: Category axis options in the standard axis DSL.  List category
+                values explicitly, e.g. ``"complete,fragmented,missing;;5"``.
+            api_base: Base URL of the API.
+            api_version: API version string (default: ``"v3"``).
+
+        Returns:
+            Raw ``report`` dict from the response.
+        """
+        import yaml as _yaml
+
+        positional_doc: dict[str, Any] = {
+            "report": report,
+            "group_by": group_by,
+            "assemblies": list(assemblies),
+        }
+        if feature_type is not None:
+            positional_doc["feature_type"] = feature_type
+        if window_size is not None:
+            positional_doc["window_size"] = window_size
+        if not reorient:
+            positional_doc["reorient"] = False
+        if max_features != 10_000:
+            positional_doc["max_features"] = max_features
+        if cat is not None:
+            positional_doc["cat"] = cat
+        if cat_opts is not None:
+            positional_doc["cat_opts"] = cat_opts
+
+        data = self._post_json(
+            f"{api_base}/{api_version}/positional",
+            {
+                "query_yaml": self.to_query_yaml(),
+                "positional_yaml": _yaml.dump(positional_doc, default_flow_style=False),
+            },
+        )
+        return data.get("report", data)
+
+    def oxford(
+        self,
+        group_by: str,
+        assemblies: list[str],
+        *,
+        feature_type: str | None = None,
+        window_size: int | None = None,
+        reorient: bool = True,
+        max_features: int = 10_000,
+        cat: str | None = None,
+        cat_opts: str | None = None,
+        api_base: str = "https://goat.genomehubs.org/api",
+        api_version: str = "v3",
+    ) -> Any:
+        """Run an Oxford dot-plot positional report (exactly 2 assemblies).
+
+        Convenience wrapper around :meth:`positional` with ``report="oxford"``.
+
+        Args:
+            group_by: Attribute key used as shared marker identifier (e.g. ``"busco_gene"``).
+            assemblies: Exactly 2 assembly IDs to compare.
+            feature_type: Optional ``primary_type`` filter.
+            window_size: Regional binning in base-pairs.
+            reorient: Auto-orient comparison sequences (default ``True``).
+            max_features: Hard cap on features fetched (default 10 000).
+            cat: Optional category field for colour.
+            cat_opts: Category axis options in the standard axis DSL.
+            api_base: Base URL of the API.
+            api_version: API version string.
+
+        Returns:
+            Raw ``report`` dict from the response.
+        """
+        return self.positional(
+            "oxford",
+            group_by,
+            assemblies,
+            feature_type=feature_type,
+            window_size=window_size,
+            reorient=reorient,
+            max_features=max_features,
+            cat=cat,
+            cat_opts=cat_opts,
+            api_base=api_base,
+            api_version=api_version,
+        )
+
+    def ribbon(
+        self,
+        group_by: str,
+        assemblies: list[str],
+        *,
+        feature_type: str | None = None,
+        window_size: int | None = None,
+        reorient: bool = True,
+        max_features: int = 10_000,
+        cat: str | None = None,
+        cat_opts: str | None = None,
+        api_base: str = "https://goat.genomehubs.org/api",
+        api_version: str = "v3",
+    ) -> Any:
+        """Run a ribbon / synteny positional report (N ≥ 2 assemblies).
+
+        Convenience wrapper around :meth:`positional` with ``report="ribbon"``.
+
+        Args:
+            group_by: Attribute key used as shared marker identifier.
+            assemblies: At least 2 assembly IDs.  Assembly 0 is the reference.
+            feature_type: Optional ``primary_type`` filter.
+            window_size: Regional binning in base-pairs.
+            reorient: Auto-orient comparison sequences (default ``True``).
+            max_features: Hard cap on features fetched (default 10 000).
+            cat: Optional category field for colour.
+            cat_opts: Category axis options in the standard axis DSL.
+            api_base: Base URL of the API.
+            api_version: API version string.
+
+        Returns:
+            Raw ``report`` dict from the response.
+        """
+        return self.positional(
+            "ribbon",
+            group_by,
+            assemblies,
+            feature_type=feature_type,
+            window_size=window_size,
+            reorient=reorient,
+            max_features=max_features,
+            cat=cat,
+            cat_opts=cat_opts,
+            api_base=api_base,
+            api_version=api_version,
+        )
+
+    def painting(
+        self,
+        group_by: str,
+        assembly: str,
+        *,
+        feature_type: str | None = None,
+        window_size: int | None = None,
+        max_features: int = 10_000,
+        cat: str | None = None,
+        cat_opts: str | None = None,
+        api_base: str = "https://goat.genomehubs.org/api",
+        api_version: str = "v3",
+    ) -> Any:
+        """Run a chromosome painting positional report (single assembly).
+
+        Convenience wrapper around :meth:`positional` with ``report="painting"``.
+
+        Args:
+            group_by: Attribute key used as shared marker identifier.
+            assembly: A single assembly ID.
+            feature_type: Optional ``primary_type`` filter.
+            window_size: Regional binning in base-pairs.
+            max_features: Hard cap on features fetched (default 10 000).
+            cat: Optional category field for colour (e.g. ``"busco_status"``).
+            cat_opts: Category axis options in the standard axis DSL.
+            api_base: Base URL of the API.
+            api_version: API version string.
+
+        Returns:
+            Raw ``report`` dict from the response.
+        """
+        return self.positional(
+            "painting",
+            group_by,
+            [assembly],
+            feature_type=feature_type,
+            window_size=window_size,
+            max_features=max_features,
+            cat=cat,
+            cat_opts=cat_opts,
+            api_base=api_base,
+            api_version=api_version,
+        )
+
     def lookup(
         self,
         search_term: str,

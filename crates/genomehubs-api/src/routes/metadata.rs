@@ -16,6 +16,8 @@ pub struct MetadataResponse {
     /// Known data release versions. Currently a single-element list; multi-version
     /// support will extend this when the API serves more than one release.
     pub versions: Vec<String>,
+    /// Distinct `feature_type` attribute values from the feature index.
+    pub feature_types: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub last_updated: Option<String>,
 }
@@ -34,12 +36,14 @@ pub async fn get_metadata(Extension(state): Extension<Arc<AppState>>) -> Json<Me
     let mut indices = Vec::new();
     let mut taxonomies = Vec::new();
     let mut ranks = Vec::new();
+    let mut feature_types = Vec::new();
     let mut last = None;
     if let Some(lock) = &state.cache {
         let r = lock.read().await;
         indices = r.indices.clone();
         taxonomies = r.taxonomies.clone();
         ranks = r.taxonomic_ranks.clone();
+        feature_types = r.feature_types.clone();
         last = r.last_updated.clone();
     }
     Json(MetadataResponse {
@@ -48,6 +52,7 @@ pub async fn get_metadata(Extension(state): Extension<Arc<AppState>>) -> Json<Me
         taxonomies,
         ranks,
         versions: vec![state.default_version.clone()],
+        feature_types,
         last_updated: last,
     })
 }

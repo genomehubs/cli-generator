@@ -143,6 +143,9 @@ pub enum SearchIndex {
     Taxon,
     Assembly,
     Sample,
+    /// Feature index — positional features (BUSCO genes, scaffolds, etc.).
+    /// Used by the `/api/v3/positional` endpoint.
+    Feature,
 }
 
 // ── QueryParams ───────────────────────────────────────────────────────────────

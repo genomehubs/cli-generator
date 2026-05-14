@@ -11,6 +11,7 @@ pub fn resolve_index(index: &SearchIndex, state: &AppState) -> String {
         SearchIndex::Taxon => "taxon",
         SearchIndex::Assembly => "assembly",
         SearchIndex::Sample => "sample",
+        SearchIndex::Feature => "feature",
     };
     match &state.index_suffix {
         Some(suf) => format!("{base}{suf}"),
@@ -24,6 +25,7 @@ pub fn resolve_index_str(result: &str, state: &AppState) -> String {
     let base = match result {
         "assembly" => "assembly",
         "sample" => "sample",
+        "feature" => "feature",
         _ => "taxon",
     };
     match &state.index_suffix {

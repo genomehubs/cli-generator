@@ -59,6 +59,7 @@ pub struct AppState {
         routes::record::get_record,
         routes::record_batch::post_record_batch,
         routes::report::post_report,
+        routes::positional::post_positional,
         routes::result_fields::get_result_fields,
         routes::search::post_search,
         routes::search_batch::post_search_batch,
@@ -93,6 +94,8 @@ pub struct AppState {
         routes::record_batch::RecordBatchResponse,
         routes::report::ReportRequest,
         routes::report::ReportResponse,
+        routes::positional::PositionalRequest,
+        routes::positional::PositionalResponse,
         routes::metadata::MetadataResponse,
         routes::result_fields::FieldMeta,
         routes::result_fields::ResultFieldsResponse,
@@ -318,6 +321,10 @@ async fn main() {
             axum::routing::post(routes::report::post_report),
         )
         .route(
+            "/api/v3/positional",
+            axum::routing::post(routes::positional::post_positional),
+        )
+        .route(
             "/api/v3/search",
             axum::routing::post(routes::search::post_search),
         )
@@ -367,6 +374,7 @@ mod tests {
             last_updated: Some("now".to_string()),
             has_sayt_field: true,
             has_trigram_field: false,
+            ..Default::default()
         };
         let state = std::sync::Arc::new(AppState {
             es_base: "http://localhost:9200".to_string(),

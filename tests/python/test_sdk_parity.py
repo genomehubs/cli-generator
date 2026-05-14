@@ -374,6 +374,30 @@ CANONICAL_METHODS = {
         "js_name": "setIdType",
         "r_name": "set_id_type",
     },
+    "positional": {
+        "params": ["report", "group_by", "assemblies"],
+        "python_name": "positional",
+        "js_name": "positional",
+        "r_name": "positional",
+    },
+    "oxford": {
+        "params": ["group_by", "assemblies"],
+        "python_name": "oxford",
+        "js_name": "oxford",
+        "r_name": "oxford",
+    },
+    "ribbon": {
+        "params": ["group_by", "assemblies"],
+        "python_name": "ribbon",
+        "js_name": "ribbon",
+        "r_name": "ribbon",
+    },
+    "painting": {
+        "params": ["group_by", "assembly"],
+        "python_name": "painting",
+        "js_name": "painting",
+        "r_name": "painting",
+    },
 }
 
 CONSTRUCTOR_PARAMS: dict[str, dict[str, str]] = {}

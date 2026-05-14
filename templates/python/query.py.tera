@@ -998,6 +998,123 @@ class QueryBuilder:
 
         return json.loads(body_text)
 
+    def positional(
+        self,
+        report: str,
+        group_by: str,
+        assemblies: "list[str]",
+        *,
+        feature_type: "str | None" = None,
+        window_size: "int | None" = None,
+        reorient: bool = True,
+        max_features: int = 10_000,
+        cat: "str | None" = None,
+        cat_opts: "str | None" = None,
+    ) -> Any:
+        """Run a positional report (oxford / ribbon / painting).
+
+        Args:
+            report: Sub-type — one of ``"oxford"``, ``"ribbon"``, or ``"painting"``.
+            group_by: Attribute key used as shared marker identifier.
+            assemblies: Assembly IDs to compare.
+            feature_type: Optional primary_type filter.
+            window_size: Regional binning in base-pairs.
+            reorient: Auto-orient comparison sequences (default True).
+            max_features: Hard cap on features fetched (default 10 000).
+            cat: Optional category field for colour.
+            cat_opts: Category axis options (list values explicitly, e.g. ``"complete,fragmented;;5"``).
+
+        Returns:
+            Raw report dict from the response.
+        """
+        import json
+        import yaml as _yaml
+
+        positional_doc: "dict[str, Any]" = {
+            "report": report,
+            "group_by": group_by,
+            "assemblies": list(assemblies),
+        }
+        if feature_type is not None:
+            positional_doc["feature_type"] = feature_type
+        if window_size is not None:
+            positional_doc["window_size"] = window_size
+        if not reorient:
+            positional_doc["reorient"] = False
+        if max_features != 10_000:
+            positional_doc["max_features"] = max_features
+        if cat is not None:
+            positional_doc["cat"] = cat
+        if cat_opts is not None:
+            positional_doc["cat_opts"] = cat_opts
+
+        payload = json.dumps({
+            "query_yaml": self.to_query_yaml(),
+            "positional_yaml": _yaml.dump(positional_doc, default_flow_style=False),
+        }).encode("utf-8")
+        url = f"{API_BASE}/v3/positional"
+        req = urllib.request.Request(url, data=payload, headers={"Content-Type": "application/json"})
+        with urllib.request.urlopen(req) as resp:
+            body_text = resp.read().decode("utf-8")
+        data = json.loads(body_text)
+        return data.get("report", data)
+
+    def oxford(
+        self,
+        group_by: str,
+        assemblies: "list[str]",
+        *,
+        feature_type: "str | None" = None,
+        window_size: "int | None" = None,
+        reorient: bool = True,
+        max_features: int = 10_000,
+        cat: "str | None" = None,
+        cat_opts: "str | None" = None,
+    ) -> Any:
+        """Run an Oxford dot-plot (exactly 2 assemblies). Wrapper around positional()."""
+        return self.positional(
+            "oxford", group_by, assemblies,
+            feature_type=feature_type, window_size=window_size, reorient=reorient,
+            max_features=max_features, cat=cat, cat_opts=cat_opts,
+        )
+
+    def ribbon(
+        self,
+        group_by: str,
+        assemblies: "list[str]",
+        *,
+        feature_type: "str | None" = None,
+        window_size: "int | None" = None,
+        reorient: bool = True,
+        max_features: int = 10_000,
+        cat: "str | None" = None,
+        cat_opts: "str | None" = None,
+    ) -> Any:
+        """Run a ribbon/synteny report (N ≥ 2 assemblies). Wrapper around positional()."""
+        return self.positional(
+            "ribbon", group_by, assemblies,
+            feature_type=feature_type, window_size=window_size, reorient=reorient,
+            max_features=max_features, cat=cat, cat_opts=cat_opts,
+        )
+
+    def painting(
+        self,
+        group_by: str,
+        assembly: str,
+        *,
+        feature_type: "str | None" = None,
+        window_size: "int | None" = None,
+        max_features: int = 10_000,
+        cat: "str | None" = None,
+        cat_opts: "str | None" = None,
+    ) -> Any:
+        """Run a chromosome painting report (1 assembly). Wrapper around positional()."""
+        return self.positional(
+            "painting", group_by, [assembly],
+            feature_type=feature_type, window_size=window_size,
+            max_features=max_features, cat=cat, cat_opts=cat_opts,
+        )
+
     def lookup(self, search_term: str, result: str | None = None, size: int = 10) -> Any:
         """Lookup records by alternative identifiers (autocomplete/search-as-you-type).
 

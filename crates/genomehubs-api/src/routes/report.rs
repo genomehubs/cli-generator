@@ -256,6 +256,7 @@ fn build_report_query(
         genomehubs_query::query::SearchIndex::Assembly => "assembly",
         genomehubs_query::query::SearchIndex::Sample => "sample",
         genomehubs_query::query::SearchIndex::Taxon => "taxon",
+        genomehubs_query::query::SearchIndex::Feature => "feature",
     };
 
     // Build full search body using query builder

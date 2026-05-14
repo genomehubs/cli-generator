@@ -56,6 +56,7 @@ impl QueryDescriber {
             SearchIndex::Taxon => "taxa".to_string(),
             SearchIndex::Assembly => "assemblies".to_string(),
             SearchIndex::Sample => "samples".to_string(),
+            SearchIndex::Feature => "features".to_string(),
         }
     }
 

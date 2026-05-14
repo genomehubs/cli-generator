@@ -2,7 +2,7 @@ use axum::{Extension, Json};
 use serde::Serialize;
 use std::sync::Arc;
 
-use crate::AppState;
+use crate::{es_metadata::FeatureIndexVersion, AppState};
 
 const SUPPORTED_ENDPOINTS: &[&str] = &[
     "/status",
@@ -30,6 +30,10 @@ pub struct StatusResponse {
     pub supported: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub last_updated: Option<String>,
+    /// Feature index version detected at startup.
+    /// `"v2"` means the `/positional` endpoint is available;
+    /// `"v1"` means positional queries will return an error.
+    pub feature_index_version: FeatureIndexVersion,
 }
 
 #[utoipa::path(
@@ -45,17 +49,20 @@ pub struct StatusResponse {
 pub async fn get_status(Extension(state): Extension<Arc<AppState>>) -> Json<StatusResponse> {
     let mut ready = false;
     let mut last = None;
+    let mut feature_index_version = FeatureIndexVersion::V1;
     if let Some(lock) = &state.cache {
         let r = lock.read().await;
         if r.last_updated.is_some() {
             ready = true;
             last = r.last_updated.clone();
         }
+        feature_index_version = r.feature_index_version.clone();
     }
     Json(StatusResponse {
         status: super::ApiStatus::ok(),
         ready,
         supported: SUPPORTED_ENDPOINTS.iter().map(|s| s.to_string()).collect(),
         last_updated: last,
+        feature_index_version,
     })
 }

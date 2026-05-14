@@ -5,12 +5,29 @@ use tokio::time::{sleep, Duration};
 
 use crate::AppState;
 
+/// Whether the feature index uses the v1 nested-attributes-only structure
+/// or the v2 flat-field structure expected by `/api/v3/positional`.
+#[derive(
+    Default, Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize, utoipa::ToSchema,
+)]
+#[serde(rename_all = "lowercase")]
+pub enum FeatureIndexVersion {
+    #[default]
+    V1,
+    V2,
+}
+
 #[derive(Default, Debug, serde::Serialize, serde::Deserialize, Clone)]
 pub struct MetadataCache {
     pub taxonomies: Vec<String>,
     pub indices: Vec<String>,
     pub attr_types: JsonValue,
     pub taxonomic_ranks: Vec<String>,
+    /// All distinct `feature_type` attribute values found in the feature index.
+    /// Populated at startup; used for user-supplied feature-type normalisation.
+    pub feature_types: Vec<String>,
+    /// Whether the feature index has the v2 promoted top-level fields.
+    pub feature_index_version: FeatureIndexVersion,
     pub last_updated: Option<String>,
     pub has_sayt_field: bool,
     pub has_trigram_field: bool,
@@ -94,6 +111,117 @@ fn processed_summary_and_simple(meta: &JsonValue) -> (String, String) {
     };
 
     (summary, simple)
+}
+
+/// Fetch all distinct `feature_type` attribute values from the feature index.
+///
+/// Uses a nested `terms` aggregation on `attributes.key = feature_type` to
+/// collect the `attributes.keyword_value` bucket keys.
+pub async fn fetch_feature_types(
+    client: &Client,
+    es_base: &str,
+    feature_index: &str,
+) -> Result<Vec<String>, String> {
+    let url = format!(
+        "{}/{}/_search",
+        es_base.trim_end_matches('/'),
+        feature_index
+    );
+    let body = json!({
+        "size": 0,
+        "aggs": {
+            "attrs": {
+                "nested": {"path": "attributes"},
+                "aggs": {
+                    "by_type": {
+                        "filter": {"term": {"attributes.key": "feature_type"}},
+                        "aggs": {
+                            "vals": {
+                                "terms": {"field": "attributes.keyword_value", "size": 200}
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    let resp = client
+        .post(&url)
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| format!("feature_types request failed: {e}"))?;
+
+    if !resp.status().is_success() {
+        // Non-fatal: feature index may not exist yet
+        return Ok(Vec::new());
+    }
+
+    let body_json: JsonValue = resp
+        .json()
+        .await
+        .map_err(|e| format!("feature_types json parse: {e}"))?;
+
+    let buckets = body_json
+        .pointer("/aggregations/attrs/by_type/vals/buckets")
+        .and_then(|b| b.as_array())
+        .cloned()
+        .unwrap_or_default();
+
+    let types = buckets
+        .iter()
+        .filter_map(|b| b.get("key").and_then(|v| v.as_str()).map(|s| s.to_string()))
+        .collect();
+
+    Ok(types)
+}
+
+/// Probe the feature index mapping to determine whether it uses the v2
+/// flat-field structure.
+///
+/// V2 is detected by the presence of both `start` and `sequence_length`
+/// as top-level `long` fields in the mapping — these are never present
+/// in a v1 index (where all such data lives in the nested `attributes` array).
+pub async fn detect_feature_index_version(
+    client: &Client,
+    es_base: &str,
+    feature_index: &str,
+) -> FeatureIndexVersion {
+    let url = format!(
+        "{}/{}/_mapping",
+        es_base.trim_end_matches('/'),
+        feature_index
+    );
+    let resp = match client.get(&url).send().await {
+        Ok(r) if r.status().is_success() => r,
+        _ => return FeatureIndexVersion::V1,
+    };
+    let body: JsonValue = match resp.json().await {
+        Ok(j) => j,
+        Err(_) => return FeatureIndexVersion::V1,
+    };
+    // The mapping response has the index name as the top-level key.
+    // We look inside whichever key is present.
+    let has_start = body
+        .as_object()
+        .and_then(|obj| obj.values().next())
+        .and_then(|idx| idx.pointer("/mappings/properties/start/type"))
+        .and_then(|v| v.as_str())
+        .map(|t| t == "long")
+        .unwrap_or(false);
+    let has_seq_len = body
+        .as_object()
+        .and_then(|obj| obj.values().next())
+        .and_then(|idx| idx.pointer("/mappings/properties/sequence_length/type"))
+        .and_then(|v| v.as_str())
+        .map(|t| t == "long")
+        .unwrap_or(false);
+    if has_start && has_seq_len {
+        FeatureIndexVersion::V2
+    } else {
+        FeatureIndexVersion::V1
+    }
 }
 
 /// Fetch `_cat/indices?format=json` and derive taxonomies + indices similar to the JS logic.
@@ -421,6 +549,22 @@ pub async fn populate_cache(state: Arc<AppState>, client: &Client) -> Result<(),
         .await
         .unwrap_or(false);
 
+    // fetch feature types (non-fatal: feature index may be absent on some hubs)
+    let feature_index = suffix_norm
+        .as_ref()
+        .map(|s| format!("feature{}", s))
+        .unwrap_or_else(|| "feature".to_string());
+    let feature_types = fetch_feature_types(client, es_base, &feature_index)
+        .await
+        .unwrap_or_default();
+
+    let feature_index_version = detect_feature_index_version(client, es_base, &feature_index).await;
+    tracing::info!(
+        "feature index '{}' detected as {:?}",
+        feature_index,
+        feature_index_version
+    );
+
     let now = chrono::Utc::now().to_rfc3339();
 
     let cache = MetadataCache {
@@ -428,6 +572,8 @@ pub async fn populate_cache(state: Arc<AppState>, client: &Client) -> Result<(),
         indices,
         attr_types,
         taxonomic_ranks: ranks,
+        feature_types,
+        feature_index_version,
         last_updated: Some(now),
         has_sayt_field,
         has_trigram_field,

@@ -111,6 +111,7 @@ fn main() {
         SearchIndex::Taxon => "taxon",
         SearchIndex::Assembly => "assembly",
         SearchIndex::Sample => "sample",
+        SearchIndex::Feature => "feature",
     };
 
     let suffix = cfg.index_suffix.unwrap_or_default();

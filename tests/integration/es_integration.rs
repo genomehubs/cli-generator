@@ -46,6 +46,7 @@ fn live_elasticsearch_count_integration() {
         crate::core::query::SearchIndex::Taxon => "taxon",
         crate::core::query::SearchIndex::Assembly => "assembly",
         crate::core::query::SearchIndex::Sample => "sample",
+        crate::core::query::SearchIndex::Feature => "feature",
     };
 
     let suffix = cfg.index_suffix.unwrap_or_default();

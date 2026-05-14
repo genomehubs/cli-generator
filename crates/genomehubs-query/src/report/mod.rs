@@ -8,6 +8,7 @@ pub mod axis;
 pub mod bounds;
 pub mod display;
 pub mod plot_spec;
+pub mod positional;
 pub mod spec_builder;
 
 pub use axis::{
@@ -16,6 +17,7 @@ pub use axis::{
 pub use bounds::BoundsResult;
 pub use display::DisplaySpec;
 pub use plot_spec::PlotSpec;
+pub use positional::{PositionalReportType, PositionalSpec};
 pub use spec_builder::resolve_axis_display;
 
 /// Supported v3 report types.
