@@ -35,7 +35,7 @@ use std::time::Instant;
 use genomehubs_query::query::{
     attributes::AttributeOperator, SearchIndex, SearchQuery, TaxonFilterType,
 };
-use genomehubs_query::report::{PositionalReportType, PositionalSpec};
+use genomehubs_query::report::{FilterTarget, PositionalReportType, PositionalSpec};
 
 use crate::{
     es_client::execute_search,
@@ -43,11 +43,13 @@ use crate::{
     index_name,
     report::positional::{
         feature_query::{
-            fetch_features_flat, fetch_sequence_lengths_flat, FeatureQueryFlat, FeatureRecord,
+            build_feature_direct_clauses, fetch_features_flat, fetch_sequence_lengths_flat,
+            resolve_sequence_ids, resolve_window_ids, FeatureQueryFlat, FeatureRecord,
             SequenceRecord,
         },
         layout::{compute_offsets, order_sequences_by_median, orient_sequence, SequenceLayout},
         painter::{build_painting_segments, build_painting_segments_raw},
+        region::compute_regions,
         window::{apply_window, RawPoint},
     },
     routes::ApiStatus,
@@ -252,6 +254,9 @@ pub async fn post_positional(
                 assembly_ids.len()
             ))
         }
+        PositionalReportType::Circos if assembly_ids.is_empty() => {
+            bail!("circos report requires at least 1 assembly".to_string())
+        }
         _ => {}
     }
 
@@ -294,6 +299,76 @@ pub async fn post_positional(
         _ => vec![],
     };
 
+    // Dispatch spec.filter entries:
+    //   Feature target  → build direct ES clauses (top-level or nested attribute)
+    //   Sequence target → Type A chain: resolve sequence_ids, add terms clause
+    //   Window target   → Type B chain: resolve container_ids, add terms clause
+    //   FeatureType     → Type C chain: not yet implemented
+    let mut spec_filter_clauses: Vec<Value> = build_feature_direct_clauses(&spec.filter);
+
+    for af in &spec.filter {
+        match &af.target {
+            FilterTarget::Feature => {} // already handled above
+            FilterTarget::Sequence => {
+                match resolve_sequence_ids(
+                    &state.client,
+                    &state.es_base,
+                    &feature_idx,
+                    &assembly_ids,
+                    af,
+                )
+                .await
+                {
+                    Ok(ids) if ids.is_empty() => bail!(format!(
+                        "sequence chain filter on '{}': no sequences matched — \
+                         no features can be returned",
+                        af.field
+                    )),
+                    Ok(ids) => spec_filter_clauses.push(json!({ "terms": { "sequence_id": ids } })),
+                    Err(e) => bail!(format!("sequence chain filter failed: {e}")),
+                }
+            }
+            FilterTarget::Window { window_size, .. } => {
+                match resolve_window_ids(
+                    &state.client,
+                    &state.es_base,
+                    &feature_idx,
+                    &assembly_ids,
+                    af,
+                    *window_size,
+                )
+                .await
+                {
+                    Ok(ids) if ids.is_empty() => bail!(format!(
+                        "window chain filter on '{}': no windows matched — \
+                         no features can be returned",
+                        af.field
+                    )),
+                    Ok(ids) => {
+                        spec_filter_clauses.push(json!({ "terms": { "container_ids": ids } }))
+                    }
+                    Err(e) => bail!(format!("window chain filter failed: {e}")),
+                }
+            }
+            FilterTarget::FeatureType { .. } => {
+                bail!("filter target 'feature_type' (Type C chain) is not yet implemented")
+            }
+        }
+    }
+
+    let combined_attribute_filters: Vec<Value> = attribute_filters
+        .iter()
+        .cloned()
+        .chain(spec_filter_clauses)
+        .collect();
+
+    // Use spec.regions.cat as cat_field when spec.cat is absent, so region
+    // colours are always populated even if the caller didn't set the top-level cat.
+    let effective_cat_field: Option<&str> = spec
+        .cat
+        .as_deref()
+        .or_else(|| spec.regions.as_ref().and_then(|r| r.cat.as_deref()));
+
     // Fetch sequence lengths (toplevel features, flat-field path).
     let seq_records = match fetch_sequence_lengths_flat(
         &state.client,
@@ -329,10 +404,10 @@ pub async fn post_positional(
         &FeatureQueryFlat {
             group_by: &spec.group_by,
             feature_type: Some(effective_feature_type),
-            cat_field: spec.cat.as_deref(),
+            cat_field: effective_cat_field,
             max_features: spec.max_features,
             taxon_filter: taxon_filter.as_ref(),
-            attribute_filters: &attribute_filters,
+            attribute_filters: &combined_attribute_filters,
             known_feature_types: &known_feature_types,
         },
     )
@@ -368,14 +443,44 @@ pub async fn post_positional(
         build_assembly_layouts(&assembly_ids, &seq_records, &feature_records, spec.reorient);
 
     // Build report payload
-    let report_data = match spec.report {
+    let mut report_data = match spec.report {
         PositionalReportType::Oxford | PositionalReportType::Ribbon => {
             build_oxford_ribbon_report(&spec, &assembly_ids, &assembly_layouts, &feature_records)
         }
         PositionalReportType::Painting => {
             build_painting_report(&spec, &assembly_layouts, &feature_records)
         }
+        PositionalReportType::Circos => {
+            build_circos_report(&spec, &assembly_ids, &assembly_layouts, &feature_records)
+        }
     };
+
+    // Inject computed regions when the caller supplied a regions spec.
+    if let Some(regions_spec) = &spec.regions {
+        let region_records = compute_regions(&feature_records, regions_spec);
+        let regions_json: Vec<Value> = region_records
+            .iter()
+            .map(|r| {
+                let x_offset = assembly_layouts
+                    .get(&r.assembly_id)
+                    .and_then(|l| l.sequences.iter().find(|s| s.sequence_id == r.sequence_id))
+                    .map(|s| s.offset)
+                    .unwrap_or(0);
+                json!({
+                    "sequenceId":   r.sequence_id,
+                    "assemblyId":   r.assembly_id,
+                    "start":        r.start,
+                    "end":          r.end,
+                    "catValue":     r.cat_value,
+                    "featureCount": r.feature_count,
+                    "xOffset":      x_offset
+                })
+            })
+            .collect();
+        if let Some(obj) = report_data.as_object_mut() {
+            obj.insert("regions".to_string(), json!(regions_json));
+        }
+    }
 
     let took = started.elapsed().as_millis() as u64;
 
@@ -405,7 +510,7 @@ async fn resolve_assemblies_from_query(
     let size = match report_type {
         PositionalReportType::Oxford => 2usize,
         PositionalReportType::Painting => 1,
-        PositionalReportType::Ribbon => 50,
+        PositionalReportType::Ribbon | PositionalReportType::Circos => 50,
     };
 
     // Build a minimal taxa filter for the assembly query if taxa are specified
@@ -933,20 +1038,19 @@ fn build_oxford_ribbon_report(
     let ref_id = &assembly_ids[0];
     let ref_layout = layouts.get(ref_id.as_str());
 
-    // Serialise assembly metadata
     let assemblies_json = serialise_assembly_metadata(assembly_ids, layouts);
-
-    // Build offset lookups for both assemblies
     let ref_offsets = offset_map(ref_layout);
 
-    // Group features by group_value for cross-assembly joining
-    let mut group_to_ref: HashMap<&str, &FeatureRecord> = HashMap::new();
+    // Group all reference features by group_value — collect Vec to detect M:N.
+    let mut group_to_ref_all: HashMap<&str, Vec<&FeatureRecord>> = HashMap::new();
     for f in features.iter().filter(|f| &f.assembly_id == ref_id) {
-        group_to_ref.insert(&f.group_value, f);
+        group_to_ref_all.entry(&f.group_value).or_default().push(f);
     }
 
-    // Build points for each (ref, cmp) pair
+    let max_conn = spec.max_connections_per_group.unwrap_or(25);
+
     let mut all_points: Vec<Value> = Vec::new();
+    let mut all_connections: Vec<Value> = Vec::new();
     let mut cat_counts: HashMap<String, u64> = HashMap::new();
 
     for cmp_id in &assembly_ids[1..] {
@@ -961,71 +1065,120 @@ fn build_oxford_ribbon_report(
             })
             .unwrap_or_default();
 
-        for cmp_feature in features.iter().filter(|f| &f.assembly_id == cmp_id) {
-            let ref_feature = match group_to_ref.get(cmp_feature.group_value.as_str()) {
-                Some(f) => f,
+        // Group comparison features by group_value.
+        let mut cmp_by_group: HashMap<&str, Vec<&FeatureRecord>> = HashMap::new();
+        for f in features.iter().filter(|f| &f.assembly_id == cmp_id) {
+            cmp_by_group.entry(&f.group_value).or_default().push(f);
+        }
+
+        for (group, cmp_feats) in &cmp_by_group {
+            let ref_feats = match group_to_ref_all.get(group) {
+                Some(v) => v,
                 None => continue,
             };
 
-            let x = ref_offsets
-                .get(&ref_feature.sequence_id)
-                .map(|&off| off + ref_feature.start)
-                .unwrap_or(ref_feature.start);
-            let x2 = ref_offsets
-                .get(&ref_feature.sequence_id)
-                .map(|&off| off + ref_feature.end)
-                .unwrap_or(ref_feature.end);
-
-            let y_orient = cmp_orientations
-                .get(&cmp_feature.sequence_id)
-                .copied()
-                .unwrap_or(1);
-
-            let (y, y2) = if let Some(&off) = cmp_offsets.get(&cmp_feature.sequence_id) {
-                let seq_len = cmp_layout
-                    .and_then(|l| {
-                        l.sequences
-                            .iter()
-                            .find(|s| s.sequence_id == cmp_feature.sequence_id)
-                    })
-                    .map(|s| s.length)
-                    .unwrap_or(0);
-                if y_orient == -1 {
-                    // Flip: position within sequence = seq_len - end
-                    let flipped_start = seq_len.saturating_sub(cmp_feature.end);
-                    let flipped_end = seq_len.saturating_sub(cmp_feature.start);
-                    (off + flipped_start, off + flipped_end)
-                } else {
-                    (off + cmp_feature.start, off + cmp_feature.end)
-                }
-            } else {
-                (cmp_feature.start, cmp_feature.end)
-            };
-
-            let cat = cmp_feature.cat_value.as_deref().unwrap_or("");
+            let cat = cmp_feats
+                .first()
+                .and_then(|f| f.cat_value.as_deref())
+                .unwrap_or("");
             if !cat.is_empty() {
                 *cat_counts.entry(cat.to_string()).or_insert(0) += 1;
             }
 
-            let mut point = json!({
-                "featureId": ref_feature.feature_id,
-                "yFeatureId": cmp_feature.feature_id,
-                "x": x, "x2": x2,
-                "y": y, "y2": y2,
-                "group": cmp_feature.group_value,
-                "strand": ref_feature.strand,
-                "yStrand": y_orient * cmp_feature.strand
-            });
+            let is_mn = ref_feats.len() > 1 || cmp_feats.len() > 1;
 
-            if !cat.is_empty() {
-                point["cat"] = json!(cat);
+            if !is_mn {
+                // 1:1 path — same output as before
+                let rf = ref_feats[0];
+                let cf = cmp_feats[0];
+
+                let x = ref_offsets
+                    .get(&rf.sequence_id)
+                    .map(|&off| off + rf.start)
+                    .unwrap_or(rf.start);
+                let x2 = ref_offsets
+                    .get(&rf.sequence_id)
+                    .map(|&off| off + rf.end)
+                    .unwrap_or(rf.end);
+
+                let y_orient = cmp_orientations.get(&cf.sequence_id).copied().unwrap_or(1);
+                let (y, y2) = genome_wide_y(cf, cmp_layout, &cmp_offsets, y_orient);
+
+                let mut point = json!({
+                    "featureId":  rf.feature_id,
+                    "yFeatureId": cf.feature_id,
+                    "x": x, "x2": x2,
+                    "y": y, "y2": y2,
+                    "group": cf.group_value,
+                    "strand": rf.strand,
+                    "yStrand": y_orient * cf.strand
+                });
+                if !cat.is_empty() {
+                    point["cat"] = json!(cat);
+                }
+                if assembly_ids.len() > 2 {
+                    point["assemblyPair"] = json!([ref_id, cmp_id]);
+                }
+                all_points.push(point);
+            } else {
+                // M:N path — emit a connection record
+                let mut x_coords: Vec<u64> = Vec::new();
+                let mut x2_coords: Vec<u64> = Vec::new();
+                let mut x_seq_ids: Vec<&str> = Vec::new();
+                let mut x_strands: Vec<i8> = Vec::new();
+                let mut y_coords: Vec<u64> = Vec::new();
+                let mut y2_coords: Vec<u64> = Vec::new();
+                let mut y_seq_ids: Vec<&str> = Vec::new();
+                let mut y_strands: Vec<i8> = Vec::new();
+
+                for rf in ref_feats.iter() {
+                    let x = ref_offsets
+                        .get(&rf.sequence_id)
+                        .map(|&off| off + rf.start)
+                        .unwrap_or(rf.start);
+                    let x2 = ref_offsets
+                        .get(&rf.sequence_id)
+                        .map(|&off| off + rf.end)
+                        .unwrap_or(rf.end);
+                    x_coords.push(x);
+                    x2_coords.push(x2);
+                    x_seq_ids.push(&rf.sequence_id);
+                    x_strands.push(rf.strand);
+                }
+
+                for cf in cmp_feats.iter() {
+                    let y_orient = cmp_orientations.get(&cf.sequence_id).copied().unwrap_or(1);
+                    let (y, y2) = genome_wide_y(cf, cmp_layout, &cmp_offsets, y_orient);
+                    y_coords.push(y);
+                    y2_coords.push(y2);
+                    y_seq_ids.push(&cf.sequence_id);
+                    y_strands.push(y_orient * cf.strand);
+                }
+
+                // Cap total connections (|x| × |y|)
+                let total = x_coords.len() * y_coords.len();
+                let truncated = total > max_conn;
+
+                let mut conn = json!({
+                    "group":     group,
+                    "xCoords":   x_coords,
+                    "x2Coords":  x2_coords,
+                    "xSeqIds":   x_seq_ids,
+                    "xStrands":  x_strands,
+                    "yCoords":   y_coords,
+                    "y2Coords":  y2_coords,
+                    "ySeqIds":   y_seq_ids,
+                    "yStrands":  y_strands,
+                    "truncated": truncated
+                });
+                if !cat.is_empty() {
+                    conn["catValue"] = json!(cat);
+                }
+                if assembly_ids.len() > 2 {
+                    conn["assemblyPair"] = json!([ref_id, cmp_id]);
+                }
+                all_connections.push(conn);
             }
-
-            if assembly_ids.len() > 2 {
-                point["assemblyPair"] = json!([ref_id, cmp_id]);
-            }
-
-            all_points.push(point);
         }
     }
 
@@ -1038,8 +1191,6 @@ fn build_oxford_ribbon_report(
         .collect();
 
     // Build 2D per-sequence histogram for oxford (2-assembly) reports.
-    // Rows = X (ref) sequences in layout order; columns = Y (cmp) sequences.
-    // Each cell = feature count for that (x_seq, y_seq) pair.
     let (histograms, z_domain_max) = if assembly_ids.len() == 2 {
         let cmp_id = &assembly_ids[1];
         let cmp_layout = layouts.get(cmp_id.as_str());
@@ -1066,13 +1217,16 @@ fn build_oxford_ribbon_report(
         let n_y = cmp_seq_order.len();
         let mut matrix: Vec<Vec<u32>> = vec![vec![0u32; n_y]; n_x];
 
+        let cmp_id = &assembly_ids[1];
         for cmp_feat in features.iter().filter(|f| &f.assembly_id == cmp_id) {
-            if let Some(ref_feat) = group_to_ref.get(cmp_feat.group_value.as_str()) {
-                if let (Some(&xi), Some(&yi)) = (
-                    ref_idx_map.get(ref_feat.sequence_id.as_str()),
-                    cmp_idx_map.get(cmp_feat.sequence_id.as_str()),
-                ) {
-                    matrix[xi][yi] += 1;
+            if let Some(ref_feats) = group_to_ref_all.get(cmp_feat.group_value.as_str()) {
+                for rf in ref_feats {
+                    if let (Some(&xi), Some(&yi)) = (
+                        ref_idx_map.get(rf.sequence_id.as_str()),
+                        cmp_idx_map.get(cmp_feat.sequence_id.as_str()),
+                    ) {
+                        matrix[xi][yi] += 1;
+                    }
                 }
             }
         }
@@ -1129,6 +1283,7 @@ fn build_oxford_ribbon_report(
             "type": report_type,
             "assemblies": assemblies_json,
             "points": Value::Null,
+            "connections": all_connections,
             "windowedPoints": windowed_json,
             "histograms": histograms,
             "cat": spec.cat,
@@ -1140,12 +1295,42 @@ fn build_oxford_ribbon_report(
             "type": report_type,
             "assemblies": assemblies_json,
             "points": all_points,
+            "connections": all_connections,
             "windowedPoints": Value::Null,
             "histograms": histograms,
             "cat": spec.cat,
             "cats": cats_json,
             "zDomain": [0, z_domain_max]
         })
+    }
+}
+
+/// Compute genome-wide (y, y2) coordinates for a comparison feature,
+/// applying orientation flip when the sequence is reversed.
+fn genome_wide_y(
+    feat: &FeatureRecord,
+    cmp_layout: Option<&AssemblyLayout>,
+    cmp_offsets: &HashMap<String, u64>,
+    y_orient: i8,
+) -> (u64, u64) {
+    if let Some(&off) = cmp_offsets.get(&feat.sequence_id) {
+        let seq_len = cmp_layout
+            .and_then(|l| {
+                l.sequences
+                    .iter()
+                    .find(|s| s.sequence_id == feat.sequence_id)
+            })
+            .map(|s| s.length)
+            .unwrap_or(0);
+        if y_orient == -1 {
+            let flipped_start = seq_len.saturating_sub(feat.end);
+            let flipped_end = seq_len.saturating_sub(feat.start);
+            (off + flipped_start, off + flipped_end)
+        } else {
+            (off + feat.start, off + feat.end)
+        }
+    } else {
+        (feat.start, feat.end)
     }
 }
 
@@ -1189,6 +1374,187 @@ fn build_painting_report(
         "assemblies": assemblies_json,
         "segments": painting["segments"],
         "cat": spec.cat
+    })
+}
+
+// ── Circos report output ──────────────────────────────────────────────────────
+
+/// Build a circos arc diagram response.
+///
+/// All assemblies are arranged on a single circle (angle 0–360°).  Sequences
+/// are sorted by length (longest first) within each assembly, then assemblies
+/// are laid out in the order they appear in `assembly_ids`.  A small gap
+/// (1% of total genome span, capped at 10 Mbp) separates each assembly.
+///
+/// Arcs connect feature positions; M:N groups produce one arc per (x, y) pair
+/// up to `max_connections_per_group`.
+fn build_circos_report(
+    spec: &PositionalSpec,
+    assembly_ids: &[String],
+    layouts: &HashMap<String, AssemblyLayout>,
+    features: &[FeatureRecord],
+) -> Value {
+    let assemblies_json = serialise_assembly_metadata(assembly_ids, layouts);
+    let max_conn = spec.max_connections_per_group.unwrap_or(25);
+
+    // Compute total genome span across all assemblies (used for angle normalisation).
+    let total_span: u64 = assembly_ids
+        .iter()
+        .filter_map(|id| layouts.get(id.as_str()))
+        .map(|l| l.total_span)
+        .sum();
+
+    if total_span == 0 {
+        return json!({
+            "type": "circos",
+            "assemblies": assemblies_json,
+            "sequences": [],
+            "arcs": []
+        });
+    }
+
+    // Gap between assemblies: 1% of total span, capped at 10 Mbp.
+    let gap_bp: u64 = (total_span / 100).min(10_000_000);
+    let total_with_gaps = total_span + gap_bp * (assembly_ids.len() as u64).saturating_sub(1);
+    let scale = 360.0_f64 / total_with_gaps as f64;
+
+    // Build circos sequence entries with angle ranges.
+    let mut global_offset: u64 = 0;
+    let mut seq_angle_start: HashMap<(String, String), f64> = HashMap::new(); // (assembly, seq) → angle_start
+    let mut seq_angle_scale: HashMap<(String, String), f64> = HashMap::new(); // (assembly, seq) → bp_per_degree⁻¹
+
+    let mut sequences_json: Vec<Value> = Vec::new();
+
+    for (asm_idx, asm_id) in assembly_ids.iter().enumerate() {
+        let layout = match layouts.get(asm_id.as_str()) {
+            Some(l) => l,
+            None => continue,
+        };
+        for seq in &layout.sequences {
+            let angle_start = (global_offset + seq.offset) as f64 * scale;
+            let angle_end = angle_start + seq.length as f64 * scale;
+            let key = (asm_id.clone(), seq.sequence_id.clone());
+            seq_angle_start.insert(key.clone(), angle_start);
+            seq_angle_scale.insert(key, scale);
+
+            sequences_json.push(json!({
+                "sequenceId":  seq.sequence_id,
+                "assemblyId":  asm_id,
+                "length":      seq.length,
+                "offset":      seq.offset,
+                "angleStart":  (angle_start * 100.0).round() / 100.0,
+                "angleEnd":    (angle_end   * 100.0).round() / 100.0
+            }));
+        }
+        global_offset += layout.total_span;
+        if asm_idx + 1 < assembly_ids.len() {
+            global_offset += gap_bp;
+        }
+    }
+
+    // Group all features by group_value for arc building.
+    let mut group_by_value: HashMap<&str, Vec<&FeatureRecord>> = HashMap::new();
+    for f in features {
+        group_by_value.entry(&f.group_value).or_default().push(f);
+    }
+
+    /// Convert a genome-wide bp position (offset + start) to an angle.
+    fn pos_to_angle(
+        assembly_id: &str,
+        sequence_id: &str,
+        pos: u64,
+        seq_angle_start: &HashMap<(String, String), f64>,
+        seq_angle_scale: &HashMap<(String, String), f64>,
+        layout: &HashMap<String, AssemblyLayout>,
+    ) -> f64 {
+        let offset = layout
+            .get(assembly_id)
+            .and_then(|l| l.sequences.iter().find(|s| s.sequence_id == sequence_id))
+            .map(|s| s.offset)
+            .unwrap_or(0);
+        let local_pos = pos; // pos is already local (start/end from FeatureRecord)
+        let key = (assembly_id.to_string(), sequence_id.to_string());
+        let base = *seq_angle_start.get(&key).unwrap_or(&0.0);
+        let sc = *seq_angle_scale.get(&key).unwrap_or(&0.0);
+        let _ = offset; // offset already baked into seq_angle_start via global_offset
+        (base + local_pos as f64 * sc * 100.0).round() / 100.0
+    }
+
+    let mut arcs_json: Vec<Value> = Vec::new();
+
+    for (group, feats) in &group_by_value {
+        // Group by assembly
+        let mut by_asm: HashMap<&str, Vec<&FeatureRecord>> = HashMap::new();
+        for f in feats {
+            by_asm.entry(&f.assembly_id).or_default().push(f);
+        }
+
+        // Emit one arc per unique (from_feat, to_feat) pair across assembly pairs,
+        // plus within-assembly pairs (same assembly, different features).
+        let all_feats: Vec<&FeatureRecord> = feats.to_vec();
+        let total = all_feats.len();
+        let mut arc_count = 0;
+
+        'outer: for i in 0..total {
+            for j in (i + 1)..total {
+                if arc_count >= max_conn {
+                    break 'outer;
+                }
+                let from = all_feats[i];
+                let to = all_feats[j];
+
+                let from_angle = pos_to_angle(
+                    &from.assembly_id,
+                    &from.sequence_id,
+                    from.start,
+                    &seq_angle_start,
+                    &seq_angle_scale,
+                    layouts,
+                );
+                let to_angle = pos_to_angle(
+                    &to.assembly_id,
+                    &to.sequence_id,
+                    to.start,
+                    &seq_angle_start,
+                    &seq_angle_scale,
+                    layouts,
+                );
+                let cat = from
+                    .cat_value
+                    .as_deref()
+                    .or(to.cat_value.as_deref())
+                    .unwrap_or("");
+
+                let mut arc = json!({
+                    "group": group,
+                    "from": {
+                        "sequenceId": from.sequence_id,
+                        "assemblyId": from.assembly_id,
+                        "pos":        from.start,
+                        "angle":      from_angle
+                    },
+                    "to": {
+                        "sequenceId": to.sequence_id,
+                        "assemblyId": to.assembly_id,
+                        "pos":        to.start,
+                        "angle":      to_angle
+                    },
+                    "weight": 1
+                });
+                if !cat.is_empty() {
+                    arc["catValue"] = json!(cat);
+                }
+                arcs_json.push(arc);
+                arc_count += 1;
+            }
+        }
+    }
+
+    json!({
+        "type":       "circos",
+        "assemblies": assemblies_json,
+        "sequences":  sequences_json,
+        "arcs":       arcs_json
     })
 }
 

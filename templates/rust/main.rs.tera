@@ -61,6 +61,69 @@ enum Commands {
         output: Option<std::path::PathBuf>,
     },
 
+    /// Run a positional report query against `POST /api/v3/positional`.
+    ///
+    /// All four sub-types (oxford, ribbon, painting, circos) share this command
+    /// and the same flag set.  Select the sub-type with `--report`.
+    Positional {
+        /// Report sub-type.
+        #[arg(long, value_parser = ["oxford", "ribbon", "painting", "circos"], default_value = "oxford")]
+        report: String,
+
+        /// Shared feature identifier field (e.g. `busco_gene`, `metazoa_odb10-busco-gene`).
+        #[arg(long = "group-by")]
+        group_by: String,
+
+        /// Assembly accessions, comma-separated (e.g. `GCA_905147045.1,GCA_902806685.2`).
+        #[arg(long, value_delimiter = ',')]
+        assemblies: Vec<String>,
+
+        /// Feature type to filter on.  Defaults to `--group-by` when omitted.
+        #[arg(long = "feature-type")]
+        feature_type: Option<String>,
+
+        /// Window size in base-pairs for regional grouping.
+        #[arg(long = "window-size")]
+        window_size: Option<u64>,
+
+        /// Disable auto-reorientation of comparison sequences.
+        #[arg(long = "no-reorient")]
+        no_reorient: bool,
+
+        /// Maximum features to fetch from the index.
+        #[arg(long = "max-features", default_value_t = 10_000)]
+        max_features: usize,
+
+        /// Category field for colour coding (e.g. `busco_status`, `merian_unit`).
+        #[arg(long)]
+        cat: Option<String>,
+
+        /// Category axis options string.
+        #[arg(long = "cat-opts")]
+        cat_opts: Option<String>,
+
+        /// Attribute filter as a JSON object (repeatable).
+        ///
+        /// Each value must be a JSON object matching AttributeFilter.  Example:
+        /// --filter-json '{"field":"gc","operator":"gt","value":"0.45","target":"sequence"}'
+        #[arg(long = "filter-json")]
+        filter_json: Vec<String>,
+
+        /// Region computation config as a JSON object.
+        ///
+        /// Example: --regions '{"cat":"merian_unit","bounds":"midpoints"}'
+        #[arg(long)]
+        regions: Option<String>,
+
+        /// Maximum connections per group cap for M:N feature mappings.
+        #[arg(long = "max-connections-per-group")]
+        max_connections_per_group: Option<usize>,
+
+        /// Output format.
+        #[arg(long, value_enum, default_value = "json")]
+        format: generated::output::OutputFormat,
+    },
+
     /// Build a plot spec from a local TSV/CSV file (no API call).
     ///
     /// Reads a delimited file, builds a PlotSpec, and writes Vega-Lite JSON,
@@ -927,6 +990,28 @@ fn run(cli: Cli) -> anyhow::Result<()> {
             }
         },
 {% endfor %}
+        Commands::Positional {
+            report, group_by, assemblies, feature_type, window_size,
+            no_reorient, max_features, cat, cat_opts, filter_json, regions,
+            max_connections_per_group, format,
+        } => {
+            let opts = generated::client::PositionalOptions {
+                report,
+                group_by,
+                assemblies,
+                feature_type,
+                window_size,
+                reorient: !no_reorient,
+                max_features,
+                cat,
+                cat_opts,
+                filter_json,
+                regions_json: regions,
+                max_connections_per_group,
+            };
+            let body = generated::client::positional(&opts)?;
+            generated::output::print_output(&body, format)?;
+        }
         Commands::Plot { input, output, format } => {
             let raw = match input {
                 Some(ref path) => std::fs::read_to_string(path)

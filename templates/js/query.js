@@ -1079,10 +1079,8 @@ class QueryBuilder {
   }
 
   /**
-   * Run a positional report (oxford / ribbon / painting) via POST /positional.
-   * The feature index only supports taxon_id and ancestors filtering; taxon names
-   * are resolved server-side.
-   * @param {string} report - Sub-type: "oxford", "ribbon", or "painting"
+   * Run a positional report (oxford / ribbon / painting / circos) via POST /positional.
+   * @param {string} report - Sub-type: "oxford", "ribbon", "painting", or "circos"
    * @param {string} groupBy - Attribute key for shared marker (e.g. "busco_gene")
    * @param {string[]} assemblies - Assembly IDs to compare
    * @param {object} [opts] - Optional parameters
@@ -1092,21 +1090,43 @@ class QueryBuilder {
    * @param {number} [opts.maxFeatures=10000] - Hard cap on features fetched
    * @param {string|null} [opts.cat] - Category field for colour
    * @param {string|null} [opts.catOpts] - Category axis options
+   * @param {Array|null} [opts.filter] - Attribute filter list
+   * @param {object|null} [opts.regions] - Region config (cat, bounds, min_features, max_expansion)
+   * @param {number|null} [opts.maxConnectionsPerGroup] - M:N connection cap
    * @returns {Promise<object>} - Raw report dict from the response
    */
   async positional(report, groupBy, assemblies, opts = {}) {
-    const { featureType, windowSize, reorient = true, maxFeatures = 10000, cat, catOpts } = opts;
-    const positionalDoc = { report, group_by: groupBy, assemblies: [...assemblies] };
+    const {
+      featureType,
+      windowSize,
+      reorient = true,
+      maxFeatures = 10000,
+      cat,
+      catOpts,
+      filter,
+      regions,
+      maxConnectionsPerGroup,
+    } = opts;
+    const positionalDoc = {
+      report,
+      group_by: groupBy,
+      assemblies: [...assemblies],
+    };
     if (featureType != null) positionalDoc.feature_type = featureType;
     if (windowSize != null) positionalDoc.window_size = windowSize;
     if (!reorient) positionalDoc.reorient = false;
     if (maxFeatures !== 10000) positionalDoc.max_features = maxFeatures;
     if (cat != null) positionalDoc.cat = cat;
     if (catOpts != null) positionalDoc.cat_opts = catOpts;
+    if (filter != null && filter.length > 0) positionalDoc.filter = filter;
+    if (regions != null) positionalDoc.regions = regions;
+    if (maxConnectionsPerGroup != null)
+      positionalDoc.max_connections_per_group = maxConnectionsPerGroup;
 
     const positionalYaml = Object.entries(positionalDoc)
       .map(([k, v]) => {
-        if (Array.isArray(v)) return `${k}:\n${v.map((x) => `  - ${x}`).join("\n")}`;
+        if (Array.isArray(v))
+          return `${k}:\n${v.map((x) => `  - ${x}`).join("\n")}`;
         return `${k}: ${v}`;
       })
       .join("\n");
@@ -1120,7 +1140,10 @@ class QueryBuilder {
         positional_yaml: positionalYaml,
       }),
     });
-    if (!resp.ok) throw new Error(`positional API request failed: ${resp.status} ${resp.statusText}`);
+    if (!resp.ok)
+      throw new Error(
+        `positional API request failed: ${resp.status} ${resp.statusText}`,
+      );
     const data = await resp.json();
     return data.report ?? data;
   }

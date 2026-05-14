@@ -1328,20 +1328,23 @@ class QueryBuilder:
         max_features: int = 10_000,
         cat: str | None = None,
         cat_opts: str | None = None,
+        filter: list[dict[str, Any]] | None = None,
+        regions: dict[str, Any] | None = None,
+        max_connections_per_group: int | None = None,
         api_base: str = "https://goat.genomehubs.org/api",
         api_version: str = "v3",
     ) -> Any:
-        """Run a positional report (oxford / ribbon / painting) via ``POST /positional``.
+        """Run a positional report (oxford / ribbon / painting / circos) via ``POST /positional``.
 
         The feature index only supports ``taxon_id`` and ``ancestors`` for taxon
         filtering.  Taxon names in the current query are automatically resolved to
         taxon IDs via a lookup against the taxon index.
 
         Args:
-            report: Sub-type — one of ``"oxford"``, ``"ribbon"``, or ``"painting"``.
+            report: Sub-type — one of ``"oxford"``, ``"ribbon"``, ``"painting"``, or ``"circos"``.
             group_by: Attribute key used as shared marker identifier (e.g. ``"busco_gene"``).
             assemblies: Assembly IDs to compare.  Oxford requires exactly 2; painting
-                requires exactly 1; ribbon requires ≥ 2.
+                requires exactly 1; ribbon/circos require ≥ 2.
             feature_type: Optional ``primary_type`` filter (e.g. ``"busco"``).
             window_size: Regional binning in base-pairs.  ``None`` returns individual positions.
             reorient: Auto-orient comparison sequences (default ``True``).
@@ -1349,6 +1352,14 @@ class QueryBuilder:
             cat: Optional category field for colour (e.g. ``"busco_status"``).
             cat_opts: Category axis options in the standard axis DSL.  List category
                 values explicitly, e.g. ``"complete,fragmented,missing;;5"``.
+            filter: List of attribute filter dicts.  Each dict must have ``field``,
+                ``operator``, ``value``, and ``target`` keys.  See the API docs for
+                the full schema.
+            regions: Region computation config dict.  Keys: ``cat``, ``name_to_cat``,
+                ``bounds`` (``"feature_ends"`` or ``"midpoints"``), ``min_features``,
+                ``max_expansion``.
+            max_connections_per_group: Hard cap on connections per group for M:N
+                feature mappings.  ``None`` uses the server default (25).
             api_base: Base URL of the API.
             api_version: API version string (default: ``"v3"``).
 
@@ -1374,6 +1385,12 @@ class QueryBuilder:
             positional_doc["cat"] = cat
         if cat_opts is not None:
             positional_doc["cat_opts"] = cat_opts
+        if filter:
+            positional_doc["filter"] = filter
+        if regions is not None:
+            positional_doc["regions"] = regions
+        if max_connections_per_group is not None:
+            positional_doc["max_connections_per_group"] = max_connections_per_group
 
         data = self._post_json(
             f"{api_base}/{api_version}/positional",
@@ -1395,6 +1412,9 @@ class QueryBuilder:
         max_features: int = 10_000,
         cat: str | None = None,
         cat_opts: str | None = None,
+        filter: list[dict[str, Any]] | None = None,
+        regions: dict[str, Any] | None = None,
+        max_connections_per_group: int | None = None,
         api_base: str = "https://goat.genomehubs.org/api",
         api_version: str = "v3",
     ) -> Any:
@@ -1411,6 +1431,9 @@ class QueryBuilder:
             max_features: Hard cap on features fetched (default 10 000).
             cat: Optional category field for colour.
             cat_opts: Category axis options in the standard axis DSL.
+            filter: Attribute filter list (see :meth:`positional`).
+            regions: Region config dict (see :meth:`positional`).
+            max_connections_per_group: M:N connection cap (see :meth:`positional`).
             api_base: Base URL of the API.
             api_version: API version string.
 
@@ -1427,6 +1450,9 @@ class QueryBuilder:
             max_features=max_features,
             cat=cat,
             cat_opts=cat_opts,
+            filter=filter,
+            regions=regions,
+            max_connections_per_group=max_connections_per_group,
             api_base=api_base,
             api_version=api_version,
         )
@@ -1442,6 +1468,9 @@ class QueryBuilder:
         max_features: int = 10_000,
         cat: str | None = None,
         cat_opts: str | None = None,
+        filter: list[dict[str, Any]] | None = None,
+        regions: dict[str, Any] | None = None,
+        max_connections_per_group: int | None = None,
         api_base: str = "https://goat.genomehubs.org/api",
         api_version: str = "v3",
     ) -> Any:
@@ -1458,6 +1487,9 @@ class QueryBuilder:
             max_features: Hard cap on features fetched (default 10 000).
             cat: Optional category field for colour.
             cat_opts: Category axis options in the standard axis DSL.
+            filter: Attribute filter list (see :meth:`positional`).
+            regions: Region config dict (see :meth:`positional`).
+            max_connections_per_group: M:N connection cap (see :meth:`positional`).
             api_base: Base URL of the API.
             api_version: API version string.
 
@@ -1474,6 +1506,9 @@ class QueryBuilder:
             max_features=max_features,
             cat=cat,
             cat_opts=cat_opts,
+            filter=filter,
+            regions=regions,
+            max_connections_per_group=max_connections_per_group,
             api_base=api_base,
             api_version=api_version,
         )
@@ -1488,6 +1523,9 @@ class QueryBuilder:
         max_features: int = 10_000,
         cat: str | None = None,
         cat_opts: str | None = None,
+        filter: list[dict[str, Any]] | None = None,
+        regions: dict[str, Any] | None = None,
+        max_connections_per_group: int | None = None,
         api_base: str = "https://goat.genomehubs.org/api",
         api_version: str = "v3",
     ) -> Any:
@@ -1503,6 +1541,9 @@ class QueryBuilder:
             max_features: Hard cap on features fetched (default 10 000).
             cat: Optional category field for colour (e.g. ``"busco_status"``).
             cat_opts: Category axis options in the standard axis DSL.
+            filter: Attribute filter list (see :meth:`positional`).
+            regions: Region config dict (see :meth:`positional`).
+            max_connections_per_group: M:N connection cap (see :meth:`positional`).
             api_base: Base URL of the API.
             api_version: API version string.
 
@@ -1518,6 +1559,9 @@ class QueryBuilder:
             max_features=max_features,
             cat=cat,
             cat_opts=cat_opts,
+            filter=filter,
+            regions=regions,
+            max_connections_per_group=max_connections_per_group,
             api_base=api_base,
             api_version=api_version,
         )

@@ -1010,11 +1010,14 @@ class QueryBuilder:
         max_features: int = 10_000,
         cat: "str | None" = None,
         cat_opts: "str | None" = None,
+        filter: "list[dict[str, Any]] | None" = None,
+        regions: "dict[str, Any] | None" = None,
+        max_connections_per_group: "int | None" = None,
     ) -> Any:
-        """Run a positional report (oxford / ribbon / painting).
+        """Run a positional report (oxford / ribbon / painting / circos).
 
         Args:
-            report: Sub-type — one of ``"oxford"``, ``"ribbon"``, or ``"painting"``.
+            report: Sub-type — ``"oxford"``, ``"ribbon"``, ``"painting"``, or ``"circos"``.
             group_by: Attribute key used as shared marker identifier.
             assemblies: Assembly IDs to compare.
             feature_type: Optional primary_type filter.
@@ -1023,6 +1026,11 @@ class QueryBuilder:
             max_features: Hard cap on features fetched (default 10 000).
             cat: Optional category field for colour.
             cat_opts: Category axis options (list values explicitly, e.g. ``"complete,fragmented;;5"``).
+            filter: Attribute filter list.  Each dict must have ``field``, ``operator``,
+                ``value``, and ``target`` keys.
+            regions: Region config dict.  Keys: ``cat``, ``name_to_cat``, ``bounds``
+                (``"feature_ends"`` or ``"midpoints"``), ``min_features``, ``max_expansion``.
+            max_connections_per_group: Hard cap on connections per M:N group.
 
         Returns:
             Raw report dict from the response.
@@ -1047,6 +1055,12 @@ class QueryBuilder:
             positional_doc["cat"] = cat
         if cat_opts is not None:
             positional_doc["cat_opts"] = cat_opts
+        if filter:
+            positional_doc["filter"] = filter
+        if regions is not None:
+            positional_doc["regions"] = regions
+        if max_connections_per_group is not None:
+            positional_doc["max_connections_per_group"] = max_connections_per_group
 
         payload = json.dumps({
             "query_yaml": self.to_query_yaml(),
@@ -1070,12 +1084,17 @@ class QueryBuilder:
         max_features: int = 10_000,
         cat: "str | None" = None,
         cat_opts: "str | None" = None,
+        filter: "list[dict[str, Any]] | None" = None,
+        regions: "dict[str, Any] | None" = None,
+        max_connections_per_group: "int | None" = None,
     ) -> Any:
         """Run an Oxford dot-plot (exactly 2 assemblies). Wrapper around positional()."""
         return self.positional(
             "oxford", group_by, assemblies,
             feature_type=feature_type, window_size=window_size, reorient=reorient,
             max_features=max_features, cat=cat, cat_opts=cat_opts,
+            filter=filter, regions=regions,
+            max_connections_per_group=max_connections_per_group,
         )
 
     def ribbon(
@@ -1089,12 +1108,17 @@ class QueryBuilder:
         max_features: int = 10_000,
         cat: "str | None" = None,
         cat_opts: "str | None" = None,
+        filter: "list[dict[str, Any]] | None" = None,
+        regions: "dict[str, Any] | None" = None,
+        max_connections_per_group: "int | None" = None,
     ) -> Any:
         """Run a ribbon/synteny report (N ≥ 2 assemblies). Wrapper around positional()."""
         return self.positional(
             "ribbon", group_by, assemblies,
             feature_type=feature_type, window_size=window_size, reorient=reorient,
             max_features=max_features, cat=cat, cat_opts=cat_opts,
+            filter=filter, regions=regions,
+            max_connections_per_group=max_connections_per_group,
         )
 
     def painting(
@@ -1107,12 +1131,17 @@ class QueryBuilder:
         max_features: int = 10_000,
         cat: "str | None" = None,
         cat_opts: "str | None" = None,
+        filter: "list[dict[str, Any]] | None" = None,
+        regions: "dict[str, Any] | None" = None,
+        max_connections_per_group: "int | None" = None,
     ) -> Any:
         """Run a chromosome painting report (1 assembly). Wrapper around positional()."""
         return self.positional(
             "painting", group_by, [assembly],
             feature_type=feature_type, window_size=window_size,
             max_features=max_features, cat=cat, cat_opts=cat_opts,
+            filter=filter, regions=regions,
+            max_connections_per_group=max_connections_per_group,
         )
 
     def lookup(self, search_term: str, result: str | None = None, size: int = 10) -> Any:

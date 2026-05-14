@@ -721,6 +721,113 @@ pub fn msearch(
     Ok(all_results)
 }
 
+/// Configuration for a `POST /api/v3/positional` request.
+#[derive(Debug)]
+pub struct PositionalOptions {
+    /// Report sub-type: `"oxford"`, `"ribbon"`, `"painting"`, or `"circos"`.
+    pub report: String,
+    /// Shared feature identifier field (e.g. `"busco_gene"`).
+    pub group_by: String,
+    /// Assembly IDs to include.
+    pub assemblies: Vec<String>,
+    /// Feature type to filter on.  Defaults to `group_by` when `None`.
+    pub feature_type: Option<String>,
+    /// Window size in bp for regional grouping.
+    pub window_size: Option<u64>,
+    /// Auto-orient comparison sequences relative to the reference assembly.
+    pub reorient: bool,
+    /// Maximum features to fetch from ES.
+    pub max_features: usize,
+    /// Category field for colour coding (e.g. `"busco_status"`).
+    pub cat: Option<String>,
+    /// Category axis options string.
+    pub cat_opts: Option<String>,
+    /// Filter predicates as pre-serialised JSON strings, one per entry.
+    ///
+    /// Each string must be a valid JSON object matching `AttributeFilter`.
+    pub filter_json: Vec<String>,
+    /// Region computation config as a pre-serialised JSON string.
+    pub regions_json: Option<String>,
+    /// Hard cap on connections per group for M:N feature mappings.
+    pub max_connections_per_group: Option<usize>,
+}
+
+impl Default for PositionalOptions {
+    fn default() -> Self {
+        Self {
+            report: "oxford".to_string(),
+            group_by: String::new(),
+            assemblies: Vec::new(),
+            feature_type: None,
+            window_size: None,
+            reorient: true,
+            max_features: 10_000,
+            cat: None,
+            cat_opts: None,
+            filter_json: Vec::new(),
+            regions_json: None,
+            max_connections_per_group: None,
+        }
+    }
+}
+
+/// Run a positional report query against `POST /api/v3/positional`.
+///
+/// Builds the `positional_yaml` document from `opts` and posts it to the
+/// `/v3/positional` endpoint.  Returns the raw JSON response string.
+pub fn positional(opts: &PositionalOptions) -> Result<String> {
+    let url = format!("{API_BASE_URL}/v3/positional");
+
+    let mut doc = serde_json::Map::new();
+    doc.insert("report".to_string(), serde_json::json!(opts.report));
+    doc.insert("group_by".to_string(), serde_json::json!(opts.group_by));
+    if !opts.assemblies.is_empty() {
+        doc.insert("assemblies".to_string(), serde_json::json!(opts.assemblies));
+    }
+    if let Some(ref ft) = opts.feature_type {
+        doc.insert("feature_type".to_string(), serde_json::json!(ft));
+    }
+    if let Some(ws) = opts.window_size {
+        doc.insert("window_size".to_string(), serde_json::json!(ws));
+    }
+    if !opts.reorient {
+        doc.insert("reorient".to_string(), serde_json::Value::Bool(false));
+    }
+    if opts.max_features != 10_000 {
+        doc.insert("max_features".to_string(), serde_json::json!(opts.max_features));
+    }
+    if let Some(ref cat) = opts.cat {
+        doc.insert("cat".to_string(), serde_json::json!(cat));
+    }
+    if let Some(ref cat_opts) = opts.cat_opts {
+        doc.insert("cat_opts".to_string(), serde_json::json!(cat_opts));
+    }
+    if !opts.filter_json.is_empty() {
+        let filters: Vec<serde_json::Value> = opts
+            .filter_json
+            .iter()
+            .filter_map(|s| serde_json::from_str(s).ok())
+            .collect();
+        if !filters.is_empty() {
+            doc.insert("filter".to_string(), serde_json::json!(filters));
+        }
+    }
+    if let Some(ref regions_str) = opts.regions_json {
+        if let Ok(regions_val) = serde_json::from_str::<serde_json::Value>(regions_str) {
+            doc.insert("regions".to_string(), regions_val);
+        }
+    }
+    if let Some(cap) = opts.max_connections_per_group {
+        doc.insert(
+            "max_connections_per_group".to_string(),
+            serde_json::json!(cap),
+        );
+    }
+
+    let body = serde_json::json!({ "positional_yaml": serde_json::Value::Object(doc) });
+    post_json(&url, &body)
+}
+
 /// Configuration for a `/report` request.
 ///
 /// All optional fields default to `None` / sensible values.  Set only the

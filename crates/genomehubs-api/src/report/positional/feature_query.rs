@@ -22,9 +22,30 @@
 //!   `busco_gene`) is normalised with [`resolve_feature_type`] before
 //!   building the `primary_type` filter.
 
+use genomehubs_query::report::{AttributeFilter, FilterOperator, FilterTarget, FilterValue};
 use serde_json::{json, Value};
 
 use crate::es_client::execute_search;
+
+// ── Top-level field registry ──────────────────────────────────────────────────
+
+/// Fields promoted to top-level in the feature index v2 mapping.
+///
+/// Filters on these fields use plain ES term/range clauses; all other fields
+/// are routed through the nested `attributes` path.
+const TOP_LEVEL_FIELDS: &[&str] = &[
+    "assembly_id",
+    "feature_id",
+    "taxon_id",
+    "primary_type",
+    "sequence_id",
+    "start",
+    "end",
+    "length",
+    "strand",
+    "sequence_length",
+    "container_ids",
+];
 
 /// A single parsed feature record.
 #[derive(Debug, Clone)]
@@ -396,6 +417,388 @@ pub(crate) fn extract_attributes(source: &Value) -> std::collections::HashMap<St
     map
 }
 
+// ── Direct filter clause builders ────────────────────────────────────────────
+
+/// Convert `FilterTarget::Feature` entries into ES filter clauses.
+///
+/// Top-level v2 fields (`sequence_length`, `length`, `start`, etc.) produce
+/// plain range / term clauses.  All other fields produce nested `attributes`
+/// clauses.
+pub fn build_feature_direct_clauses(filters: &[AttributeFilter]) -> Vec<Value> {
+    filters
+        .iter()
+        .filter(|f| f.target == FilterTarget::Feature)
+        .filter_map(|f| {
+            if TOP_LEVEL_FIELDS.contains(&f.field.as_str()) {
+                build_top_level_clause(&f.field, &f.operator, &f.value)
+            } else {
+                build_nested_attr_clause(&f.field, &f.operator, &f.value)
+            }
+        })
+        .collect()
+}
+
+/// Build a plain ES filter clause for a v2 top-level field.
+fn build_top_level_clause(field: &str, op: &FilterOperator, value: &FilterValue) -> Option<Value> {
+    match op {
+        FilterOperator::Eq => {
+            let v = scalar_to_json(value)?;
+            Some(json!({ "term": { field: v } }))
+        }
+        FilterOperator::Ne => {
+            let v = scalar_to_json(value)?;
+            Some(json!({ "bool": { "must_not": [{ "term": { field: v } }] } }))
+        }
+        FilterOperator::In => {
+            let list = list_values(value)?;
+            Some(json!({ "terms": { field: list } }))
+        }
+        FilterOperator::Lt => {
+            let v = numeric_value(value)?;
+            Some(json!({ "range": { field: { "lt": v } } }))
+        }
+        FilterOperator::Lte => {
+            let v = numeric_value(value)?;
+            Some(json!({ "range": { field: { "lte": v } } }))
+        }
+        FilterOperator::Gt => {
+            let v = numeric_value(value)?;
+            Some(json!({ "range": { field: { "gt": v } } }))
+        }
+        FilterOperator::Gte => {
+            let v = numeric_value(value)?;
+            Some(json!({ "range": { field: { "gte": v } } }))
+        }
+        FilterOperator::GteCount => None, // Type C — not yet implemented
+    }
+}
+
+/// Build a nested ES filter clause for a field stored in the `attributes` array.
+///
+/// For numeric range operators, a `should` clause covers `long_value` (integer
+/// attributes), `3dp_value`, and `half_float_value` (float attributes) so the
+/// filter works regardless of the attribute's stored numeric type.
+fn build_nested_attr_clause(
+    field: &str,
+    op: &FilterOperator,
+    value: &FilterValue,
+) -> Option<Value> {
+    match op {
+        FilterOperator::Eq => {
+            if let Some(list) = list_values(value) {
+                return Some(json!({
+                    "nested": {
+                        "path": "attributes",
+                        "query": { "bool": { "filter": [
+                            { "match": { "attributes.key": field } },
+                            { "terms": { "attributes.keyword_value": list } }
+                        ]}}
+                    }
+                }));
+            }
+            let v = scalar_to_json(value)?;
+            let val_field = if v.is_number() {
+                "attributes.long_value"
+            } else {
+                "attributes.keyword_value"
+            };
+            Some(json!({
+                "nested": {
+                    "path": "attributes",
+                    "query": { "bool": { "filter": [
+                        { "match": { "attributes.key": field } },
+                        { "term": { val_field: v } }
+                    ]}}
+                }
+            }))
+        }
+        FilterOperator::Ne => {
+            let v = scalar_to_json(value)?;
+            let val_field = if v.is_number() {
+                "attributes.long_value"
+            } else {
+                "attributes.keyword_value"
+            };
+            Some(json!({
+                "nested": {
+                    "path": "attributes",
+                    "query": { "bool": {
+                        "filter": [{ "match": { "attributes.key": field } }],
+                        "must_not": [{ "term": { val_field: v } }]
+                    }}
+                }
+            }))
+        }
+        FilterOperator::In => {
+            let list = list_values(value)?;
+            Some(json!({
+                "nested": {
+                    "path": "attributes",
+                    "query": { "bool": { "filter": [
+                        { "match": { "attributes.key": field } },
+                        { "terms": { "attributes.keyword_value": list } }
+                    ]}}
+                }
+            }))
+        }
+        op @ (FilterOperator::Lt
+        | FilterOperator::Lte
+        | FilterOperator::Gt
+        | FilterOperator::Gte) => {
+            let v = numeric_value(value)?;
+            let range_key = match op {
+                FilterOperator::Lt => "lt",
+                FilterOperator::Lte => "lte",
+                FilterOperator::Gt => "gt",
+                FilterOperator::Gte => "gte",
+                _ => unreachable!(),
+            };
+            // Cover integer (`long_value`) and float (`3dp_value`, `half_float_value`) fields.
+            Some(json!({
+                "nested": {
+                    "path": "attributes",
+                    "query": { "bool": { "filter": [
+                        { "match": { "attributes.key": field } },
+                        { "bool": {
+                            "should": [
+                                { "range": { "attributes.long_value": { range_key: v } } },
+                                { "range": { "attributes.3dp_value": { range_key: v } } },
+                                { "range": { "attributes.half_float_value": { range_key: v } } }
+                            ],
+                            "minimum_should_match": 1
+                        }}
+                    ]}}
+                }
+            }))
+        }
+        FilterOperator::GteCount => None,
+    }
+}
+
+// ── Filter value helpers ──────────────────────────────────────────────────────
+
+fn scalar_to_json(value: &FilterValue) -> Option<Value> {
+    match value {
+        FilterValue::Scalar(n) => Some(json!(n)),
+        FilterValue::Text(s) => Some(json!(s)),
+        FilterValue::List(list) => list.first().map(|s| json!(s)),
+    }
+}
+
+fn numeric_value(value: &FilterValue) -> Option<f64> {
+    match value {
+        FilterValue::Scalar(n) => Some(*n),
+        FilterValue::Text(s) => s.parse::<f64>().ok(),
+        FilterValue::List(list) => list.first().and_then(|s| s.parse::<f64>().ok()),
+    }
+}
+
+fn list_values(value: &FilterValue) -> Option<Vec<String>> {
+    match value {
+        FilterValue::List(list) if !list.is_empty() => Some(list.clone()),
+        _ => None,
+    }
+}
+
+// ── Chain query executors ─────────────────────────────────────────────────────
+
+/// Type A chain: resolve `sequence_id` values for toplevel features whose
+/// `attributes` match the given filter.
+///
+/// Used when `target: sequence` — the caller adds `terms: {sequence_id: ...}`
+/// to the feature query so only features on matching sequences are returned.
+pub async fn resolve_sequence_ids(
+    client: &reqwest::Client,
+    es_base: &str,
+    index: &str,
+    assembly_ids: &[String],
+    filter: &AttributeFilter,
+) -> Result<Vec<String>, String> {
+    let attr_clause = build_nested_attr_clause(&filter.field, &filter.operator, &filter.value)
+        .ok_or_else(|| {
+            format!(
+                "unsupported operator for sequence chain: field={}",
+                filter.field
+            )
+        })?;
+
+    let body = json!({
+        "query": {
+            "bool": {
+                "filter": [
+                    { "terms": { "assembly_id": assembly_ids } },
+                    { "term": { "primary_type": "toplevel" } },
+                    attr_clause
+                ]
+            }
+        },
+        "_source": ["sequence_id"],
+        "size": 10_000
+    });
+
+    let raw = execute_search(client, es_base, index, &body).await?;
+    let hits = raw
+        .pointer("/hits/hits")
+        .and_then(|h| h.as_array())
+        .ok_or_else(|| "sequence chain query: missing hits".to_string())?;
+
+    let ids: Vec<String> = hits
+        .iter()
+        .filter_map(|h| {
+            h.get("_source")
+                .and_then(|s| s.get("sequence_id"))
+                .and_then(|v| v.as_str())
+                .filter(|s| !s.is_empty())
+                .map(|s| s.to_string())
+        })
+        .collect();
+
+    Ok(ids)
+}
+
+/// Map a window size in base-pairs to the `primary_type` stored in the feature
+/// index (e.g. `1_000_000` → `"window_1m"`).
+fn window_size_to_primary_type(size: u64) -> String {
+    match size {
+        1_000_000 => "window_1m".to_string(),
+        500_000 => "window_500k".to_string(),
+        100_000 => "window_100k".to_string(),
+        _ => format!("window_{size}"),
+    }
+}
+
+/// Type B chain: resolve `feature_id` values (used as `container_ids` on
+/// feature docs) for window features whose `attributes` match the given filter.
+///
+/// When `window_size` is `None`, the coarsest available window resolution is
+/// auto-detected (1 Mbp → 500 kbp → 100 kbp).  Returns an error if no window
+/// features exist in the index.
+pub async fn resolve_window_ids(
+    client: &reqwest::Client,
+    es_base: &str,
+    index: &str,
+    assembly_ids: &[String],
+    filter: &AttributeFilter,
+    window_size: Option<u64>,
+) -> Result<Vec<String>, String> {
+    let attr_clause = build_nested_attr_clause(&filter.field, &filter.operator, &filter.value)
+        .ok_or_else(|| {
+            format!(
+                "unsupported operator for window chain: field={}",
+                filter.field
+            )
+        })?;
+
+    let primary_type = if let Some(ws) = window_size {
+        window_size_to_primary_type(ws)
+    } else {
+        detect_coarsest_window_type(client, es_base, index, assembly_ids).await?
+    };
+
+    fetch_window_feature_ids(
+        client,
+        es_base,
+        index,
+        assembly_ids,
+        &primary_type,
+        attr_clause,
+    )
+    .await
+}
+
+/// Probe the index for window features at each standard resolution (coarsest
+/// first) and return the first `primary_type` that has at least one document.
+async fn detect_coarsest_window_type(
+    client: &reqwest::Client,
+    es_base: &str,
+    index: &str,
+    assembly_ids: &[String],
+) -> Result<String, String> {
+    for size in [1_000_000u64, 500_000, 100_000] {
+        let pt = window_size_to_primary_type(size);
+        let probe = json!({
+            "query": {
+                "bool": {
+                    "filter": [
+                        { "terms": { "assembly_id": assembly_ids } },
+                        { "term": { "primary_type": &pt } }
+                    ]
+                }
+            },
+            "_source": [],
+            "size": 1
+        });
+        if let Ok(raw) = execute_search(client, es_base, index, &probe).await {
+            let total = raw
+                .pointer("/hits/total/value")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(0);
+            if total > 0 {
+                return Ok(pt);
+            }
+        }
+    }
+    Err(
+        "window chain filter: no window features (primary_type = window_1m / window_500k / \
+         window_100k) found in the feature index. Ensure window documents are indexed."
+            .to_string(),
+    )
+}
+
+/// Execute the window feature query and return all matching `feature_id` values.
+async fn fetch_window_feature_ids(
+    client: &reqwest::Client,
+    es_base: &str,
+    index: &str,
+    assembly_ids: &[String],
+    primary_type: &str,
+    attr_clause: Value,
+) -> Result<Vec<String>, String> {
+    let body = json!({
+        "query": {
+            "bool": {
+                "filter": [
+                    { "terms": { "assembly_id": assembly_ids } },
+                    { "term": { "primary_type": primary_type } },
+                    attr_clause
+                ]
+            }
+        },
+        "_source": ["feature_id"],
+        "size": 65_536
+    });
+
+    let raw = execute_search(client, es_base, index, &body).await?;
+    let total = raw
+        .pointer("/hits/total/value")
+        .and_then(|v| v.as_u64())
+        .unwrap_or(0);
+    let hits = raw
+        .pointer("/hits/hits")
+        .and_then(|h| h.as_array())
+        .ok_or_else(|| "window chain query: missing hits".to_string())?;
+
+    if total > 65_536 {
+        eprintln!(
+            "window chain query: {total} windows matched but only 65,536 container IDs \
+             can be fetched per query. Results may be incomplete."
+        );
+    }
+
+    let ids: Vec<String> = hits
+        .iter()
+        .filter_map(|h| {
+            h.get("_source")
+                .and_then(|s| s.get("feature_id"))
+                .and_then(|v| v.as_str())
+                .filter(|s| !s.is_empty())
+                .map(|s| s.to_string())
+        })
+        .collect();
+
+    Ok(ids)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -521,5 +924,90 @@ mod tests {
             resolve_feature_type("busco_gene", &[]).unwrap(),
             "busco-gene"
         );
+    }
+
+    // ── build_feature_direct_clauses ──────────────────────────────────────────
+
+    fn feature_filter(field: &str, op: FilterOperator, value: FilterValue) -> AttributeFilter {
+        AttributeFilter {
+            field: field.to_string(),
+            operator: op,
+            value,
+            target: FilterTarget::Feature,
+        }
+    }
+
+    #[test]
+    fn test_top_level_gte_produces_range_clause() {
+        let filters = vec![feature_filter(
+            "sequence_length",
+            FilterOperator::Gte,
+            FilterValue::Text("10000000".to_string()),
+        )];
+        let clauses = build_feature_direct_clauses(&filters);
+        assert_eq!(clauses.len(), 1);
+        assert!(clauses[0].pointer("/range/sequence_length/gte").is_some());
+    }
+
+    #[test]
+    fn test_top_level_eq_produces_term_clause() {
+        let filters = vec![feature_filter(
+            "sequence_id",
+            FilterOperator::Eq,
+            FilterValue::Text("LR000001.1".to_string()),
+        )];
+        let clauses = build_feature_direct_clauses(&filters);
+        assert_eq!(clauses.len(), 1);
+        assert!(clauses[0].pointer("/term/sequence_id").is_some());
+    }
+
+    #[test]
+    fn test_attribute_gt_produces_nested_clause() {
+        let filters = vec![feature_filter(
+            "gc",
+            FilterOperator::Gt,
+            FilterValue::Scalar(0.45),
+        )];
+        let clauses = build_feature_direct_clauses(&filters);
+        assert_eq!(clauses.len(), 1);
+        // Should have nested path
+        assert_eq!(
+            clauses[0].pointer("/nested/path").and_then(|v| v.as_str()),
+            Some("attributes")
+        );
+    }
+
+    #[test]
+    fn test_non_feature_targets_are_excluded() {
+        use genomehubs_query::report::FilterTarget;
+        let filters = vec![
+            feature_filter(
+                "sequence_length",
+                FilterOperator::Gte,
+                FilterValue::Scalar(1_000_000.0),
+            ),
+            AttributeFilter {
+                field: "gc".to_string(),
+                operator: FilterOperator::Gt,
+                value: FilterValue::Scalar(0.45),
+                target: FilterTarget::Sequence,
+            },
+        ];
+        // Only the Feature-targeted entry should produce a clause
+        let clauses = build_feature_direct_clauses(&filters);
+        assert_eq!(clauses.len(), 1);
+        assert!(clauses[0].pointer("/range/sequence_length/gte").is_some());
+    }
+
+    #[test]
+    fn test_window_size_to_primary_type_known_sizes() {
+        assert_eq!(window_size_to_primary_type(1_000_000), "window_1m");
+        assert_eq!(window_size_to_primary_type(500_000), "window_500k");
+        assert_eq!(window_size_to_primary_type(100_000), "window_100k");
+    }
+
+    #[test]
+    fn test_window_size_to_primary_type_custom_size() {
+        assert_eq!(window_size_to_primary_type(250_000), "window_250000");
     }
 }

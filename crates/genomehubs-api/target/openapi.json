@@ -406,10 +406,11 @@
               },
               "examples": {
                 "Oxford — feature attribute filter": {
-                  "summary": "Oxford dot-plot filtered to large scaffolds only",
+                  "summary": "Oxford dot-plot restricted to chromosomes ≥ 10 Mb",
+                  "description": "When `index: feature` is set, attribute filters first resolve which sequences (chromosomes/scaffolds) match, then only features on those sequences are returned. This selects busco genes located on sequences with `length >= 10000000` (10 Mb).",
                   "value": {
-                    "positional_yaml": "report: oxford\ngroup_by: busco_gene\nassemblies:\n  - GCA_905147045.1\n  - GCA_902806685.2\n",
-                    "query_yaml": "index: feature\nattributes:\n  - name: sequence_length\n    operator: ge\n    value: \"1000000\"\n"
+                    "positional_yaml": "report: oxford\ngroup_by: metazoa_odb10-busco-gene\nassemblies:\n  - GCA_905147045.1\n  - GCA_902806685.2\n",
+                    "query_yaml": "index: feature\nattributes:\n  - name: length\n    operator: ge\n    value: \"10000000\"\n"
                   }
                 },
                 "Oxford — no query filter": {
@@ -884,6 +885,14 @@
             "description": "The executed ES URL"
           }
         }
+      },
+      "FeatureIndexVersion": {
+        "type": "string",
+        "description": "Whether the feature index uses the v1 nested-attributes-only structure\nor the v2 flat-field structure expected by `/api/v3/positional`.",
+        "enum": [
+          "v1",
+          "v2"
+        ]
       },
       "FieldMeta": {
         "type": "object",
@@ -1588,9 +1597,14 @@
         "required": [
           "status",
           "ready",
-          "supported"
+          "supported",
+          "feature_index_version"
         ],
         "properties": {
+          "feature_index_version": {
+            "$ref": "#/components/schemas/FeatureIndexVersion",
+            "description": "Feature index version detected at startup.\n`\"v2\"` means the `/positional` endpoint is available;\n`\"v1\"` means positional queries will return an error."
+          },
           "last_updated": {
             "type": [
               "string",

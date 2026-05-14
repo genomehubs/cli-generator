@@ -953,8 +953,8 @@ QueryBuilder <- R6::R6Class(
       jsonlite::fromJSON(raw_text, simplifyVector = FALSE)
     },
 
-    #' @description Run a positional report (oxford / ribbon / painting).
-    #' @param report Sub-type: "oxford", "ribbon", or "painting".
+    #' @description Run a positional report (oxford / ribbon / painting / circos).
+    #' @param report Sub-type: "oxford", "ribbon", "painting", or "circos".
     #' @param group_by Attribute key for shared marker (e.g. "busco_gene").
     #' @param assemblies Character vector of assembly IDs.
     #' @param feature_type Optional primary_type filter.
@@ -963,10 +963,14 @@ QueryBuilder <- R6::R6Class(
     #' @param max_features Hard cap on features fetched (default 10000).
     #' @param cat Optional category field for colour.
     #' @param cat_opts Category axis options string (list values explicitly).
+    #' @param filter List of attribute filter dicts (field, operator, value, target).
+    #' @param regions Region config list (cat, name_to_cat, bounds, min_features, max_expansion).
+    #' @param max_connections_per_group Hard cap on M:N connections per group.
     #' @return Raw report list from the response.
     positional = function(report, group_by, assemblies, feature_type = NULL,
                           window_size = NULL, reorient = TRUE, max_features = 10000L,
-                          cat = NULL, cat_opts = NULL) {
+                          cat = NULL, cat_opts = NULL, filter = NULL, regions = NULL,
+                          max_connections_per_group = NULL) {
       doc <- list(report = report, group_by = group_by, assemblies = as.list(assemblies))
       if (!is.null(feature_type)) doc$feature_type <- feature_type
       if (!is.null(window_size)) doc$window_size <- as.integer(window_size)
@@ -974,6 +978,9 @@ QueryBuilder <- R6::R6Class(
       if (max_features != 10000L) doc$max_features <- as.integer(max_features)
       if (!is.null(cat)) doc$cat <- cat
       if (!is.null(cat_opts)) doc$cat_opts <- cat_opts
+      if (!is.null(filter) && length(filter) > 0) doc$filter <- filter
+      if (!is.null(regions)) doc$regions <- regions
+      if (!is.null(max_connections_per_group)) doc$max_connections_per_group <- as.integer(max_connections_per_group)
 
       positional_yaml <- yaml::as.yaml(doc)
       payload <- jsonlite::toJSON(list(
@@ -990,26 +997,34 @@ QueryBuilder <- R6::R6Class(
 
     #' @description Oxford dot-plot (exactly 2 assemblies). Wrapper around positional().
     oxford = function(group_by, assemblies, feature_type = NULL, window_size = NULL,
-                      reorient = TRUE, max_features = 10000L, cat = NULL, cat_opts = NULL) {
+                      reorient = TRUE, max_features = 10000L, cat = NULL, cat_opts = NULL,
+                      filter = NULL, regions = NULL, max_connections_per_group = NULL) {
       self$positional("oxford", group_by, assemblies, feature_type = feature_type,
                       window_size = window_size, reorient = reorient,
-                      max_features = max_features, cat = cat, cat_opts = cat_opts)
+                      max_features = max_features, cat = cat, cat_opts = cat_opts,
+                      filter = filter, regions = regions,
+                      max_connections_per_group = max_connections_per_group)
     },
 
     #' @description Ribbon/synteny report (N >= 2 assemblies). Wrapper around positional().
     ribbon = function(group_by, assemblies, feature_type = NULL, window_size = NULL,
-                      reorient = TRUE, max_features = 10000L, cat = NULL, cat_opts = NULL) {
+                      reorient = TRUE, max_features = 10000L, cat = NULL, cat_opts = NULL,
+                      filter = NULL, regions = NULL, max_connections_per_group = NULL) {
       self$positional("ribbon", group_by, assemblies, feature_type = feature_type,
                       window_size = window_size, reorient = reorient,
-                      max_features = max_features, cat = cat, cat_opts = cat_opts)
+                      max_features = max_features, cat = cat, cat_opts = cat_opts,
+                      filter = filter, regions = regions,
+                      max_connections_per_group = max_connections_per_group)
     },
 
     #' @description Chromosome painting (1 assembly). Wrapper around positional().
     painting = function(group_by, assembly, feature_type = NULL, window_size = NULL,
-                        max_features = 10000L, cat = NULL, cat_opts = NULL) {
+                        max_features = 10000L, cat = NULL, cat_opts = NULL,
+                        filter = NULL, regions = NULL, max_connections_per_group = NULL) {
       self$positional("painting", group_by, list(assembly), feature_type = feature_type,
                       window_size = window_size, max_features = max_features,
-                      cat = cat, cat_opts = cat_opts)
+                      cat = cat, cat_opts = cat_opts, filter = filter, regions = regions,
+                      max_connections_per_group = max_connections_per_group)
     },
 
     #' @description Lookup records by alternative identifiers (autocomplete/search-as-you-type).

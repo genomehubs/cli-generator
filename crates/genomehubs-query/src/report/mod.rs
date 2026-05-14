@@ -17,7 +17,10 @@ pub use axis::{
 pub use bounds::BoundsResult;
 pub use display::DisplaySpec;
 pub use plot_spec::PlotSpec;
-pub use positional::{PositionalReportType, PositionalSpec};
+pub use positional::{
+    AttributeFilter, FilterOperator, FilterTarget, FilterValue, PositionalReportType,
+    PositionalSpec, RegionBounds, RegionsSpec,
+};
 pub use spec_builder::resolve_axis_display;
 
 /// Supported v3 report types.
