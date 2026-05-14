@@ -124,6 +124,57 @@ enum Commands {
         format: generated::output::OutputFormat,
     },
 
+    /// Compute a positional report (oxford/ribbon/painting) from local BUSCO files (no API call).
+    ///
+    /// Each assembly requires a BUSCO `full_table.tsv` supplied as `ASSEMBLY_ID:PATH`.
+    /// Sequence lengths are inferred from the BUSCO file unless `--fai` or `--lengths` is
+    /// provided.  Multiple `--busco` flags give the assemblies in order.
+    ///
+    /// Example (oxford, two assemblies):
+    ///   local-positional --busco asm1:/path/to/asm1/full_table.tsv \\
+    ///                    --busco asm2:/path/to/asm2/full_table.tsv
+    LocalPositional {
+        /// BUSCO file for one assembly: ASSEMBLY_ID:PATH (repeatable; order matters).
+        #[arg(long = "busco", value_name = "ASSEMBLY_ID:PATH", required = true)]
+        busco: Vec<String>,
+
+        /// FAI index for an assembly: ASSEMBLY_ID:PATH (optional, repeatable).
+        ///
+        /// Overrides BUSCO-derived sequence lengths for the named assembly.
+        #[arg(long = "fai", value_name = "ASSEMBLY_ID:PATH")]
+        fai: Vec<String>,
+
+        /// Two-column lengths TSV for an assembly: ASSEMBLY_ID:PATH (optional, repeatable).
+        ///
+        /// Alternative to --fai; used when a .fai index is not available.
+        #[arg(long = "lengths", value_name = "ASSEMBLY_ID:PATH")]
+        lengths: Vec<String>,
+
+        /// Report sub-type.
+        #[arg(long, value_parser = ["oxford", "ribbon", "painting"], default_value = "oxford")]
+        report: String,
+
+        /// Category field for colour coding (reads from BUSCO `status` column if omitted).
+        #[arg(long)]
+        cat: Option<String>,
+
+        /// Window size in base-pairs for windowed painting.
+        #[arg(long = "window-size")]
+        window_size: Option<u64>,
+
+        /// Disable auto-reorientation of comparison sequences.
+        #[arg(long = "no-reorient")]
+        no_reorient: bool,
+
+        /// Maximum connections per group cap for M:N feature mappings.
+        #[arg(long = "max-connections-per-group", default_value_t = 0)]
+        max_connections_per_group: usize,
+
+        /// Output file path (writes to stdout if omitted).
+        #[arg(long, short = 'o')]
+        output: Option<std::path::PathBuf>,
+    },
+
     /// Build a plot spec from a local TSV/CSV file (no API call).
     ///
     /// Reads a delimited file, builds a PlotSpec, and writes Vega-Lite JSON,
@@ -1054,6 +1105,99 @@ fn run(cli: Cli) -> anyhow::Result<()> {
                         None => println!("{vl_json}"),
                     }
                 }
+            }
+        }
+        Commands::LocalPositional {
+            busco, fai, lengths, report, cat, window_size, no_reorient,
+            max_connections_per_group, output,
+        } => {
+            /// Parse `ASSEMBLY_ID:PATH` into `(assembly_id, file_content)`.
+            fn parse_id_path(raw: &str, flag: &str) -> anyhow::Result<(String, String)> {
+                let (id, path) = raw.split_once(':')
+                    .ok_or_else(|| anyhow::anyhow!("--{flag} must be ASSEMBLY_ID:PATH, got '{raw}'"))?;
+                let content = std::fs::read_to_string(path)
+                    .with_context(|| format!("reading {flag} file for '{}': {}", id, path))?;
+                Ok((id.to_string(), content))
+            }
+
+            // Parse all --fai and --lengths into maps keyed by assembly_id.
+            let mut fai_map: std::collections::HashMap<String, String> =
+                std::collections::HashMap::new();
+            for raw in &fai {
+                let (id, content) = parse_id_path(raw, "fai")?;
+                fai_map.insert(id, content);
+            }
+            let mut lengths_map: std::collections::HashMap<String, String> =
+                std::collections::HashMap::new();
+            for raw in &lengths {
+                let (id, content) = parse_id_path(raw, "lengths")?;
+                lengths_map.insert(id, content);
+            }
+
+            // Build a LocalFeatureSet for every --busco entry.
+            let mut feature_sets: Vec<serde_json::Value> = Vec::new();
+            for raw in &busco {
+                let (asm_id, busco_content) = parse_id_path(raw, "busco")?;
+
+                // Parse BUSCO full_table.tsv.
+                let set_json = {{ sdk_name }}::embedded::core::report::hybrid::parse_busco_tsv_json(
+                    &asm_id, &busco_content,
+                );
+                let mut set: serde_json::Value = serde_json::from_str(&set_json)
+                    .with_context(|| format!("parsing BUSCO JSON for '{asm_id}'"))?;
+                if let Some(err) = set.get("error").and_then(|e| e.as_str()) {
+                    anyhow::bail!("parse_busco_tsv failed for '{asm_id}': {err}");
+                }
+
+                // Overwrite sequence lengths from --fai if supplied for this assembly.
+                if let Some(fai_content) = fai_map.get(&asm_id) {
+                    let len_json = {{ sdk_name }}::embedded::core::report::hybrid::parse_fai_json(fai_content);
+                    let len_map: serde_json::Value = serde_json::from_str(&len_json)
+                        .with_context(|| format!("parsing FAI JSON for '{asm_id}'"))?;
+                    if let Some(err) = len_map.get("error").and_then(|e| e.as_str()) {
+                        anyhow::bail!("parse_fai failed for '{asm_id}': {err}");
+                    }
+                    set["sequence_lengths"] = len_map;
+                    set["lengths_derived"] = serde_json::Value::Bool(false);
+                } else if let Some(len_content) = lengths_map.get(&asm_id) {
+                    // Fall back to --lengths TSV.
+                    let len_json = {{ sdk_name }}::embedded::core::report::hybrid::parse_lengths_tsv_json(len_content);
+                    let len_map: serde_json::Value = serde_json::from_str(&len_json)
+                        .with_context(|| format!("parsing lengths JSON for '{asm_id}'"))?;
+                    if let Some(err) = len_map.get("error").and_then(|e| e.as_str()) {
+                        anyhow::bail!("parse_lengths_tsv failed for '{asm_id}': {err}");
+                    }
+                    set["sequence_lengths"] = len_map;
+                    set["lengths_derived"] = serde_json::Value::Bool(false);
+                }
+
+                feature_sets.push(set);
+            }
+
+            let feature_sets_json = serde_json::to_string(&feature_sets)
+                .context("serialising feature sets")?;
+            let cat_field = cat.as_deref().unwrap_or("");
+            let ws = window_size.unwrap_or(0);
+            let result_json = {{ sdk_name }}::embedded::core::report::hybrid::positional_from_features_json(
+                &feature_sets_json,
+                &report,
+                !no_reorient,
+                cat_field,
+                ws,
+                max_connections_per_group,
+            );
+
+            // Bail on error field.
+            if let Ok(v) = serde_json::from_str::<serde_json::Value>(&result_json) {
+                if let Some(err) = v.get("error").and_then(|e| e.as_str()) {
+                    anyhow::bail!("local-positional error: {err}");
+                }
+            }
+
+            match output {
+                Some(ref path) => std::fs::write(path, &result_json)
+                    .with_context(|| format!("writing output to '{}'", path.display()))?,
+                None => println!("{result_json}"),
             }
         }
         Commands::LocalReport { input, report_type, x, y, display, delimiter, format, output } => {
