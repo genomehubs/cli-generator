@@ -1027,6 +1027,99 @@ QueryBuilder <- R6::R6Class(
                       max_connections_per_group = max_connections_per_group)
     },
 
+    #' @description Hybrid positional report combining remote and local assembly data.
+    #' @param report Sub-type: "oxford", "ribbon", or "painting".
+    #' @param group_by Shared marker identifier (e.g. "busco_gene").
+    #' @param local_files Named list or list of named lists, each with:
+    #'   \describe{
+    #'     \item{busco}{Full text of a BUSCO full_table.tsv (required)}
+    #'     \item{assembly_id}{Label for the assembly (required)}
+    #'     \item{fai}{Full text of a .fai index (optional)}
+    #'     \item{lengths}{Full text of a two-column lengths TSV (optional)}
+    #'   }
+    #' @param remote_assemblies Optional character vector of API assembly IDs (reference).
+    #' @param reorient Auto-orient comparison sequences (default TRUE).
+    #' @param cat Category field for colour coding (optional).
+    #' @param window_size Bin size in bp (NULL for individual positions).
+    #' @param max_connections_per_group Cap on M:N connections (0 = default 25).
+    #' @return Report list in the same format as positional().
+    hybrid_positional = function(report, group_by, local_files,
+                                 remote_assemblies = NULL, reorient = TRUE,
+                                 cat = NULL, window_size = NULL,
+                                 max_connections_per_group = 0L) {
+      local_sets <- lapply(local_files, function(entry) {
+        asm_id <- entry[["assembly_id"]]
+        raw <- jsonlite::fromJSON(parse_busco_tsv(asm_id, entry[["busco"]]))
+        if (!is.null(raw[["error"]])) {
+          stop(paste("parse_busco_tsv failed for '", asm_id, "':", raw[["error"]]))
+        }
+        if (!is.null(entry[["fai"]])) {
+          lengths_map <- jsonlite::fromJSON(parse_fai(entry[["fai"]]))
+          if (!is.null(lengths_map[["error"]])) {
+            stop(paste("parse_fai failed for '", asm_id, "':", lengths_map[["error"]]))
+          }
+          raw[["sequence_lengths"]] <- lengths_map
+          raw[["lengths_derived"]] <- FALSE
+        } else if (!is.null(entry[["lengths"]])) {
+          lengths_map <- jsonlite::fromJSON(parse_lengths_tsv(entry[["lengths"]]))
+          if (!is.null(lengths_map[["error"]])) {
+            stop(paste("parse_lengths_tsv failed for '", asm_id, "':", lengths_map[["error"]]))
+          }
+          raw[["sequence_lengths"]] <- lengths_map
+          raw[["lengths_derived"]] <- FALSE
+        }
+        raw
+      })
+
+      ws <- if (is.null(window_size)) 0L else as.integer(window_size)
+
+      if (is.null(remote_assemblies) || length(remote_assemblies) == 0L) {
+        result_json <- positional_from_features(
+          jsonlite::toJSON(local_sets, auto_unbox = TRUE),
+          report, reorient, if (is.null(cat)) "" else cat, ws,
+          as.integer(max_connections_per_group)
+        )
+        result <- jsonlite::fromJSON(result_json)
+        if (!is.null(result[["error"]])) {
+          stop(paste("positional_from_features failed:", result[["error"]]))
+        }
+        return(result)
+      }
+
+      positional_doc <- list(
+        report = report,
+        group_by = group_by,
+        assemblies = as.list(remote_assemblies)
+      )
+      if (!is.null(cat)) positional_doc[["cat"]] <- cat
+      if (!is.null(window_size)) positional_doc[["window_size"]] <- window_size
+      if (!reorient) positional_doc[["reorient"]] <- FALSE
+      if (max_connections_per_group > 0L) {
+        positional_doc[["max_connections_per_group"]] <- as.integer(max_connections_per_group)
+      }
+
+      positional_yaml <- yaml::as.yaml(positional_doc)
+      url <- paste0(private$api_base_url, "/", private$api_version, "/positional")
+      payload <- jsonlite::toJSON(list(
+        query_yaml = self$to_query_yaml(),
+        positional_yaml = positional_yaml
+      ), auto_unbox = TRUE)
+      resp_text <- private$post_json_raw(url, payload)
+      remote_report <- jsonlite::fromJSON(resp_text)[["report"]]
+
+      result_json <- hybrid_positional(
+        jsonlite::toJSON(remote_report, auto_unbox = TRUE),
+        jsonlite::toJSON(local_sets, auto_unbox = TRUE),
+        reorient,
+        as.integer(max_connections_per_group)
+      )
+      result <- jsonlite::fromJSON(result_json)
+      if (!is.null(result[["error"]])) {
+        stop(paste("hybrid_positional failed:", result[["error"]]))
+      }
+      result
+    },
+
     #' @description Lookup records by alternative identifiers (autocomplete/search-as-you-type).
     #' @param search_term Search term for lookup (required).
     #' @param result Result type (taxon|assembly|sample); defaults to index type.

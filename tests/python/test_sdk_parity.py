@@ -398,6 +398,12 @@ CANONICAL_METHODS = {
         "js_name": "painting",
         "r_name": "painting",
     },
+    "hybrid_positional": {
+        "params": ["report", "group_by", "local_files"],
+        "python_name": "hybrid_positional",
+        "js_name": "hybridPositional",
+        "r_name": "hybrid_positional",
+    },
 }
 
 CONSTRUCTOR_PARAMS: dict[str, dict[str, str]] = {}

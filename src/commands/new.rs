@@ -239,7 +239,11 @@ from .{} import (
     build_url,
     count,
     describe_query,
+    hybrid_positional,
+    parse_busco_tsv,
+    parse_fai,
     parse_histogram_json,
+    parse_lengths_tsv,
     parse_lookup_json,
     parse_paginated_json,
     parse_phylopic_json,
@@ -251,6 +255,7 @@ from .{} import (
     parse_search_with_lineage_summary,
     parse_tree_json,
     local_plot_spec_json,
+    positional_from_features,
     render_snippet,
     search,
     split_source_columns,
@@ -270,7 +275,11 @@ __all__ = [
     "build_url",
     "count",
     "describe_query",
+    "hybrid_positional",
+    "parse_busco_tsv",
+    "parse_fai",
     "parse_histogram_json",
+    "parse_lengths_tsv",
     "parse_lookup_json",
     "parse_paginated_json",
     "parse_phylopic_json",
@@ -282,6 +291,7 @@ __all__ = [
     "parse_search_with_lineage_summary",
     "parse_tree_json",
     "local_plot_spec_json",
+    "positional_from_features",
     "QueryBuilder",
     "query_yaml_from_url_params",
     "render_snippet",
@@ -493,6 +503,38 @@ fn copy_embedded_modules(repo_dir: &Path) -> Result<()> {
         }
     }
 
+    // Copy the parse_local/ directory (feature_set.rs, busco.rs, fai.rs, lengths.rs, mod.rs).
+    // `hybrid.rs` in report/ depends on these types.
+    let parse_local_src_dir = subcrate_src.join("parse_local");
+    let parse_local_dest_dir = embedded_dir.join("core/parse_local");
+    if parse_local_src_dir.is_dir() {
+        std::fs::create_dir_all(&parse_local_dest_dir)
+            .context("creating core/parse_local directory")?;
+        for entry in
+            std::fs::read_dir(&parse_local_src_dir).context("reading parse_local directory")?
+        {
+            let entry = entry.context("reading parse_local directory entry")?;
+            let path = entry.path();
+            if let Some(file_name) = path.file_name() {
+                let dest_file = parse_local_dest_dir.join(file_name);
+                let content = std::fs::read_to_string(&path)
+                    .with_context(|| {
+                        format!(
+                            "reading parse_local/{}",
+                            path.file_name().unwrap_or_default().to_string_lossy()
+                        )
+                    })?
+                    .replace("crate::", "crate::embedded::core::");
+                std::fs::write(&dest_file, content).with_context(|| {
+                    format!(
+                        "writing parse_local/{}",
+                        path.file_name().unwrap_or_default().to_string_lossy()
+                    )
+                })?;
+            }
+        }
+    }
+
     // validation.rs is cli-generator-specific and not in the subcrate's mod.rs.
     let query_mod_path = embedded_dir.join("core/query/mod.rs");
     let mut query_mod =
@@ -546,6 +588,7 @@ pub mod fetch;
 pub mod lineage_summary;
 pub mod local_report;
 pub mod parse;
+pub mod parse_local;
 pub mod query;
 pub mod report;
 pub mod snippet;
@@ -967,6 +1010,37 @@ fn copy_r_embedded_modules(rust_src_dir: &Path) -> Result<()> {
         }
     }
 
+    // Copy the parse_local/ directory (feature_set.rs, busco.rs, fai.rs, lengths.rs, mod.rs).
+    let parse_local_src_dir = subcrate_src.join("parse_local");
+    let parse_local_dest_dir = embedded_dir.join("core/parse_local");
+    if parse_local_src_dir.is_dir() {
+        std::fs::create_dir_all(&parse_local_dest_dir)
+            .context("creating core/parse_local directory")?;
+        for entry in
+            std::fs::read_dir(&parse_local_src_dir).context("reading parse_local directory")?
+        {
+            let entry = entry.context("reading parse_local directory entry")?;
+            let path = entry.path();
+            if let Some(file_name) = path.file_name() {
+                let dest_file = parse_local_dest_dir.join(file_name);
+                let content = std::fs::read_to_string(&path)
+                    .with_context(|| {
+                        format!(
+                            "reading parse_local/{}",
+                            path.file_name().unwrap_or_default().to_string_lossy()
+                        )
+                    })?
+                    .replace("crate::", "crate::embedded::core::");
+                std::fs::write(&dest_file, content).with_context(|| {
+                    format!(
+                        "writing parse_local/{}",
+                        path.file_name().unwrap_or_default().to_string_lossy()
+                    )
+                })?;
+            }
+        }
+    }
+
     let query_mod_path = embedded_dir.join("core/query/mod.rs");
     let mut query_mod =
         std::fs::read_to_string(&query_mod_path).context("reading embedded query/mod.rs")?;
@@ -984,7 +1058,7 @@ fn copy_r_embedded_modules(rust_src_dir: &Path) -> Result<()> {
 
     std::fs::write(
         embedded_dir.join("core/mod.rs"),
-        "//! Core cli_generator modules.\n\npub mod config;\npub mod describe;\npub mod fetch;\npub mod lineage_summary;\npub mod local_report;\npub mod parse;\npub mod query;\npub mod report;\npub mod snippet;\npub mod validation;\n",
+        "//! Core cli_generator modules.\n\npub mod config;\npub mod describe;\npub mod fetch;\npub mod lineage_summary;\npub mod local_report;\npub mod parse;\npub mod parse_local;\npub mod query;\npub mod report;\npub mod snippet;\npub mod validation;\n",
     )
     .context("writing embedded/core/mod.rs")?;
 

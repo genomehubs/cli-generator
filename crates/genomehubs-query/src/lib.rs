@@ -20,6 +20,7 @@ pub mod describe;
 pub mod lineage_summary;
 pub mod local_report;
 pub mod parse;
+pub mod parse_local;
 pub mod query;
 pub mod report;
 pub mod snippet;
@@ -606,4 +607,80 @@ pub fn report_yaml_from_url_params(url: &str) -> String {
         }
         Err(e) => format!(r#"{{"error":{e:?}}}"#),
     }
+}
+
+// ── Hybrid / local positional helpers ────────────────────────────────────────
+
+/// Parse a BUSCO `full_table.tsv` and return a JSON-encoded `LocalFeatureSet`.
+///
+/// On error returns `{"error":"<message>"}`.
+#[cfg_attr(feature = "wasm", wasm_bindgen)]
+pub fn parse_busco_tsv(assembly_id: &str, content: &str) -> String {
+    report::hybrid::parse_busco_tsv_json(assembly_id, content)
+}
+
+/// Parse a samtools `.fai` FASTA index and return a JSON `sequence_id → length` map.
+///
+/// On error returns `{"error":"<message>"}`.
+#[cfg_attr(feature = "wasm", wasm_bindgen)]
+pub fn parse_fai(content: &str) -> String {
+    report::hybrid::parse_fai_json(content)
+}
+
+/// Parse a two-column lengths TSV and return a JSON `sequence_id → length` map.
+///
+/// On error returns `{"error":"<message>"}`.
+#[cfg_attr(feature = "wasm", wasm_bindgen)]
+pub fn parse_lengths_tsv(content: &str) -> String {
+    report::hybrid::parse_lengths_tsv_json(content)
+}
+
+/// Compute a positional report from JSON-encoded local feature sets.
+///
+/// `feature_sets_json` must be a JSON array of serialised `LocalFeatureSet` objects.
+/// `report_type` is one of `"oxford"`, `"ribbon"`, or `"painting"`.
+/// `cat_field` is the category field name; pass `""` for none.
+/// `window_size` is 0 for no windowing.
+/// `max_connections_per_group` caps M:N connections (0 → default 25).
+///
+/// Returns a JSON string report on success, or `{"error":"<message>"}` on failure.
+#[cfg_attr(feature = "wasm", wasm_bindgen)]
+pub fn positional_from_features(
+    feature_sets_json: &str,
+    report_type: &str,
+    reorient: bool,
+    cat_field: &str,
+    window_size: u64,
+    max_connections_per_group: usize,
+) -> String {
+    report::hybrid::positional_from_features_json(
+        feature_sets_json,
+        report_type,
+        reorient,
+        cat_field,
+        window_size,
+        max_connections_per_group,
+    )
+}
+
+/// Combine a remote positional report with local feature sets.
+///
+/// `remote_report_json` is the `report` field from a `POST /api/v3/positional` response.
+/// `local_feature_sets_json` is a JSON array of serialised `LocalFeatureSet` objects.
+/// `max_connections_per_group` caps M:N connections (0 → default 25).
+///
+/// Returns a JSON string report on success, or `{"error":"<message>"}` on failure.
+#[cfg_attr(feature = "wasm", wasm_bindgen)]
+pub fn hybrid_positional(
+    remote_report_json: &str,
+    local_feature_sets_json: &str,
+    reorient: bool,
+    max_connections_per_group: usize,
+) -> String {
+    report::hybrid::hybrid_positional_json(
+        remote_report_json,
+        local_feature_sets_json,
+        reorient,
+        max_connections_per_group,
+    )
 }

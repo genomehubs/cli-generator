@@ -1566,6 +1566,147 @@ class QueryBuilder:
             api_version=api_version,
         )
 
+    def hybrid_positional(
+        self,
+        report: str,
+        group_by: str,
+        local_files: "list[dict[str, Any]]",
+        *,
+        remote_assemblies: "list[str] | None" = None,
+        reorient: bool = True,
+        cat: "str | None" = None,
+        window_size: "int | None" = None,
+        max_connections_per_group: int = 0,
+        api_base: str = "https://goat.genomehubs.org/api",
+        api_version: str = "v3",
+    ) -> Any:
+        """Run a hybrid positional report combining remote and local assembly data.
+
+        Parses one or more local BUSCO / feature files and, when
+        ``remote_assemblies`` is supplied, fetches remote features via
+        ``POST /api/v3/positional`` and joins them with the local data.
+        When no remote assemblies are given, the plot is computed entirely
+        from the local files (no API call).
+
+        Each entry in ``local_files`` is a dict with keys:
+
+        - ``"busco"`` — full text of a BUSCO ``full_table.tsv`` file (required).
+        - ``"assembly_id"`` — label for the assembly (required).
+        - ``"fai"`` — full text of a ``.fai`` file (optional).
+        - ``"lengths"`` — full text of a two-column lengths TSV (optional).
+
+        If neither ``"fai"`` nor ``"lengths"`` is supplied, sequence lengths are
+        derived from ``max(feature.end)`` per sequence and
+        ``"lengthsDerived": true`` is set in the output assembly metadata.
+
+        Args:
+            report:                    Sub-type — one of ``"oxford"``, ``"ribbon"``,
+                                       or ``"painting"``.
+            group_by:                  Shared marker identifier attribute
+                                       (e.g. ``"busco_gene"``).
+            local_files:               List of local assembly dicts (see above).
+            remote_assemblies:         Optional list of API assembly IDs to fetch
+                                       remotely and use as the reference.
+            reorient:                  Auto-orient comparison sequences (default ``True``).
+            cat:                       Category field for colour coding.
+            window_size:               Regional binning in bp (``None`` for individual
+                                       positions).
+            max_connections_per_group: Cap on M:N connections (``0`` → default 25).
+            api_base:                  Base URL of the API.
+            api_version:               API version string (default: ``"v3"``).
+
+        Returns:
+            Report dict in the same format as :meth:`positional`.
+        """
+        import json
+
+        from . import hybrid_positional as _hybrid_positional
+        from . import (
+            parse_busco_tsv,
+            parse_fai,
+            parse_lengths_tsv,
+        )
+        from . import positional_from_features as _positional_from_features
+
+        # Parse each local file entry into a LocalFeatureSet dict
+        local_sets: list[dict[str, Any]] = []
+        for entry in local_files:
+            asm_id = entry["assembly_id"]
+            busco_text = entry["busco"]
+            raw = json.loads(parse_busco_tsv(asm_id, busco_text))
+            if "error" in raw:
+                raise ValueError(f"parse_busco_tsv failed for assembly '{asm_id}': {raw['error']}")
+
+            # Populate sequence_lengths from .fai or lengths TSV if supplied
+            if "fai" in entry:
+                lengths_map = json.loads(parse_fai(entry["fai"]))
+                if "error" in lengths_map:
+                    raise ValueError(f"parse_fai failed for assembly '{asm_id}': {lengths_map['error']}")
+                raw["sequence_lengths"] = lengths_map
+                raw["lengths_derived"] = False
+            elif "lengths" in entry:
+                lengths_map = json.loads(parse_lengths_tsv(entry["lengths"]))
+                if "error" in lengths_map:
+                    raise ValueError(f"parse_lengths_tsv failed for assembly '{asm_id}': {lengths_map['error']}")
+                raw["sequence_lengths"] = lengths_map
+                raw["lengths_derived"] = False
+
+            local_sets.append(raw)
+
+        ws = window_size or 0
+
+        # All-local mode: no remote assemblies
+        if not remote_assemblies:
+            result_json = _positional_from_features(
+                json.dumps(local_sets),
+                report,
+                reorient,
+                cat or "",
+                ws,
+                max_connections_per_group,
+            )
+            result = json.loads(result_json)
+            if "error" in result:
+                raise RuntimeError(f"positional_from_features failed: {result['error']}")
+            return result
+
+        # Hybrid mode: fetch remote reference, then join with local
+        import yaml as _yaml
+
+        positional_doc: dict[str, Any] = {
+            "report": report,
+            "group_by": group_by,
+            "assemblies": list(remote_assemblies),
+        }
+        if cat is not None:
+            positional_doc["cat"] = cat
+        if window_size is not None:
+            positional_doc["window_size"] = window_size
+        if not reorient:
+            positional_doc["reorient"] = False
+        if max_connections_per_group:
+            positional_doc["max_connections_per_group"] = max_connections_per_group
+
+        remote_data = self._post_json(
+            f"{api_base}/{api_version}/positional",
+            {
+                "query_yaml": self.to_query_yaml(),
+                "positional_yaml": _yaml.dump(positional_doc, default_flow_style=False),
+            },
+        )
+        remote_report = remote_data.get("report", remote_data)
+
+        result_json = _hybrid_positional(
+            json.dumps(remote_report),
+            json.dumps(local_sets),
+            reorient,
+            max_connections_per_group,
+        )
+        result = json.loads(result_json)
+        if "error" in result:
+            raise RuntimeError(f"hybrid_positional failed: {result['error']}")
+        return result
+
     def lookup(
         self,
         search_term: str,

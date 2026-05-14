@@ -1168,6 +1168,116 @@ class QueryBuilder {
   }
 
   /**
+   * Run a hybrid positional report combining remote and local assembly data.
+   *
+   * Parses local BUSCO / feature files and optionally fetches remote features
+   * via POST /api/v3/positional.  When remoteAssemblies is empty, the plot is
+   * computed entirely from local strings (no API call, WASM-friendly).
+   *
+   * Each entry in localFiles is an object with:
+   *   - busco        {string}  Full text of a BUSCO full_table.tsv (required)
+   *   - assemblyId   {string}  Label for the assembly (required)
+   *   - fai          {string}  Full text of a .fai index (optional)
+   *   - lengths      {string}  Full text of a two-column lengths TSV (optional)
+   *
+   * @param {string}   report                    - "oxford", "ribbon", or "painting"
+   * @param {string}   groupBy                   - Shared marker identifier
+   * @param {Array}    localFiles                - Array of local assembly objects
+   * @param {object}   [opts]
+   * @param {Array}    [opts.remoteAssemblies]   - Optional API assembly IDs (reference)
+   * @param {boolean}  [opts.reorient=true]      - Auto-orient comparison sequences
+   * @param {string}   [opts.cat]                - Category field for colour coding
+   * @param {number}   [opts.windowSize]         - Bin size in bp (0 for none)
+   * @param {number}   [opts.maxConnectionsPerGroup=0] - M:N cap (0 → default 25)
+   * @returns {Promise<object>} - Report object in the same format as positional()
+   */
+  async hybridPositional(report, groupBy, localFiles, opts = {}) {
+    const {
+      remoteAssemblies = [],
+      reorient = true,
+      cat = "",
+      windowSize = 0,
+      maxConnectionsPerGroup = 0,
+    } = opts;
+
+    // Parse each local entry into a LocalFeatureSet object
+    const localSets = localFiles.map((entry) => {
+      const { assemblyId, busco, fai, lengths } = entry;
+      const raw = JSON.parse(wasmModule.parse_busco_tsv(assemblyId, busco));
+      if (raw.error)
+        throw new Error(
+          `parse_busco_tsv failed for '${assemblyId}': ${raw.error}`,
+        );
+
+      if (fai) {
+        const lengthsMap = JSON.parse(wasmModule.parse_fai(fai));
+        if (lengthsMap.error)
+          throw new Error(
+            `parse_fai failed for '${assemblyId}': ${lengthsMap.error}`,
+          );
+        raw.sequence_lengths = lengthsMap;
+        raw.lengths_derived = false;
+      } else if (lengths) {
+        const lengthsMap = JSON.parse(wasmModule.parse_lengths_tsv(lengths));
+        if (lengthsMap.error)
+          throw new Error(
+            `parse_lengths_tsv failed for '${assemblyId}': ${lengthsMap.error}`,
+          );
+        raw.sequence_lengths = lengthsMap;
+        raw.lengths_derived = false;
+      }
+      return raw;
+    });
+
+    // All-local mode
+    if (!remoteAssemblies || remoteAssemblies.length === 0) {
+      const resultJson = wasmModule.positional_from_features(
+        JSON.stringify(localSets),
+        report,
+        reorient,
+        cat,
+        windowSize,
+        maxConnectionsPerGroup,
+      );
+      const result = JSON.parse(resultJson);
+      if (result.error)
+        throw new Error(`positional_from_features failed: ${result.error}`);
+      return result;
+    }
+
+    // Hybrid mode: fetch remote reference via API
+    const positionalDoc = {
+      report,
+      group_by: groupBy,
+      assemblies: remoteAssemblies,
+    };
+    if (cat) positionalDoc.cat = cat;
+    if (windowSize) positionalDoc.window_size = windowSize;
+    if (!reorient) positionalDoc.reorient = false;
+    if (maxConnectionsPerGroup)
+      positionalDoc.max_connections_per_group = maxConnectionsPerGroup;
+
+    const remoteData = await this._postJson(`${API_BASE}/v3/positional`, {
+      query_yaml: this.toQueryYaml(),
+      positional_yaml: Object.entries(positionalDoc)
+        .map(([k, v]) => `${k}: ${JSON.stringify(v)}\n`)
+        .join(""),
+    });
+    const remoteReport = remoteData.report || remoteData;
+
+    const resultJson = wasmModule.hybrid_positional(
+      JSON.stringify(remoteReport),
+      JSON.stringify(localSets),
+      reorient,
+      maxConnectionsPerGroup,
+    );
+    const result = JSON.parse(resultJson);
+    if (result.error)
+      throw new Error(`hybrid_positional failed: ${result.error}`);
+    return result;
+  }
+
+  /**
    * Lookup records by alternative identifiers (autocomplete/search-as-you-type).
    * @param {string} searchTerm - Search term for lookup
    * @param {string} [result] - Result type (taxon|assembly|sample), default from index

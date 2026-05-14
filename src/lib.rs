@@ -302,6 +302,107 @@ fn parse_batch_json(raw: &str) -> String {
     genomehubs_query::parse_batch_json(raw)
 }
 
+// ── Hybrid / local positional helpers ────────────────────────────────────────
+
+/// Parse a BUSCO `full_table.tsv` file and return a JSON-encoded `LocalFeatureSet`.
+///
+/// Only `Complete` and `Duplicated` entries are included; `Duplicated` genes
+/// are deduplicated by keeping the highest-score instance.
+///
+/// `assembly_id` is a user-supplied label (e.g. `"my_new_assembly"`).
+///
+/// Returns a JSON string on success, or `{"error":"<message>"}` on failure.
+#[cfg(feature = "extension-module")]
+#[pyfunction]
+fn parse_busco_tsv(assembly_id: &str, content: &str) -> String {
+    genomehubs_query::parse_busco_tsv(assembly_id, content)
+}
+
+/// Parse a samtools `.fai` FASTA index and return a JSON `sequence_id → length` map.
+///
+/// Only the first two columns (`NAME`, `LENGTH`) are used.
+///
+/// Returns a JSON string on success, or `{"error":"<message>"}` on failure.
+#[cfg(feature = "extension-module")]
+#[pyfunction]
+fn parse_fai(content: &str) -> String {
+    genomehubs_query::parse_fai(content)
+}
+
+/// Parse a two-column `sequence_id<TAB>length` TSV and return a JSON length map.
+///
+/// Blank lines and `#` comments are skipped.
+///
+/// Returns a JSON string on success, or `{"error":"<message>"}` on failure.
+#[cfg(feature = "extension-module")]
+#[pyfunction]
+fn parse_lengths_tsv(content: &str) -> String {
+    genomehubs_query::parse_lengths_tsv(content)
+}
+
+/// Compute a positional report from JSON-encoded local feature sets.
+///
+/// Builds an Oxford, ribbon, or painting plot without any API call.
+///
+/// Arguments:
+/// - `feature_sets_json`: JSON array of serialised `LocalFeatureSet` objects
+///   (output of `parse_busco_tsv`, with `sequence_lengths` optionally populated
+///   from `parse_fai` or `parse_lengths_tsv`).
+/// - `report_type`: one of ``"oxford"``, ``"ribbon"``, or ``"painting"``.
+/// - `reorient`: auto-orient comparison sequences (default ``True``).
+/// - `cat_field`: category field name (pass ``""`` for none).
+/// - `window_size`: bin size in bp for painting (``0`` for no windowing).
+/// - `max_connections_per_group`: cap on M:N connections (``0`` → default 25).
+///
+/// Returns a JSON string shaped like the positional API's ``report`` field,
+/// or ``{"error":"<message>"}`` on failure.
+#[cfg(feature = "extension-module")]
+#[pyfunction]
+#[pyo3(signature = (feature_sets_json, report_type, reorient = true, cat_field = "", window_size = 0, max_connections_per_group = 0))]
+fn positional_from_features(
+    feature_sets_json: &str,
+    report_type: &str,
+    reorient: bool,
+    cat_field: &str,
+    window_size: u64,
+    max_connections_per_group: usize,
+) -> String {
+    genomehubs_query::positional_from_features(
+        feature_sets_json,
+        report_type,
+        reorient,
+        cat_field,
+        window_size,
+        max_connections_per_group,
+    )
+}
+
+/// Combine a remote positional report with one or more local feature sets.
+///
+/// `remote_report_json` must be the ``report`` field from a
+/// ``POST /api/v3/positional`` response.
+/// `local_feature_sets_json` is a JSON array of serialised ``LocalFeatureSet``
+/// objects (built with ``parse_busco_tsv`` + optionally ``parse_fai``).
+///
+/// Returns a JSON string shaped like the positional API's ``report`` field,
+/// or ``{"error":"<message>"}`` on failure.
+#[cfg(feature = "extension-module")]
+#[pyfunction]
+#[pyo3(signature = (remote_report_json, local_feature_sets_json, reorient = true, max_connections_per_group = 0))]
+fn hybrid_positional(
+    remote_report_json: &str,
+    local_feature_sets_json: &str,
+    reorient: bool,
+    max_connections_per_group: usize,
+) -> String {
+    genomehubs_query::hybrid_positional(
+        remote_report_json,
+        local_feature_sets_json,
+        reorient,
+        max_connections_per_group,
+    )
+}
+
 /// Parse the `records` array from a raw `/record` API response.
 ///
 /// Returns a JSON array string of flat record dicts with all `_source` fields
@@ -514,6 +615,11 @@ fn cli_generator(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(parse_search_with_lineage_summary, m)?)?;
     m.add_function(wrap_pyfunction!(parse_paginated_json, m)?)?;
     m.add_function(wrap_pyfunction!(parse_batch_json, m)?)?;
+    m.add_function(wrap_pyfunction!(parse_busco_tsv, m)?)?;
+    m.add_function(wrap_pyfunction!(parse_fai, m)?)?;
+    m.add_function(wrap_pyfunction!(parse_lengths_tsv, m)?)?;
+    m.add_function(wrap_pyfunction!(positional_from_features, m)?)?;
+    m.add_function(wrap_pyfunction!(hybrid_positional, m)?)?;
     m.add_function(wrap_pyfunction!(parse_record_json, m)?)?;
     m.add_function(wrap_pyfunction!(parse_lookup_json, m)?)?;
     m.add_function(wrap_pyfunction!(parse_phylopic_json, m)?)?;

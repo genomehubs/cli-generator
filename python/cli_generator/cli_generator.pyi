@@ -404,6 +404,126 @@ def parse_batch_json(raw: str) -> str:
     """
     ...
 
+def parse_busco_tsv(assembly_id: str, content: str) -> str:
+    """Parse a BUSCO ``full_table.tsv`` file into a JSON-encoded ``LocalFeatureSet``.
+
+    Only ``Complete`` and ``Duplicated`` entries are included.  For ``Duplicated``
+    genes, the instance with the highest score is kept.  ``Fragmented`` and
+    ``Missing`` entries are discarded.
+
+    The returned object has ``sequence_lengths`` unpopulated.  Call
+    :func:`parse_fai` or :func:`parse_lengths_tsv` to populate it, or pass
+    the object directly to :func:`positional_from_features` (which will call
+    ``derive_lengths()`` automatically as a fallback).
+
+    Args:
+        assembly_id: User-supplied label for this assembly (e.g. ``"my_assembly"``).
+        content:     Full text of the BUSCO ``full_table.tsv`` file.
+
+    Returns:
+        JSON string (``LocalFeatureSet`` object) on success,
+        or ``{"error":"<message>"}`` on parse failure.
+    """
+    ...
+
+def parse_fai(content: str) -> str:
+    """Parse a samtools ``.fai`` FASTA index and return a JSON sequence-length map.
+
+    Only the first two columns (``NAME``, ``LENGTH``) are used; the remaining
+    three offset columns are ignored.
+
+    Typical usage::
+
+        import json
+        from cli_generator import parse_busco_tsv, parse_fai
+
+        feature_set = json.loads(parse_busco_tsv("my_asm", open("full_table.tsv").read()))
+        feature_set["sequence_lengths"] = json.loads(parse_fai(open("genome.fa.fai").read()))
+        feature_set["lengths_derived"] = False
+
+    Args:
+        content: Full text of the ``.fai`` file.
+
+    Returns:
+        JSON object string mapping ``sequence_id → length`` on success,
+        or ``{"error":"<message>"}`` on parse failure.
+    """
+    ...
+
+def parse_lengths_tsv(content: str) -> str:
+    """Parse a two-column ``sequence_id<TAB>length`` TSV file.
+
+    Blank lines and ``#`` comment lines are skipped.  This is the fallback
+    length source when a ``.fai`` file is not available.
+
+    Args:
+        content: Full text of the lengths TSV file.
+
+    Returns:
+        JSON object string mapping ``sequence_id → length`` on success,
+        or ``{"error":"<message>"}`` on parse failure.
+    """
+    ...
+
+def positional_from_features(
+    feature_sets_json: str,
+    report_type: str,
+    reorient: bool = True,
+    cat_field: str = "",
+    window_size: int = 0,
+    max_connections_per_group: int = 0,
+) -> str:
+    """Compute a positional report from local feature sets (no API call required).
+
+    Builds an Oxford dot-plot, ribbon, or painting diagram from one or more
+    ``LocalFeatureSet`` objects parsed from local files.  No HTTP request is made.
+
+    Sequence lengths are populated automatically via ``derive_lengths()`` when
+    the ``sequence_lengths`` map is empty, setting ``lengthsDerived: true``
+    in the output assembly metadata and making axis proportions approximate.
+
+    Args:
+        feature_sets_json:         JSON array of ``LocalFeatureSet`` objects.
+                                   The first element is the reference assembly.
+        report_type:               One of ``"oxford"``, ``"ribbon"``, or ``"painting"``.
+        reorient:                  Auto-orient comparison sequences (default ``True``).
+        cat_field:                 Category field name for colour coding (``""`` for none).
+        window_size:               Bin size in bp for painting (``0`` for individual positions).
+        max_connections_per_group: Cap on M:N connections (``0`` → default 25).
+
+    Returns:
+        JSON string shaped like the positional API ``report`` field on success,
+        or ``{"error":"<message>"}`` on failure.
+    """
+    ...
+
+def hybrid_positional(
+    remote_report_json: str,
+    local_feature_sets_json: str,
+    reorient: bool = True,
+    max_connections_per_group: int = 0,
+) -> str:
+    """Combine a remote positional API report with one or more local feature sets.
+
+    Takes the ``report`` field from a ``POST /api/v3/positional`` response and
+    extends it with layout-computed positions for local assemblies.  The result
+    has the same shape as a fully-remote positional report.
+
+    The remote report's ``points`` entries must include a ``"group"`` field
+    (which the API emits by default for 1:1 oxford/ribbon points).
+
+    Args:
+        remote_report_json:        The ``report`` JSON from a positional API response.
+        local_feature_sets_json:   JSON array of ``LocalFeatureSet`` objects.
+        reorient:                  Auto-orient comparison sequences (default ``True``).
+        max_connections_per_group: Cap on M:N connections (``0`` → default 25).
+
+    Returns:
+        JSON string shaped like the positional API ``report`` field on success,
+        or ``{"error":"<message>"}`` on failure.
+    """
+    ...
+
 def parse_record_json(raw: str) -> str:
     """Parse the ``records`` array from a raw ``/record`` API response.
 

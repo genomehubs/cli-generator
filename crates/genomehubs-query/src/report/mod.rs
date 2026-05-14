@@ -7,6 +7,8 @@
 pub mod axis;
 pub mod bounds;
 pub mod display;
+pub mod hybrid;
+pub mod layout;
 pub mod plot_spec;
 pub mod positional;
 pub mod spec_builder;

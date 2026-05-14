@@ -104,3 +104,18 @@ parse_plot_spec_json <- function(raw) .Call(wrap__parse_plot_spec_json, raw)
 
 #' Build a PlotSpec from local delimited data and return it as JSON.
 local_plot_spec_json <- function(content, report_type_str, column_map_json, display_json, delimiter_str) .Call(wrap__local_plot_spec_json, content, report_type_str, column_map_json, display_json, delimiter_str)
+
+#' Parse a BUSCO full_table.tsv into a JSON-encoded LocalFeatureSet.
+parse_busco_tsv <- function(assembly_id, content) .Call(wrap__parse_busco_tsv, assembly_id, content)
+
+#' Parse a samtools .fai index and return a JSON sequence-length map.
+parse_fai <- function(content) .Call(wrap__parse_fai, content)
+
+#' Parse a two-column sequence_id/length TSV and return a JSON length map.
+parse_lengths_tsv <- function(content) .Call(wrap__parse_lengths_tsv, content)
+
+#' Compute a positional report from JSON-encoded local feature sets.
+positional_from_features <- function(feature_sets_json, report_type, reorient, cat_field, window_size, max_connections_per_group) .Call(wrap__positional_from_features, feature_sets_json, report_type, reorient, cat_field, window_size, max_connections_per_group)
+
+#' Combine a remote positional report with local feature sets.
+hybrid_positional <- function(remote_report_json, local_feature_sets_json, reorient, max_connections_per_group) .Call(wrap__hybrid_positional, remote_report_json, local_feature_sets_json, reorient, max_connections_per_group)
