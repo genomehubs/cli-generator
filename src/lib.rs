@@ -126,6 +126,18 @@ fn describe_query(
     Ok(result)
 }
 
+/// Describe a report configuration as a short English phrase.
+///
+/// Parses a YAML string from `ReportBuilder.to_report_yaml()` and returns a
+/// phrase like `\"a histogram of genome size by species rank\"`.
+///
+/// Returns an empty string on parse failure.
+#[cfg(feature = "extension-module")]
+#[pyfunction]
+fn describe_report_yaml(report_yaml: &str) -> String {
+    genomehubs_query::describe_report_yaml(report_yaml)
+}
+
 /// Render code snippets for a query in one or more languages.
 ///
 /// Accepts a JSON-serialised [`core::snippet::QuerySnapshot`] and minimal site
@@ -147,8 +159,8 @@ fn render_snippet(
     sdk_name: &str,
     languages: &str,
 ) -> PyResult<String> {
-    use crate::core::config::SiteConfig;
     use crate::core::snippet::{QuerySnapshot, SnippetGenerator};
+    use genomehubs_query::types::SiteConfig;
 
     let snapshot: QuerySnapshot = serde_json::from_str(snapshot_json)
         .map_err(|e| PyValueError::new_err(format!("Invalid snapshot JSON: {}", e)))?;
@@ -614,6 +626,7 @@ fn cli_generator(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(build_url, m)?)?;
     m.add_function(wrap_pyfunction!(build_ui_url, m)?)?;
     m.add_function(wrap_pyfunction!(describe_query, m)?)?;
+    m.add_function(wrap_pyfunction!(describe_report_yaml, m)?)?;
     m.add_function(wrap_pyfunction!(render_snippet, m)?)?;
     m.add_function(wrap_pyfunction!(validate_query_json, m)?)?;
     m.add_function(wrap_pyfunction!(validate_report_yaml, m)?)?;

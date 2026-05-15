@@ -127,6 +127,22 @@ def describe_query(
     """
     ...
 
+def describe_report_yaml(report_yaml: str) -> str:
+    """Describe a report configuration as a short English phrase.
+
+    Parses the YAML produced by ``ReportBuilder.to_report_yaml()`` and returns
+    a phrase suitable for embedding in prose, e.g.
+    ``"a histogram of genome size by species rank"``.
+
+    Args:
+        report_yaml: YAML string from ``ReportBuilder.to_report_yaml()``.
+
+    Returns:
+        Short description string, or an empty string if the report type
+        is unrecognised or the YAML cannot be parsed.
+    """
+    ...
+
 def parse_response_status(raw: str) -> str:
     """Parse the ``status`` block from a raw genomehubs API JSON response.
 

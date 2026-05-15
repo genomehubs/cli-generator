@@ -1,4 +1,4 @@
-const { QueryBuilder } = require("./query");
+const { QueryBuilder{% if call_type == "report" %}, ReportBuilder{% endif %} } = require("./query");
 
 // Create a query builder for {{ site_name }}
 const qb = new QueryBuilder("{{ index }}");
@@ -25,6 +25,54 @@ qb.addField("{{ field }}");
 {% endfor -%}
 {% endif %}
 
+{% if call_type == "count" -%}
+// Fetch the count of matching records
+qb.count().then((n) => console.log("Total records:", n));
+
+{% elif call_type == "report" -%}
+// Build the report configuration
+const rb = new ReportBuilder("{{ report_type | default(value="histogram") }}");
+{% if report_x -%}
+rb.setX("{{ report_x }}");
+{% endif -%}
+{% if report_y -%}
+rb.setY("{{ report_y }}");
+{% endif -%}
+{% if report_cat -%}
+rb.setCat("{{ report_cat }}");
+{% endif -%}
+{% if report_rank -%}
+rb.setRank("{{ report_rank }}");
+{% endif %}
+// Execute the report
+qb.report(rb).then((data) => console.log(JSON.stringify(data, null, 2)));
+
+{% elif call_type == "search_batch" -%}
+// Run a batch search ({{ batch_query_count }} queries)
+const queries = [qb]; // extend with additional QueryBuilder instances
+qb.searchBatch(queries).then((results) =>
+  results.forEach((r, i) => console.log(`Result ${i}:`, r))
+);
+
+{% elif call_type == "count_batch" -%}
+// Run a batch count ({{ batch_query_count }} queries)
+const queries = [qb]; // extend with additional QueryBuilder instances
+qb.countBatch(queries).then((counts) =>
+  counts.forEach((n, i) => console.log(`Query ${i}: ${n} records`))
+);
+
+{% elif call_type == "positional" -%}
+// Run a positional report
+const assemblies = [{% for asm in positional_assemblies %}"{{ asm }}", {% endfor %}];
+qb.positional({
+  report: "{{ positional_report | default(value="oxford") }}",
+  {% if positional_group_by -%}
+  groupBy: "{{ positional_group_by }}",
+  {% endif -%}
+  assemblies,
+}).then((data) => console.log(JSON.stringify(data, null, 2)));
+
+{% else -%}
 // Build the URL without making a network request
 const url = qb.toUrl();
 console.log("Query URL:", url);
@@ -34,3 +82,4 @@ qb.count().then((n) => console.log("Count:", n));
 
 // Fetch results as JSON
 qb.search().then((data) => console.log(JSON.stringify(data, null, 2)));
+{% endif -%}

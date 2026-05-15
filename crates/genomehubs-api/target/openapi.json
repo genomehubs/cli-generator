@@ -15,6 +15,37 @@
   },
   "paths": {
     "/api/v3/count": {
+      "get": {
+        "tags": [
+          "Data"
+        ],
+        "summary": "Count using URL query string parameters",
+        "description": "Convenience endpoint that accepts the same URL parameters as the GoaT UI.\n\nReturns the total matching record count without fetching results.",
+        "operationId": "get_count",
+        "parameters": [
+          {
+            "name": "url",
+            "in": "query",
+            "description": "GoaT UI URL or query string (e.g. `?result=taxon&query=tax_tree(Mammalia)%20AND%20genome_size`)",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Count result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CountResponse"
+                }
+              }
+            }
+          }
+        }
+      },
       "post": {
         "tags": [
           "Data"
@@ -558,6 +589,37 @@
       }
     },
     "/api/v3/search": {
+      "get": {
+        "tags": [
+          "Data"
+        ],
+        "summary": "Search using URL query string parameters",
+        "description": "Convenience endpoint that accepts the same URL parameters as the GoaT UI.\n\nPaste a GoaT browser URL into the `url` parameter to reproduce the same query via the API.",
+        "operationId": "get_search",
+        "parameters": [
+          {
+            "name": "url",
+            "in": "query",
+            "description": "GoaT UI URL or query string (e.g. `?result=taxon&query=tax_tree(Mammalia)%20AND%20genome_size&fields=genome_size&size=10`)",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Search results",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchResponse"
+                }
+              }
+            }
+          }
+        }
+      },
       "post": {
         "tags": [
           "Data"
@@ -729,6 +791,57 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/SummaryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v3/summary/batch": {
+      "post": {
+        "tags": [
+          "Data"
+        ],
+        "summary": "Fetch aggregated summary statistics for multiple records in parallel",
+        "description": "Runs multiple `/summary` queries in a single request.  Each item in `queries` is processed independently and results are returned in the same order.",
+        "operationId": "post_summary_batch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SummaryBatchRequest"
+              },
+              "examples": {
+                "Two records": {
+                  "summary": "Fetch genome_size summary for two taxa",
+                  "value": {
+                    "queries": [
+                      {
+                        "fields": "genome_size",
+                        "recordId": "9606",
+                        "result": "taxon"
+                      },
+                      {
+                        "fields": "genome_size,c_value",
+                        "recordId": "7227",
+                        "result": "taxon"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Batch summary results",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SummaryBatchResponse"
                 }
               }
             }
@@ -1621,6 +1734,85 @@
             "type": "array",
             "items": {
               "type": "string"
+            }
+          }
+        }
+      },
+      "SummaryBatchItem": {
+        "type": "object",
+        "required": [
+          "recordId",
+          "fields"
+        ],
+        "properties": {
+          "fields": {
+            "type": "string"
+          },
+          "recordId": {
+            "type": "string"
+          },
+          "result": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "summary": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "SummaryBatchRequest": {
+        "type": "object",
+        "required": [
+          "queries"
+        ],
+        "properties": {
+          "queries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SummaryBatchItem"
+            },
+            "description": "Array of summary requests to run in parallel (max 100)."
+          }
+        }
+      },
+      "SummaryBatchResponse": {
+        "type": "object",
+        "required": [
+          "status",
+          "results"
+        ],
+        "properties": {
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SummaryBatchResultItem"
+            },
+            "description": "Per-query summary results."
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          }
+        }
+      },
+      "SummaryBatchResultItem": {
+        "type": "object",
+        "required": [
+          "status",
+          "summaries"
+        ],
+        "properties": {
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          },
+          "summaries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SummaryItem"
             }
           }
         }

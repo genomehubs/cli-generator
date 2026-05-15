@@ -88,6 +88,50 @@ impl SnippetGenerator {
         ctx.insert("site_name", &site.name);
         ctx.insert("sdk_name", &site.resolved_sdk_name());
         ctx.insert("api_base", &site.api_base);
+
+        // call_type defaults to "search" when absent or empty
+        let call_type = if query.call_type.is_empty() {
+            "search"
+        } else {
+            query.call_type.as_str()
+        };
+        ctx.insert("call_type", call_type);
+
+        // Flatten ReportSnapshot for easy template access
+        if let Some(report) = &query.report {
+            ctx.insert("report_type", &report.report_type);
+            ctx.insert("report_x", &report.x);
+            ctx.insert("report_y", &report.y);
+            ctx.insert("report_cat", &report.cat);
+            ctx.insert("report_rank", &report.rank);
+        } else {
+            ctx.insert("report_type", &Option::<String>::None);
+            ctx.insert("report_x", &Option::<String>::None);
+            ctx.insert("report_y", &Option::<String>::None);
+            ctx.insert("report_cat", &Option::<String>::None);
+            ctx.insert("report_rank", &Option::<String>::None);
+        }
+
+        // Batch queries — serialise each sub-snapshot for template use
+        let batch_indices: Vec<&str> = query
+            .batch_queries
+            .iter()
+            .map(|q| q.index.as_str())
+            .collect();
+        ctx.insert("batch_query_count", &query.batch_queries.len());
+        ctx.insert("batch_indices", &batch_indices);
+
+        // Positional snapshot
+        if let Some(pos) = &query.positional {
+            ctx.insert("positional_report", &pos.report);
+            ctx.insert("positional_group_by", &pos.group_by);
+            ctx.insert("positional_assemblies", &pos.assemblies);
+        } else {
+            ctx.insert("positional_report", &Option::<String>::None);
+            ctx.insert("positional_group_by", &Option::<String>::None);
+            ctx.insert("positional_assemblies", &Vec::<String>::new());
+        }
+
         ctx
     }
 }

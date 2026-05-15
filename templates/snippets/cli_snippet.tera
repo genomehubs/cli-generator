@@ -1,3 +1,29 @@
+{% if call_type == "count" -%}
+{{ site_name }}-cli {{ index }} count{% if taxa %} \
+  --taxon "{{ taxa[0] }}" --taxon-filter {{ taxon_filter }}{% endif %}{% if rank %} \
+  --rank {{ rank }}{% endif %}{% for filter in filters %} \
+  --filter {{ filter[0] }} {{ filter[1] }} "{{ filter[2] }}"{% endfor %}
+{% elif call_type == "report" -%}
+{{ site_name }}-cli {{ index }} report \
+  --report {{ report_type | default(value="histogram") }}{% if taxa %} \
+  --taxon "{{ taxa[0] }}" --taxon-filter {{ taxon_filter }}{% endif %}{% if report_x %} \
+  --x {{ report_x }}{% endif %}{% if report_y %} \
+  --y {{ report_y }}{% endif %}{% if report_rank %} \
+  --rank {{ report_rank }}{% endif %}{% if report_cat %} \
+  --cat {{ report_cat }}{% endif %}
+{% elif call_type == "positional" -%}
+{{ site_name }}-cli {{ index }} positional \
+  --report {{ positional_report | default(value="oxford") }}{% if positional_group_by %} \
+  --group-by {{ positional_group_by }}{% endif %}{% for asm in positional_assemblies %} \
+  --assembly {{ asm }}{% endfor %}
+{% elif call_type == "search_batch" or call_type == "count_batch" -%}
+# Batch queries are not supported as single CLI invocations.
+# Run the following for each query:
+{{ site_name }}-cli {{ index }} {% if call_type == "count_batch" %}count{% else %}search{% endif %}{% if taxa %} \
+  --taxon "{{ taxa[0] }}" --taxon-filter {{ taxon_filter }}{% endif %}{% for filter in filters %} \
+  --filter {{ filter[0] }} {{ filter[1] }} "{{ filter[2] }}"{% endfor %}{% if call_type != "count_batch" %} \
+  --size 10{% endif %}
+{% else -%}
 {{ site_name }}-cli {{ index }} search{% if taxa %} \
   --taxon "{{ taxa[0] }}" --taxon-filter {{ taxon_filter }}{% endif %}{% if rank %} \
   --rank {{ rank }}{% endif %}{% for filter in filters %} \
@@ -6,3 +32,4 @@
   --field-groups {{ flags | join(sep=",") }}{% endif %}{% if selections %} \
   --fields {{ selections | join(sep=",") }}{% endif %} \
   --size 10
+{% endif -%}

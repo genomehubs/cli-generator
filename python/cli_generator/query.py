@@ -2219,52 +2219,57 @@ class QueryBuilder:
         except json.JSONDecodeError:
             return [result]
 
-    def describe(self, field_metadata: dict[str, Any] | None = None, mode: str = "concise") -> str:
+    def describe(
+        self,
+        field_metadata: dict[str, Any] | None = None,
+        mode: str = "concise",
+        report: "ReportBuilder | None" = None,
+    ) -> str:
         """Get a human-readable description of this query.
 
         Args:
             field_metadata: Optional field metadata dictionary mapping field names to metadata
-                objects with a `display_name` attribute. If not provided, canonical field
+                objects with a ``display_name`` attribute. If not provided, canonical field
                 names are used with underscores replaced by spaces.
             mode: Output format — ``"concise"`` for a one-line summary, ``"verbose"`` for
                 a detailed breakdown.
+            report: Optional :class:`ReportBuilder` to append a report description.
+                When provided, the query description is followed by
+                ``", visualised as <report description>"``.
 
         Returns:
             English prose description of the query.
-
-        Example::
-
-            qb = QueryBuilder("taxon").add_attribute("genome_size", ">=", "1G")
-            print(qb.describe())
-            # Output: "Search for taxa, filtered to genome size >= 1000000000, returning all fields."
-
-            print(qb.describe(mode="verbose"))
-            # Output: "Search for taxa in the database.
-            #          Filters applied:
-            #            • genome size >= 1 gigabyte
-            #          ..."
         """
         import json
 
         from . import describe_query  # FFI call to Rust
 
-        # Convert field metadata to JSON for FFI
         field_metadata_json = json.dumps(field_metadata or {})
-
-        return describe_query(
+        query_description = describe_query(
             self.to_query_yaml(),
             self.to_params_yaml(),
             field_metadata_json,
             mode,
         )
 
+        if report is not None:
+            report_phrase = report.describe()
+            if report_phrase:
+                # Strip trailing period from query part before appending
+                base = query_description.rstrip(".")
+                query_description = f"{base}, visualised as {report_phrase}."
+
+        return query_description
+
     def snippet(
         self,
         languages: list[str] | None = None,
         *,
+        call_type: str = "search",
         site_name: str = "site",
         sdk_name: str = "sdk",
         api_base: str = "",
+        report: "ReportBuilder | None" = None,
     ) -> dict[str, str]:
         """Generate runnable code snippets for this query in one or more languages.
 
@@ -2274,32 +2279,24 @@ class QueryBuilder:
 
         Args:
             languages: Language codes to render.  Defaults to ``["python"]``.
-                Additional languages (``"r"``, ``"javascript"``) become available
-                as their templates are added in later phases.
+                Supported values: ``"python"``, ``"r"``, ``"javascript"``, ``"cli"``.
+            call_type: Which API call to illustrate.  One of:
+
+                - ``"search"`` *(default)* — show a ``search()`` call
+                - ``"count"`` — show a ``count()`` call
+                - ``"report"`` — show a ``report(rb)`` call (requires ``report=``)
+                - ``"positional"`` — show a ``positional()`` call
+                - ``"search_batch"`` — show a ``search_batch()`` call
+                - ``"count_batch"`` — show a ``count_batch()`` call
+
             site_name: Short identifier for the target site, e.g. ``"goat"``.
-                Used as a comment label in the generated snippet.
-            sdk_name: Import name of the generated SDK package, e.g.
-                ``"goat_sdk"``.  Appears in the ``import`` statement.
-            api_base: Base URL of the API, e.g.
-                ``"https://goat.genomehubs.org/api"``.
+            sdk_name: Import name of the generated SDK package, e.g. ``"goat_sdk"``.
+            api_base: Base URL of the API.
+            report: :class:`ReportBuilder` instance, required when
+                ``call_type="report"``.
 
         Returns:
-            Dict mapping language name to generated source code string, e.g.
-            ``{"python": "import goat_sdk as sdk\\n..."}``.
-
-        Example::
-
-            qb = (
-                QueryBuilder("taxon")
-                .add_attribute("genome_size", operator=">=", value="1000000000")
-                .add_field("organism_name")
-            )
-            code = qb.snippet(site_name="goat", sdk_name="goat_sdk")["python"]
-            print(code)
-            # import goat_sdk as sdk
-            # qb = sdk.QueryBuilder("taxon")
-            # qb.add_attribute("genome_size", operator=">=", value="1000000000")
-            # ...
+            Dict mapping language name to generated source code string.
         """
         import json
         from typing import cast
@@ -2309,7 +2306,7 @@ class QueryBuilder:
         if languages is None:
             languages = ["python"]
 
-        # Build a QuerySnapshot-compatible dict from internal builder state.
+        # Build filters, sorts, selections from builder state
         filters: list[tuple[str, str, str]] = []
         for attr in self._attributes:
             name: str = attr["name"]
@@ -2329,7 +2326,21 @@ class QueryBuilder:
 
         selections = [f["name"] for f in self._fields]
 
-        snapshot = {
+        # Build the ReportSnapshot when a ReportBuilder is provided
+        report_snapshot: dict[str, Any] | None = None
+        if report is not None:
+            import yaml  # type: ignore[import-untyped]
+
+            rdoc: dict[str, Any] = yaml.safe_load(report.to_report_yaml()) or {}
+            report_snapshot = {
+                "report_type": str(rdoc.get("report", "")),
+                "x": rdoc.get("x"),
+                "y": rdoc.get("y") if isinstance(rdoc.get("y"), str) else None,
+                "cat": rdoc.get("cat"),
+                "rank": rdoc.get("rank"),
+            }
+
+        snapshot: dict[str, Any] = {
             "index": self._index,
             "taxa": self._taxa,
             "taxon_filter": self._taxon_filter_type,
@@ -2340,6 +2351,10 @@ class QueryBuilder:
             "selections": selections,
             "traversal": None,
             "summaries": [],
+            "call_type": call_type,
+            "report": report_snapshot,
+            "batch_queries": [],
+            "positional": None,
         }
 
         result_json = render_snippet(
@@ -2613,6 +2628,20 @@ class ReportBuilder:
         import yaml  # type: ignore[import-untyped]
 
         return yaml.safe_dump(self._doc, sort_keys=False)
+
+    def describe(self) -> str:
+        """Return a short English description of this report configuration.
+
+        Returns a phrase suitable for embedding in prose, e.g.:
+        ``"a histogram of genome size by species rank"``.
+
+        Returns:
+            Short description string, or an empty string if the report type
+            is unrecognised.
+        """
+        from . import describe_report_yaml  # FFI call to Rust
+
+        return describe_report_yaml(self.to_report_yaml())
 
     def validate(self, field_meta: dict[str, Any] | None = None) -> list[str]:
         """Return a list of validation errors. An empty list means the report is valid.

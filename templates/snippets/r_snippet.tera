@@ -25,10 +25,60 @@ qb$add_field("{{ field }}")
 {% endfor -%}
 {% endif %}
 
+{% if call_type == "count" -%}
+# Fetch the count of matching records
+count <- qb$count()
+cat("Total records:", count, "\n")
+
+{% elif call_type == "report" -%}
+# Build the report configuration
+rb <- ReportBuilder$new("{{ report_type | default(value="histogram") }}")
+{% if report_x -%}
+rb$set_x("{{ report_x }}")
+{% endif -%}
+{% if report_y -%}
+rb$set_y("{{ report_y }}")
+{% endif -%}
+{% if report_cat -%}
+rb$set_cat("{{ report_cat }}")
+{% endif -%}
+{% if report_rank -%}
+rb$set_rank("{{ report_rank }}")
+{% endif %}
+# Execute the report
+data <- qb$report(rb)
+print(data)
+
+{% elif call_type == "search_batch" -%}
+# Run a batch search ({{ batch_query_count }} queries)
+queries <- list(qb)  # extend with additional QueryBuilder instances
+results <- qb$search_batch(queries)
+for (i in seq_along(results)) cat("Result", i, "\n"); print(results[[i]])
+
+{% elif call_type == "count_batch" -%}
+# Run a batch count ({{ batch_query_count }} queries)
+queries <- list(qb)  # extend with additional QueryBuilder instances
+counts <- qb$count_batch(queries)
+for (i in seq_along(counts)) cat("Query", i, ":", counts[[i]], "records\n")
+
+{% elif call_type == "positional" -%}
+# Run a positional report
+assemblies <- c({% for asm in positional_assemblies %}"{{ asm }}", {% endfor %})
+data <- qb$positional(
+  report = "{{ positional_report | default(value="oxford") }}",
+  {% if positional_group_by -%}
+  group_by = "{{ positional_group_by }}",
+  {% endif -%}
+  assemblies = assemblies
+)
+print(data)
+
+{% else -%}
 # Build the query URL
 url <- qb$to_url()
 cat("Query URL:", url, "\n")
 
-# Optionally fetch data:
+# Fetch results
 # results <- qb$search()
 # print(results)
+{% endif -%}

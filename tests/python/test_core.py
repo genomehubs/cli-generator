@@ -1787,3 +1787,152 @@ def test_lookup_batch_empty_raises() -> None:
 
     with pytest.raises(ValueError, match="non-empty"):
         QueryBuilder("taxon").lookup_batch([])
+
+
+# ── describe_report_yaml tests ────────────────────────────────────────────────
+
+
+def test_describe_report_yaml_histogram() -> None:
+    """describe_report_yaml returns a phrase mentioning histogram."""
+    from cli_generator import describe_report_yaml
+
+    yaml_str = "report: histogram\nx: genome_size\nrank: species\n"
+    result = describe_report_yaml(yaml_str)
+    assert "histogram" in result
+
+
+def test_describe_report_yaml_scatter() -> None:
+    """describe_report_yaml returns a phrase mentioning scatter for scatter reports."""
+    from cli_generator import describe_report_yaml
+
+    yaml_str = "report: scatter\nx: genome_size\ny: chromosome_count\n"
+    result = describe_report_yaml(yaml_str)
+    assert "scatter" in result
+
+
+def test_describe_report_yaml_unknown_returns_string() -> None:
+    """describe_report_yaml returns a non-empty string for unrecognised report types."""
+    from cli_generator import describe_report_yaml
+
+    yaml_str = "report: unknown_chart_type\n"
+    result = describe_report_yaml(yaml_str)
+    assert isinstance(result, str)
+
+
+def test_describe_report_yaml_empty_returns_string() -> None:
+    """describe_report_yaml does not panic on empty input."""
+    from cli_generator import describe_report_yaml
+
+    result = describe_report_yaml("")
+    assert isinstance(result, str)
+
+
+# ── ReportBuilder.describe tests ─────────────────────────────────────────────
+
+
+def test_report_builder_describe_returns_string() -> None:
+    """ReportBuilder.describe() returns a non-empty phrase."""
+    from cli_generator import ReportBuilder
+
+    rb = ReportBuilder("histogram").set_x("genome_size").set_rank("species")
+    result = rb.describe()
+    assert isinstance(result, str)
+    assert len(result) > 0
+
+
+def test_report_builder_describe_mentions_report_type() -> None:
+    """ReportBuilder.describe() phrase reflects the report type."""
+    from cli_generator import ReportBuilder
+
+    rb = ReportBuilder("scatter").set_x("genome_size").set_y("chromosome_count")
+    result = rb.describe()
+    assert "scatter" in result
+
+
+def test_report_builder_describe_used_in_query_describe() -> None:
+    """QueryBuilder.describe(report=rb) appends the report phrase."""
+    from cli_generator import ReportBuilder
+    from cli_generator.query import QueryBuilder
+
+    rb = ReportBuilder("histogram").set_x("genome_size").set_rank("species")
+    desc = QueryBuilder("taxon").describe(report=rb)
+    assert "histogram" in desc
+
+
+# ── call_type snippet tests ───────────────────────────────────────────────────
+
+
+def test_snippet_call_type_count_python() -> None:
+    """Python snippet uses count call when call_type='count'."""
+    from cli_generator.query import QueryBuilder
+
+    code = QueryBuilder("taxon").snippet(call_type="count")["python"]
+    assert "count" in code.lower()
+
+
+def test_snippet_call_type_count_r() -> None:
+    """R snippet uses count call when call_type='count'."""
+    from cli_generator.query import QueryBuilder
+
+    code = QueryBuilder("taxon").snippet(call_type="count", languages=["r"])["r"]
+    assert "count" in code.lower()
+
+
+def test_snippet_call_type_count_cli() -> None:
+    """CLI snippet uses count subcommand when call_type='count'."""
+    from cli_generator.query import QueryBuilder
+
+    code = QueryBuilder("taxon").snippet(call_type="count", languages=["cli"])["cli"]
+    assert "count" in code.lower()
+
+
+def test_snippet_call_type_report_python() -> None:
+    """Python snippet uses report call and imports ReportBuilder when call_type='report'."""
+    from cli_generator import ReportBuilder
+    from cli_generator.query import QueryBuilder
+
+    rb = ReportBuilder("histogram").set_x("genome_size").set_rank("species")
+    code = QueryBuilder("taxon").snippet(call_type="report", report=rb)["python"]
+    assert "report" in code.lower()
+
+
+def test_snippet_call_type_report_js() -> None:
+    """JS snippet imports ReportBuilder when call_type='report'."""
+    from cli_generator import ReportBuilder
+    from cli_generator.query import QueryBuilder
+
+    rb = ReportBuilder("scatter").set_x("genome_size").set_y("chromosome_count")
+    code = QueryBuilder("taxon").snippet(call_type="report", report=rb, languages=["javascript"])["javascript"]
+    assert "ReportBuilder" in code
+
+
+def test_snippet_call_type_positional_python() -> None:
+    """Python snippet uses positional call when call_type='positional'."""
+    from cli_generator.query import QueryBuilder
+
+    code = QueryBuilder("taxon").snippet(call_type="positional")["python"]
+    assert "positional" in code.lower()
+
+
+def test_snippet_call_type_positional_cli() -> None:
+    """CLI snippet uses positional subcommand when call_type='positional'."""
+    from cli_generator.query import QueryBuilder
+
+    code = QueryBuilder("taxon").snippet(call_type="positional", languages=["cli"])["cli"]
+    assert "positional" in code.lower()
+
+
+def test_snippet_call_type_search_batch_python() -> None:
+    """Python snippet uses batch search variant when call_type='search_batch'."""
+    from cli_generator.query import QueryBuilder
+
+    code = QueryBuilder("taxon").snippet(call_type="search_batch")["python"]
+    assert "batch" in code.lower()
+
+
+def test_snippet_call_type_count_batch_python() -> None:
+    """Python snippet uses batch count variant when call_type='count_batch'."""
+    from cli_generator.query import QueryBuilder
+
+    code = QueryBuilder("taxon").snippet(call_type="count_batch")["python"]
+    assert "batch" in code.lower()

@@ -190,6 +190,108 @@ pub struct SortDescription {
     pub concise: String,
 }
 
+/// Describe a report configuration as a short English phrase.
+///
+/// Parses a YAML string representing a report document (as produced by
+/// `ReportBuilder.to_report_yaml()`) and returns a phrase suitable for
+/// embedding in a combined query+report description, e.g.:
+///
+/// - `"a histogram of genome size by species rank"`
+/// - `"a scatter plot of genome size vs c value"`
+/// - `"a geographic distribution map"`
+/// - `"a taxonomic tree at genus rank"`
+///
+/// Returns an empty string on YAML parse failure so callers can degrade
+/// gracefully.
+pub fn describe_report_yaml(report_yaml: &str) -> String {
+    let doc: serde_yaml::Value = match serde_yaml::from_str(report_yaml) {
+        Ok(v) => v,
+        Err(_) => return String::new(),
+    };
+
+    let report_type = doc
+        .get("report")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+
+    let x = doc
+        .get("x")
+        .and_then(|v| v.as_str())
+        .map(|s| s.replace('_', " "));
+    let y = doc
+        .get("y")
+        .and_then(|v| v.as_str())
+        .map(|s| s.replace('_', " "));
+    let cat = doc
+        .get("cat")
+        .and_then(|v| v.as_str())
+        .map(|s| s.replace('_', " "));
+    let rank = doc
+        .get("rank")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+
+    match report_type.as_str() {
+        "histogram" => {
+            let x_label = x.as_deref().unwrap_or("values");
+            let mut phrase = format!("a histogram of {}", x_label);
+            if let Some(r) = &rank {
+                phrase.push_str(&format!(" by {} rank", r));
+            } else if let Some(c) = &cat {
+                phrase.push_str(&format!(" by category {}", c));
+            }
+            phrase
+        }
+        "scatter" => {
+            let x_label = x.as_deref().unwrap_or("x");
+            let y_label = y.as_deref().unwrap_or("y");
+            let mut phrase = format!("a scatter plot of {} vs {}", x_label, y_label);
+            if let Some(c) = &cat {
+                phrase.push_str(&format!(", coloured by {}", c));
+            }
+            phrase
+        }
+        "map" => {
+            let location = doc
+                .get("location_field")
+                .and_then(|v| v.as_str())
+                .map(|s| s.replace('_', " "));
+            match location {
+                Some(loc) if loc != "sample location" => {
+                    format!("a geographic distribution map using {}", loc)
+                }
+                _ => "a geographic distribution map".to_string(),
+            }
+        }
+        "tree" => {
+            let mut phrase = "a taxonomic tree".to_string();
+            if let Some(r) = &rank {
+                phrase.push_str(&format!(" at {} rank", r));
+            }
+            phrase
+        }
+        "countPerRank" | "xPerRank" => {
+            let x_label = x
+                .as_deref()
+                .or(doc.get("query").and_then(|v| v.as_str()))
+                .unwrap_or("values");
+            let mut phrase = format!("{} per rank", x_label.replace('_', " "));
+            if !rank.as_deref().unwrap_or("").is_empty() {
+                phrase.push_str(&format!(" (at {})", rank.as_deref().unwrap_or("")));
+            }
+            phrase
+        }
+        "sources" => "a data source summary".to_string(),
+        "arc" | "arc2" => {
+            let x_label = x.as_deref().unwrap_or("features");
+            format!("an arc diagram of {}", x_label)
+        }
+        other if !other.is_empty() => format!("a {} report", other.replace('_', " ")),
+        _ => String::new(),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

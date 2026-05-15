@@ -460,6 +460,17 @@ pub fn describe_query(
     format!(r#""{}""#, result.replace('"', "\\\"").replace('\n', "\\n"))
 }
 
+/// Describe a report configuration as a short English phrase.
+///
+/// Parses the YAML produced by `ReportBuilder.to_report_yaml()` and returns
+/// a phrase like `"a histogram of genome size by species rank"`.
+///
+/// Returns an empty string on YAML parse failure.
+#[cfg_attr(feature = "wasm", wasm_bindgen)]
+pub fn describe_report_yaml(report_yaml: &str) -> String {
+    describe::describe_report_yaml(report_yaml)
+}
+
 /// Render code snippets for a query in one or more languages.
 ///
 /// Accepts a JSON-serialised [`types::QuerySnapshot`] and minimal site

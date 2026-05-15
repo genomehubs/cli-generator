@@ -119,4 +119,55 @@ pub struct QuerySnapshot {
     /// Summaries: (field_name, modifier)
     #[serde(default)]
     pub summaries: Vec<(String, String)>,
+    /// Which API call to show in the snippet.
+    ///
+    /// Accepted values: `"search"` (default), `"count"`, `"report"`,
+    /// `"positional"`, `"search_batch"`, `"count_batch"`.
+    #[serde(default)]
+    pub call_type: String,
+    /// Report configuration, required when `call_type = "report"`.
+    #[serde(default)]
+    pub report: Option<ReportSnapshot>,
+    /// Batch queries, required when `call_type = "search_batch"` or
+    /// `"count_batch"`.  Each entry is a serialised `QuerySnapshot`.
+    #[serde(default)]
+    pub batch_queries: Vec<QuerySnapshot>,
+    /// Positional configuration, required when `call_type = "positional"`.
+    #[serde(default)]
+    pub positional: Option<PositionalSnapshot>,
+}
+
+/// Snapshot of a `ReportBuilder` configuration, embedded in `QuerySnapshot`
+/// when `call_type = "report"`.
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+pub struct ReportSnapshot {
+    /// Report type, e.g. `"histogram"`, `"scatter"`, `"map"`, `"tree"`,
+    /// `"countPerRank"`, `"sources"`, `"arc"`.
+    pub report_type: String,
+    /// X-axis field name.
+    #[serde(default)]
+    pub x: Option<String>,
+    /// Y-axis field name(s) — comma-joined when multiple.
+    #[serde(default)]
+    pub y: Option<String>,
+    /// Category breakdown field.
+    #[serde(default)]
+    pub cat: Option<String>,
+    /// Taxonomic rank to aggregate at.
+    #[serde(default)]
+    pub rank: Option<String>,
+}
+
+/// Snapshot of a positional request, embedded in `QuerySnapshot` when
+/// `call_type = "positional"`.
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+pub struct PositionalSnapshot {
+    /// Report type, e.g. `"oxford"`, `"painting"`, `"busco"`.
+    pub report: String,
+    /// Feature grouping strategy, e.g. `"busco_gene"`, `"merian_unit"`.
+    #[serde(default)]
+    pub group_by: Option<String>,
+    /// Assembly accessions to include.
+    #[serde(default)]
+    pub assemblies: Vec<String>,
 }
