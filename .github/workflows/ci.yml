@@ -26,8 +26,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Rust stable with rustfmt + clippy
-        uses: dtolnay/rust-toolchain@stable
+      - name: Install Rust 1.92 with rustfmt + clippy
+        uses: dtolnay/rust-toolchain@1.92
         with:
           components: rustfmt, clippy
 
@@ -104,8 +104,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Rust stable
-        uses: dtolnay/rust-toolchain@stable
+      - name: Install Rust 1.92
+        uses: dtolnay/rust-toolchain@1.92
 
       - name: Cache Cargo registry and build artefacts
         uses: actions/cache@v4
@@ -173,8 +173,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Rust stable
-        uses: dtolnay/rust-toolchain@stable
+      - name: Install Rust 1.92
+        uses: dtolnay/rust-toolchain@1.92
 
       - name: Cache Cargo registry and build artefacts
         uses: actions/cache@v4
@@ -337,8 +337,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Rust stable with wasm-pack targets
-        uses: dtolnay/rust-toolchain@stable
+      - name: Install Rust 1.92 with wasm-pack targets
+        uses: dtolnay/rust-toolchain@1.92
         with:
           targets: wasm32-unknown-unknown
 
@@ -465,8 +465,8 @@ jobs:
           install.packages(c("devtools", "roxygen2"))
         shell: Rscript {0}
 
-      - name: Install Rust stable
-        uses: dtolnay/rust-toolchain@stable
+      - name: Install Rust 1.92
+        uses: dtolnay/rust-toolchain@1.92
 
       - name: Cache Cargo registry and build artefacts
         uses: actions/cache@v4
@@ -526,8 +526,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install Rust stable
-        uses: dtolnay/rust-toolchain@stable
+      - name: Install Rust 1.92
+        uses: dtolnay/rust-toolchain@1.92
 
       - name: Cache Cargo registry and build artefacts
         uses: actions/cache@v4
@@ -624,4 +624,3 @@ jobs:
           labels: |
             org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
-

@@ -1653,11 +1653,12 @@ fn inject_generated_deps(mut text: String) -> String {
         "extension-module = [\"pyo3/extension-module\"]",
         "extension-module = [\"dep:pyo3\", \"pyo3/extension-module\"]",
     );
-    // Add vl-convert feature gate (opt-in SVG/PNG rendering via Deno/V8).
+    // Add vl-convert feature gate — external-process-only backend, no crate dep needed.
+    // (kept as a no-op feature so `--features vl-convert` doesn't error for existing scripts)
     if text.contains("extension-module =") && !text.contains("vl-convert =") {
         text = text.replace(
             "extension-module = [\"dep:pyo3\", \"pyo3/extension-module\"]",
-            "extension-module = [\"dep:pyo3\", \"pyo3/extension-module\"]\nvl-convert       = [\"dep:vl-convert-rs\", \"dep:futures\"]",
+            "extension-module = [\"dep:pyo3\", \"pyo3/extension-module\"]\nvl-convert       = []",
         );
     }
 
@@ -1684,14 +1685,6 @@ fn inject_generated_deps(mut text: String) -> String {
         (
             "tera",
             "tera = { version = \"1\", default-features = false }",
-        ),
-        (
-            "vl-convert-rs",
-            "vl-convert-rs = { version = \"2.0.0-rc1\", optional = true }",
-        ),
-        (
-            "futures =",
-            "futures = { version = \"0.3\", default-features = false, features = [\"executor\"], optional = true }",
         ),
     ];
     let missing_deps: Vec<&str> = required_deps

@@ -54,7 +54,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@1.92
         with:
           targets: ${{ matrix.target }}
 
@@ -87,11 +87,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@1.92
 
       - name: Publish to crates.io
         run: cargo publish --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
-        continue-on-error: true  # Allow failure if already published
+        continue-on-error: true # Allow failure if already published
 
   # ── Docker: build and push docs images ────────────────────────────────────
   build-and-push-docs-docker:
@@ -135,4 +135,3 @@ jobs:
             org.opencontainers.image.version=${{ github.ref_name }}
             org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
-

@@ -1,61 +1,54 @@
 # Multi-stage Dockerfile for genomehubs-api (Rust/Axum)
-# Build stage: compile the Rust API binary
-FROM rust:1.81-bookworm AS builder
-WORKDIR /build
+#
+# Environment variables (set at container run-time):
+#   GH_ORIGINS        Space-separated list of allowed CORS origins, e.g.
+#                     "https://goat.genomehubs.org http://localhost:3000"
+#                     Use "null" to allow all origins (dev only).
+#   GH_ACCESS_LOG     Path inside the container for HTTP access log (optional).
+#                     e.g. /genomehubs/logs/_access.log
+#   GH_ERROR_LOG      Path inside the container for error log (optional).
+#                     e.g. /genomehubs/logs/_error.log
+#   ES_INTEGRATION_CONFIG  Path to the TOML config file (optional; default
+#                     searches upwards for config/es_integration.toml).
+#   RUST_LOG          Log-level filter, e.g. "info" or "debug" (default: info).
+#   GH_API_DOCS_PATH  URL path where Swagger UI is mounted (default: /swagger-ui).
+#                     Set to /api/v3/swagger-ui for production, or /api-docs once
+#                     the v2 API is retired.
 
-# Ensure we have a recent stable toolchain (some dependencies require edition2024 support).
-# Do not use nightly — install/activate the latest stable via rustup if needed.
-RUN set -eux; \
-    if ! command -v rustup >/dev/null 2>&1; then \
-    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable; \
-    fi; \
-    export PATH="/root/.cargo/bin:$PATH"; \
-    rustup toolchain install stable || true; \
-    rustup default stable; \
-    rustc --version; \
-    cargo --version
+# ── Stage 1: compile ──────────────────────────────────────────────────────────
+FROM rust:1.92-bookworm AS builder
+WORKDIR /build
 
 ENV PATH="/root/.cargo/bin:${PATH}"
 
-# Copy workspace and crate manifests
+# Copy workspace and crate manifests first so dependency layers are cached
+# independently of source changes.
 COPY Cargo.toml Cargo.lock ./
 COPY crates/ ./crates/
 COPY src/ ./src/
 COPY templates/ ./templates/
 
-# Build the API binary in release mode
+# Build the API binary in release mode.
 RUN cargo build -p genomehubs-api --release
 
-# Runtime stage: minimal container with just the binary
-FROM debian:bookworm-slim
+# ── Stage 2: minimal runtime ──────────────────────────────────────────────────
+# gcr.io/distroless/cc has glibc + libgcc but no shell, curl, or package manager,
+# which eliminates the most common container breakout attack surface.
+FROM gcr.io/distroless/cc-debian12:nonroot AS runtime
 WORKDIR /app
 
-# Install runtime dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
+# Copy only the compiled binary.
+# The nonroot user (uid 65532) owns it so the process can write without root.
+COPY --from=builder --chown=65532:65532 /build/target/release/genomehubs-api /app/genomehubs-api
 
-# Copy binary from builder
-COPY --from=builder /build/target/release/genomehubs-api /app/genomehubs-api
-
-# Create a directory for config mounting
-RUN mkdir -p /app/config
-
-# Create non-root user for security
-RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
-USER appuser
-
-# Expose API port
+# Expose API port.
 EXPOSE 3000
 
-# Health check (optional; adjust timeout/interval as needed)
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:3000/api/v3/status || exit 1
+# distroless has no shell so HEALTHCHECK CMD must be the binary form (no sh -c).
+# Use an external health probe (k8s liveness probe, docker compose healthcheck
+# with a sidecar wget) rather than a shell-based check.
 
-# Run the API
-# Configuration can be provided via:
-# - ES_INTEGRATION_CONFIG env var (path to TOML file)
-# - Mounted volume at /app/config/es_integration.toml
-# - Default environment variables (see documentation)
-CMD ["/app/genomehubs-api"]
+# Run as the built-in nonroot user (uid 65532) — no root inside the container.
+USER nonroot
+
+ENTRYPOINT ["/app/genomehubs-api"]

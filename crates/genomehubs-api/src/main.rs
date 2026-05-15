@@ -1,5 +1,8 @@
 use axum::{routing::get, Extension, Router};
 use std::{fs, net::SocketAddr, path::PathBuf, sync::Arc, time::Duration};
+use tower_http::cors::{AllowHeaders, AllowMethods, CorsLayer};
+use tower_http::trace::TraceLayer;
+use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter, Layer};
 // use toml;
 use utoipa::OpenApi;
 use utoipa_swagger_ui::{SwaggerUi, Url};
@@ -125,7 +128,110 @@ struct ApiDoc;
 
 #[tokio::main]
 async fn main() {
-    tracing_subscriber::fmt::init();
+    // ── Logging setup ────────────────────────────────────────────────────────
+    // Honour RUST_LOG for level filtering; default to "info".
+    let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
+
+    // File paths from env vars (matching v2 variable names).
+    let access_log_path = std::env::var("GH_ACCESS_LOG").ok();
+    let error_log_path = std::env::var("GH_ERROR_LOG").ok();
+
+    // Always emit JSON-structured logs to stderr (captured by container runtime).
+    let stderr_layer = fmt::layer()
+        .json()
+        .with_current_span(false)
+        .with_writer(std::io::stderr);
+
+    let registry = tracing_subscriber::registry()
+        .with(env_filter)
+        .with(stderr_layer);
+
+    // Optionally tee access events to a file (GH_ACCESS_LOG).
+    // Optionally tee error events to a file (GH_ERROR_LOG).
+    // Both use non-blocking file appenders so I/O never blocks request handling.
+    match (access_log_path, error_log_path) {
+        (Some(ref apath), Some(ref epath)) if apath == epath => {
+            // Single file for both: write all events at INFO+ to it.
+            let parent = std::path::Path::new(apath)
+                .parent()
+                .unwrap_or_else(|| std::path::Path::new("."));
+            let fname = std::path::Path::new(apath)
+                .file_name()
+                .unwrap_or_else(|| std::ffi::OsStr::new("api.log"));
+            let (file_writer, _guard) =
+                tracing_appender::non_blocking(tracing_appender::rolling::never(parent, fname));
+            // Note: _guard must not be dropped; leak it so it lives for the process lifetime.
+            std::mem::forget(_guard);
+            registry
+                .with(fmt::layer().json().with_writer(file_writer))
+                .init();
+        }
+        (Some(ref apath), Some(ref epath)) => {
+            let mk_appender = |p: &str| {
+                let parent = std::path::Path::new(p)
+                    .parent()
+                    .unwrap_or_else(|| std::path::Path::new("."));
+                let fname = std::path::Path::new(p)
+                    .file_name()
+                    .unwrap_or_else(|| std::ffi::OsStr::new("api.log"));
+                tracing_appender::non_blocking(tracing_appender::rolling::never(parent, fname))
+            };
+            let (access_writer, _g1) = mk_appender(apath);
+            let (error_writer, _g2) = mk_appender(epath);
+            std::mem::forget(_g1);
+            std::mem::forget(_g2);
+            registry
+                .with(
+                    fmt::layer()
+                        .json()
+                        .with_writer(access_writer)
+                        .with_filter(EnvFilter::new("info")),
+                )
+                .with(
+                    fmt::layer()
+                        .json()
+                        .with_writer(error_writer)
+                        .with_filter(EnvFilter::new("warn")),
+                )
+                .init();
+        }
+        (Some(ref apath), None) => {
+            let parent = std::path::Path::new(apath)
+                .parent()
+                .unwrap_or_else(|| std::path::Path::new("."));
+            let fname = std::path::Path::new(apath)
+                .file_name()
+                .unwrap_or_else(|| std::ffi::OsStr::new("access.log"));
+            let (file_writer, _guard) =
+                tracing_appender::non_blocking(tracing_appender::rolling::never(parent, fname));
+            std::mem::forget(_guard);
+            registry
+                .with(fmt::layer().json().with_writer(file_writer))
+                .init();
+        }
+        (None, Some(ref epath)) => {
+            let parent = std::path::Path::new(epath)
+                .parent()
+                .unwrap_or_else(|| std::path::Path::new("."));
+            let fname = std::path::Path::new(epath)
+                .file_name()
+                .unwrap_or_else(|| std::ffi::OsStr::new("error.log"));
+            let (file_writer, _guard) =
+                tracing_appender::non_blocking(tracing_appender::rolling::never(parent, fname));
+            std::mem::forget(_guard);
+            registry
+                .with(
+                    fmt::layer()
+                        .json()
+                        .with_writer(file_writer)
+                        .with_filter(EnvFilter::new("warn")),
+                )
+                .init();
+        }
+        (None, None) => {
+            registry.init();
+        }
+    }
 
     // Load ES integration config (allow override via ES_INTEGRATION_CONFIG)
     #[derive(serde::Deserialize)]
@@ -282,6 +388,34 @@ async fn main() {
         Err(e) => tracing::error!(error = %e, "failed to populate metadata cache on startup"),
     }
 
+    // ── CORS ─────────────────────────────────────────────────────────────────
+    // GH_ORIGINS is a space-separated list of allowed origins (matching v2).
+    // "null" is treated as a wildcard (allow all) — useful in dev / unit tests.
+    // When not set, deny all cross-origin requests (safe default).
+    let cors_layer: CorsLayer = match std::env::var("GH_ORIGINS").ok() {
+        Some(raw) if raw.trim() == "null" || raw.contains("null") => {
+            // Any origin that includes "null" → permit all (dev mode).
+            CorsLayer::permissive()
+        }
+        Some(raw) => {
+            let origins: Vec<axum::http::HeaderValue> = raw
+                .split_whitespace()
+                .filter(|s| !s.is_empty())
+                .filter_map(|s| s.parse().ok())
+                .collect();
+            if origins.is_empty() {
+                CorsLayer::new()
+            } else {
+                CorsLayer::new()
+                    .allow_origin(origins)
+                    .allow_methods(AllowMethods::any())
+                    .allow_headers(AllowHeaders::any())
+                    .allow_credentials(false)
+            }
+        }
+        None => CorsLayer::new(), // deny all cross-origin
+    };
+
     let app = Router::<()>::new()
         .route(
             "/api/v3/count",
@@ -346,10 +480,21 @@ async fn main() {
             axum::routing::post(routes::summary_batch::post_summary_batch),
         )
         .layer(Extension(state))
-        .merge(SwaggerUi::new("/swagger-ui").external_url_unchecked(
-            Url::new("API Documentation", "/api-doc/openapi.json"),
-            openapi_val,
-        ));
+        .layer(cors_layer)
+        .layer(TraceLayer::new_for_http())
+        .merge({
+            // GH_API_DOCS_PATH controls where the Swagger UI is mounted.
+            //   default (dev):      /swagger-ui
+            //   production (v3):    /api/v3/swagger-ui
+            //   future (post-v2):   /api-docs
+            let docs_path =
+                std::env::var("GH_API_DOCS_PATH").unwrap_or_else(|_| "/swagger-ui".to_string());
+            let json_path = format!("{}/openapi.json", docs_path.trim_end_matches('/'));
+            SwaggerUi::new(docs_path).external_url_unchecked(
+                Url::new("API Documentation", json_path.leak()),
+                openapi_val,
+            )
+        });
 
     // Write the patched OpenAPI JSON to target/ for inspection.
     let out_path = "./target/openapi.json";

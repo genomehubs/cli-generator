@@ -155,7 +155,7 @@ fn build_local_layouts(
                 orientation: 1,
             })
             .collect();
-        seqs.sort_by(|a, b| b.length.cmp(&a.length));
+        seqs.sort_by_key(|s| std::cmp::Reverse(s.length));
         compute_offsets(&mut seqs);
         let span = seqs.last().map(|s| s.offset + s.length).unwrap_or(0);
         AssemblyLayout {
@@ -548,7 +548,7 @@ fn build_oxford_ribbon(
     }
 
     let mut cats_vec: Vec<_> = cat_counts.into_iter().collect();
-    cats_vec.sort_by(|a, b| b.1.cmp(&a.1));
+    cats_vec.sort_by_key(|b| std::cmp::Reverse(b.1));
     let cats_json: Vec<Value> = cats_vec
         .iter()
         .map(|(k, _)| json!({"key": k, "label": k}))
@@ -1277,7 +1277,7 @@ pub fn hybrid_positional(
     }
 
     let mut cats_vec: Vec<_> = cat_counts.into_iter().collect();
-    cats_vec.sort_by(|a, b| b.1.cmp(&a.1));
+    cats_vec.sort_by_key(|b| std::cmp::Reverse(b.1));
     let cats_json: Vec<Value> = cats_vec
         .iter()
         .map(|(k, _)| json!({"key": k, "label": k}))
