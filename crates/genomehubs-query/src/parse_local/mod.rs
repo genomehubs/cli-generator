@@ -6,6 +6,7 @@
 //! - [`lengths`]: explicit two-column `sequence_id<TAB>length` TSV
 
 pub mod busco;
+pub mod cat_file;
 pub mod fai;
 pub mod feature_set;
 pub mod lengths;

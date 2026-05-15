@@ -1238,6 +1238,7 @@ class QueryBuilder {
         cat,
         windowSize,
         maxConnectionsPerGroup,
+        "",
       );
       const result = JSON.parse(resultJson);
       if (result.error)

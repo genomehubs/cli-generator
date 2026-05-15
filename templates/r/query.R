@@ -1077,7 +1077,7 @@ QueryBuilder <- R6::R6Class(
         result_json <- positional_from_features(
           jsonlite::toJSON(local_sets, auto_unbox = TRUE),
           report, reorient, if (is.null(cat)) "" else cat, ws,
-          as.integer(max_connections_per_group)
+          as.integer(max_connections_per_group), ""
         )
         result <- jsonlite::fromJSON(result_json)
         if (!is.null(result[["error"]])) {

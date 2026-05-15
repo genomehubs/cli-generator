@@ -7,12 +7,55 @@
 
 use std::collections::HashMap;
 
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
 use crate::{
     parse_local::feature_set::{LocalFeature, LocalFeatureSet},
     report::layout::{compute_offsets, order_sequences_by_median, orient_sequence, SequenceLayout},
 };
+
+// ── Region computation types ──────────────────────────────────────────────────
+
+/// Controls how region boundaries are placed between adjacent features of
+/// different categories.
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum RegionBounds {
+    /// Boundaries are placed exactly at feature ends / starts (no expansion).
+    #[default]
+    FeatureEnds,
+    /// Boundaries are placed at the midpoint between adjacent feature ends and
+    /// starts; this creates gapless contiguous regions across each sequence.
+    Midpoints,
+}
+
+/// Configuration for region computation passed to [`positional_from_features`].
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct RegionsSpec {
+    /// How to compute region boundaries (default: `feature_ends`).
+    #[serde(default)]
+    pub bounds: RegionBounds,
+    /// Minimum number of consecutive same-category features required to *start*
+    /// a region.  Runs shorter than this are treated as interruptions within an
+    /// adjacent region (when within `tolerance`) or discarded.  Default: 1.
+    #[serde(default = "default_min_run", alias = "min_features")]
+    pub min_run: usize,
+    /// Maximum number of consecutive non-matching (different assigned-category)
+    /// features that can be absorbed into a region as labelled interruptions
+    /// before the region is considered to have ended.  Unassigned features
+    /// (`cat = null`) are always skipped and do not count against the tolerance.
+    /// Default: 0 (any non-matching feature breaks the region).
+    #[serde(default)]
+    pub tolerance: usize,
+    /// Optional cap on how far a midpoint boundary can extend beyond the
+    /// nearest feature edge (base-pairs).
+    pub max_expansion: Option<u64>,
+}
+
+fn default_min_run() -> usize {
+    1
+}
 
 // ── Error type ────────────────────────────────────────────────────────────────
 
@@ -564,9 +607,11 @@ fn build_painting(
         features
             .iter()
             .map(|f| {
+                // Include end so the client can display feature-width segments.
                 let mut seg = json!({
                     "sequence_id": f.sequence_id,
-                    "start": f.start
+                    "start": f.start,
+                    "end": f.end
                 });
                 if let Some(cat) = &f.cat {
                     seg["cat"] = json!(cat);
@@ -584,6 +629,183 @@ fn build_painting(
     })
 }
 
+/// Compute regions for one assembly by grouping adjacent same-category features.
+///
+/// Unassigned features (`cat == None`) are skipped — they are transparent and
+/// do not break region continuity.  Features with an assigned category that
+/// differ from the current region are buffered; if the region's own category
+/// resumes before the buffer exceeds `spec.tolerance`, those features are
+/// absorbed as labelled interruptions.  Once the buffer size exceeds the
+/// tolerance the current region closes and a new one may begin.
+///
+/// Regions with fewer than `spec.min_run` primary-category features are never
+/// started, and therefore act as interruptions (if within tolerance) or
+/// discard separators between adjacent regions.
+fn compute_regions(
+    assembly_id: &str,
+    features: &[&LocalFeature],
+    layout: &AssemblyLayout,
+    spec: &RegionsSpec,
+) -> Vec<Value> {
+    // A contiguous run of same-category features.
+    struct Run {
+        cat: String,
+        start: u64,
+        end: u64,
+        count: usize,
+    }
+
+    // A region being assembled by the state machine.
+    struct Region {
+        cat: String,
+        start: u64,
+        end: u64,
+        feature_count: usize,
+        interruptions: Vec<Run>,
+    }
+
+    let offsets = offset_map(Some(layout));
+
+    // Group *assigned* features by sequence, sorted by start.
+    let mut by_seq: HashMap<&str, Vec<&LocalFeature>> = HashMap::new();
+    for f in features {
+        if f.cat.is_none() {
+            continue; // unassigned — transparent for region computation
+        }
+        by_seq.entry(f.sequence_id.as_str()).or_default().push(f);
+    }
+    for feats in by_seq.values_mut() {
+        feats.sort_unstable_by_key(|f| f.start);
+    }
+
+    let mut all_regions: Vec<Value> = Vec::new();
+
+    for (seq_id, seq_feats) in &by_seq {
+        let x_off = offsets.get(*seq_id).copied().unwrap_or(0);
+
+        // Compress consecutive same-cat features into raw runs.
+        let mut raw_runs: Vec<Run> = Vec::new();
+        for f in seq_feats {
+            let cat = f.cat.as_deref().unwrap(); // safe: filtered above
+            match raw_runs.last_mut() {
+                Some(last) if last.cat == cat => {
+                    last.end = last.end.max(f.end);
+                    last.count += 1;
+                }
+                _ => raw_runs.push(Run {
+                    cat: cat.to_string(),
+                    start: f.start,
+                    end: f.end,
+                    count: 1,
+                }),
+            }
+        }
+
+        // State machine: current region being built + tolerance pending buffer.
+        let mut current: Option<Region> = None;
+        let mut pending: Vec<Run> = Vec::new();
+        let mut pending_total: usize = 0;
+        let mut seq_regions: Vec<Region> = Vec::new();
+
+        for run in raw_runs {
+            match current.take() {
+                None => {
+                    // No active region — discard pending, start fresh if run is large enough.
+                    pending.clear();
+                    pending_total = 0;
+                    if run.count >= spec.min_run {
+                        current = Some(Region {
+                            cat: run.cat,
+                            start: run.start,
+                            end: run.end,
+                            feature_count: run.count,
+                            interruptions: Vec::new(),
+                        });
+                    }
+                }
+                Some(mut region) => {
+                    if run.cat == region.cat {
+                        // Same category: absorb pending buffer as interruptions, extend region.
+                        region.interruptions.append(&mut pending);
+                        pending_total = 0;
+                        region.end = region.end.max(run.end);
+                        region.feature_count += run.count;
+                        current = Some(region);
+                    } else if pending_total + run.count <= spec.tolerance {
+                        // Within tolerance: buffer as a potential interruption.
+                        pending_total += run.count;
+                        pending.push(run);
+                        current = Some(region);
+                    } else {
+                        // Tolerance exceeded: close the current region and start fresh.
+                        seq_regions.push(region);
+                        pending.clear();
+                        pending_total = 0;
+                        if run.count >= spec.min_run {
+                            current = Some(Region {
+                                cat: run.cat,
+                                start: run.start,
+                                end: run.end,
+                                feature_count: run.count,
+                                interruptions: Vec::new(),
+                            });
+                        }
+                    }
+                }
+            }
+        }
+        if let Some(region) = current {
+            seq_regions.push(region);
+        }
+
+        // Apply boundary adjustments between adjacent regions.
+        if matches!(spec.bounds, RegionBounds::Midpoints) && seq_regions.len() >= 2 {
+            for i in 0..seq_regions.len() - 1 {
+                let gap_end = seq_regions[i].end;
+                let gap_start = seq_regions[i + 1].start;
+                let raw_mid = (gap_end + gap_start) / 2;
+                let mid = if let Some(max_exp) = spec.max_expansion {
+                    raw_mid
+                        .min(gap_end.saturating_add(max_exp))
+                        .max(gap_start.saturating_sub(max_exp))
+                } else {
+                    raw_mid
+                };
+                seq_regions[i].end = mid;
+                seq_regions[i + 1].start = mid;
+            }
+        }
+
+        // Convert to JSON, attaching interruptions where present.
+        for region in seq_regions {
+            let mut obj = json!({
+                "sequenceId": seq_id,
+                "assemblyId": assembly_id,
+                "start": region.start,
+                "end": region.end,
+                "catValue": region.cat,
+                "featureCount": region.feature_count,
+                "xOffset": x_off
+            });
+            if !region.interruptions.is_empty() {
+                obj["interruptions"] = json!(region
+                    .interruptions
+                    .iter()
+                    .map(|r| json!({
+                        "catValue": r.cat,
+                        "start": r.start,
+                        "end": r.end,
+                        "featureCount": r.count
+                    }))
+                    .collect::<Vec<_>>());
+            }
+            all_regions.push(obj);
+        }
+    }
+
+    all_regions
+}
+
 // ── Public API ────────────────────────────────────────────────────────────────
 
 /// Compute an Oxford, ribbon, or painting plot from local feature sets.
@@ -593,10 +815,10 @@ fn build_painting(
 /// for ribbon ≥ 2.
 ///
 /// Sequence lengths are derived automatically when `sequence_lengths` is empty,
-/// setting `lengths_derived = true` on the affected set and including
-/// `"lengthsDerived": true` in the output assembly metadata.
+/// setting `lengths_derived = true` on the affected set.
 ///
-/// Returns a `serde_json::Value` shaped like the positional API's `report` field.
+/// `regions_spec` adds a `regions` array to the output when `Some`.  Regions
+/// are computed per-assembly by grouping adjacent same-category features.
 pub fn positional_from_features(
     feature_sets: &mut [LocalFeatureSet],
     report_type: &str,
@@ -604,6 +826,7 @@ pub fn positional_from_features(
     cat_field: Option<&str>,
     window_size: Option<u64>,
     max_connections_per_group: usize,
+    regions_spec: Option<&RegionsSpec>,
 ) -> Result<Value, LayoutError> {
     if feature_sets.is_empty() {
         return Err(LayoutError::NoAssemblies);
@@ -639,27 +862,35 @@ pub fn positional_from_features(
 
     let layouts = build_local_layouts(&assembly_id_refs, feature_sets, reorient);
 
-    match report_type {
+    let mut result = match report_type {
         "painting" => {
             let asm_id = &assembly_ids[0];
             let feats: Vec<&LocalFeature> = feature_sets[0].features.iter().collect();
-            Ok(build_painting(
-                asm_id,
-                &layouts,
-                &feats,
-                cat_field,
-                window_size,
-            ))
+            build_painting(asm_id, &layouts, &feats, cat_field, window_size)
         }
-        _ => Ok(build_oxford_ribbon(
+        _ => build_oxford_ribbon(
             report_type,
             &assembly_id_refs,
             &layouts,
             feature_sets,
             cat_field,
             max_connections_per_group,
-        )),
+        ),
+    };
+
+    if let Some(spec) = regions_spec {
+        let mut all_regions: Vec<Value> = Vec::new();
+        for (asm_id, set) in assembly_ids.iter().zip(feature_sets.iter()) {
+            if let Some(layout) = layouts.get(asm_id.as_str()) {
+                let feats: Vec<&LocalFeature> = set.features.iter().collect();
+                let mut asm_regions = compute_regions(asm_id, &feats, layout, spec);
+                all_regions.append(&mut asm_regions);
+            }
+        }
+        result["regions"] = json!(all_regions);
     }
+
+    Ok(result)
 }
 
 /// Combine a rendered remote positional report with one or more local feature sets.
@@ -1072,6 +1303,9 @@ pub fn hybrid_positional(
 /// `max_connections_per_group` caps M:N connections (0 → default 25).
 ///
 /// Returns a JSON string.  On error, returns `{"error":"<message>"}`.
+/// JSON-string wrapper for [`positional_from_features`].
+///
+/// `regions_json` is either `""` (skip) or a JSON-serialised [`RegionsSpec`].
 pub fn positional_from_features_json(
     feature_sets_json: &str,
     report_type: &str,
@@ -1079,6 +1313,7 @@ pub fn positional_from_features_json(
     cat_field: &str,
     window_size: u64,
     max_connections_per_group: usize,
+    regions_json: &str,
 ) -> String {
     let mut sets: Vec<LocalFeatureSet> = match serde_json::from_str(feature_sets_json) {
         Ok(v) => v,
@@ -1101,7 +1336,24 @@ pub fn positional_from_features_json(
         max_connections_per_group
     };
 
-    match positional_from_features(&mut sets, report_type, reorient, cat, ws, max_conn) {
+    let regions_spec: Option<RegionsSpec> = if regions_json.is_empty() {
+        None
+    } else {
+        match serde_json::from_str(regions_json) {
+            Ok(s) => Some(s),
+            Err(e) => return json!({"error": format!("invalid regions_json: {e}")}).to_string(),
+        }
+    };
+
+    match positional_from_features(
+        &mut sets,
+        report_type,
+        reorient,
+        cat,
+        ws,
+        max_conn,
+        regions_spec.as_ref(),
+    ) {
         Ok(v) => v.to_string(),
         Err(e) => json!({"error": e.to_string()}).to_string(),
     }
@@ -1140,6 +1392,14 @@ pub fn hybrid_positional_json(
 }
 
 // ── Parse helpers exposed for PyO3 / WASM ───────────────────────────────────
+
+/// Parse a two-column name→category file and return a JSON object string.
+///
+/// Returns `{"name1":"cat1",...}` or `{"error":"..."}`.  The result can be
+/// used to override feature `cat` values after parsing a BUSCO or feature TSV.
+pub fn parse_cat_file_json(content: &str) -> String {
+    crate::parse_local::cat_file::parse_cat_file_json(content)
+}
 
 /// Parse a BUSCO `full_table.tsv` and return a JSON-encoded [`LocalFeatureSet`].
 ///
@@ -1226,7 +1486,8 @@ mod tests {
                 vec![("chrA", 10_000_000)],
             ),
         ];
-        let result = positional_from_features(&mut sets, "oxford", true, None, None, 25).unwrap();
+        let result =
+            positional_from_features(&mut sets, "oxford", true, None, None, 25, None).unwrap();
         assert_eq!(result["type"].as_str(), Some("oxford"));
         let points = result["points"].as_array().unwrap();
         assert_eq!(points.len(), 2, "expected 2 points for 2 shared genes");
@@ -1242,9 +1503,16 @@ mod tests {
             ],
             vec![("chr1", 3_000_000)],
         )];
-        let result =
-            positional_from_features(&mut sets, "painting", false, None, Some(1_000_000), 25)
-                .unwrap();
+        let result = positional_from_features(
+            &mut sets,
+            "painting",
+            false,
+            None,
+            Some(1_000_000),
+            25,
+            None,
+        )
+        .unwrap();
         assert_eq!(result["type"].as_str(), Some("painting"));
         let segs = result["segments"].as_array().unwrap();
         // gene1 → window 0, gene2 → window 1_000_000 → 2 windows
@@ -1265,7 +1533,8 @@ mod tests {
                 vec![], // no lengths supplied
             ),
         ];
-        let result = positional_from_features(&mut sets, "oxford", false, None, None, 25).unwrap();
+        let result =
+            positional_from_features(&mut sets, "oxford", false, None, None, 25, None).unwrap();
         // Both sets should now have lengths_derived=true
         assert!(sets[0].lengths_derived);
         assert!(sets[1].lengths_derived);
@@ -1277,14 +1546,14 @@ mod tests {
     #[test]
     fn test_no_assemblies_error() {
         let mut sets: Vec<LocalFeatureSet> = vec![];
-        let err = positional_from_features(&mut sets, "oxford", false, None, None, 25);
+        let err = positional_from_features(&mut sets, "oxford", false, None, None, 25, None);
         assert!(matches!(err, Err(LayoutError::NoAssemblies)));
     }
 
     #[test]
     fn test_oxford_wrong_count_error() {
         let mut sets = vec![make_set("A", vec![], vec![])];
-        let err = positional_from_features(&mut sets, "oxford", false, None, None, 25);
+        let err = positional_from_features(&mut sets, "oxford", false, None, None, 25, None);
         assert!(matches!(
             err,
             Err(LayoutError::IncompatibleAssemblyCounts {
@@ -1308,7 +1577,8 @@ mod tests {
                 vec![("chrA", 1_000_000)],
             ),
         ];
-        let result = positional_from_features(&mut sets, "oxford", false, None, None, 25).unwrap();
+        let result =
+            positional_from_features(&mut sets, "oxford", false, None, None, 25, None).unwrap();
         let points = result["points"].as_array().unwrap();
         assert!(points.is_empty(), "no shared groups → no points");
     }
@@ -1353,5 +1623,190 @@ mod tests {
         assert!(result["assemblies"].get("GCA_remote").is_some());
         // Local assembly metadata should be added
         assert!(result["assemblies"].get("my_new_asm").is_some());
+    }
+
+    // ── Region computation tests ──────────────────────────────────────────────
+
+    /// Build a minimal AssemblyLayout for region tests.
+    fn make_layout(seq_id: &str, length: u64) -> AssemblyLayout {
+        AssemblyLayout {
+            sequences: vec![SequenceLayout {
+                sequence_id: seq_id.to_string(),
+                length,
+                offset: 0,
+                orientation: 1,
+            }],
+            total_span: length,
+            lengths_derived: false,
+        }
+    }
+
+    /// Build a LocalFeature with an assigned category.
+    fn make_feat(seq: &str, start: u64, end: u64, cat: Option<&str>) -> LocalFeature {
+        LocalFeature {
+            group: "g".to_string(),
+            sequence_id: seq.to_string(),
+            start,
+            end,
+            strand: 1,
+            cat: cat.map(|s| s.to_string()),
+        }
+    }
+
+    #[test]
+    fn test_regions_basic_two_cats() {
+        // 3 × A then 3 × B on one sequence.
+        let feats: Vec<LocalFeature> = vec![
+            make_feat("chr1", 0, 100, Some("A")),
+            make_feat("chr1", 101, 200, Some("A")),
+            make_feat("chr1", 201, 300, Some("A")),
+            make_feat("chr1", 301, 400, Some("B")),
+            make_feat("chr1", 401, 500, Some("B")),
+            make_feat("chr1", 501, 600, Some("B")),
+        ];
+        let layout = make_layout("chr1", 700);
+        let spec = RegionsSpec {
+            min_run: 1,
+            tolerance: 0,
+            ..Default::default()
+        };
+        let feat_refs: Vec<&LocalFeature> = feats.iter().collect();
+        let regions = compute_regions("asm", &feat_refs, &layout, &spec);
+        assert_eq!(regions.len(), 2);
+        assert_eq!(regions[0]["catValue"].as_str(), Some("A"));
+        assert_eq!(regions[0]["featureCount"].as_u64(), Some(3));
+        assert_eq!(regions[1]["catValue"].as_str(), Some("B"));
+        assert_eq!(regions[1]["featureCount"].as_u64(), Some(3));
+    }
+
+    #[test]
+    fn test_regions_unassigned_features_are_skipped() {
+        // A, unassigned, A — the unassigned feature should not break the A region.
+        let feats: Vec<LocalFeature> = vec![
+            make_feat("chr1", 0, 100, Some("A")),
+            make_feat("chr1", 101, 200, None), // unassigned — transparent
+            make_feat("chr1", 201, 300, Some("A")),
+        ];
+        let layout = make_layout("chr1", 400);
+        let spec = RegionsSpec {
+            min_run: 1,
+            tolerance: 0,
+            ..Default::default()
+        };
+        let feat_refs: Vec<&LocalFeature> = feats.iter().collect();
+        let regions = compute_regions("asm", &feat_refs, &layout, &spec);
+        // Two raw A runs merged into one because unassigned is skipped entirely.
+        assert_eq!(regions.len(), 1);
+        assert_eq!(regions[0]["catValue"].as_str(), Some("A"));
+        assert_eq!(regions[0]["featureCount"].as_u64(), Some(2));
+    }
+
+    #[test]
+    fn test_regions_tolerance_absorbs_interruption() {
+        // 5 × A, 1 × B (within tolerance=1), 5 × A → single A region with one B interruption.
+        let feats: Vec<LocalFeature> = vec![
+            make_feat("chr1", 0, 100, Some("A")),
+            make_feat("chr1", 101, 200, Some("A")),
+            make_feat("chr1", 201, 300, Some("A")),
+            make_feat("chr1", 301, 400, Some("A")),
+            make_feat("chr1", 401, 500, Some("A")),
+            make_feat("chr1", 501, 600, Some("B")), // tolerated interruption
+            make_feat("chr1", 601, 700, Some("A")),
+            make_feat("chr1", 701, 800, Some("A")),
+            make_feat("chr1", 801, 900, Some("A")),
+            make_feat("chr1", 901, 1000, Some("A")),
+            make_feat("chr1", 1001, 1100, Some("A")),
+        ];
+        let layout = make_layout("chr1", 1200);
+        let spec = RegionsSpec {
+            min_run: 1,
+            tolerance: 1,
+            ..Default::default()
+        };
+        let feat_refs: Vec<&LocalFeature> = feats.iter().collect();
+        let regions = compute_regions("asm", &feat_refs, &layout, &spec);
+        assert_eq!(
+            regions.len(),
+            1,
+            "B is within tolerance so only one A region"
+        );
+        assert_eq!(regions[0]["catValue"].as_str(), Some("A"));
+        assert_eq!(regions[0]["featureCount"].as_u64(), Some(10));
+        let interruptions = regions[0]["interruptions"].as_array().unwrap();
+        assert_eq!(interruptions.len(), 1);
+        assert_eq!(interruptions[0]["catValue"].as_str(), Some("B"));
+        assert_eq!(interruptions[0]["featureCount"].as_u64(), Some(1));
+    }
+
+    #[test]
+    fn test_regions_tolerance_exceeded_breaks_region() {
+        // 5 × A, 2 × B (tolerance=1, exceeded), 5 × A → two separate A regions.
+        let feats: Vec<LocalFeature> = vec![
+            make_feat("chr1", 0, 100, Some("A")),
+            make_feat("chr1", 101, 200, Some("A")),
+            make_feat("chr1", 201, 300, Some("A")),
+            make_feat("chr1", 301, 400, Some("A")),
+            make_feat("chr1", 401, 500, Some("A")),
+            make_feat("chr1", 501, 600, Some("B")),
+            make_feat("chr1", 601, 700, Some("B")), // 2 > tolerance=1, breaks region
+            make_feat("chr1", 701, 800, Some("A")),
+            make_feat("chr1", 801, 900, Some("A")),
+            make_feat("chr1", 901, 1000, Some("A")),
+            make_feat("chr1", 1001, 1100, Some("A")),
+            make_feat("chr1", 1101, 1200, Some("A")),
+        ];
+        let layout = make_layout("chr1", 1300);
+        let spec = RegionsSpec {
+            min_run: 1,
+            tolerance: 1,
+            ..Default::default()
+        };
+        let feat_refs: Vec<&LocalFeature> = feats.iter().collect();
+        let regions = compute_regions("asm", &feat_refs, &layout, &spec);
+        assert_eq!(regions.len(), 3, "A, B, A");
+        assert_eq!(regions[0]["catValue"].as_str(), Some("A"));
+        assert_eq!(regions[1]["catValue"].as_str(), Some("B"));
+        assert_eq!(regions[2]["catValue"].as_str(), Some("A"));
+    }
+
+    #[test]
+    fn test_regions_min_run_filters_short_runs() {
+        // 2 × A (< min_run=3), 5 × B, 1 × A (< min_run=3), 5 × B → only B regions.
+        let feats: Vec<LocalFeature> = vec![
+            make_feat("chr1", 0, 100, Some("A")),
+            make_feat("chr1", 101, 200, Some("A")),
+            make_feat("chr1", 201, 300, Some("B")),
+            make_feat("chr1", 301, 400, Some("B")),
+            make_feat("chr1", 401, 500, Some("B")),
+            make_feat("chr1", 501, 600, Some("B")),
+            make_feat("chr1", 601, 700, Some("B")),
+            make_feat("chr1", 701, 800, Some("A")), // 1 < min_run=3
+            make_feat("chr1", 801, 900, Some("B")),
+            make_feat("chr1", 901, 1000, Some("B")),
+            make_feat("chr1", 1001, 1100, Some("B")),
+            make_feat("chr1", 1101, 1200, Some("B")),
+            make_feat("chr1", 1201, 1300, Some("B")),
+        ];
+        let layout = make_layout("chr1", 1400);
+        // With min_run=3 and tolerance=1: single A features can't start regions
+        // but 1 A can be absorbed as interruption (within tolerance=1).
+        let spec = RegionsSpec {
+            min_run: 3,
+            tolerance: 1,
+            ..Default::default()
+        };
+        let feat_refs: Vec<&LocalFeature> = feats.iter().collect();
+        let regions = compute_regions("asm", &feat_refs, &layout, &spec);
+        // First A(2) at start: can't start a region (2 < min_run=3), discarded
+        // B(5) starts a region
+        // A(1) = 1 <= tolerance=1: absorbed as interruption in B region
+        // B(5) extends the B region
+        // → 1 B region (10 features, 1 A interruption)
+        assert_eq!(regions.len(), 1);
+        assert_eq!(regions[0]["catValue"].as_str(), Some("B"));
+        assert_eq!(regions[0]["featureCount"].as_u64(), Some(10));
+        let interruptions = regions[0]["interruptions"].as_array().unwrap();
+        assert_eq!(interruptions.len(), 1);
+        assert_eq!(interruptions[0]["catValue"].as_str(), Some("A"));
     }
 }

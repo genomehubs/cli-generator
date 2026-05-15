@@ -124,37 +124,43 @@ enum Commands {
         format: generated::output::OutputFormat,
     },
 
-    /// Compute a positional report (oxford/ribbon/painting) from local BUSCO files (no API call).
+    /// Compute a positional report (oxford/ribbon/painting) from local feature files (no API call).
     ///
-    /// Each assembly requires a BUSCO `full_table.tsv` supplied as `ASSEMBLY_ID:PATH`.
-    /// Sequence lengths are inferred from the BUSCO file unless `--fai` or `--lengths` is
-    /// provided.  Multiple `--busco` flags give the assemblies in order.
+    /// Each assembly requires a feature `full_table.tsv` (BUSCO format) supplied as two arguments:
+    /// ASSEMBLY_ID and PATH.  Sequence lengths are inferred from the feature file unless `--fai` or
+    /// `--lengths` is provided.  Multiple `--features` flags give the assemblies in order.
     ///
     /// Example (oxford, two assemblies):
-    ///   local-positional --busco asm1:/path/to/asm1/full_table.tsv \\
-    ///                    --busco asm2:/path/to/asm2/full_table.tsv
+    ///   local-positional --features asm1 /path/to/asm1/full_table.tsv \
+    ///                    --features asm2 /path/to/asm2/full_table.tsv
     LocalPositional {
-        /// BUSCO file for one assembly: ASSEMBLY_ID:PATH (repeatable; order matters).
-        #[arg(long = "busco", value_name = "ASSEMBLY_ID:PATH", required = true)]
-        busco: Vec<String>,
+        /// Feature file for one assembly (BUSCO format): ASSEMBLY_ID PATH (repeatable; order matters).
+        #[arg(long = "features", value_names = ["ASSEMBLY_ID", "PATH"], num_args = 2, required = true)]
+        features: Vec<String>,
 
-        /// FAI index for an assembly: ASSEMBLY_ID:PATH (optional, repeatable).
+        /// FAI index for an assembly: ASSEMBLY_ID PATH (optional, repeatable).
         ///
-        /// Overrides BUSCO-derived sequence lengths for the named assembly.
-        #[arg(long = "fai", value_name = "ASSEMBLY_ID:PATH")]
+        /// Overrides feature-derived sequence lengths for the named assembly.
+        #[arg(long = "fai", value_names = ["ASSEMBLY_ID", "PATH"], num_args = 2)]
         fai: Vec<String>,
 
-        /// Two-column lengths TSV for an assembly: ASSEMBLY_ID:PATH (optional, repeatable).
+        /// Two-column lengths TSV for an assembly: ASSEMBLY_ID PATH (optional, repeatable).
         ///
         /// Alternative to --fai; used when a .fai index is not available.
-        #[arg(long = "lengths", value_name = "ASSEMBLY_ID:PATH")]
+        #[arg(long = "lengths", value_names = ["ASSEMBLY_ID", "PATH"], num_args = 2)]
         lengths: Vec<String>,
+
+        /// Two-column name→category TSV for an assembly: ASSEMBLY_ID PATH (optional, repeatable).
+        ///
+        /// Overrides the category field for named features in the given assembly.
+        #[arg(long = "cat-file", value_names = ["ASSEMBLY_ID", "PATH"], num_args = 2)]
+        cat_file: Vec<String>,
 
         /// Report sub-type.
         #[arg(long, value_parser = ["oxford", "ribbon", "painting"], default_value = "oxford")]
         report: String,
 
-        /// Category field for colour coding (reads from BUSCO `status` column if omitted).
+        /// Category field for colour coding (reads from feature `status` column if omitted).
         #[arg(long)]
         cat: Option<String>,
 
@@ -169,6 +175,39 @@ enum Commands {
         /// Maximum connections per group cap for M:N feature mappings.
         #[arg(long = "max-connections-per-group", default_value_t = 0)]
         max_connections_per_group: usize,
+
+        /// Include only features whose category matches this value (repeatable).
+        #[arg(long = "include-status")]
+        include_status: Vec<String>,
+
+        /// Exclude features whose category matches this value (repeatable).
+        #[arg(long = "exclude-status")]
+        exclude_status: Vec<String>,
+
+        /// Compute a region summary layer on the output.
+        ///
+        /// How region boundaries are placed: `feature_ends` (default) keeps
+        /// boundaries at feature positions; `midpoints` expands them to the
+        /// midpoint between adjacent features.
+        #[arg(long = "region-bounds", value_parser = ["feature_ends", "midpoints"])]
+        region_bounds: Option<String>,
+
+        /// Minimum number of consecutive same-category features required to
+        /// define a region.  Shorter runs are treated as interruptions within
+        /// an adjacent region (if within `--region-tolerance`) or discarded.
+        /// Setting this to e.g. 5 means a single stray category cannot start
+        /// its own region.  Default: 1.
+        #[arg(long = "region-threshold")]
+        region_threshold: Option<usize>,
+
+        /// Maximum number of consecutive non-matching features that can be
+        /// absorbed as labelled interruptions within a region before the region
+        /// is considered to have ended.  With `--region-tolerance 1` a single
+        /// cat-B feature in a run of cat-A features is absorbed and the A
+        /// region spans across it.  Default: 0 (any non-matching feature
+        /// breaks the region).
+        #[arg(long = "region-tolerance")]
+        region_tolerance: Option<usize>,
 
         /// Output file path (writes to stdout if omitted).
         #[arg(long, short = 'o')]
@@ -1108,45 +1147,85 @@ fn run(cli: Cli) -> anyhow::Result<()> {
             }
         }
         Commands::LocalPositional {
-            busco, fai, lengths, report, cat, window_size, no_reorient,
-            max_connections_per_group, output,
+            features, fai, lengths, cat_file, report, cat, window_size, no_reorient,
+            max_connections_per_group, include_status, exclude_status,
+            region_bounds, region_threshold, region_tolerance, output,
         } => {
-            /// Parse `ASSEMBLY_ID:PATH` into `(assembly_id, file_content)`.
-            fn parse_id_path(raw: &str, flag: &str) -> anyhow::Result<(String, String)> {
-                let (id, path) = raw.split_once(':')
-                    .ok_or_else(|| anyhow::anyhow!("--{flag} must be ASSEMBLY_ID:PATH, got '{raw}'"))?;
+            /// Read (assembly_id, file_content) from a two-element slice produced by `chunks(2)`.
+            fn read_id_path(id: &str, path: &str, flag: &str) -> anyhow::Result<(String, String)> {
                 let content = std::fs::read_to_string(path)
-                    .with_context(|| format!("reading {flag} file for '{}': {}", id, path))?;
+                    .with_context(|| format!("reading --{flag} file for '{}': {}", id, path))?;
                 Ok((id.to_string(), content))
             }
 
             // Parse all --fai and --lengths into maps keyed by assembly_id.
             let mut fai_map: std::collections::HashMap<String, String> =
                 std::collections::HashMap::new();
-            for raw in &fai {
-                let (id, content) = parse_id_path(raw, "fai")?;
+            for pair in fai.chunks(2) {
+                let (id, content) = read_id_path(&pair[0], &pair[1], "fai")?;
                 fai_map.insert(id, content);
             }
             let mut lengths_map: std::collections::HashMap<String, String> =
                 std::collections::HashMap::new();
-            for raw in &lengths {
-                let (id, content) = parse_id_path(raw, "lengths")?;
+            for pair in lengths.chunks(2) {
+                let (id, content) = read_id_path(&pair[0], &pair[1], "lengths")?;
                 lengths_map.insert(id, content);
             }
 
-            // Build a LocalFeatureSet for every --busco entry.
-            let mut feature_sets: Vec<serde_json::Value> = Vec::new();
-            for raw in &busco {
-                let (asm_id, busco_content) = parse_id_path(raw, "busco")?;
+            // Parse all --cat-file entries into a map keyed by assembly_id.
+            let mut cat_file_map: std::collections::HashMap<String, serde_json::Value> =
+                std::collections::HashMap::new();
+            for pair in cat_file.chunks(2) {
+                let (id, content) = read_id_path(&pair[0], &pair[1], "cat-file")?;
+                let map_json = {{ sdk_name }}::embedded::core::report::hybrid::parse_cat_file_json(&content);
+                let map_val: serde_json::Value = serde_json::from_str(&map_json)
+                    .with_context(|| format!("parsing cat-file JSON for '{id}'"))?;
+                if let Some(err) = map_val.get("error").and_then(|e| e.as_str()) {
+                    anyhow::bail!("parse_cat_file failed for '{id}': {err}");
+                }
+                cat_file_map.insert(id, map_val);
+            }
 
-                // Parse BUSCO full_table.tsv.
+            // Build a LocalFeatureSet for every --features entry.
+            let mut feature_sets: Vec<serde_json::Value> = Vec::new();
+            for pair in features.chunks(2) {
+                let (asm_id, content) = read_id_path(&pair[0], &pair[1], "features")?;
+
+                // Parse feature file (BUSCO full_table.tsv format).
                 let set_json = {{ sdk_name }}::embedded::core::report::hybrid::parse_busco_tsv_json(
-                    &asm_id, &busco_content,
+                    &asm_id, &content,
                 );
                 let mut set: serde_json::Value = serde_json::from_str(&set_json)
-                    .with_context(|| format!("parsing BUSCO JSON for '{asm_id}'"))?;
+                    .with_context(|| format!("parsing features JSON for '{asm_id}'"))?;
                 if let Some(err) = set.get("error").and_then(|e| e.as_str()) {
                     anyhow::bail!("parse_busco_tsv failed for '{asm_id}': {err}");
+                }
+
+                // Apply --cat-file overrides: update 'cat' field for named features.
+                if let Some(cat_map) = cat_file_map.get(&asm_id) {
+                    if let Some(feats) = set["features"].as_array_mut() {
+                        for f in feats.iter_mut() {
+                            if let Some(group) = f.get("group").and_then(|g| g.as_str()) {
+                                if let Some(new_cat) = cat_map.get(group).and_then(|c| c.as_str()) {
+                                    f["cat"] = serde_json::Value::String(new_cat.to_string());
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Apply status filters on the 'cat' field.
+                if !include_status.is_empty() || !exclude_status.is_empty() {
+                    if let Some(feats) = set["features"].as_array_mut() {
+                        feats.retain(|f| {
+                            let cat_val = f.get("cat").and_then(|c| c.as_str()).unwrap_or("");
+                            let keep_include = include_status.is_empty()
+                                || include_status.iter().any(|s| s == cat_val);
+                            let keep_exclude = exclude_status.is_empty()
+                                || !exclude_status.iter().any(|s| s == cat_val);
+                            keep_include && keep_exclude
+                        });
+                    }
                 }
 
                 // Overwrite sequence lengths from --fai if supplied for this assembly.
@@ -1178,6 +1257,17 @@ fn run(cli: Cli) -> anyhow::Result<()> {
                 .context("serialising feature sets")?;
             let cat_field = cat.as_deref().unwrap_or("");
             let ws = window_size.unwrap_or(0);
+            // Compose individual --region-* flags into a JSON spec for positional_from_features_json.
+            let regions_json_str: String =
+                if region_bounds.is_some() || region_threshold.is_some() || region_tolerance.is_some() {
+                    serde_json::json!({
+                        "bounds": region_bounds.as_deref().unwrap_or("feature_ends"),
+                        "min_run": region_threshold.unwrap_or(1usize),
+                        "tolerance": region_tolerance.unwrap_or(0usize),
+                    }).to_string()
+                } else {
+                    String::new()
+                };
             let result_json = {{ sdk_name }}::embedded::core::report::hybrid::positional_from_features_json(
                 &feature_sets_json,
                 &report,
@@ -1185,6 +1275,7 @@ fn run(cli: Cli) -> anyhow::Result<()> {
                 cat_field,
                 ws,
                 max_connections_per_group,
+                &regions_json_str,
             );
 
             // Bail on error field.

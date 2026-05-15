@@ -410,10 +410,18 @@ fn parse_lengths_tsv(content: &str) -> String {
     report::hybrid::parse_lengths_tsv_json(content)
 }
 
+/// Parse a two-column name-to-category mapping file and return a JSON object.
+#[cfg(feature = "extension-module")]
+#[pyfunction]
+fn parse_cat_file(content: &str) -> String {
+    use crate::embedded::core::report;
+    report::hybrid::parse_cat_file_json(content)
+}
+
 /// Compute a positional report from JSON-encoded local feature sets.
 #[cfg(feature = "extension-module")]
 #[pyfunction]
-#[pyo3(signature = (feature_sets_json, report_type, reorient = true, cat_field = "", window_size = 0, max_connections_per_group = 0))]
+#[pyo3(signature = (feature_sets_json, report_type, reorient = true, cat_field = "", window_size = 0, max_connections_per_group = 0, regions_json = ""))]
 fn positional_from_features(
     feature_sets_json: &str,
     report_type: &str,
@@ -421,6 +429,7 @@ fn positional_from_features(
     cat_field: &str,
     window_size: u64,
     max_connections_per_group: usize,
+    regions_json: &str,
 ) -> String {
     use crate::embedded::core::report;
     report::hybrid::positional_from_features_json(
@@ -430,6 +439,7 @@ fn positional_from_features(
         cat_field,
         window_size,
         max_connections_per_group,
+        regions_json,
     )
 }
 
@@ -489,6 +499,7 @@ fn {{ sdk_name }}(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(parse_busco_tsv, m)?)?;
     m.add_function(wrap_pyfunction!(parse_fai, m)?)?;
     m.add_function(wrap_pyfunction!(parse_lengths_tsv, m)?)?;
+    m.add_function(wrap_pyfunction!(parse_cat_file, m)?)?;
     m.add_function(wrap_pyfunction!(positional_from_features, m)?)?;
     m.add_function(wrap_pyfunction!(hybrid_positional, m)?)?;
     Ok(())

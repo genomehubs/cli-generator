@@ -619,6 +619,14 @@ pub fn parse_busco_tsv(assembly_id: &str, content: &str) -> String {
     report::hybrid::parse_busco_tsv_json(assembly_id, content)
 }
 
+/// Parse a two-column name→category mapping file and return a JSON object.
+///
+/// Returns `{"name1":"cat1",...}` or `{"error":"<message>"}`.
+#[cfg_attr(feature = "wasm", wasm_bindgen)]
+pub fn parse_cat_file(content: &str) -> String {
+    report::hybrid::parse_cat_file_json(content)
+}
+
 /// Parse a samtools `.fai` FASTA index and return a JSON `sequence_id → length` map.
 ///
 /// On error returns `{"error":"<message>"}`.
@@ -652,6 +660,7 @@ pub fn positional_from_features(
     cat_field: &str,
     window_size: u64,
     max_connections_per_group: usize,
+    regions_json: &str,
 ) -> String {
     report::hybrid::positional_from_features_json(
         feature_sets_json,
@@ -660,6 +669,7 @@ pub fn positional_from_features(
         cat_field,
         window_size,
         max_connections_per_group,
+        regions_json,
     )
 }
 

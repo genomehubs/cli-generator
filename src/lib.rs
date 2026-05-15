@@ -329,6 +329,16 @@ fn parse_fai(content: &str) -> String {
     genomehubs_query::parse_fai(content)
 }
 
+/// Parse a two-column `name<TAB>category` mapping file.
+///
+/// Returns a JSON object `{"name1":"cat1",...}` on success, or
+/// `{"error":"<message>"}` on failure.
+#[cfg(feature = "extension-module")]
+#[pyfunction]
+fn parse_cat_file(content: &str) -> String {
+    genomehubs_query::parse_cat_file(content)
+}
+
 /// Parse a two-column `sequence_id<TAB>length` TSV and return a JSON length map.
 ///
 /// Blank lines and `#` comments are skipped.
@@ -358,7 +368,7 @@ fn parse_lengths_tsv(content: &str) -> String {
 /// or ``{"error":"<message>"}`` on failure.
 #[cfg(feature = "extension-module")]
 #[pyfunction]
-#[pyo3(signature = (feature_sets_json, report_type, reorient = true, cat_field = "", window_size = 0, max_connections_per_group = 0))]
+#[pyo3(signature = (feature_sets_json, report_type, reorient = true, cat_field = "", window_size = 0, max_connections_per_group = 0, regions_json = ""))]
 fn positional_from_features(
     feature_sets_json: &str,
     report_type: &str,
@@ -366,6 +376,7 @@ fn positional_from_features(
     cat_field: &str,
     window_size: u64,
     max_connections_per_group: usize,
+    regions_json: &str,
 ) -> String {
     genomehubs_query::positional_from_features(
         feature_sets_json,
@@ -374,6 +385,7 @@ fn positional_from_features(
         cat_field,
         window_size,
         max_connections_per_group,
+        regions_json,
     )
 }
 
@@ -616,6 +628,7 @@ fn cli_generator(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(parse_paginated_json, m)?)?;
     m.add_function(wrap_pyfunction!(parse_batch_json, m)?)?;
     m.add_function(wrap_pyfunction!(parse_busco_tsv, m)?)?;
+    m.add_function(wrap_pyfunction!(parse_cat_file, m)?)?;
     m.add_function(wrap_pyfunction!(parse_fai, m)?)?;
     m.add_function(wrap_pyfunction!(parse_lengths_tsv, m)?)?;
     m.add_function(wrap_pyfunction!(positional_from_features, m)?)?;

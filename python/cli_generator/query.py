@@ -1664,6 +1664,7 @@ class QueryBuilder:
                 cat or "",
                 ws,
                 max_connections_per_group,
+                "",
             )
             result = json.loads(result_json)
             if "error" in result:

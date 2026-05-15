@@ -426,6 +426,22 @@ def parse_busco_tsv(assembly_id: str, content: str) -> str:
     """
     ...
 
+def parse_cat_file(content: str) -> str:
+    """Parse a two-column name\u2192category mapping file.
+
+    Each line should be ``feature_name<TAB>category_label``.  Leading ``#``
+    comment lines and blank lines are skipped.  Useful for overriding the
+    ``cat`` field on features after parsing a BUSCO or feature TSV.
+
+    Args:
+        content: Full text of the two-column mapping file.
+
+    Returns:
+        JSON object string mapping ``feature_name \u2192 category`` on success,
+        or ``{"error":"<message>"}`` on failure.
+    """
+    ...
+
 def parse_fai(content: str) -> str:
     """Parse a samtools ``.fai`` FASTA index and return a JSON sequence-length map.
 
@@ -472,6 +488,7 @@ def positional_from_features(
     cat_field: str = "",
     window_size: int = 0,
     max_connections_per_group: int = 0,
+    regions_json: str = "",
 ) -> str:
     """Compute a positional report from local feature sets (no API call required).
 

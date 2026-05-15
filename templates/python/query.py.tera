@@ -1215,7 +1215,7 @@ class QueryBuilder:
 
         if not remote_assemblies:
             result_json = _positional_from_features(
-                json.dumps(local_sets), report, reorient, cat or "", ws, max_connections_per_group,
+                json.dumps(local_sets), report, reorient, cat or "", ws, max_connections_per_group, "",
             )
             result = json.loads(result_json)
             if "error" in result:

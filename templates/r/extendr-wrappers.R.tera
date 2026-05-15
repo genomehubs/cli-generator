@@ -114,8 +114,11 @@ parse_fai <- function(content) .Call(wrap__parse_fai, content)
 #' Parse a two-column sequence_id/length TSV and return a JSON length map.
 parse_lengths_tsv <- function(content) .Call(wrap__parse_lengths_tsv, content)
 
+#' Parse a two-column name-to-category mapping file.
+parse_cat_file <- function(content) .Call(wrap__parse_cat_file, content)
+
 #' Compute a positional report from JSON-encoded local feature sets.
-positional_from_features <- function(feature_sets_json, report_type, reorient, cat_field, window_size, max_connections_per_group) .Call(wrap__positional_from_features, feature_sets_json, report_type, reorient, cat_field, window_size, max_connections_per_group)
+positional_from_features <- function(feature_sets_json, report_type, reorient, cat_field, window_size, max_connections_per_group, regions_json) .Call(wrap__positional_from_features, feature_sets_json, report_type, reorient, cat_field, window_size, max_connections_per_group, regions_json)
 
 #' Combine a remote positional report with local feature sets.
 hybrid_positional <- function(remote_report_json, local_feature_sets_json, reorient, max_connections_per_group) .Call(wrap__hybrid_positional, remote_report_json, local_feature_sets_json, reorient, max_connections_per_group)
