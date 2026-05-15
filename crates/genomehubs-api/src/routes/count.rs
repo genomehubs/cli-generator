@@ -1,4 +1,7 @@
-use axum::{extract::Json, Extension};
+use axum::{
+    extract::{Json, Query as AxumQuery},
+    Extension,
+};
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::{json, Value};
 use std::sync::Arc;
@@ -227,4 +230,47 @@ pub async fn post_count(
         )),
         url: built_url,
     })
+}
+
+/// Query parameters for `GET /api/v3/count`.
+#[derive(Deserialize)]
+pub struct CountGetQuery {
+    /// A GoaT UI URL or raw query string containing URL-encoded search parameters.
+    pub url: String,
+}
+
+#[utoipa::path(
+    get,
+    path = "/api/v3/count",
+    tag = "Data",
+    summary = "Count using URL query string parameters",
+    description = "Convenience endpoint that accepts the same URL parameters as the GoaT UI.\n\nReturns the total matching record count without fetching results.",
+    params(
+        ("url" = String, Query, description = "GoaT UI URL or query string (e.g. `?result=taxon&query=tax_tree(Mammalia)%20AND%20genome_size`)"),
+    ),
+    responses(
+        (status = 200, description = "Count result", body = CountResponse)
+    )
+)]
+#[axum::debug_handler]
+pub async fn get_count(
+    AxumQuery(q): AxumQuery<CountGetQuery>,
+    Extension(state): Extension<Arc<AppState>>,
+) -> Json<CountResponse> {
+    let (query_yaml, params_yaml) =
+        match genomehubs_query::query::query_yaml_from_url_params(&q.url) {
+            Ok(pair) => pair,
+            Err(e) => {
+                return Json(CountResponse {
+                    status: super::ApiStatus::error(format!("failed to parse url params: {e}")),
+                    url: String::new(),
+                })
+            }
+        };
+
+    let req = CountRequest {
+        query_yaml,
+        params_yaml,
+    };
+    post_count(Extension(state), Json(req)).await
 }

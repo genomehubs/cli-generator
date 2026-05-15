@@ -829,31 +829,52 @@ class QueryBuilder:
     def to_url(
         self,
         api_base: str = "https://goat.genomehubs.org/api",
-        api_version: str = "v2",
         endpoint: str = "search",
     ) -> str:
-        """Build the full API URL for this query without making a network call.
+        """Build a v3 GET API URL for this query without making a network call.
 
-        .. deprecated::
-            Use :meth:`to_v2_url` instead.  ``to_url()`` will be removed in a
-            future release.
+        Returns a URL for the ``GET /api/v3/{endpoint}`` endpoint, which
+        accepts a GoaT UI URL in the ``?url=`` parameter.
+
+        If the query uses features that are not recoverable from a URL
+        (currently: output name classes set via :meth:`set_names` or rank
+        columns set via :meth:`set_ranks`), a :class:`RuntimeWarning` is
+        emitted and the returned URL will silently omit those features.
 
         Args:
-            api_base: Base URL of the API.
-            api_version: API version string.
+            api_base: Base URL of the API without trailing slash.
             endpoint: API endpoint, e.g. ``"search"`` or ``"count"``.
 
         Returns:
-            Fully encoded URL string.
+            Fully encoded v3 GET URL string.
         """
         import warnings
+        from urllib.parse import quote
 
-        warnings.warn(
-            "to_url() is deprecated; use to_v2_url() instead.",
-            DeprecationWarning,
-            stacklevel=2,
+        from . import build_ui_url as _build_ui_url
+
+        incomplete: list[str] = []
+        if self._names:
+            incomplete.append(f"name classes ({self._names!r})")
+        if self._ranks:
+            incomplete.append(f"rank columns ({self._ranks!r})")
+        if incomplete:
+            warnings.warn(
+                f"to_url() cannot fully represent this query: "
+                f"{', '.join(incomplete)} will be omitted from the URL. "
+                f"Use to_v2_url() or the POST endpoint for full fidelity.",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+
+        ui_url = _build_ui_url(
+            self.to_query_yaml(),
+            self.to_params_yaml(),
+            "https://goat.genomehubs.org",
+            endpoint,
         )
-        return self.to_v2_url(api_base, api_version, endpoint)
+        encoded = quote(ui_url, safe="")
+        return f"{api_base}/v3/{endpoint}?url={encoded}"
 
     def to_ui_url(
         self,

@@ -66,6 +66,7 @@ pub mod search;
 pub mod search_batch;
 pub mod status;
 pub mod summary;
+pub mod summary_batch;
 pub mod taxonomic_ranks;
 pub mod taxonomies;
 

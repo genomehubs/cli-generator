@@ -50,6 +50,7 @@ pub struct AppState {
     ),
     paths(
         routes::count::post_count,
+        routes::count::get_count,
         routes::count_batch::post_count_batch,
         routes::lookup::get_lookup,
         routes::lookup_batch::post_lookup_batch,
@@ -62,9 +63,11 @@ pub struct AppState {
         routes::positional::post_positional,
         routes::result_fields::get_result_fields,
         routes::search::post_search,
+        routes::search::get_search,
         routes::search_batch::post_search_batch,
         routes::status::get_status,
         routes::summary::get_summary,
+        routes::summary_batch::post_summary_batch,
         routes::taxonomies::get_taxonomies_openapi,
         routes::taxonomic_ranks::get_taxonomic_ranks_openapi,
         routes::indices::get_indices_openapi,
@@ -109,6 +112,10 @@ pub struct AppState {
         routes::summary::SummaryItem,
         routes::summary::SummaryQuery,
         routes::summary::SummaryResponse,
+        routes::summary_batch::SummaryBatchItem,
+        routes::summary_batch::SummaryBatchRequest,
+        routes::summary_batch::SummaryBatchResponse,
+        routes::summary_batch::SummaryBatchResultItem,
         routes::taxonomies::TaxonomiesResponse,
         routes::taxonomic_ranks::RanksResponse,
         routes::indices::IndicesResponse,
@@ -278,7 +285,7 @@ async fn main() {
     let app = Router::<()>::new()
         .route(
             "/api/v3/count",
-            axum::routing::post(routes::count::post_count),
+            axum::routing::post(routes::count::post_count).get(routes::count::get_count),
         )
         .route(
             "/api/v3/count/batch",
@@ -326,7 +333,7 @@ async fn main() {
         )
         .route(
             "/api/v3/search",
-            axum::routing::post(routes::search::post_search),
+            axum::routing::post(routes::search::post_search).get(routes::search::get_search),
         )
         .route(
             "/api/v3/search/batch",
@@ -334,6 +341,10 @@ async fn main() {
         )
         .route("/api/v3/status", get(routes::status::get_status))
         .route("/api/v3/summary", get(routes::summary::get_summary))
+        .route(
+            "/api/v3/summary/batch",
+            axum::routing::post(routes::summary_batch::post_summary_batch),
+        )
         .layer(Extension(state))
         .merge(SwaggerUi::new("/swagger-ui").external_url_unchecked(
             Url::new("API Documentation", "/api-doc/openapi.json"),

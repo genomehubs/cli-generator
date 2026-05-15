@@ -779,19 +779,48 @@ class TestSDKParity:
         extra = set(python_methods.keys()) - canonical_python_names
         assert len(extra) == 0, f"Python has extra methods not in canonical list: {extra}"
 
-    def test_to_url_emits_deprecation_warning(self):
-        """to_url() must emit DeprecationWarning when called."""
+    def test_to_url_returns_v3_get_url(self):
+        """to_url() must return a v3 GET URL with a ?url= parameter."""
         import warnings
 
         from cli_generator.query import QueryBuilder
 
-        qb = QueryBuilder("taxon")
+        qb = QueryBuilder("taxon").set_taxa(["Mammalia"])
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            url = qb.to_url()
+        assert "/v3/search?url=" in url, f"Expected v3 GET URL, got: {url}"
+        assert not any(
+            issubclass(w.category, DeprecationWarning) for w in caught
+        ), "to_url() should not emit DeprecationWarning"
+
+    def test_to_url_warns_when_names_set(self):
+        """to_url() emits RuntimeWarning when name classes are set."""
+        import warnings
+
+        from cli_generator.query import QueryBuilder
+
+        qb = QueryBuilder("taxon").set_taxa(["Mammalia"]).set_names(["scientific_name"])
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
             qb.to_url()
         assert any(
-            issubclass(w.category, DeprecationWarning) for w in caught
-        ), "to_url() should emit DeprecationWarning"
+            issubclass(w.category, RuntimeWarning) for w in caught
+        ), "to_url() should emit RuntimeWarning when name classes are set"
+
+    def test_to_url_no_warning_for_simple_query(self):
+        """to_url() emits no warning for a query with no non-roundtrippable features."""
+        import warnings
+
+        from cli_generator.query import QueryBuilder
+
+        qb = QueryBuilder("taxon").set_taxa(["Mammalia"])
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            qb.to_url()
+        assert not any(
+            issubclass(w.category, RuntimeWarning) for w in caught
+        ), "to_url() should not emit RuntimeWarning for simple queries"
 
 
 class TestValidationConfiguration:

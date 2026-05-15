@@ -1,4 +1,7 @@
-use axum::{extract::Json, Extension};
+use axum::{
+    extract::{Json, Query as AxumQuery},
+    Extension,
+};
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::Value;
 use std::sync::Arc;
@@ -512,4 +515,55 @@ pub async fn post_search(
         search_after,
         lineage_summary,
     })
+}
+
+/// Query parameters for `GET /api/v3/search`.
+#[derive(Deserialize)]
+pub struct SearchGetQuery {
+    /// A GoaT UI URL or raw query string containing URL-encoded search parameters.
+    pub url: String,
+}
+
+#[utoipa::path(
+    get,
+    path = "/api/v3/search",
+    tag = "Data",
+    summary = "Search using URL query string parameters",
+    description = "Convenience endpoint that accepts the same URL parameters as the GoaT UI.\n\nPaste a GoaT browser URL into the `url` parameter to reproduce the same query via the API.",
+    params(
+        ("url" = String, Query, description = "GoaT UI URL or query string (e.g. `?result=taxon&query=tax_tree(Mammalia)%20AND%20genome_size&fields=genome_size&size=10`)"),
+    ),
+    responses(
+        (status = 200, description = "Search results", body = SearchResponse)
+    )
+)]
+#[axum::debug_handler]
+pub async fn get_search(
+    AxumQuery(q): AxumQuery<SearchGetQuery>,
+    Extension(state): Extension<Arc<AppState>>,
+) -> Json<SearchResponse> {
+    macro_rules! bail {
+        ($msg:expr) => {
+            return Json(SearchResponse {
+                status: ApiStatus::error($msg),
+                url: String::new(),
+                results: vec![],
+                search_after: None,
+                lineage_summary: None,
+            })
+        };
+    }
+
+    let (query_yaml, params_yaml) =
+        match genomehubs_query::query::query_yaml_from_url_params(&q.url) {
+            Ok(pair) => pair,
+            Err(e) => bail!(format!("failed to parse url params: {e}")),
+        };
+
+    let req = SearchRequest {
+        query_yaml,
+        params_yaml,
+    };
+    // Delegate to the POST handler logic by calling post_search directly.
+    post_search(Extension(state), Json(req)).await
 }
