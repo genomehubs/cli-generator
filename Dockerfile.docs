@@ -11,6 +11,12 @@ COPY sites/ ./sites/
 
 RUN cargo build --release --bin cli-generator
 
+# Build cargo-generate in the same stage so we can copy it to the renderer
+# without needing Rust in that stage. Pin to a known-good release.
+ARG CARGO_GENERATE_VERSION=0.21.3
+RUN cargo install cargo-generate --version "${CARGO_GENERATE_VERSION}" --locked \
+    && cp /usr/local/cargo/bin/cargo-generate /build/cargo-generate
+
 # ── Stage 2: Generate and render site docs ────────────────────────────────────
 # Install Quarto, run the generator, then render the Quarto project to HTML.
 FROM debian:bookworm-slim AS renderer
@@ -30,8 +36,9 @@ RUN curl -fsSL \
     && dpkg -i /tmp/quarto.deb \
     && rm /tmp/quarto.deb
 
-# Copy the built generator binary and site configs from stage 1.
+# Copy the built generator binary, cargo-generate, and site configs from stage 1.
 COPY --from=generator /build/target/release/cli-generator /usr/local/bin/cli-generator
+COPY --from=generator /build/cargo-generate /usr/local/bin/cargo-generate
 COPY --from=generator /build/sites/ /sites/
 
 # Site to generate.  Override at build time with:
