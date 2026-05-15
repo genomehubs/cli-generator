@@ -300,6 +300,133 @@ const records = JSON.parse(split);
 
 ---
 
+## `values_only(records_json) -> str`
+
+Strip all source-provenance metadata and return only the primary field values.
+Returns a JSON string of flat record dicts.
+
+::: {.panel-tabset group="language"}
+
+## Python
+
+```python
+from {{ sdk_name }} import parse_search_json, values_only
+import json
+
+flat_json    = parse_search_json(raw)
+simple_json  = values_only(flat_json)
+records      = json.loads(simple_json)
+```
+
+## R
+
+```r
+library({{ r_package_name }})
+library(jsonlite)
+
+flat_json   <- parse_search_json(raw)
+simple_json <- values_only(flat_json)
+records     <- fromJSON(simple_json)
+```
+
+## JavaScript
+
+```javascript
+import { valuesOnly } from '{{ site_name }}-sdk';
+
+const simple = valuesOnly(flatJson);
+const records = JSON.parse(simple);
+```
+
+:::
+
+---
+
+## `annotated_values(records_json) -> str`
+
+Return primary field values together with their source-provenance labels.
+Each field becomes a two-element object `{ value, source }`.
+
+::: {.panel-tabset group="language"}
+
+## Python
+
+```python
+from {{ sdk_name }} import parse_search_json, annotated_values
+import json
+
+flat_json        = parse_search_json(raw)
+annotated_json   = annotated_values(flat_json)
+records          = json.loads(annotated_json)
+```
+
+## R
+
+```r
+library({{ r_package_name }})
+library(jsonlite)
+
+flat_json      <- parse_search_json(raw)
+annotated_json <- annotated_values(flat_json)
+records        <- fromJSON(annotated_json)
+```
+
+## JavaScript
+
+```javascript
+import { annotatedValues } from '{{ site_name }}-sdk';
+
+const annotated = annotatedValues(flatJson);
+const records   = JSON.parse(annotated);
+```
+
+:::
+
+---
+
+## `to_tidy_records(records_json, lineage_summary=None) -> str`
+
+Reshape a flat records JSON string into a tidy long-format JSON string where
+each row corresponds to one field value.  Useful for direct import into
+data-frame workflows.
+
+::: {.panel-tabset group="language"}
+
+## Python
+
+```python
+from {{ sdk_name }} import parse_search_json, to_tidy_records
+import json
+
+flat_json  = parse_search_json(raw)
+tidy_json  = to_tidy_records(flat_json)
+records    = json.loads(tidy_json)
+```
+
+## R
+
+```r
+library({{ r_package_name }})
+library(jsonlite)
+
+flat_json <- parse_search_json(raw)
+tidy_json <- to_tidy_records(flat_json)
+records   <- fromJSON(tidy_json)
+```
+
+## JavaScript
+
+```javascript
+import { toTidyRecords } from '{{ site_name }}-sdk';
+
+const tidy    = toTidyRecords(flatJson);
+const records = JSON.parse(tidy);
+```
+
+:::
+
+---
+
 ## Typical pipeline
 
 ```
@@ -310,7 +437,13 @@ Raw API JSON
     │
     └─▶ parse_search_json()         — single page from /search
             │
-            ├─▶ annotate_source_labels()   — human-readable labels for display
+            ├─▶ annotate_source_labels()   — human-readable source labels
             │
-            └─▶ split_source_columns()     — tidy one-column-per-source layout
+            ├─▶ split_source_columns()     — tidy one-column-per-source layout
+            │
+            ├─▶ values_only()              — primary values, no provenance
+            │
+            ├─▶ annotated_values()         — values + provenance labels
+            │
+            └─▶ to_tidy_records()          — long-format one-row-per-field
 ```

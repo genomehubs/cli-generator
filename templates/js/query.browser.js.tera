@@ -18,14 +18,23 @@ const API_VERSION = "{{ api_version }}";
 import initWasm, {
   annotate_source_labels as _annotateSourceLabels,
   annotated_values as _annotatedValues,
+  build_ui_url as _buildUiUrl,
   build_url_for_endpoint as _buildUrlForEndpoint,
   describe_query as _describeQuery,
+  describe_report_yaml as _describeReportYaml,
+  parse_batch_json as _parseBatchJson,
+  parse_histogram_json as _parseHistogramJson,
+  parse_lookup_json as _parseLookupJson,
   parse_paginated_json as _parsePaginatedJson,
+  parse_record_json as _parseRecordJson,
   parse_search_json as _parseSearchJson,
+  parse_search_with_lineage_summary as _parseSearchWithLineageSummary,
+  parse_tree_json as _parseTreeJson,
   render_snippet as _renderSnippet,
   split_source_columns as _splitSourceColumns,
   to_tidy_records as _toTidyRecords,
   validate_query_json as _validateQueryJson,
+  validate_report_yaml as _validateReportYaml,
   values_only as _valuesOnly,
   build_url,
   parse_response_status,
@@ -125,6 +134,13 @@ class QueryBuilder {
     this._includeEstimates = true;
     this._tidy = false;
     this._taxonomy = "ncbi";
+    // ID-set filter
+    this._idSet = null;
+    this._idType = null;
+    // Lineage rank summary aggregation specs
+    this._lineageRankSummary = [];
+    // Named sub-queries for chain substitution (queryA= style)
+    this._namedQueries = null;
   }
 
   // ── Identifiers ────────────────────────────────────────────────────────────
@@ -500,6 +516,59 @@ class QueryBuilder {
     return this;
   }
 
+  /**
+   * Restrict results to a specific set of taxon/assembly IDs.
+   * @param {(string|number)[]} taxonIds
+   * @returns {QueryBuilder}
+   */
+  setIdSet(taxonIds) {
+    this._idSet = taxonIds.map(String);
+    return this;
+  }
+
+  /**
+   * Specify which ID field to use when filtering with setIdSet.
+   * @param {string} idType - e.g. "taxon", "assembly", "feature".
+   * @returns {QueryBuilder}
+   */
+  setIdType(idType) {
+    this._idType = idType;
+    return this;
+  }
+
+  /**
+   * Set lineage rank summary aggregation specs.
+   * @param {Array<{rank: string, fields?: string[]}>} specs
+   * @returns {QueryBuilder}
+   */
+  setLineageRankSummary(specs) {
+    this._lineageRankSummary = specs.map((s) => ({ ...s }));
+    return this;
+  }
+
+  /**
+   * Register a named sub-query for chain substitution.
+   *
+   * Values in attribute filters may reference this query using dot-notation,
+   * e.g. `addAttribute("taxon_id", "eq", "queryA.taxon_id")`.
+   *
+   * @param {string} queryKey - Name for this sub-query, e.g. "queryA".
+   * @param {string} queryString - Filter expression.
+   * @param {string|null} [index] - Target index; null inherits parent index.
+   * @param {number|null} [limit] - Max results (default 500, max 10 000).
+   * @param {boolean|null} [inheritScope] - Scope sub-query inside parent taxon tree.
+   * @returns {QueryBuilder}
+   */
+  chainQuery(queryKey, queryString, index = null, limit = null, inheritScope = null) {
+    const spec = { filter_expr: queryString };
+    if (index !== null) spec.index = index;
+    if (limit !== null) spec.limit = limit;
+    if (inheritScope !== null) spec.inherit_scope = inheritScope;
+    if (this._namedQueries === null) this._namedQueries = {};
+    this._namedQueries[queryKey] = spec;
+    return this;
+  }
+
   // ── Serialization ──────────────────────────────────────────────────────────
 
   /**
@@ -580,6 +649,26 @@ class QueryBuilder {
       lines.push("excludeMissing:");
       for (const f of this._excludeMissing) lines.push(`  - ${f}`);
     }
+    if (this._lineageRankSummary.length > 0) {
+      lines.push("lineage_rank_summary:");
+      for (const spec of this._lineageRankSummary) {
+        lines.push(`  - rank: "${spec.rank}"`);
+        if (spec.fields && spec.fields.length > 0) {
+          lines.push("    fields:");
+          for (const f of spec.fields) lines.push(`      - ${f}`);
+        }
+      }
+    }
+    if (this._namedQueries !== null) {
+      lines.push("named_queries:");
+      for (const [key, spec] of Object.entries(this._namedQueries)) {
+        lines.push(`  ${key}:`);
+        lines.push(`    filter_expr: "${spec.filter_expr.replace(/"/g, '\\"')}"`);
+        if (spec.index) lines.push(`    index: ${spec.index}`);
+        if (spec.limit !== undefined) lines.push(`    limit: ${spec.limit}`);
+        if (spec.inherit_scope !== undefined) lines.push(`    inherit_scope: ${spec.inherit_scope}`);
+      }
+    }
     return lines.join("\n") + "\n";
   }
 
@@ -598,6 +687,13 @@ class QueryBuilder {
     if (this._sortBy) {
       lines.push(`sort_by: "${this._sortBy}"`);
       lines.push(`sort_order: ${this._sortOrder}`);
+    }
+    if (this._idSet !== null && this._idSet.length > 0) {
+      lines.push("id_set:");
+      for (const id of this._idSet) lines.push(`  - "${id}"`);
+    }
+    if (this._idType !== null) {
+      lines.push(`id_type: ${this._idType}`);
     }
     return lines.join("\n") + "\n";
   }
@@ -625,6 +721,25 @@ class QueryBuilder {
       apiVersion,
       endpoint,
     );
+  }
+
+  /**
+   * Build the v2-format API URL (alias for toUrl).
+   * @param {string} [endpoint="search"]
+   * @returns {string}
+   */
+  toV2Url(endpoint = "search") {
+    return this.toUrl(API_BASE, API_VERSION, endpoint);
+  }
+
+  /**
+   * Build the web UI URL for this query.
+   * @param {string} [endpoint="search"]
+   * @param {string} [uiBase="{{ ui_base }}"]
+   * @returns {string}
+   */
+  toUiUrl(endpoint = "search", uiBase = "{{ ui_base }}") {
+    return _buildUiUrl(this.toQueryYaml(), this.toParamsYaml(), uiBase, endpoint);
   }
 
   // ── API calls ──────────────────────────────────────────────────────────────
@@ -707,6 +822,266 @@ class QueryBuilder {
     return allRecords;
   }
 
+  /**
+   * Run a report query against the /report endpoint.
+   * @param {ReportBuilder} report
+   * @param {string} [apiBase]
+   * @returns {Promise<object>}
+   */
+  async report(report, apiBase = API_BASE) {
+    const url = `${apiBase}/${API_VERSION}/report`;
+    const payload = {
+      query_yaml: this.toQueryYaml(),
+      params_yaml: this.toParamsYaml(),
+      report_yaml: report.toReportYaml(),
+    };
+    if (report._display !== null) payload.display = report._display;
+    if (report._includePlotSpec) payload.include_plot_spec = true;
+    const resp = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!resp.ok) throw new Error(`API request failed: ${resp.status} ${resp.statusText}`);
+    const data = await resp.json();
+    return data.plot_spec ? data : (data.report ?? data);
+  }
+
+  /**
+   * Execute multiple searches in a single batch request.
+   * @param {QueryBuilder[]} queries
+   * @param {string} [apiBase]
+   * @returns {Promise<object[]>}
+   */
+  async searchBatch(queries, apiBase = API_BASE) {
+    if (queries.length > 100) throw new Error("maximum 100 searches per batch request");
+    const url = `${apiBase}/${API_VERSION}/search/batch`;
+    const payload = {
+      searches: queries.map((q) => ({
+        query_yaml: q.toQueryYaml(),
+        params_yaml: q.toParamsYaml(),
+      })),
+    };
+    const resp = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!resp.ok) throw new Error(`API request failed: ${resp.status} ${resp.statusText}`);
+    const data = JSON.parse(_parseBatchJson(await resp.text()));
+    return data.results ?? [];
+  }
+
+  /**
+   * Get hit counts for multiple queries in a single batch request.
+   * @param {QueryBuilder[]} queries
+   * @param {string} [apiBase]
+   * @returns {Promise<number[]>}
+   */
+  async countBatch(queries, apiBase = API_BASE) {
+    if (queries.length > 100) throw new Error("maximum 100 searches per batch request");
+    const url = `${apiBase}/${API_VERSION}/count/batch`;
+    const payload = {
+      searches: queries.map((q) => ({
+        query_yaml: q.toQueryYaml(),
+        params_yaml: q.toParamsYaml(),
+      })),
+    };
+    const resp = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!resp.ok) throw new Error(`API request failed: ${resp.status} ${resp.statusText}`);
+    const data = JSON.parse(_parseBatchJson(await resp.text()));
+    return (data.results ?? []).map((r) => Number(r?.status?.hits ?? 0));
+  }
+
+  /**
+   * Fetch a single record by ID.
+   * @param {string} recordId
+   * @param {string|null} [result] - Result type; defaults to this builder's index.
+   * @param {string} [apiBase]
+   * @returns {Promise<object>}
+   */
+  async record(recordId, result = null, apiBase = API_BASE) {
+    if (!recordId) throw new Error("record() requires a non-empty recordId");
+    const resultType = result ?? this._index ?? "taxon";
+    const params = new URLSearchParams({ recordId, result: resultType });
+    const resp = await fetch(`${apiBase}/${API_VERSION}/record?${params}`, {
+      headers: { Accept: "application/json" },
+    });
+    if (!resp.ok) throw new Error(`API request failed: ${resp.status} ${resp.statusText}`);
+    return JSON.parse(_parseRecordJson(await resp.text()));
+  }
+
+  /**
+   * Fetch multiple records by ID in a single request.
+   * @param {string[]} recordIds
+   * @param {string|null} [result]
+   * @param {string} [apiBase]
+   * @returns {Promise<object[]>}
+   */
+  async recordBatch(recordIds, result = null, apiBase = API_BASE) {
+    return Promise.all(recordIds.map((id) => this.record(id, result, apiBase)));
+  }
+
+  /**
+   * Look up records by alternative identifiers (autocomplete / search-as-you-type).
+   * @param {string} searchTerm
+   * @param {string|null} [result]
+   * @param {number} [size=10]
+   * @param {string} [apiBase]
+   * @returns {Promise<object>}
+   */
+  async lookup(searchTerm, result = null, size = 10, apiBase = API_BASE) {
+    if (!searchTerm) throw new Error("lookup() requires a non-empty searchTerm");
+    const resultType = result ?? this._index ?? "taxon";
+    const params = new URLSearchParams({ searchTerm, result: resultType, size: String(size) });
+    const resp = await fetch(`${apiBase}/${API_VERSION}/lookup?${params}`, {
+      headers: { Accept: "application/json" },
+    });
+    if (!resp.ok) throw new Error(`API request failed: ${resp.status} ${resp.statusText}`);
+    return JSON.parse(_parseLookupJson(await resp.text()));
+  }
+
+  /**
+   * Resolve multiple search terms in a single request.
+   * @param {(string|{searchTerm: string, result?: string, size?: number})[]} lookups
+   * @param {string|null} [result]
+   * @param {number} [size=10]
+   * @param {string} [apiBase]
+   * @returns {Promise<object>}
+   */
+  async lookupBatch(lookups, result = null, size = 10, apiBase = API_BASE) {
+    if (!lookups.length) throw new Error("lookupBatch() requires a non-empty lookups list");
+    const defaultResult = result ?? this._index ?? "taxon";
+    const url = `${apiBase}/${API_VERSION}/lookup/batch`;
+    const payload = {
+      searches: lookups.map((item) => {
+        if (typeof item === "string") {
+          return { search_term: item, result: defaultResult, size };
+        }
+        return {
+          search_term: item.searchTerm,
+          result: item.result ?? defaultResult,
+          size: item.size ?? size,
+        };
+      }),
+    };
+    const resp = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!resp.ok) throw new Error(`API request failed: ${resp.status} ${resp.statusText}`);
+    return resp.json();
+  }
+
+  /**
+   * Fetch aggregated API metadata (indices, taxonomies, ranks, versions).
+   * @param {string} [apiBase]
+   * @returns {Promise<object>}
+   */
+  async metadata(apiBase = API_BASE) {
+    const resp = await fetch(`${apiBase}/${API_VERSION}/metadata`, {
+      headers: { Accept: "application/json" },
+    });
+    if (!resp.ok) throw new Error(`API request failed: ${resp.status} ${resp.statusText}`);
+    const data = await resp.json();
+    const keys = ["indices", "taxonomies", "ranks", "versions"];
+    return Object.fromEntries(Object.entries(data).filter(([k]) => keys.includes(k)));
+  }
+
+  /**
+   * Return the list of available index names.
+   * @param {string} [apiBase]
+   * @returns {Promise<string[]>}
+   */
+  async indices(apiBase = API_BASE) {
+    const resp = await fetch(`${apiBase}/${API_VERSION}/metadata/indices`, {
+      headers: { Accept: "application/json" },
+    });
+    if (!resp.ok) throw new Error(`API request failed: ${resp.status} ${resp.statusText}`);
+    return (await resp.json()).indices ?? [];
+  }
+
+  /**
+   * Return field metadata for the given index.
+   * @param {string} index - Index name, e.g. "taxon".
+   * @param {string} [apiBase]
+   * @returns {Promise<object>}
+   */
+  async fields(index, apiBase = API_BASE) {
+    if (!index) throw new Error("fields() requires a non-empty index name");
+    const params = new URLSearchParams({ result: index });
+    const resp = await fetch(`${apiBase}/${API_VERSION}/metadata/fields?${params}`, {
+      headers: { Accept: "application/json" },
+    });
+    if (!resp.ok) throw new Error(`API request failed: ${resp.status} ${resp.statusText}`);
+    return (await resp.json()).fields ?? {};
+  }
+
+  /**
+   * Return the list of available taxonomy names.
+   * @param {string} [apiBase]
+   * @returns {Promise<string[]>}
+   */
+  async taxonomies(apiBase = API_BASE) {
+    const resp = await fetch(`${apiBase}/${API_VERSION}/metadata/taxonomies`, {
+      headers: { Accept: "application/json" },
+    });
+    if (!resp.ok) throw new Error(`API request failed: ${resp.status} ${resp.statusText}`);
+    return (await resp.json()).taxonomies ?? [];
+  }
+
+  /**
+   * Return the list of available rank names.
+   * @param {string} [apiBase]
+   * @returns {Promise<string[]>}
+   */
+  async ranks(apiBase = API_BASE) {
+    const resp = await fetch(`${apiBase}/${API_VERSION}/metadata/ranks`, {
+      headers: { Accept: "application/json" },
+    });
+    if (!resp.ok) throw new Error(`API request failed: ${resp.status} ${resp.statusText}`);
+    return (await resp.json()).ranks ?? [];
+  }
+
+  /**
+   * Fetch summary aggregations (histogram or terms) for a clade.
+   * @param {string} recordId - Taxon ID whose clade is aggregated.
+   * @param {string} fields - Field name to aggregate.
+   * @param {string|null} [result]
+   * @param {string} [summary="histogram"] - "histogram" or "terms".
+   * @param {string} [apiBase]
+   * @returns {Promise<object>}
+   */
+  async summary(recordId, fields, result = null, summary = "histogram", apiBase = API_BASE) {
+    if (!recordId) throw new Error("summary() requires a non-empty recordId");
+    if (!fields) throw new Error("summary() requires a non-empty fields string");
+    const resultType = result ?? this._index ?? "taxon";
+    const params = new URLSearchParams({ recordId, result: resultType, fields, summary });
+    const resp = await fetch(`${apiBase}/${API_VERSION}/summary?${params}`, {
+      headers: { Accept: "application/json" },
+    });
+    if (!resp.ok) throw new Error(`API request failed: ${resp.status} ${resp.statusText}`);
+    return resp.json();
+  }
+
+  /**
+   * Fetch search results as flat tidy records.
+   * @param {object|null} [lineageSummary] - Lineage rank summary config.
+   * @param {string} [apiBase]
+   * @returns {Promise<object[]>}
+   */
+  async toFlatRecords(lineageSummary = null, apiBase = API_BASE) {
+    const resp = await fetch(this.toUrl(apiBase), { headers: { Accept: "application/json" } });
+    if (!resp.ok) throw new Error(`API request failed: ${resp.status} ${resp.statusText}`);
+    const configJson = JSON.stringify(lineageSummary ?? {});
+    return JSON.parse(_parseSearchWithLineageSummary(await resp.text(), configJson));
+  }
+
   // ── Utilities ──────────────────────────────────────────────────────────────
 
   /**
@@ -723,6 +1098,8 @@ class QueryBuilder {
     this._fields = [];
     this._names = [];
     this._ranks = [];
+    this._lineageRankSummary = [];
+    this._namedQueries = null;
     return this;
   }
 
@@ -757,6 +1134,15 @@ class QueryBuilder {
       this._includeEstimates = other._includeEstimates;
     if (other._tidy) this._tidy = other._tidy;
     if (other._taxonomy !== "ncbi") this._taxonomy = other._taxonomy;
+    this._lineageRankSummary.push(...other._lineageRankSummary);
+    if (other._namedQueries !== null) {
+      if (this._namedQueries === null) this._namedQueries = {};
+      Object.assign(this._namedQueries, other._namedQueries);
+    }
+    if (other._idSet !== null) {
+      this._idSet = [...(this._idSet ?? []), ...other._idSet];
+    }
+    if (other._idType !== null) this._idType = other._idType;
     return this;
   }
 
@@ -932,8 +1318,195 @@ function toTidyRecords(records) {
   return JSON.parse(_toTidyRecords(str));
 }
 
+/**
+ * Build report configurations for v3 /report POST calls.
+ *
+ * @example
+ * const rb = new ReportBuilder("histogram").setX("genome_size").setRank("species");
+ * const data = await qb.report(rb);
+ */
+class ReportBuilder {
+  /**
+   * @param {string} reportType - One of "histogram", "scatter", "map", "tree",
+   *   "countPerRank", "sources", "arc".
+   */
+  constructor(reportType) {
+    this._doc = { report: reportType };
+    this._reportYamlOverride = null;
+    this._display = null;
+    this._includePlotSpec = false;
+  }
+
+  /** @param {string} field @param {string} [opts] @returns {ReportBuilder} */
+  setX(field, opts = "") {
+    this._doc.x = field;
+    if (opts) this._doc.x_opts = opts;
+    return this;
+  }
+
+  /** @param {string|string[]} field @param {string} [opts] @returns {ReportBuilder} */
+  setY(field, opts = "") {
+    this._doc.y = field;
+    if (opts) this._doc.y_opts = opts;
+    return this;
+  }
+
+  /** @param {string} field @param {string} [opts] @returns {ReportBuilder} */
+  setCat(field, opts = "") {
+    this._doc.cat = field;
+    if (opts) this._doc.cat_opts = opts;
+    return this;
+  }
+
+  /** @param {string} field @returns {ReportBuilder} */
+  setQuery(field) { this._doc.query = field; return this; }
+
+  /** @param {string} rank @returns {ReportBuilder} */
+  setRank(rank) { this._doc.rank = rank; return this; }
+
+  /** @param {string[]} ranks @returns {ReportBuilder} */
+  setRanks(ranks) { this._doc.ranks = [...ranks]; return this; }
+
+  /** @param {string[]} fields @returns {ReportBuilder} */
+  setFields(fields) { this._doc.fields = [...fields]; return this; }
+
+  /** @param {string} value @returns {ReportBuilder} */
+  setStatusFilter(value) { this._doc.status_filter = value; return this; }
+
+  /** @param {string} rank @returns {ReportBuilder} */
+  setCatRank(rank) { this._doc.cat_rank = rank; return this; }
+
+  /** @param {boolean} [value=true] @returns {ReportBuilder} */
+  setCollapseMonotypic(value = true) { this._doc.collapse_monotypic = value; return this; }
+
+  /** @param {string} rank @returns {ReportBuilder} */
+  setPreserveRank(rank) { this._doc.preserve_rank = rank; return this; }
+
+  /** @param {string} rank @returns {ReportBuilder} */
+  setCountRank(rank) { this._doc.count_rank = rank; return this; }
+
+  /** @param {string} field @returns {ReportBuilder} */
+  setLocationField(field) { this._doc.location_field = field; return this; }
+
+  /** @param {number} resolution @returns {ReportBuilder} */
+  setHexResolution(resolution) { this._doc.hex_resolution = resolution; return this; }
+
+  /** @param {number} threshold @returns {ReportBuilder} */
+  setMapThreshold(threshold) { this._doc.map_threshold = threshold; return this; }
+
+  /** @param {number} threshold @returns {ReportBuilder} */
+  setScatterThreshold(threshold) { this._doc.scatter_threshold = threshold; return this; }
+
+  // ── Arc report methods ────────────────────────────────────────────────────
+
+  /** @param {string} term @returns {ReportBuilder} */
+  setFeature(term) { this._doc.feature = term; return this; }
+
+  /** @param {string} term @returns {ReportBuilder} */
+  setReference(term) { this._doc.reference = term; return this; }
+
+  /** @param {string} term @returns {ReportBuilder} */
+  setContext(term) { this._doc.context = term; return this; }
+
+  /**
+   * Add a concentric ring to a multi-ring arc report.
+   * @param {string} featureTerm
+   * @param {string|null} [referenceTerm]
+   * @param {string|null} [label]
+   * @returns {ReportBuilder}
+   */
+  addRing(featureTerm, referenceTerm = null, label = null) {
+    const ring = { feature: featureTerm };
+    if (referenceTerm !== null) ring.reference = referenceTerm;
+    if (label !== null) ring.label = label;
+    if (!this._doc.rings) this._doc.rings = [];
+    this._doc.rings.push(ring);
+    return this;
+  }
+
+  /** @param {string[]} ranks @returns {ReportBuilder} */
+  setArcRanks(ranks) { this._doc.ranks = [...ranks]; return this; }
+
+  /**
+   * Set custom boundaries for a histogram axis.
+   * @param {string} axisRole - "x", "y", or "cat".
+   * @param {number[]|string[]} boundaries
+   * @param {string[]|null} [labels]
+   * @returns {ReportBuilder}
+   */
+  setAxisBoundaries(axisRole, boundaries, labels = null) {
+    const key = `${axisRole}_opts`;
+    if (!this._doc[key]) this._doc[key] = {};
+    this._doc[key].boundaries = boundaries;
+    if (labels !== null) this._doc[key].labels = labels;
+    return this;
+  }
+
+  /**
+   * Set date-based intervals for a date-scaled axis.
+   * @param {string} axisRole - "x", "y", or "cat".
+   * @param {string[]} intervals
+   * @returns {ReportBuilder}
+   */
+  setAxisDateIntervals(axisRole, intervals) {
+    const key = `${axisRole}_opts`;
+    if (!this._doc[key]) this._doc[key] = {};
+    this._doc[key].boundaries = { intervals: [...intervals] };
+    return this;
+  }
+
+  /**
+   * Set display/presentation options for this report.
+   * @param {object|string} value
+   * @returns {ReportBuilder}
+   */
+  setDisplay(value) { this._display = value; return this; }
+
+  /**
+   * Request a plot_spec in the API response.
+   * @param {boolean} [value=true]
+   * @returns {ReportBuilder}
+   */
+  setIncludePlotSpec(value = true) { this._includePlotSpec = value; return this; }
+
+  /** Serialise the report configuration to a JSON string (valid YAML). */
+  toReportYaml() {
+    if (this._reportYamlOverride !== null) return this._reportYamlOverride;
+    return JSON.stringify(this._doc);
+  }
+
+  /**
+   * Return a short English description of this report configuration.
+   * @returns {Promise<string>}
+   */
+  async describe() {
+    await ensureWasmInitialized();
+    const result = _describeReportYaml(this.toReportYaml());
+    try { return JSON.parse(result); } catch { return result; }
+  }
+
+  /**
+   * Validate this report configuration against field metadata.
+   * @param {object|null} [fieldMetadata]
+   * @returns {Promise<string[]>}
+   */
+  async validate(fieldMetadata = null) {
+    await ensureWasmInitialized();
+    let fieldMeta = fieldMetadata ?? {};
+    if (fieldMetadata === null) {
+      try {
+        const res = await fetch("./generated/field_meta.json");
+        if (res.ok) fieldMeta = await res.json();
+      } catch { /* continue without metadata */ }
+    }
+    const result = _validateReportYaml(this.toReportYaml(), JSON.stringify(fieldMeta));
+    try { return JSON.parse(result); } catch { return [result]; }
+  }
+}
+
 export {
   QueryBuilder,
+  ReportBuilder,
   parseSearchJson,
   annotateSourceLabels,
   splitSourceColumns,

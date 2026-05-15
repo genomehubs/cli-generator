@@ -1,0 +1,96 @@
+---
+title: "Intermediate recipes"
+format:
+  html: default
+  ipynb: default
+---
+
+Multi-step workflows combining queries with DataFrame operations, external data
+joins, or post-processing.  Each recipe builds up a complete analysis step by
+step.
+
+{% for recipe in intermediate_recipes %}
+## {{ recipe.title }}
+
+{{ recipe.description }}
+
+{% for step in recipe.steps %}
+### {{ step.title }}
+
+{% if step.prose %}
+{{ step.prose }}
+{% endif %}
+
+{% if step.snippets %}
+::: {.panel-tabset group="language"}
+
+## Python
+
+```python
+{{ step.snippets.python }}
+```
+
+## R
+
+```r
+{{ step.snippets.r }}
+```
+
+## JavaScript
+
+```javascript
+{{ step.snippets.javascript }}
+```
+
+## CLI
+
+```bash
+{{ step.snippets.cli }}
+```
+
+:::
+{% endif %}
+
+{% if step.code %}
+::: {.panel-tabset group="language"}
+
+{% if step.code.python %}
+## Python
+
+```python
+{{ step.code.python }}
+```
+{% endif %}
+
+{% if step.code.r %}
+## R
+
+```r
+{{ step.code.r }}
+```
+{% endif %}
+
+{% if step.code.javascript %}
+## JavaScript
+
+```javascript
+{{ step.code.javascript }}
+```
+{% endif %}
+
+{% if step.code.cli %}
+## CLI
+
+```bash
+{{ step.code.cli }}
+```
+{% endif %}
+
+:::
+{% endif %}
+
+{% endfor %}
+
+---
+
+{% endfor %}

@@ -52,7 +52,7 @@ fn post_json(url: &str, body: &serde_json::Value) -> Result<String> {
 /// `search_after` is the opaque cursor from a previous `/search` response.
 fn build_search_post_body(
     index: super::indexes::Index,
-    query: &str,
+    _query: &str,
     fields: &[&str],
     size: usize,
     include_estimates: bool,

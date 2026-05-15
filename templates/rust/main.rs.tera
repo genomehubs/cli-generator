@@ -1540,6 +1540,7 @@ fn render_snippet_for_cli(
         selections,
         traversal: None,
         summaries: vec![],
+        ..Default::default()
     };
 
     let site = SiteConfig {

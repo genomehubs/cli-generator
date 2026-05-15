@@ -29,6 +29,7 @@ pub fn run(
     output_dir: &Path,
     force_fresh: bool,
     template_path: Option<&Path>,
+    no_wasm: bool,
 ) -> Result<()> {
     ensure_cargo_generate_installed()?;
 
@@ -72,7 +73,11 @@ pub fn run(
     patch_cargo_toml(&repo_dir, &repo_name, &sdk_name)?;
     patch_pyproject_toml(&repo_dir, &repo_name, &sdk_name)?;
     create_r_package(&repo_dir, &site)?;
-    create_js_package(&repo_dir, &site)?;
+    if no_wasm {
+        tracing::info!("--no-wasm: skipping JS WASM package copy");
+    } else {
+        create_js_package(&repo_dir, &site)?;
+    }
     create_quarto_docs(&repo_dir, &site)?;
     ensure_license_file(&repo_dir)?;
 
@@ -1303,6 +1308,7 @@ fn create_js_package(repo_dir: &Path, site: &SiteConfig) -> Result<()> {
 ///
 /// Renders six `.qmd` pages covering installation, quick-start, and API
 /// reference for all SDK languages, using site config as template context.
+/// When `site.recipes` is present, also renders `docs/recipes/*.qmd`.
 fn create_quarto_docs(repo_dir: &Path, site: &SiteConfig) -> Result<()> {
     use tera::Context;
 
@@ -1322,6 +1328,42 @@ fn create_quarto_docs(repo_dir: &Path, site: &SiteConfig) -> Result<()> {
     context.insert("sdk_name", &site.resolved_sdk_name());
     context.insert("r_package_name", &r_package_name);
     context.insert("indexes", &site.indexes);
+
+    // Optional notice shown at the top of the docs landing page.
+    let notice_text: Option<&str> = site.notice_text.as_deref();
+    context.insert("notice_text", &notice_text);
+
+    // Feature index availability — gates the positional section in docs.
+    let has_feature_index = site.indexes.iter().any(|idx| idx.name == "feature");
+    context.insert("has_feature_index", &has_feature_index);
+
+    // Pre-compute recipe data and inject into context so that _quarto.yml can
+    // include the Recipes navbar when recipes are present.
+    let has_recipes = site.recipes.is_some()
+        && site
+            .recipes
+            .as_ref()
+            .map(|r| !r.simple.is_empty() || !r.intermediate.is_empty() || !r.reports.is_empty())
+            .unwrap_or(false);
+    context.insert("has_recipes", &has_recipes);
+
+    let rendered_recipes = site
+        .recipes
+        .as_ref()
+        .map(|recipes| build_rendered_recipes(site, recipes))
+        .transpose()?;
+
+    if let Some(ref rr) = rendered_recipes {
+        context.insert("simple_recipes", &rr.simple);
+        context.insert("intermediate_recipes", &rr.intermediate);
+        context.insert("report_recipes", &rr.reports);
+        context.insert("advanced_recipes", &Vec::<serde_json::Value>::new());
+    } else {
+        context.insert("simple_recipes", &Vec::<serde_json::Value>::new());
+        context.insert("intermediate_recipes", &Vec::<serde_json::Value>::new());
+        context.insert("report_recipes", &Vec::<serde_json::Value>::new());
+        context.insert("advanced_recipes", &Vec::<serde_json::Value>::new());
+    }
 
     let render = |template_rel: &str, dest: &Path| -> Result<()> {
         let tpl_path = template_dir.join(template_rel);
@@ -1346,7 +1388,198 @@ fn create_quarto_docs(repo_dir: &Path, site: &SiteConfig) -> Result<()> {
     render("reference/parse.qmd.tera", &ref_dir.join("parse.qmd"))?;
     render("reference/cli.qmd.tera", &ref_dir.join("cli.qmd"))?;
 
+    if has_recipes {
+        let recipes_dir = docs_dir.join("recipes");
+        std::fs::create_dir_all(&recipes_dir).with_context(|| "creating docs/recipes")?;
+        render("recipes/simple.qmd.tera", &recipes_dir.join("simple.qmd"))?;
+        render(
+            "recipes/intermediate.qmd.tera",
+            &recipes_dir.join("intermediate.qmd"),
+        )?;
+        render("recipes/reports.qmd.tera", &recipes_dir.join("reports.qmd"))?;
+        render(
+            "recipes/advanced.qmd.tera",
+            &recipes_dir.join("advanced.qmd"),
+        )?;
+    }
+
     Ok(())
+}
+
+// ── Recipe rendering ──────────────────────────────────────────────────────────
+
+/// Pre-rendered recipe data ready for injection into Tera contexts.
+struct RenderedRecipes {
+    simple: Vec<serde_json::Value>,
+    intermediate: Vec<serde_json::Value>,
+    reports: Vec<serde_json::Value>,
+}
+
+/// Build a `SnippetSiteConfig` from the full `SiteConfig`.
+fn snippet_site(site: &SiteConfig) -> genomehubs_query::types::SiteConfig {
+    genomehubs_query::types::SiteConfig {
+        name: site.name.clone(),
+        api_base: site.api_base.clone(),
+        sdk_name: site.sdk_name.clone(),
+    }
+}
+
+/// Convert a `SimpleRecipe` query spec into a `QuerySnapshot` for snippet rendering.
+fn simple_recipe_to_snapshot(
+    recipe: &crate::core::config::SimpleRecipe,
+) -> genomehubs_query::types::QuerySnapshot {
+    let filters = recipe
+        .filters
+        .iter()
+        .filter(|f| f.len() >= 3)
+        .map(|f| (f[0].clone(), f[1].clone(), f[2].clone()))
+        .collect();
+    let sorts = if recipe.sort.len() == 2 {
+        vec![(recipe.sort[0].clone(), recipe.sort[1].clone())]
+    } else {
+        vec![]
+    };
+    genomehubs_query::types::QuerySnapshot {
+        index: recipe.index.clone(),
+        taxa: recipe.taxa.clone(),
+        taxon_filter: recipe.taxon_filter.clone(),
+        rank: recipe.rank.clone(),
+        filters,
+        sorts,
+        selections: recipe.fields.clone(),
+        call_type: recipe.call_type.clone(),
+        ..Default::default()
+    }
+}
+
+/// Render snippets for a snapshot in all four languages.
+///
+/// Returns a JSON object `{"python": "...", "r": "...", "javascript": "...", "cli": "..."}`.
+/// Falls back to an empty string per language on rendering failures so that a
+/// single broken recipe does not abort the whole docs build.
+fn render_snippets_json(
+    gen: &genomehubs_query::snippet::SnippetGenerator,
+    snapshot: &genomehubs_query::types::QuerySnapshot,
+    site_cfg: &genomehubs_query::types::SiteConfig,
+) -> serde_json::Value {
+    let langs = ["python", "r", "javascript", "cli"];
+    let mut map = serde_json::Map::new();
+    for lang in langs {
+        let code = gen
+            .render_snippet(snapshot, lang, site_cfg)
+            .unwrap_or_default();
+        map.insert(lang.to_string(), serde_json::Value::String(code));
+    }
+    serde_json::Value::Object(map)
+}
+
+/// Render all recipes for the site into JSON-serialisable values.
+fn build_rendered_recipes(
+    site: &SiteConfig,
+    recipes: &crate::core::config::RecipesConfig,
+) -> Result<RenderedRecipes> {
+    let gen = genomehubs_query::snippet::SnippetGenerator::new()
+        .context("initialising snippet generator for recipe rendering")?;
+    let site_cfg = snippet_site(site);
+
+    // Simple recipes — each maps to a single snapshot.
+    let simple = recipes
+        .simple
+        .iter()
+        .map(|recipe| {
+            let snapshot = simple_recipe_to_snapshot(recipe);
+            let snippets = render_snippets_json(&gen, &snapshot, &site_cfg);
+            serde_json::json!({
+                "title": recipe.title,
+                "slug": recipe.slug,
+                "description": recipe.description,
+                "snippets": snippets,
+            })
+        })
+        .collect();
+
+    // Intermediate recipes — each step either has a query (→ snippets) or
+    // free-form code blocks.
+    let intermediate = recipes
+        .intermediate
+        .iter()
+        .map(|recipe| {
+            let steps: Vec<serde_json::Value> = recipe
+                .steps
+                .iter()
+                .map(|step| {
+                    let snippets = step.query.as_ref().map(|q| {
+                        let snapshot = simple_recipe_to_snapshot(q);
+                        render_snippets_json(&gen, &snapshot, &site_cfg)
+                    });
+                    let code = step.code.as_ref().map(|cb| {
+                        serde_json::json!({
+                            "python": cb.python,
+                            "r": cb.r,
+                            "javascript": cb.javascript,
+                            "cli": cb.cli,
+                        })
+                    });
+                    serde_json::json!({
+                        "title": step.title,
+                        "prose": step.prose,
+                        "snippets": snippets,
+                        "code": code,
+                    })
+                })
+                .collect();
+            serde_json::json!({
+                "title": recipe.title,
+                "slug": recipe.slug,
+                "description": recipe.description,
+                "steps": steps,
+            })
+        })
+        .collect();
+
+    // Report recipes — build a QuerySnapshot with call_type "report".
+    let reports = recipes
+        .reports
+        .iter()
+        .map(|recipe| {
+            let report_spec = &recipe.report;
+            let filters = report_spec
+                .filters
+                .iter()
+                .filter(|f| f.len() >= 3)
+                .map(|f| (f[0].clone(), f[1].clone(), f[2].clone()))
+                .collect();
+            let snapshot = genomehubs_query::types::QuerySnapshot {
+                index: report_spec.index.clone(),
+                taxa: report_spec.taxa.clone(),
+                taxon_filter: report_spec.taxon_filter.clone(),
+                rank: report_spec.rank.clone(),
+                filters,
+                call_type: "report".to_string(),
+                report: Some(genomehubs_query::types::ReportSnapshot {
+                    report_type: report_spec.report_type.clone(),
+                    x: report_spec.x.clone(),
+                    y: report_spec.y.clone(),
+                    cat: report_spec.cat.clone(),
+                    rank: report_spec.rank.clone(),
+                }),
+                ..Default::default()
+            };
+            let snippets = render_snippets_json(&gen, &snapshot, &site_cfg);
+            serde_json::json!({
+                "title": recipe.title,
+                "slug": recipe.slug,
+                "description": recipe.description,
+                "snippets": snippets,
+            })
+        })
+        .collect();
+
+    Ok(RenderedRecipes {
+        simple,
+        intermediate,
+        reports,
+    })
 }
 
 fn stamp_cargo_toml(repo_dir: &Path, site: &SiteConfig, repo_name: &str) -> Result<()> {
@@ -1434,9 +1667,9 @@ fn inject_generated_deps(mut text: String) -> String {
         ("serde_yaml", "serde_yaml = \"0.9\""),
         (
             "reqwest",
-            "reqwest    = { version = \"0.12\", features = [\"json\", \"blocking\"] }",
+            "reqwest = { version = \"0.12\", features = [\"json\", \"blocking\"] }",
         ),
-        ("anyhow", "anyhow     = \"1\""),
+        ("anyhow", "anyhow = \"1\""),
         ("percent-encoding", "percent-encoding = \"2\""),
         (
             "chrono",
@@ -1446,30 +1679,33 @@ fn inject_generated_deps(mut text: String) -> String {
         ("dirs", "dirs = \"5\""),
         (
             "phf",
-            "phf        = { version = \"0.11\", features = [\"macros\"] }",
+            "phf = { version = \"0.11\", features = [\"macros\"] }",
         ),
         (
             "tera",
-            "tera       = { version = \"1\", default-features = false }",
+            "tera = { version = \"1\", default-features = false }",
         ),
         (
-            "vl-convert-rs =",
+            "vl-convert-rs",
             "vl-convert-rs = { version = \"2.0.0-rc1\", optional = true }",
         ),
         (
-            "futures       =",
-            "futures       = { version = \"0.3\", default-features = false, features = [\"executor\"], optional = true }",
+            "futures =",
+            "futures = { version = \"0.3\", default-features = false, features = [\"executor\"], optional = true }",
         ),
     ];
-    for (key, dep_line) in required_deps {
-        if !text.contains(key) {
-            // Insert immediately before [dev-dependencies] (always present in the template).
-            text = text.replacen(
-                "\n[dev-dependencies]",
-                &format!("\n{dep_line}\n\n[dev-dependencies]"),
-                1,
-            );
-        }
+    let missing_deps: Vec<&str> = required_deps
+        .iter()
+        .filter(|(key, _)| !text.contains(key))
+        .map(|(_, dep_line)| *dep_line)
+        .collect();
+    if !missing_deps.is_empty() {
+        let block = missing_deps.join("\n");
+        text = text.replacen(
+            "\n[dev-dependencies]",
+            &format!("\n{block}\n\n[dev-dependencies]"),
+            1,
+        );
     }
 
     text

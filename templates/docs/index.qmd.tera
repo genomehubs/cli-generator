@@ -2,6 +2,12 @@
 title: "{{ site_display_name }} SDK"
 ---
 
+{% if notice_text %}
+::: {.callout-note}
+{{ notice_text }}
+:::
+
+{% endif %}
 The **{{ site_display_name }}** SDK provides programmatic access to
 [{{ site_display_name }}]({{ api_base }}) across Python, R, JavaScript, and a
 command-line interface — all generated from the same API schema.

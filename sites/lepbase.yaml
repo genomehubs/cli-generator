@@ -3,6 +3,7 @@ name: lepbase
 display_name: "LepBase"
 api_base: "https://lepbase.org/api"
 api_version: "v3"
+notice_text: "This is a **v3 API preview**. Endpoints, field names, and response formats may change before the stable release."
 ui_base: "https://lepbase.org"
 
 enabled_sdks:

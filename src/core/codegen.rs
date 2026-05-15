@@ -607,6 +607,8 @@ mod tests {
             sdk_name: None,
             enabled_sdks: vec!["python".to_string()],
             ui_base: None,
+            recipes: None,
+            notice_text: None,
         }
     }
 

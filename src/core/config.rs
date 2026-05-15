@@ -56,6 +56,18 @@ pub struct SiteConfig {
     /// When absent, derived by stripping any trailing `/api` segment from `api_base`.
     #[serde(default)]
     pub ui_base: Option<String>,
+    /// Curated recipes for the generated documentation site.
+    ///
+    /// When present, `cli-generator new` renders `docs/recipes/*.qmd` alongside
+    /// the other Quarto pages and adds a *Recipes* menu to `_quarto.yml`.
+    #[serde(default)]
+    pub recipes: Option<RecipesConfig>,
+    /// Optional notice shown at the top of the docs landing page.
+    ///
+    /// Renders as a Quarto `:::{.callout-note}` block.  Supports markdown.
+    /// Typical use: `"This is a **v3 preview** — the API is subject to change."`
+    #[serde(default)]
+    pub notice_text: Option<String>,
 }
 
 fn default_api_version() -> String {
@@ -201,6 +213,162 @@ impl Default for ValidationConfig {
             taxon_filter_types: default_taxon_filter_types(),
         }
     }
+}
+
+// ── Recipe configuration ──────────────────────────────────────────────────────
+
+/// Container for all recipe categories defined in a site YAML.
+#[derive(Default, Debug, Clone, Serialize, Deserialize)]
+pub struct RecipesConfig {
+    /// Short, single-concept recipes rendered into `docs/recipes/simple.qmd`.
+    #[serde(default)]
+    pub simple: Vec<SimpleRecipe>,
+    /// Multi-step recipes rendered into `docs/recipes/intermediate.qmd`.
+    #[serde(default)]
+    pub intermediate: Vec<IntermediateRecipe>,
+    /// Report gallery entries rendered into `docs/recipes/reports.qmd`.
+    #[serde(default)]
+    pub reports: Vec<ReportRecipe>,
+}
+
+/// A single-concept recipe that maps directly to one SDK call.
+#[derive(Default, Debug, Clone, Serialize, Deserialize)]
+pub struct SimpleRecipe {
+    /// Short title used as the section heading.
+    pub title: String,
+    /// URL-safe identifier, e.g. `missing_genome_size`.
+    pub slug: String,
+    /// One or two sentences describing what the recipe demonstrates.
+    #[serde(default)]
+    pub description: String,
+    /// API index name, e.g. `"taxon"` or `"assembly"`.
+    #[serde(default = "default_recipe_index")]
+    pub index: String,
+    /// Taxa to filter by, e.g. `["Mammalia"]`.
+    #[serde(default)]
+    pub taxa: Vec<String>,
+    /// How the taxon list is applied: `"name"`, `"tree"`, or `"lineage"`.
+    #[serde(default = "default_recipe_taxon_filter")]
+    pub taxon_filter: String,
+    /// Restrict results to this rank, e.g. `"species"`.
+    #[serde(default)]
+    pub rank: Option<String>,
+    /// Attribute filters as `[field, operator, value]` triples.
+    #[serde(default)]
+    pub filters: Vec<Vec<String>>,
+    /// Output fields passed to `add_field()`.
+    #[serde(default)]
+    pub fields: Vec<String>,
+    /// Sort specification as `[field, direction]`, e.g. `[genome_size, desc]`.
+    #[serde(default)]
+    pub sort: Vec<String>,
+    /// API call type: `"search"` (default), `"count"`, `"report"`, or `"positional"`.
+    #[serde(default = "default_call_type")]
+    pub call_type: String,
+}
+
+fn default_recipe_index() -> String {
+    "taxon".to_string()
+}
+
+fn default_recipe_taxon_filter() -> String {
+    "name".to_string()
+}
+
+fn default_call_type() -> String {
+    "search".to_string()
+}
+
+/// A free-form, per-language code block for use inside recipe steps.
+#[derive(Default, Debug, Clone, Serialize, Deserialize)]
+pub struct LanguageCodeBlock {
+    #[serde(default)]
+    pub python: Option<String>,
+    #[serde(default)]
+    pub r: Option<String>,
+    #[serde(default)]
+    pub javascript: Option<String>,
+    #[serde(default)]
+    pub cli: Option<String>,
+}
+
+/// One step inside a multi-step intermediate recipe.
+#[derive(Default, Debug, Clone, Serialize, Deserialize)]
+pub struct IntermediateStep {
+    /// Short title rendered as a sub-heading.
+    pub title: String,
+    /// Optional narrative paragraph shown before the code block.
+    #[serde(default)]
+    pub prose: Option<String>,
+    /// When present, snippets are auto-generated from this query spec.
+    #[serde(default)]
+    pub query: Option<SimpleRecipe>,
+    /// When present, these verbatim code blocks are shown instead of (or
+    /// alongside) generated snippets.  Useful for DataFrame operations, plots,
+    /// and other post-processing steps that cannot be expressed as a query.
+    #[serde(default)]
+    pub code: Option<LanguageCodeBlock>,
+}
+
+/// A multi-step recipe with narrative prose and mixed query/code steps.
+#[derive(Default, Debug, Clone, Serialize, Deserialize)]
+pub struct IntermediateRecipe {
+    /// Short title used as the section heading.
+    pub title: String,
+    /// URL-safe identifier, e.g. `vertebrate_comparison`.
+    pub slug: String,
+    /// One or two sentences describing the overall goal.
+    #[serde(default)]
+    pub description: String,
+    /// Ordered list of steps.
+    #[serde(default)]
+    pub steps: Vec<IntermediateStep>,
+}
+
+/// A report gallery entry with a single report configuration.
+#[derive(Default, Debug, Clone, Serialize, Deserialize)]
+pub struct ReportRecipe {
+    /// Short title used as the section heading.
+    pub title: String,
+    /// URL-safe identifier, e.g. `mammalia_genome_size_histogram`.
+    pub slug: String,
+    /// One or two sentences describing what the report shows.
+    #[serde(default)]
+    pub description: String,
+    /// The report configuration to render.
+    pub report: ReportSpec,
+}
+
+/// Inline report specification used inside [`ReportRecipe`].
+#[derive(Default, Debug, Clone, Serialize, Deserialize)]
+pub struct ReportSpec {
+    /// Report type: `"histogram"`, `"scatter"`, `"tree"`, `"map"`,
+    /// `"xPerRank"`, `"sources"`, `"arc"`, etc.
+    pub report_type: String,
+    /// API index, e.g. `"taxon"`.
+    #[serde(default = "default_recipe_index")]
+    pub index: String,
+    /// Taxa to filter by.
+    #[serde(default)]
+    pub taxa: Vec<String>,
+    /// How the taxon list is applied.
+    #[serde(default = "default_recipe_taxon_filter")]
+    pub taxon_filter: String,
+    /// Restrict to this rank.
+    #[serde(default)]
+    pub rank: Option<String>,
+    /// Attribute filters as `[field, operator, value]` triples.
+    #[serde(default)]
+    pub filters: Vec<Vec<String>>,
+    /// Primary x-axis field.
+    #[serde(default)]
+    pub x: Option<String>,
+    /// Secondary y-axis field (scatter, tree).
+    #[serde(default)]
+    pub y: Option<String>,
+    /// Category/colour field.
+    #[serde(default)]
+    pub cat: Option<String>,
 }
 
 // ── CliOptionsConfig ──────────────────────────────────────────────────────────

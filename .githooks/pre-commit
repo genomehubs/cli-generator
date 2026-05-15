@@ -1,0 +1,84 @@
+#!/usr/bin/env bash
+# Pre-commit hook: fast static checks only.
+# Full tests run in CI; run `bash scripts/verify_code.sh` for the complete suite.
+#
+# Install: git config core.hooksPath .githooks
+#          chmod +x .githooks/pre-commit
+set -euo pipefail
+
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+cd "$PROJECT_ROOT"
+
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+NC='\033[0m'
+
+ERRORS=0
+
+fail() {
+    echo -e "${RED}✗${NC} $1"
+    if [[ -n "${2:-}" ]]; then
+        echo "$2"
+    fi
+    ERRORS=$((ERRORS + 1))
+}
+
+pass() {
+    echo -e "${GREEN}✓${NC} $1"
+}
+
+echo "Running pre-commit checks..."
+
+# ── Rust ──────────────────────────────────────────────────────────────────────
+
+if ! cargo fmt --all -- --check 2>/dev/null; then
+    fail "cargo fmt: unformatted Rust code (run 'cargo fmt --all')"
+else
+    pass "cargo fmt"
+fi
+
+if ! cargo clippy --all-targets -- -D warnings 2>/tmp/pre_commit_clippy.log; then
+    errors=$(grep "^error" /tmp/pre_commit_clippy.log | head -10 || true)
+    fail "cargo clippy: linting errors (run 'cargo clippy --all-targets -- -D warnings')" "$errors"
+else
+    pass "cargo clippy"
+fi
+
+# ── Python ────────────────────────────────────────────────────────────────────
+
+if command -v black > /dev/null 2>&1; then
+    if ! black --check --line-length 120 python/ tests/python/ > /dev/null 2>&1; then
+        fail "black: unformatted Python (run 'black --line-length 120 python/ tests/python/')"
+    else
+        pass "black"
+    fi
+fi
+
+if command -v isort > /dev/null 2>&1; then
+    if ! isort --check-only --profile black --line-length 120 python/ tests/python/ > /dev/null 2>&1; then
+        fail "isort: unsorted imports (run 'isort --profile black --line-length 120 python/ tests/python/')"
+    else
+        pass "isort"
+    fi
+fi
+
+if command -v pyright > /dev/null 2>&1; then
+    if ! pyright python/ tests/python/ > /tmp/pre_commit_pyright.log 2>&1; then
+        errors=$(grep "error:" /tmp/pre_commit_pyright.log | head -10 || true)
+        fail "pyright: type errors" "$errors"
+    else
+        pass "pyright"
+    fi
+fi
+
+# ── Result ────────────────────────────────────────────────────────────────────
+
+echo ""
+if (( ERRORS > 0 )); then
+    echo -e "${RED}Pre-commit: $ERRORS check(s) failed — commit blocked.${NC}"
+    echo "Run 'bash scripts/verify_code.sh --verbose' for full details."
+    exit 1
+else
+    echo -e "${GREEN}Pre-commit checks passed.${NC}"
+fi

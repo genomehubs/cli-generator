@@ -18,6 +18,18 @@ website:
             text: Parsing results
           - href: reference/cli.qmd
             text: CLI reference
+{% if has_recipes %}
+      - text: Recipes
+        menu:
+          - href: recipes/simple.qmd
+            text: Simple recipes
+          - href: recipes/intermediate.qmd
+            text: Intermediate recipes
+          - href: recipes/reports.qmd
+            text: Report gallery
+          - href: recipes/advanced.qmd
+            text: Advanced recipes
+{% endif %}
   repo-url: "{{ repo_url | default(value='https://github.com/genomehubs/cli-generator') }}"
   repo-actions: [edit, issue]
 

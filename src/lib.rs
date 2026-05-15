@@ -159,8 +159,8 @@ fn render_snippet(
     sdk_name: &str,
     languages: &str,
 ) -> PyResult<String> {
+    use crate::core::config::SiteConfig;
     use crate::core::snippet::{QuerySnapshot, SnippetGenerator};
-    use genomehubs_query::types::SiteConfig;
 
     let snapshot: QuerySnapshot = serde_json::from_str(snapshot_json)
         .map_err(|e| PyValueError::new_err(format!("Invalid snapshot JSON: {}", e)))?;

@@ -85,34 +85,32 @@ fi
 
 # Check compilation of all workspace crates
 echo "Checking cargo check for all crates..."
-if cargo check --workspace > /dev/null 2>&1; then
+if cargo check --workspace 2>/tmp/cargo_check.log; then
     check_pass "cargo check --workspace (all crates compile)"
 else
-    output=$(cargo check --workspace 2>&1 || true)
-    check_fail "cargo check --workspace (see output above)" "$output"
+    output=$(cat /tmp/cargo_check.log)
+    check_fail "cargo check --workspace" "$output"
 fi
 
-# Clippy linting
-echo "Running cargo clippy..."
-if cargo clippy --all-targets -- -D warnings > /dev/null 2>&1; then
-    check_pass "cargo clippy (no linting issues)"
+# Clippy linting — covers all workspace crates (., crates/genomehubs-query, crates/genomehubs-api)
+echo "Running cargo clippy (all workspace crates)..."
+if cargo clippy --all-targets -- -D warnings 2>/tmp/cargo_clippy.log; then
+    check_pass "cargo clippy --all-targets (no linting issues)"
 else
-    output=$(cargo clippy --all-targets -- -D warnings 2>&1 || true)
-    check_fail "cargo clippy (see output above)" "$output"
+    # Surface only the actual error lines to keep output manageable
+    output=$(grep -E "^error" /tmp/cargo_clippy.log | head -20 || cat /tmp/cargo_clippy.log | tail -30)
+    check_fail "cargo clippy (errors listed below — run 'cargo clippy --all-targets -- -D warnings' for full output)" "$output"
 fi
 
-# Tests
+# Tests — all workspace lib crates
 echo "Running cargo tests..."
-if cargo test --workspace --lib 2>&1 > /tmp/cargo_test.log; then
-    if grep -q "test result: ok" /tmp/cargo_test.log; then
-        check_pass "cargo test --workspace (all tests pass)"
-    else
-        output=$(cat /tmp/cargo_test.log)
-        check_fail "cargo test --workspace (no test result found)" "$output"
-    fi
+if cargo test --workspace --lib > /tmp/cargo_test.log 2>&1; then
+    passed=$(grep -c "^test .* ok$" /tmp/cargo_test.log || echo 0)
+    check_pass "cargo test --workspace --lib ($passed tests passed)"
 else
-    output=$(cat /tmp/cargo_test.log)
-    check_fail "cargo test --workspace (see output above)" "$output"
+    # Show failing test names and any compile errors
+    output=$(grep -E "^error|FAILED|thread .* panicked" /tmp/cargo_test.log | head -20 || cat /tmp/cargo_test.log | tail -30)
+    check_fail "cargo test --workspace --lib (see below)" "$output"
 fi
 
 # ==============================================================================
@@ -144,17 +142,33 @@ echo "Running pyright..."
 if pyright python/ tests/python/ > /dev/null 2>&1; then
     check_pass "pyright (no type errors)"
 else
-    output=$(pyright python/ tests/python/ 2>&1 || true)
-    check_fail "pyright (see output above)" "$output"
+    output=$(pyright python/ tests/python/ 2>&1 | grep -E "error:|warning:" | head -20 || true)
+    check_fail "pyright (type errors listed below)" "$output"
 fi
 
 # Python tests
 echo "Running pytest..."
-if python -m pytest tests/python/ -q > /dev/null 2>&1; then
-    check_pass "pytest (all tests pass)"
+if python -m pytest tests/python/ -q > /tmp/pytest.log 2>&1; then
+    passed=$(grep -E "^[0-9]+ passed" /tmp/pytest.log | head -1 || echo "")
+    check_pass "pytest ($passed)"
 else
-    output=$(python -m pytest tests/python/ -q 2>&1 || true)
-    check_fail "pytest (see output above)" "$output"
+    output=$(tail -30 /tmp/pytest.log)
+    check_fail "pytest (see below)" "$output"
+fi
+
+# Python coverage — informational, fails only if below floor in pyproject.toml
+if command -v coverage > /dev/null 2>&1; then
+    echo "Measuring Python coverage..."
+    if coverage run -m pytest tests/python/ -q > /dev/null 2>&1 && \
+       coverage report --skip-empty > /tmp/coverage.log 2>&1; then
+        total=$(grep "^TOTAL" /tmp/coverage.log | awk '{print $NF}')
+        check_pass "coverage ($total — above floor)"
+    else
+        output=$(tail -5 /tmp/coverage.log || true)
+        check_fail "coverage (below floor — see pyproject.toml [tool.coverage.report])" "$output"
+    fi
+else
+    echo "  coverage not installed — skipping (pip install coverage[toml])"
 fi
 
 # ==============================================================================
@@ -171,9 +185,9 @@ else
     echo -e "${RED}✗ $ERRORS check(s) failed${NC}"
     echo ""
     echo "Quick fixes:"
-    echo "  Rust formatting: cargo fmt --all"
+    echo "  Rust formatting:   cargo fmt --all"
     echo "  Python formatting: black --line-length 120 python/ tests/python/"
-    echo "  Python imports: isort --profile black --line-length 120 python/ tests/python/"
+    echo "  Python imports:    isort --profile black --line-length 120 python/ tests/python/"
     echo ""
     exit 1
 fi

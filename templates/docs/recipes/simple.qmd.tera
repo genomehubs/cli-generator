@@ -1,0 +1,50 @@
+---
+title: "Simple recipes"
+format:
+  html: default
+  ipynb: default
+---
+
+Short, self-contained examples demonstrating one concept each.
+Each recipe can be run in under a minute once the SDK is installed.
+
+To generate a YAML recipe entry from any live query, run:
+
+```bash
+{{ site_name }}-cli taxon search --to-recipe yaml
+```
+
+{% for recipe in simple_recipes %}
+## {{ recipe.title }}
+
+{{ recipe.description }}
+
+::: {.panel-tabset group="language"}
+
+## Python
+
+```python
+{{ recipe.snippets.python }}
+```
+
+## R
+
+```r
+{{ recipe.snippets.r }}
+```
+
+## JavaScript
+
+```javascript
+{{ recipe.snippets.javascript }}
+```
+
+## CLI
+
+```bash
+{{ recipe.snippets.cli }}
+```
+
+:::
+
+{% endfor %}

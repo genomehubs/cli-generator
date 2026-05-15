@@ -3,6 +3,7 @@ name: goat
 display_name: "GoaT"
 api_base: "https://goat.genomehubs.org/api"
 api_version: "v3"
+notice_text: "This is a **v3 API preview**. Endpoints, field names, and response formats may change before the stable release."
 ui_base: "https://goat.genomehubs.org"
 
 enabled_sdks:
@@ -34,3 +35,139 @@ validation:
     - tolid_prefix
     - authority
   taxon_filter_types: [name, tree, lineage]
+
+# Curated recipes for the generated documentation site.
+# Adding an entry here causes cli-generator to render a multi-language code
+# block in docs/recipes/.  Only the YAML needs editing — the SDK code is
+# generated automatically from the query parameters.
+recipes:
+  simple:
+    - title: "Count mammals with genome size data"
+      slug: count_mammals_genome_size
+      description: |
+        A simple count of species-rank taxa in Mammalia that have at least one
+        genome size measurement recorded in GoaT.  Use this as a quick sanity
+        check before running a larger search.
+      index: taxon
+      taxa: ["Mammalia"]
+      taxon_filter: tree
+      rank: species
+      filters:
+        - [genome_size, exists, ""]
+      call_type: count
+
+    - title: "Find taxa missing genome size data"
+      slug: missing_genome_size
+      description: |
+        Identify species-rank taxa in Mammalia that do not yet have a genome
+        size estimate.  Useful for prioritising new measurements or data
+        submissions.
+      index: taxon
+      taxa: ["Mammalia"]
+      taxon_filter: tree
+      rank: species
+      filters:
+        - [genome_size, missing, ""]
+      fields: [scientific_name, genome_size, assembly_level]
+      call_type: search
+
+    - title: "Search assemblies by genome size threshold"
+      slug: large_genomes
+      description: |
+        Find chromosome-level assemblies where the assembly span is at least
+        3 Gbp, sorted by descending size.  Demonstrates numeric threshold
+        filters and sorting.
+      index: assembly
+      filters:
+        - [assembly_span, ">=", "3000000000"]
+        - [assembly_level, eq, chromosome]
+      fields: [assembly_accession, scientific_name, assembly_span]
+      sort: [assembly_span, desc]
+      call_type: search
+
+  intermediate:
+    - title: "Compare genome sizes across vertebrate classes"
+      slug: vertebrate_genome_size_comparison
+      description: |
+        Retrieve genome size data for two vertebrate classes with separate
+        queries, then combine into a single DataFrame for side-by-side
+        comparison.
+      steps:
+        - title: "Query mammals"
+          prose: |
+            Build a query for species-rank taxa in Mammalia that have genome
+            size measurements.
+          query:
+            title: ""
+            slug: ""
+            index: taxon
+            taxa: ["Mammalia"]
+            taxon_filter: tree
+            rank: species
+            filters:
+              - [genome_size, exists, ""]
+            fields: [scientific_name, genome_size]
+            call_type: search
+
+        - title: "Query birds"
+          prose: |
+            Repeat the same query for Aves.
+          query:
+            title: ""
+            slug: ""
+            index: taxon
+            taxa: ["Aves"]
+            taxon_filter: tree
+            rank: species
+            filters:
+              - [genome_size, exists, ""]
+            fields: [scientific_name, genome_size]
+            call_type: search
+
+        - title: "Combine and compare"
+          prose: |
+            Add a `class` column to each DataFrame and concatenate them for
+            plotting or further analysis.
+          code:
+            python: |
+              import pandas as pd
+              df_mammalia["class"] = "Mammalia"
+              df_aves["class"] = "Aves"
+              df = pd.concat([df_mammalia, df_aves], ignore_index=True)
+              print(df.groupby("class")["genome_size_value"].describe())
+            r: |
+              library(dplyr)
+              df_mammalia$class <- "Mammalia"
+              df_aves$class <- "Aves"
+              df <- bind_rows(df_mammalia, df_aves)
+              df |> group_by(class) |> summarise(median_genome_size = median(genome_size_value, na.rm = TRUE))
+
+  reports:
+    - title: "Genome size distribution in mammals"
+      slug: mammalia_genome_size_histogram
+      description: |
+        A histogram of genome sizes across mammalian species with direct
+        measurements, revealing the characteristic 2–8 Gbp range.
+      report:
+        report_type: histogram
+        index: taxon
+        taxa: ["Mammalia"]
+        taxon_filter: tree
+        rank: species
+        x: genome_size
+        filters:
+          - [genome_size, exists, ""]
+
+    - title: "Genome size versus assembly span scatter"
+      slug: genome_size_vs_assembly_span
+      description: |
+        Scatter plot of estimated genome size against sequenced assembly span
+        for Mammalia.  Points below the diagonal indicate under-assembled
+        genomes.
+      report:
+        report_type: scatter
+        index: taxon
+        taxa: ["Mammalia"]
+        taxon_filter: tree
+        x: genome_size
+        y: assembly_span

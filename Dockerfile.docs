@@ -1,0 +1,68 @@
+# ── Stage 1: Build cli-generator binary ──────────────────────────────────────
+# Compile the generator tool that produces the site's Quarto source.
+FROM rust:1.81-bookworm AS generator
+WORKDIR /build
+
+COPY Cargo.toml Cargo.lock ./
+COPY crates/ ./crates/
+COPY src/ ./src/
+COPY templates/ ./templates/
+COPY sites/ ./sites/
+
+RUN cargo build --release --bin cli-generator
+
+# ── Stage 2: Generate and render site docs ────────────────────────────────────
+# Install Quarto, run the generator, then render the Quarto project to HTML.
+FROM debian:bookworm-slim AS renderer
+
+# Install runtime deps: curl for Quarto download, ca-certificates for HTTPS
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Quarto version — pin explicitly to avoid render drift between builds.
+# Update this when upgrading locally (check with: quarto --version).
+ARG QUARTO_VERSION=1.6.42
+RUN curl -fsSL \
+    "https://github.com/quarto-dev/quarto-cli/releases/download/v${QUARTO_VERSION}/quarto-${QUARTO_VERSION}-linux-amd64.deb" \
+    -o /tmp/quarto.deb \
+    && dpkg -i /tmp/quarto.deb \
+    && rm /tmp/quarto.deb
+
+# Copy the built generator binary and site configs from stage 1.
+COPY --from=generator /build/target/release/cli-generator /usr/local/bin/cli-generator
+COPY --from=generator /build/sites/ /sites/
+
+# Site to generate.  Override at build time with:
+#   docker build --build-arg SITE=boat -f Dockerfile.docs .
+ARG SITE=goat
+
+# Generate the site's source tree (--no-wasm skips WASM copy; not needed for docs).
+RUN cli-generator new "$SITE" \
+        --output-dir /workdir \
+        --config /sites \
+        --no-wasm
+
+# Render the Quarto docs to static HTML (_site/).
+RUN quarto render "/workdir/${SITE}-cli/docs" --no-cache
+
+# ── Stage 3: Serve with nginx ─────────────────────────────────────────────────
+# Minimal image — just nginx + the rendered HTML.
+FROM nginx:1.27-alpine AS docs
+
+ARG SITE=goat
+
+# Copy rendered static site to the /docs path served by nginx.
+COPY --from=renderer /workdir/${SITE}-cli/docs/_site /usr/share/nginx/html/docs
+
+# Nginx config: serve from /docs/, redirect / → /docs/.
+COPY docker/nginx-docs.conf /etc/nginx/conf.d/default.conf
+
+EXPOSE 80
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD wget -qO- http://localhost/docs/ || exit 1
+
+LABEL org.opencontainers.image.description="Quarto docs for the ${SITE} SDK"
+LABEL org.opencontainers.image.source="https://github.com/genomehubs/cli-generator"

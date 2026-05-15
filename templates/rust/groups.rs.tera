@@ -9,11 +9,13 @@ pub fn {{ index.name }}_groups() -> &'static std::collections::BTreeMap<&'static
     use std::sync::OnceLock;
     static MAP: OnceLock<std::collections::BTreeMap<&'static str, &'static [&'static str]>> = OnceLock::new();
     MAP.get_or_init(|| {
-        let mut m = std::collections::BTreeMap::new();
-{% for group in index.groups %}        m.insert("{{ group.name }}", &[
-{% for field in group.fields %}            "{{ field }}",
-{% endfor %}        ] as &[&str]);
-{% endfor %}        m
+        [
+{% for group in index.groups %}            ("{{ group.name }}", &[
+{% for field in group.fields %}                "{{ field }}",
+{% endfor %}            ] as &[&str]),
+{% endfor %}        ]
+        .into_iter()
+        .collect()
     })
 }
 {% endfor %}

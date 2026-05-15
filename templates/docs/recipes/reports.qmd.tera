@@ -1,0 +1,45 @@
+---
+title: "Report gallery"
+format:
+  html: default
+  ipynb: default
+---
+
+The report gallery shows how to generate each supported report type using the
+SDK, with the equivalent CLI command.  Reports visualise query results directly
+in the {{ site_display_name }} UI.
+
+{% for recipe in report_recipes %}
+## {{ recipe.title }}
+
+{{ recipe.description }}
+
+::: {.panel-tabset group="language"}
+
+## Python
+
+```python
+{{ recipe.snippets.python }}
+```
+
+## R
+
+```r
+{{ recipe.snippets.r }}
+```
+
+## JavaScript
+
+```javascript
+{{ recipe.snippets.javascript }}
+```
+
+## CLI
+
+```bash
+{{ recipe.snippets.cli }}
+```
+
+:::
+
+{% endfor %}

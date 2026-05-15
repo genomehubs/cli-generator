@@ -248,3 +248,44 @@ progress is written to stderr so you can pipe stdout:
   --fields genome_size \
   --all --max-results 5000 > mammalia_species.json
 ```
+
+{% if has_feature_index %}
+---
+
+## Positional subcommand
+
+The `positional` subcommand queries the **feature index** to compare genomic
+marker positions across assemblies.  It requires a v2 feature index
+(`feature_index_version` in `/v3/status`).
+
+```bash
+{{ site_name }}-cli positional --help
+```
+
+### Oxford dot-plot
+
+```bash
+{{ site_name }}-cli positional oxford \
+  --group-by metazoa_odb10-busco-gene \
+  --assembly GCA_905147045.1 \
+  --assembly GCA_902806685.2 \
+  --window-size 1000000
+```
+
+### Ribbon diagram
+
+```bash
+{{ site_name }}-cli positional ribbon \
+  --group-by metazoa_odb10-busco-gene \
+  --assembly GCA_905147045.1 \
+  --assembly GCA_902806685.2
+```
+
+### Painting diagram
+
+```bash
+{{ site_name }}-cli positional painting \
+  --group-by metazoa_odb10-busco-gene \
+  --assembly GCA_905147045.1
+```
+{% endif %}

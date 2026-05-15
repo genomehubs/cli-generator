@@ -41,6 +41,11 @@ enum Commands {
         /// Path to a local rust-py-template checkout (overrides GitHub URL).
         #[arg(long)]
         template: Option<PathBuf>,
+
+        /// Skip copying WASM packages into the generated JS SDK (useful for
+        /// docs-only or CI builds that do not need the JavaScript SDK).
+        #[arg(long)]
+        no_wasm: bool,
     },
 
     /// Update generated files in an existing site CLI repo.
@@ -143,9 +148,17 @@ fn run(command: Commands) -> anyhow::Result<()> {
             config,
             force_fresh,
             template,
+            no_wasm,
         } => {
             let sites = config.unwrap_or(default_sites_dir);
-            commands::new::run(&site, &sites, &output_dir, force_fresh, template.as_deref())
+            commands::new::run(
+                &site,
+                &sites,
+                &output_dir,
+                force_fresh,
+                template.as_deref(),
+                no_wasm,
+            )
         }
 
         Commands::Update {

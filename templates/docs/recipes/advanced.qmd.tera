@@ -1,0 +1,17 @@
+---
+title: "Advanced recipes"
+format:
+  html: default
+---
+
+Advanced recipes cover SDK composition patterns, external data joins, and
+large-scale workflows.  These are intentionally more complex — each page focuses
+on a single advanced concept.
+
+| Recipe | Description |
+|--------|-------------|
+{% for recipe in advanced_recipes %}| [{{ recipe.title }}](advanced/{{ recipe.slug }}.qmd) | {{ recipe.description | truncate(length=80) }} |
+{% endfor %}
+
+*Advanced recipes are added by the {{ site_display_name }} team.  To request a
+new recipe, open an issue in the repository.*

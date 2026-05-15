@@ -1633,6 +1633,13 @@ ReportBuilder <- R6::R6Class("ReportBuilder",
       invisible(self)
     },
 
+    #' @description Return a short English description of this report configuration.
+    #' @return A phrase suitable for embedding in prose, e.g.
+    #'   \code{"a histogram of genome size by species rank"}.
+    describe = function() {
+      describe_report_yaml(self$to_report_yaml())
+    },
+
     #' @description Return the report configuration as a YAML string.
     to_report_yaml = function() {
       if (!is.null(private$report_yaml_override)) {
