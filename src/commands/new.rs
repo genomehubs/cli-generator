@@ -130,18 +130,11 @@ fn postprocess_language(dir: &Path, language: &str) -> Result<()> {
 /// Abort with a clear message if `cargo-generate` is not installed.
 ///
 /// Accepts two invocation styles:
-///   1. `cargo generate --version`  — Cargo subcommand; works in dev/CI where
-///      `~/.cargo/bin` is on PATH but the standalone binary may not be.
-///   2. `cargo-generate --version`  — standalone binary; works in Docker renderer
+///   1. `cargo-generate --version`  — standalone binary; works in Docker renderer
 ///      stages that have the binary copied in but no full Rust/Cargo toolchain.
+///   2. `cargo generate --version`  — Cargo subcommand; works in dev/CI where
+///      `~/.cargo/bin` is on PATH but the standalone binary may not be.
 fn ensure_cargo_generate_installed() -> Result<()> {
-    let via_cargo = std::process::Command::new("cargo")
-        .args(["generate", "--version"])
-        .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null())
-        .status()
-        .map(|s| s.success())
-        .unwrap_or(false);
     let via_bin = std::process::Command::new("cargo-generate")
         .arg("--version")
         .stdout(std::process::Stdio::null())
@@ -149,7 +142,17 @@ fn ensure_cargo_generate_installed() -> Result<()> {
         .status()
         .map(|s| s.success())
         .unwrap_or(false);
-    if !via_cargo && !via_bin {
+    if via_bin {
+        return Ok(());
+    }
+    let via_cargo = std::process::Command::new("cargo")
+        .args(["generate", "--version"])
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .map(|s| s.success())
+        .unwrap_or(false);
+    if !via_cargo {
         bail!(
             "cargo-generate is required but was not found.\n\
              Install it with:\n\n    cargo install cargo-generate\n"
@@ -158,25 +161,25 @@ fn ensure_cargo_generate_installed() -> Result<()> {
     Ok(())
 }
 
-/// Return the best available command + initial args for invoking cargo-generate.
+/// Return the best available command for invoking cargo-generate.
 ///
-/// Prefers `cargo generate` (subcommand form) so it works in standard Rust
-/// dev environments.  Falls back to calling the standalone `cargo-generate`
-/// binary directly — necessary in Docker stages that lack a full cargo install.
+/// Prefers the standalone `cargo-generate` binary — necessary in Docker renderer
+/// stages that have the binary copied in but lack a full Cargo install.
+/// Falls back to `cargo generate` (subcommand form) for standard dev environments.
 fn cargo_generate_command() -> std::process::Command {
-    let via_cargo = std::process::Command::new("cargo")
-        .args(["generate", "--version"])
+    let has_standalone = std::process::Command::new("cargo-generate")
+        .arg("--version")
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::null())
         .status()
         .map(|s| s.success())
         .unwrap_or(false);
-    if via_cargo {
+    if has_standalone {
+        std::process::Command::new("cargo-generate")
+    } else {
         let mut cmd = std::process::Command::new("cargo");
         cmd.arg("generate");
         cmd
-    } else {
-        std::process::Command::new("cargo-generate")
     }
 }
 
