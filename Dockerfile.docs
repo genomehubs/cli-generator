@@ -47,7 +47,7 @@ RUN mkdir -p /workdir && \
     chown -R newuser:newgroup /workdir /sites
 
 # Switch to the non-root user
-USER newuser
+ENV USER=newuser
 
 # Generate the site's source tree (--no-wasm skips WASM copy; not needed for docs).
 RUN cli-generator new "$SITE" \
