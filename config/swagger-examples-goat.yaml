@@ -44,9 +44,31 @@ info:
 #   summary — one-line label shown in the Swagger UI dropdown
 #   value   — the example request body as a JSON/YAML object
 #
-# NOTE: query_yaml / params_yaml fields accept either a YAML string or a JSON
-# object (e.g. `query: {index: taxon, query: "..."}` maps to query_yaml).
-# Use the JSON object form below for readability.
+# POST body shape:
+#   query:
+#     index: taxon | assembly | sample | feature
+#     taxa: ["taxon_name", ...]  ← optional taxon filter
+#     taxon_filter_type: tree|name|lineage|...
+#     fields: ["field_name", ...]  ← short form (normalised)
+#     attributes: [{name: "...", operator: "...", value: ...}]
+#     rank: species  ← restrict to rank
+#   params:
+#     size: 10
+#     taxonomy: ncbi
+#     include_estimates: true
+#     sort_by: field_name
+#     sort_order: asc | desc
+#     tidy: true
+#
+# record/batch body shape:
+#   record_ids: ["taxon-9606", ...]
+#   result: taxon | assembly | sample
+#
+# summary/batch body shape:
+#   queries:
+#     - record_id: "9606"
+#       result: taxon
+#       fields: ["genome_size"]
 
 examples:
   # ── POST /api/v3/count ─────────────────────────────────────────────────────
@@ -58,7 +80,9 @@ examples:
     value:
       query:
         index: taxon
-        query: "tax_tree(Mammalia) AND genome_size"
+        taxa: ["Mammalia"]
+        taxon_filter_type: tree
+        fields: ["genome_size"]
       params:
         size: 0
         include_estimates: true
@@ -66,12 +90,15 @@ examples:
 
   - path: "/api/v3/count"
     method: post
-    name: insecta_assembly_count
-    summary: "Count assemblies for insects"
+    name: insecta_species_count
+    summary: "Count the number of insect species"
     value:
       query:
-        index: assembly
-        query: "tax_tree(Insecta)"
+        index: taxon
+        rank: species
+        taxa:
+          - Insecta
+        taxon_filter_type: tree
       params:
         size: 0
         taxonomy: ncbi
@@ -79,11 +106,14 @@ examples:
   - path: "/api/v3/count"
     method: post
     name: vertebrate_c_value_count
-    summary: "Count vertebrates with a C-value estimate"
+    summary: "Count vertebrate genera with a C-value estimate"
     value:
       query:
         index: taxon
-        query: "tax_tree(Vertebrata) AND c_value"
+        rank: genus
+        taxa: ["Vertebrata"]
+        taxon_filter_type: tree
+        fields: ["c_value"]
       params:
         size: 0
         include_estimates: true
@@ -94,14 +124,17 @@ examples:
   - path: "/api/v3/search"
     method: post
     name: mammalia_genome_size
-    summary: "Search Mammalia taxa with genome size, sorted descending"
+    summary: "Search Mammal species with genome size, sorted descending"
     value:
       query:
         index: taxon
-        query: "tax_tree(Mammalia) AND genome_size"
+        taxa: ["Mammalia"]
+        taxon_filter_type: tree
+        fields: ["genome_size"]
+        rank: species
+        excludeAncestral: ["genome_size"]
       params:
         size: 10
-        fields: "genome_size,scientific_name"
         sort_by: genome_size
         sort_order: desc
         include_estimates: true
@@ -114,10 +147,15 @@ examples:
     value:
       query:
         index: assembly
-        query: "tax_tree(Mammalia) AND assembly_span>=1000000000"
+        taxa: ["Mammalia"]
+        taxon_filter_type: tree
+        fields: ["assembly_span", "assembly_level", "scientific_name"]
+        attributes:
+          - name: assembly_span
+            operator: gte
+            value: "1000000000"
       params:
         size: 10
-        fields: "assembly_span,assembly_level,scientific_name"
         taxonomy: ncbi
 
   - path: "/api/v3/search"
@@ -127,10 +165,12 @@ examples:
     value:
       query:
         index: taxon
-        query: "tax_tree(Vertebrata) AND c_value"
+        taxa: ["Vertebrata"]
+        taxon_filter_type: tree
+        fields: ["c_value", "genome_size", "scientific_name"]
+        rank: species
       params:
         size: 10
-        fields: "c_value,genome_size,scientific_name"
         include_estimates: true
         taxonomy: ncbi
 
@@ -144,17 +184,21 @@ examples:
       searches:
         - query:
             index: taxon
-            query: "tax_tree(Mammalia)"
+            taxa: ["Mammalia"]
+            taxon_filter_type: tree
+            fields: ["genome_size", "scientific_name"]
+            rank: species
           params:
             size: 5
-            fields: "genome_size,scientific_name"
             taxonomy: ncbi
         - query:
             index: taxon
-            query: "tax_tree(Insecta)"
+            taxa: ["Insecta"]
+            taxon_filter_type: tree
+            fields: ["genome_size", "scientific_name"]
+            rank: species
           params:
             size: 5
-            fields: "genome_size,scientific_name"
             taxonomy: ncbi
 
   # ── POST /api/v3/count/batch ───────────────────────────────────────────────
@@ -167,26 +211,48 @@ examples:
       searches:
         - query:
             index: taxon
-            query: "tax_tree(Vertebrata)"
+            taxa: ["Vertebrata"]
+            taxon_filter_type: tree
           params:
+            size: 0
             taxonomy: ncbi
         - query:
             index: taxon
-            query: "tax_tree(Insecta)"
+            taxa: ["Insecta"]
+            taxon_filter_type: tree
           params:
+            size: 0
             taxonomy: ncbi
+
+  # ── POST /api/v3/record/batch ──────────────────────────────────────────────
+
+  - path: "/api/v3/record/batch"
+    method: post
+    name: taxon_records_by_id
+    summary: "Fetch taxon records for human and fruit fly"
+    value:
+      record_ids: ["taxon-9606", "taxon-7227"]
+      result: taxon
+
+  - path: "/api/v3/record/batch"
+    method: post
+    name: assembly_records_by_id
+    summary: "Fetch assembly records by ID"
+    value:
+      record_ids: ["assembly-GCA_000001405.29", "assembly-GCA_000001215.4"]
+      result: assembly
 
   # ── POST /api/v3/summary/batch ─────────────────────────────────────────────
 
   - path: "/api/v3/summary/batch"
     method: post
     name: two_taxa_genome_size
-    summary: "Fetch genome_size summary for two taxa"
+    summary: "Fetch genome_size summary for human and fruit fly"
     value:
       queries:
-        - recordId: "9606"
+        - record_id: "9606"
           result: taxon
-          fields: "genome_size,c_value"
-        - recordId: "7227"
+          fields: ["genome_size", "c_value"]
+        - record_id: "7227"
           result: taxon
-          fields: "genome_size"
+          fields: ["genome_size"]
