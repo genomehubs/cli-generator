@@ -41,8 +41,10 @@ RUN cp -r /build/sites/ /sites/
 #   docker build --build-arg SITE=boat -f Dockerfile.docs .
 ARG SITE=goat
 
-RUN groupadd -g 1000 newgroup && \
-    useradd -u 1000 -g newgroup -m newuser
+RUN mkdir -p /workdir && \
+    groupadd -g 1000 newgroup && \
+    useradd -u 1000 -g newgroup -m newuser && \
+    chown -R newuser:newgroup /workdir /sites
 
 # Switch to the non-root user
 USER newuser
