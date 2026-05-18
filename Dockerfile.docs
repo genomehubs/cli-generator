@@ -17,10 +17,6 @@ ARG CARGO_GENERATE_VERSION=0.21.3
 RUN cargo install cargo-generate --version "${CARGO_GENERATE_VERSION}" --locked \
     && cp /usr/local/cargo/bin/cargo-generate /build/cargo-generate
 
-# ── Stage 2: Generate and render site docs ────────────────────────────────────
-# Install Quarto, run the generator, then render the Quarto project to HTML.
-FROM debian:bookworm-slim AS renderer
-
 # Install runtime deps: curl for Quarto download, ca-certificates for HTTPS
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
@@ -37,9 +33,9 @@ RUN curl -fsSL \
     && rm /tmp/quarto.deb
 
 # Copy the built generator binary, cargo-generate, and site configs from stage 1.
-COPY --from=generator /build/target/release/cli-generator /usr/local/bin/cli-generator
-COPY --from=generator /build/cargo-generate /usr/local/bin/cargo-generate
-COPY --from=generator /build/sites/ /sites/
+RUN cp /build/target/release/cli-generator /usr/local/bin/cli-generator
+RUN cp /build/cargo-generate /usr/local/bin/cargo-generate
+RUN cp -r /build/sites/ /sites/
 
 # Site to generate.  Override at build time with:
 #   docker build --build-arg SITE=boat -f Dockerfile.docs .
@@ -66,7 +62,7 @@ ARG SITE=goat
 RUN rm -f /usr/share/nginx/html/index.html /usr/share/nginx/html/50x.html
 
 # Copy rendered static site to the /docs path served by nginx.
-COPY --from=renderer /workdir/${SITE}-cli/docs/_site /usr/share/nginx/html/docs
+COPY --from=generator /workdir/${SITE}-cli/docs/_site /usr/share/nginx/html/docs
 
 # Nginx config: serve from /docs/, redirect / → /docs/.
 COPY docker/nginx-docs.conf /etc/nginx/conf.d/default.conf
