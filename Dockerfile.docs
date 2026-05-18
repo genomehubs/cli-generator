@@ -41,6 +41,8 @@ RUN cp -r /build/sites/ /sites/
 #   docker build --build-arg SITE=boat -f Dockerfile.docs .
 ARG SITE=goat
 
+USER ubuntu
+
 # Generate the site's source tree (--no-wasm skips WASM copy; not needed for docs).
 RUN cli-generator new "$SITE" \
     --output-dir /workdir \
