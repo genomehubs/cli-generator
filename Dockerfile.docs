@@ -41,7 +41,11 @@ RUN cp -r /build/sites/ /sites/
 #   docker build --build-arg SITE=boat -f Dockerfile.docs .
 ARG SITE=goat
 
-USER ubuntu
+RUN groupadd -g 1000 newgroup && \
+    useradd -u 1000 -g newgroup -m newuser
+
+# Switch to the non-root user
+USER newuser
 
 # Generate the site's source tree (--no-wasm skips WASM copy; not needed for docs).
 RUN cli-generator new "$SITE" \
