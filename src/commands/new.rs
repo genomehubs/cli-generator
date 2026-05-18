@@ -129,58 +129,23 @@ fn postprocess_language(dir: &Path, language: &str) -> Result<()> {
 
 /// Abort with a clear message if `cargo-generate` is not installed.
 ///
-/// Accepts two invocation styles:
-///   1. `cargo-generate --version`  — standalone binary; works in Docker renderer
-///      stages that have the binary copied in but no full Rust/Cargo toolchain.
-///   2. `cargo generate --version`  — Cargo subcommand; works in dev/CI where
-///      `~/.cargo/bin` is on PATH but the standalone binary may not be.
+/// Runs `cargo generate --version` via the cargo subcommand mechanism,
+/// which finds the binary relative to cargo itself — no PATH tricks needed.
 fn ensure_cargo_generate_installed() -> Result<()> {
-    let via_bin = std::process::Command::new("cargo-generate")
-        .arg("--version")
-        .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null())
-        .status()
-        .map(|s| s.success())
-        .unwrap_or(false);
-    if via_bin {
-        return Ok(());
-    }
-    let via_cargo = std::process::Command::new("cargo")
+    let ok = std::process::Command::new("cargo")
         .args(["generate", "--version"])
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::null())
         .status()
         .map(|s| s.success())
         .unwrap_or(false);
-    if !via_cargo {
+    if !ok {
         bail!(
             "cargo-generate is required but was not found.\n\
              Install it with:\n\n    cargo install cargo-generate\n"
         );
     }
     Ok(())
-}
-
-/// Return the best available command for invoking cargo-generate.
-///
-/// Prefers the standalone `cargo-generate` binary — necessary in Docker renderer
-/// stages that have the binary copied in but lack a full Cargo install.
-/// Falls back to `cargo generate` (subcommand form) for standard dev environments.
-fn cargo_generate_command() -> std::process::Command {
-    let has_standalone = std::process::Command::new("cargo-generate")
-        .arg("--version")
-        .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null())
-        .status()
-        .map(|s| s.success())
-        .unwrap_or(false);
-    if has_standalone {
-        std::process::Command::new("cargo-generate")
-    } else {
-        let mut cmd = std::process::Command::new("cargo");
-        cmd.arg("generate");
-        cmd
-    }
 }
 
 /// Determine the template path: caller override → sibling `rust-py-template` → GitHub URL.
@@ -208,7 +173,8 @@ fn scaffold_repo(template_flag: &str, repo_name: &str, output_dir: &Path) -> Res
     std::fs::create_dir_all(output_dir)
         .with_context(|| format!("creating output directory '{}'", output_dir.display()))?;
 
-    let status = cargo_generate_command()
+    let status = std::process::Command::new("cargo")
+        .arg("generate")
         .args(template_flag.split_whitespace())
         .arg("--name")
         .arg(repo_name)
