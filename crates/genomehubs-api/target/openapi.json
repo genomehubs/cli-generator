@@ -1642,23 +1642,33 @@
       "SearchBatchResultItem": {
         "type": "object",
         "required": [
-          "status",
-          "count",
-          "hits"
+          "total",
+          "results"
         ],
         "properties": {
-          "count": {
-            "type": "integer",
-            "description": "Number of actual documents returned in hits array",
-            "minimum": 0
+          "error": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Error message for this query if it failed independently."
           },
-          "hits": {
+          "lineage_summary": {
+            "description": "Per-rank ancestor aggregation results (only present when `lineage_rank_summary` was requested)."
+          },
+          "results": {
             "type": "array",
             "items": {},
-            "description": "Array of document results"
+            "description": "Document results in the same `{index, id, score, result}` format as `/api/v3/search`."
           },
-          "status": {
-            "$ref": "#/components/schemas/ApiStatus"
+          "search_after": {
+            "description": "Cursor for the next page, if more results exist."
+          },
+          "total": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Total number of matching documents in ES (may exceed `results` length).",
+            "minimum": 0
           }
         }
       },

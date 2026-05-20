@@ -266,17 +266,20 @@ class QueryBuilder:
 
     def to_flat_records(
         self,
+        raw_response: dict[str, Any] | None = None,
         lineage_summary: dict[str, dict[str, str | list[str]]] | None = None,
         api_base: str = "https://goat.genomehubs.org/api",
         api_version: str = "v3",
     ) -> list[dict[str, Any]]:
-        """Fetch results and return flat records, optionally with lineage summary columns.
+        """Return flat records from a raw API response or by fetching a new one.
 
-        Calls :meth:`search`, parses the response, and attaches per-ancestor
-        aggregation columns when ``lineage_summary`` is provided.
+        When ``raw_response`` is ``None`` the method calls :meth:`search`
+        internally.  Pass a pre-fetched dict (the return value of :meth:`search`
+        or one element of :meth:`search_batch`) to parse without an extra HTTP
+        request.
 
-        ``lineage_summary`` controls which distributions to attach and how to
-        reduce them.  Its structure is ``{rank: {field: mode_or_modes}}``.
+        ``lineage_summary`` controls which per-ancestor distributions to attach
+        and how to reduce them.  Its structure is ``{rank: {field: mode}}``.
         Modes:
 
         - ``"top"`` — most common keyword value
@@ -286,46 +289,41 @@ class QueryBuilder:
         - ``"min"`` / ``"max"`` / ``"avg"`` — individual stats
         - ``"stats"`` — all four stats as ``{rank}_{field}__min`` etc.
 
-        The ``lineage_rank_summary`` specs must have been set on the builder
-        (via :meth:`set_lineage_rank_summary`) so that the API computes the
-        aggregations.
+        When fetching fresh data with ``lineage_summary`` the
+        ``lineage_rank_summary`` specs are set on the builder temporarily so
+        the API computes the aggregation block.
 
         Args:
-            lineage_summary: Reduction config, or ``None`` to return plain flat
-                records without lineage columns.
-            api_base: Base URL of the API.
-            api_version: API version string (default: ``"v3"``).
+            raw_response: A raw search response dict (from :meth:`search` or one
+                element of :meth:`search_batch`), or ``None`` to fetch via
+                :meth:`search`.
+            lineage_summary: Reduction config, or ``None`` for plain flat records.
+            api_base: Base URL of the API (ignored when ``raw_response`` is given).
+            api_version: API version string (ignored when ``raw_response`` is given).
 
         Returns:
-            List of flat record dicts.  Each dict contains the standard
-            identity and attribute columns.  When ``lineage_summary`` is
-            supplied, extra columns such as ``genus__assembly_level`` or
-            ``genus__genome_size__min`` are appended.
+            List of flat record dicts.
 
         Example::
 
-            records = (
-                QueryBuilder("taxon")
-                .set_taxa(["Canidae"])
-                .set_rank("species")
-                .set_fields(["genome_size", "assembly_level"])
-                .set_lineage_rank_summary([
-                    {"rank": "genus", "fields": ["assembly_level", "genome_size"]},
-                ])
-                .to_flat_records(
-                    lineage_summary={
-                        "genus": {
-                            "assembly_level": "top",
-                            "genome_size": "stats",
-                        }
-                    }
-                )
-            )
+            # Apply to a single search result
+            raw = qb.search()
+            records = qb.to_flat_records(raw)
+
+            # Apply consistently to each item in a batch result
+            for raw in qb.search_batch([q1, q2]):
+                records = qb.to_flat_records(raw)
         """
         import json
 
         from cli_generator import parse_search_json as _parse_search_json
         from cli_generator import parse_search_with_lineage_summary as _parse_search_with_lineage_summary
+
+        if raw_response is not None:
+            data_str = json.dumps(raw_response) if isinstance(raw_response, dict) else raw_response
+            if lineage_summary is not None:
+                return list(json.loads(_parse_search_with_lineage_summary(data_str, json.dumps(lineage_summary))))
+            return list(json.loads(_parse_search_json(data_str)))
 
         if lineage_summary is not None:
             # Build lineage_rank_summary specs from the config keys so the API
@@ -347,22 +345,32 @@ class QueryBuilder:
     def to_tidy_records(
         self,
         records: list[dict[str, Any]] | str | None = None,
+        raw_response: dict[str, Any] | None = None,
         lineage_summary: dict[str, dict[str, str | list[str]]] | None = None,
         api_base: str = "https://goat.genomehubs.org/api",
         api_version: str = "v3",
     ) -> list[dict[str, Any]]:
-        """Reshape flat records from ``parse_search_json`` into long/tidy format.
+        """Reshape flat records into long/tidy format.
 
         Each flat record is exploded so that every bare field becomes its own
         row with columns ``"field"``, ``"value"``, ``"source"``, and any identity
         columns (``taxon_id``, ``scientific_name``, ``taxon_rank``, …) present in
         the source record.
 
+        Input priority: ``records`` > ``raw_response`` > fetch via :meth:`search`.
+
+        When ``raw_response`` is given it is first parsed with
+        :func:`~cli_generator.parse_search_json` (or
+        :func:`~cli_generator.parse_search_with_lineage_summary` when
+        ``lineage_summary`` is set) before reshaping, making the output
+        consistent with the pre-parsed ``records`` path.  Pass a pre-fetched
+        dict (the return value of :meth:`search` or one element of
+        :meth:`search_batch`) to avoid a second HTTP request.
+
         When ``lineage_summary`` is provided and ``records`` is ``None``, the
         full search response is parsed with
         :func:`~cli_generator.parse_search_with_lineage_summary` so that
-        lineage summary columns appear as additional tidy rows.  Column naming
-        follows the same convention as :meth:`to_flat_records`.
+        lineage summary columns appear as additional tidy rows.
 
         Explicitly-requested modifier columns (from ``field:modifier`` requests,
         e.g. ``assembly_span__min``) are emitted as separate rows with ``"field"``
@@ -371,13 +379,17 @@ class QueryBuilder:
         This is the natural input for ``pandas.melt`` or R's ``tidyr::pivot_longer``.
 
         Args:
-            records: Flat record dicts, a JSON string of flat records, or ``None``
-                to automatically call :meth:`search` and parse the response.
+            records: Flat record dicts, a JSON string of flat records, or ``None``.
+            raw_response: A raw search response dict (from :meth:`search` or one
+                element of :meth:`search_batch`).  Ignored when ``records`` is
+                given.
             lineage_summary: Reduction config for lineage summary columns (same
                 format as :meth:`to_flat_records`).  Only used when ``records``
                 is ``None``.
-            api_base: Base URL of the API (used only when ``records`` is ``None``).
-            api_version: API version string (used only when ``records`` is ``None``).
+            api_base: Base URL of the API (used only when both ``records`` and
+                ``raw_response`` are ``None``).
+            api_version: API version string (used only when both ``records`` and
+                ``raw_response`` are ``None``).
 
         Returns:
             List of dicts in tidy (long) format.
@@ -388,17 +400,21 @@ class QueryBuilder:
         from cli_generator import parse_search_with_lineage_summary as _parse_search_with_lineage_summary
         from cli_generator import to_tidy_records as _to_tidy_records
 
-        if records is None:
+        if records is not None:
+            records_json = records if isinstance(records, str) else json.dumps(records)
+        elif raw_response is not None:
+            data_str = json.dumps(raw_response) if isinstance(raw_response, dict) else raw_response
+            if lineage_summary is not None:
+                records_json = _parse_search_with_lineage_summary(data_str, json.dumps(lineage_summary))
+            else:
+                records_json = _parse_search_json(data_str)
+        else:
             raw = self.search(format="json", api_base=api_base, api_version=api_version)
             data_str = json.dumps(raw) if isinstance(raw, dict) else raw
             if lineage_summary is not None:
                 records_json = _parse_search_with_lineage_summary(data_str, json.dumps(lineage_summary))
             else:
                 records_json = _parse_search_json(data_str)
-        elif isinstance(records, str):
-            records_json = records
-        else:
-            records_json = json.dumps(records)
         return list(json.loads(_to_tidy_records(records_json)))
 
     def set_attributes(
@@ -1154,27 +1170,34 @@ class QueryBuilder:
         queries: list["QueryBuilder"],
         api_base: str = "https://goat.genomehubs.org/api",
         api_version: str = "v3",
-    ) -> Any:
+    ) -> list[dict[str, Any]]:
         """Execute multiple searches in a single batch request.
 
-        Combines multiple QueryBuilder objects into a single batch API call,
-        returning document hits for each query.
+        Returns one raw search-response dict per query, in the same format as
+        :meth:`search`.  Each dict can be passed directly to
+        :meth:`to_flat_records` or :meth:`to_tidy_records` so the same
+        reshaping functions work uniformly on single and batch results::
+
+            batch_raws = qb.search_batch([q1, q2])
+            for raw in batch_raws:
+                records = qb.to_flat_records(raw)
+                tidy    = qb.to_tidy_records(raw_response=raw)
 
         Args:
             queries: List of QueryBuilder objects to search in batch.
             api_base: Base URL of the API.
-            api_version: API version string (default: "v3").
+            api_version: API version string (default: ``"v3"``).
 
         Returns:
-            List of parsed result objects, one per input query.
+            List of raw search-response dicts, one per input query.  Each dict
+            has ``results``, ``status``, and optionally ``error`` keys — the
+            same structure that :meth:`search` returns for a single query.
 
         Raises:
             ValueError: If more than 100 queries are provided.
         """
         import json
         import urllib.request
-
-        from . import parse_batch_json
 
         if len(queries) > 100:
             raise ValueError("maximum 100 searches per batch request")
@@ -1197,11 +1220,16 @@ class QueryBuilder:
         with urllib.request.urlopen(req) as resp:
             body_text = resp.read().decode("utf-8")
 
-        parsed_results = []
-        data = json.loads(parse_batch_json(body_text))
-        for result in data.get("results", []):
-            parsed_results.append(result)
-        return parsed_results
+        batch_data = json.loads(body_text)
+        return [
+            {
+                "results": result.get("results", []),
+                "status": {"hits": result.get("total", 0)},
+                **({"lineage_summary": result["lineage_summary"]} if result.get("lineage_summary") else {}),
+                **({"error": result["error"]} if result.get("error") else {}),
+            }
+            for result in batch_data.get("results", [])
+        ]
 
     def count_batch(
         self,
@@ -1254,7 +1282,7 @@ class QueryBuilder:
         data = json.loads(parse_batch_json(body_text))
         counts = []
         for result in data.get("results", []):
-            counts.append(int(result.get("status", {}).get("hits") or 0))
+            counts.append(int(result.get("total") or 0))
         return counts
 
     def record(

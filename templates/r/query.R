@@ -644,16 +644,30 @@ QueryBuilder <- R6::R6Class(
       if (!is.null(max_records)) head(all_records, max_records) else all_records
     },
 
-    #' @description Fetch results and return as flat records, optionally joining lineage summary columns.
-    #' @param lineage_summary Optional pre-fetched lineage summary list. If NULL and
-    #'   lineage_rank_summary specs are set, search() is called to obtain both results
-    #'   and summary in one request.
+    #' @description Return flat records from a raw API response or by fetching a new one.
+    #' @param raw_response Raw search response as a character JSON string (from
+    #'   \code{search(format="json")} or one element of \code{search_batch()}),
+    #'   or an R list.  When \code{NULL} (default), \code{search(format="json")}
+    #'   is called internally.
+    #' @param lineage_summary Optional pre-fetched lineage summary list.
     #' @return A list of flat record lists.
-    to_flat_records = function(lineage_summary = NULL) {
+    to_flat_records = function(raw_response = NULL, lineage_summary = NULL) {
+      if (!is.null(raw_response)) {
+        raw_text <- if (is.character(raw_response)) {
+          raw_response
+        } else {
+          jsonlite::toJSON(raw_response, auto_unbox = TRUE, null = "null")
+        }
+        if (is.null(lineage_summary)) {
+          return(jsonlite::fromJSON(parse_search_json(raw_text), simplifyVector = FALSE))
+        }
+        config_json <- jsonlite::toJSON(lineage_summary, auto_unbox = TRUE)
+        return(jsonlite::fromJSON(
+          parse_search_with_lineage_summary(raw_text, config_json),
+          simplifyVector = FALSE
+        ))
+      }
       raw_text <- self$search(format = "json")
-      # Without an explicit config the field types (numeric vs categorical) are unknown,
-      # so only join lineage columns when the caller provides lineage_summary explicitly.
-      # This matches Python's behavior.
       if (is.null(lineage_summary)) {
         return(jsonlite::fromJSON(parse_search_json(raw_text), simplifyVector = FALSE))
       }
@@ -665,17 +679,34 @@ QueryBuilder <- R6::R6Class(
     },
 
     #' @description Reshape flat records into long/tidy format.
-    #' @param records Flat record list, JSON string, or NULL to call to_flat_records().
+    #' @param records Flat record list, JSON string, or NULL.
+    #' @param raw_response Raw search response (character JSON string or list)
+    #'   from \code{search()} or one element of \code{search_batch()}.  Ignored
+    #'   when \code{records} is given.
     #' @param lineage_summary Optional lineage summary for to_flat_records() when records is NULL.
     #' @return A list of tidy record lists.
-    to_tidy_records = function(records = NULL, lineage_summary = NULL) {
-      if (is.null(records)) {
+    to_tidy_records = function(records = NULL, raw_response = NULL, lineage_summary = NULL) {
+      if (!is.null(records)) {
+        records_json <- if (is.character(records)) {
+          records
+        } else {
+          jsonlite::toJSON(records, auto_unbox = TRUE)
+        }
+      } else if (!is.null(raw_response)) {
+        raw_text <- if (is.character(raw_response)) {
+          raw_response
+        } else {
+          jsonlite::toJSON(raw_response, auto_unbox = TRUE, null = "null")
+        }
+        if (!is.null(lineage_summary)) {
+          config_json <- jsonlite::toJSON(lineage_summary, auto_unbox = TRUE)
+          records_json <- parse_search_with_lineage_summary(raw_text, config_json)
+        } else {
+          records_json <- parse_search_json(raw_text)
+        }
+      } else {
         flat <- self$to_flat_records(lineage_summary = lineage_summary)
         records_json <- jsonlite::toJSON(flat, auto_unbox = TRUE)
-      } else if (is.character(records)) {
-        records_json <- records
-      } else {
-        records_json <- jsonlite::toJSON(records, auto_unbox = TRUE)
       }
       jsonlite::fromJSON(to_tidy_records(records_json), simplifyVector = FALSE)
     },
@@ -837,14 +868,18 @@ QueryBuilder <- R6::R6Class(
       data <- jsonlite::fromJSON(httr::content(resp, as = "text", encoding = "UTF-8"),
         simplifyVector = FALSE
       )
-      if (!is.null(data$plot_spec)) return(data)
+      if (!is.null(data$plot_spec)) {
+        return(data)
+      }
       data$report %||% data
     },
 
     #' @description Execute multiple searches in a single batch request.
     #' @param queries List of QueryBuilder objects.
     #' @param api_base Base URL of the API (default: from package).
-    #' @return List of batch search results.
+    #' @return List of raw search-response JSON strings, one per input query,
+    #'   each compatible with \code{to_flat_records(raw_response = ...)} and
+    #'   \code{to_tidy_records(raw_response = ...)}.
     search_batch = function(queries, api_base = NULL) {
       if (length(queries) > 100) {
         stop("maximum 100 searches per batch request")
@@ -871,8 +906,16 @@ QueryBuilder <- R6::R6Class(
       )
       httr::stop_for_status(resp)
       raw_text <- httr::content(resp, as = "text", encoding = "UTF-8")
-      data <- jsonlite::fromJSON(parse_batch_json(raw_text), simplifyVector = FALSE)
-      data$results %||% list()
+      batch_data <- jsonlite::fromJSON(raw_text, simplifyVector = FALSE)
+      lapply(batch_data$results %||% list(), function(result) {
+        search_like <- list(
+          results = result$results %||% list(),
+          status = list(hits = result$total %||% 0)
+        )
+        if (!is.null(result$lineage_summary)) search_like$lineage_summary <- result$lineage_summary
+        if (!is.null(result$error)) search_like$error <- result$error
+        jsonlite::toJSON(search_like, auto_unbox = TRUE, null = "null")
+      })
     },
 
     #' @description Get hit counts for multiple queries in a batch request.
@@ -999,32 +1042,38 @@ QueryBuilder <- R6::R6Class(
     oxford = function(group_by, assemblies, feature_type = NULL, window_size = NULL,
                       reorient = TRUE, max_features = 10000L, cat = NULL, cat_opts = NULL,
                       filter = NULL, regions = NULL, max_connections_per_group = NULL) {
-      self$positional("oxford", group_by, assemblies, feature_type = feature_type,
-                      window_size = window_size, reorient = reorient,
-                      max_features = max_features, cat = cat, cat_opts = cat_opts,
-                      filter = filter, regions = regions,
-                      max_connections_per_group = max_connections_per_group)
+      self$positional("oxford", group_by, assemblies,
+        feature_type = feature_type,
+        window_size = window_size, reorient = reorient,
+        max_features = max_features, cat = cat, cat_opts = cat_opts,
+        filter = filter, regions = regions,
+        max_connections_per_group = max_connections_per_group
+      )
     },
 
     #' @description Ribbon/synteny report (N >= 2 assemblies). Wrapper around positional().
     ribbon = function(group_by, assemblies, feature_type = NULL, window_size = NULL,
                       reorient = TRUE, max_features = 10000L, cat = NULL, cat_opts = NULL,
                       filter = NULL, regions = NULL, max_connections_per_group = NULL) {
-      self$positional("ribbon", group_by, assemblies, feature_type = feature_type,
-                      window_size = window_size, reorient = reorient,
-                      max_features = max_features, cat = cat, cat_opts = cat_opts,
-                      filter = filter, regions = regions,
-                      max_connections_per_group = max_connections_per_group)
+      self$positional("ribbon", group_by, assemblies,
+        feature_type = feature_type,
+        window_size = window_size, reorient = reorient,
+        max_features = max_features, cat = cat, cat_opts = cat_opts,
+        filter = filter, regions = regions,
+        max_connections_per_group = max_connections_per_group
+      )
     },
 
     #' @description Chromosome painting (1 assembly). Wrapper around positional().
     painting = function(group_by, assembly, feature_type = NULL, window_size = NULL,
                         max_features = 10000L, cat = NULL, cat_opts = NULL,
                         filter = NULL, regions = NULL, max_connections_per_group = NULL) {
-      self$positional("painting", group_by, list(assembly), feature_type = feature_type,
-                      window_size = window_size, max_features = max_features,
-                      cat = cat, cat_opts = cat_opts, filter = filter, regions = regions,
-                      max_connections_per_group = max_connections_per_group)
+      self$positional("painting", group_by, list(assembly),
+        feature_type = feature_type,
+        window_size = window_size, max_features = max_features,
+        cat = cat, cat_opts = cat_opts, filter = filter, regions = regions,
+        max_connections_per_group = max_connections_per_group
+      )
     },
 
     #' @description Hybrid positional report combining remote and local assembly data.
@@ -1696,11 +1745,12 @@ ReportBuilder <- R6::R6Class("ReportBuilder",
 #' @return Named list representing the PlotSpec.
 #' @export
 local_plot_spec <- function(
-    content,
-    report_type = "histogram",
-    column_map = NULL,
-    display = list(),
-    delimiter = "\t") {
+  content,
+  report_type = "histogram",
+  column_map = NULL,
+  display = list(),
+  delimiter = "\t"
+) {
   col_map <- if (is.null(column_map)) list() else as.list(column_map)
   col_map_json <- jsonlite::toJSON(col_map, auto_unbox = TRUE)
   display_json <- jsonlite::toJSON(display, auto_unbox = TRUE)

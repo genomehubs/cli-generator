@@ -927,23 +927,23 @@ class QueryBuilder {
   }
 
   /**
-   * Fetch and flatten search results, optionally joining lineage summary columns.
+   * Return flat records from a raw API response or by fetching a new one.
    *
-   * Delegates to the Rust WASM function `_parseSearchWithLineageSummary` for all
-   * lineage column reduction logic, keeping JS free of duplicated logic.
+   * When `rawResponse` is provided it is parsed directly without an HTTP
+   * request, making the function work uniformly on the return value of
+   * `search()` or any element of `searchBatch()`.
    *
+   * @param {object|null} [rawResponse=null] - Pre-fetched response object from
+   *        `search()` or one element of `searchBatch()`, or null to fetch via
+   *        `search()`.
    * @param {object|null} [lineageSummary=null] - Optional explicit config `{rank: {field: "mode"}}`.
-   *        If null and lineage_rank_summary specs are set, defaults to "stats" mode for all fields.
-   * @param {string} [apiBase=API_BASE] - Base URL of the API
+   * @param {string} [apiBase=API_BASE] - Base URL of the API (ignored when rawResponse given)
    * @returns {Promise<object[]>} - Array of flat record objects
    */
-  async toFlatRecords(lineageSummary = null, apiBase = API_BASE) {
-    const response = await this.search("json", apiBase);
+  async toFlatRecords(rawResponse = null, lineageSummary = null, apiBase = API_BASE) {
+    const response = rawResponse !== null ? rawResponse : await this.search("json", apiBase);
     const responseJson = JSON.stringify(response);
 
-    // Only join lineage columns when the caller provides an explicit config with field modes.
-    // Without a config the field types (numeric vs categorical) are unknown, so fall back
-    // to basic flattening — matching Python's behavior.
     if (lineageSummary === null) {
       return JSON.parse(_parseSearchJson(responseJson));
     }
@@ -977,27 +977,39 @@ class QueryBuilder {
 
   /**
    * Execute multiple searches in a single batch request.
+   *
+   * Returns one raw search-response object per query, in the same format as
+   * `search()`.  Each object can be passed directly to `toFlatRecords()` or
+   * `toTidyRecords()` so the same reshaping functions work on both single
+   * and batch results:
+   *
+   * ```js
+   * for (const raw of await qb.searchBatch([q1, q2])) {
+   *   const records = await qb.toFlatRecords(raw);
+   * }
+   * ```
+   *
    * @param {QueryBuilder[]} queries - Array of QueryBuilder objects
    * @param {string} [apiBase=API_BASE] - Base URL of the API
-   * @returns {Promise<object[]>} - Array of batch search results
+   * @returns {Promise<object[]>} - Array of raw search-response objects, one per query
    */
   async searchBatch(queries, apiBase = API_BASE) {
     if (queries.length > 100)
       throw new Error("maximum 100 searches per batch request");
 
-    const data = JSON.parse(
-      _parseBatchJson(
-        JSON.stringify(
-          await this._postJson(`${apiBase}/v3/search/batch`, {
-            searches: queries.map((q) => ({
-              query_yaml: q.toQueryYaml(),
-              params_yaml: q.toParamsYaml(),
-            })),
-          }),
-        ),
-      ),
-    );
-    return data.results ?? [];
+    const batchData = await this._postJson(`${apiBase}/v3/search/batch`, {
+      searches: queries.map((q) => ({
+        query_yaml: q.toQueryYaml(),
+        params_yaml: q.toParamsYaml(),
+      })),
+    });
+    return (batchData.results ?? []).map((result) => ({
+      results: result.results ?? [],
+      status: { hits: result.total ?? 0 },
+      ...(result.lineage_summary != null ? { lineage_summary: result.lineage_summary } : {}),
+      ...(result.error != null ? { error: result.error } : {}),
+    }));
+  }
   }
 
   /**
@@ -2053,23 +2065,42 @@ class ReportBuilder {
 }
 
 /**
- * Reshape flat records from parseSearchJson into long/tidy format.
+ * Reshape flat records (or a raw search response) into long/tidy format.
+ *
+ * Accepts either:
+ * - an array of flat records from `parseSearchJson` / `toFlatRecords`, or
+ * - a raw search response object (return value of `search()` or one element
+ *   of `searchBatch()`), which is automatically parsed via `parseSearchJson`
+ *   before reshaping.
  *
  * Each flat record is exploded so that every bare field becomes its own row
  * with columns: identity columns (taxon_id, scientific_name, …), `field`,
- * `value`, and `source`.  Explicitly-requested modifier columns are emitted
- * as separate rows with `field` set to `"{bare}:{modifier}"` and `source`
- * as `null`.
+ * `value`, and `source`.
  *
- * Suitable as input for d3 or Vega-Lite pivot charts.
- *
- * @param {string|object[]} records - Flat records from parseSearchJson.
+ * @param {string|object[]|object} records - Flat records, JSON string, or raw
+ *   search response object.
+ * @param {object|null} [lineageSummary=null] - Optional lineage summary config.
  * @returns {object[]}
  */
-function toTidyRecords(records, lineageSummary) {
-  const str = typeof records === "string" ? records : JSON.stringify(records);
-  if (lineageSummary !== undefined && lineageSummary !== null) {
-    // lineageSummary is already joined via toFlatRecords; just reshape
+function toTidyRecords(records, lineageSummary = null) {
+  let str;
+  if (
+    !Array.isArray(records) &&
+    typeof records === "object" &&
+    records !== null &&
+    "results" in records
+  ) {
+    // Raw search response — parse to flat records first.
+    const flatJson =
+      lineageSummary != null
+        ? _parseSearchWithLineageSummary(
+            JSON.stringify(records),
+            JSON.stringify(lineageSummary),
+          )
+        : _parseSearchJson(JSON.stringify(records));
+    str = flatJson;
+  } else {
+    str = typeof records === "string" ? records : JSON.stringify(records);
   }
   return JSON.parse(_toTidyRecords(str));
 }

@@ -52,11 +52,27 @@ pub struct SearchBatchRequest {
 
 #[derive(Serialize, utoipa::ToSchema)]
 pub struct SearchBatchResultItem {
-    pub status: ApiStatus,
-    /// Number of actual documents returned in hits array
-    pub count: usize,
-    /// Array of document results
-    pub hits: Vec<serde_json::Value>,
+    /// Total number of matching documents in ES (may exceed `results` length).
+    pub total: u64,
+    /// Document results in the same `{index, id, score, result}` format as `/api/v3/search`.
+    pub results: Vec<serde_json::Value>,
+    /// Cursor for the next page, if more results exist.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub search_after: Option<serde_json::Value>,
+    /// Per-rank ancestor aggregation results (only present when `lineage_rank_summary` was requested).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub lineage_summary: Option<serde_json::Value>,
+    /// Error message for this query if it failed independently.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+}
+
+/// Per-query metadata needed to transform `_msearch` ES responses.
+struct BatchQueryMeta {
+    group: String,
+    include_lineage: bool,
+    include_taxon_names: bool,
+    lineage_specs: Option<Vec<genomehubs_query::query::LineageRankSummarySpec>>,
 }
 
 #[derive(Serialize, utoipa::ToSchema)]
@@ -226,8 +242,19 @@ pub async fn post_search_batch(
         });
     }
 
+    // Derive a TypesMap from startup metadata so build_search_body can select the
+    // correct typed-value docvalue field per attribute.
+    let types_map: Option<cli_generator::core::attr_types::TypesMap> =
+        if let Some(ref arc) = state.cache {
+            let guard = arc.read().await;
+            Some(guard.as_types_map())
+        } else {
+            None
+        };
+
     // Parse and build all searches (with size from params for actual document results)
     let mut index_bodies: Vec<(String, serde_json::Value)> = vec![];
+    let mut metas: Vec<BatchQueryMeta> = vec![];
     for item in &req.searches {
         let query = match genomehubs_query::query::SearchQuery::from_yaml(&item.query_yaml) {
             Ok(q) => q,
@@ -375,7 +402,7 @@ pub async fn post_search_batch(
                     }),
                     params.size,
                     (params.page - 1) * params.size,
-                    None,
+                    types_map.as_ref(),
                     Some(group),
                 ) {
                     Ok(b) => b,
@@ -481,7 +508,7 @@ pub async fn post_search_batch(
                 Some(sort_order),
                 params.size,
                 offset,
-                None,
+                types_map.as_ref(),
                 Some(group),
             ) {
                 Ok(b) => b,
@@ -510,6 +537,62 @@ pub async fn post_search_batch(
             }
         }
 
+        // Inject lineage_rank_summary aggregations when requested.
+        let lineage_specs = query.lineage_rank_summary.clone();
+        if let Some(specs) = &lineage_specs {
+            if specs.len() > 5 {
+                return Json(SearchBatchResponse {
+                    status: ApiStatus::error(
+                        "lineage_rank_summary: maximum 5 rank specs per request".to_string(),
+                    ),
+                    results: vec![],
+                });
+            }
+            if let Err(e) =
+                super::lineage_agg::validate_lineage_rank_summary_fields(specs, &state.cache)
+            {
+                return Json(SearchBatchResponse {
+                    status: ApiStatus::error(e),
+                    results: vec![],
+                });
+            }
+            let aggs = body
+                .as_object_mut()
+                .unwrap()
+                .entry("aggs")
+                .or_insert_with(|| serde_json::json!({}));
+            for spec in specs {
+                let size = super::lineage_agg::ancestor_bucket_size_for_rank(&spec.rank);
+                match super::lineage_agg::build_lineage_rank_summary_agg(spec, size, &state.cache) {
+                    Ok((name, agg_body)) => {
+                        aggs[name] = agg_body;
+                    }
+                    Err(e) => {
+                        return Json(SearchBatchResponse {
+                            status: ApiStatus::error(format!("lineage_rank_summary: {e}")),
+                            results: vec![],
+                        })
+                    }
+                }
+            }
+        }
+
+        // Determine the group string for response transformation.
+        let response_group = match query.index {
+            genomehubs_query::query::SearchIndex::Taxon => "taxon",
+            genomehubs_query::query::SearchIndex::Assembly => "assembly",
+            genomehubs_query::query::SearchIndex::Sample => "sample",
+            genomehubs_query::query::SearchIndex::Feature => "feature",
+        };
+        let include_lineage =
+            params.include_lineage || lineage_specs.as_ref().is_some_and(|s| !s.is_empty());
+
+        metas.push(BatchQueryMeta {
+            group: response_group.to_string(),
+            include_lineage,
+            include_taxon_names: params.include_taxon_names,
+            lineage_specs,
+        });
         index_bodies.push((idx, body));
     }
 
@@ -541,18 +624,24 @@ pub async fn post_search_batch(
     let mut results: Vec<SearchBatchResultItem> = vec![];
     let mut total_hits = 0u64;
 
-    for response in responses {
-        let (status_result, hits_docs) = match response.get("error") {
+    for (response, meta) in responses.iter().zip(metas.iter()) {
+        match response.get("error") {
             Some(error_obj) => {
-                // Individual query error
+                // Individual query error — return empty results with error message.
                 let error_msg = error_obj
                     .get("reason")
                     .and_then(|r| r.as_str())
                     .unwrap_or("unknown error");
-                (ApiStatus::error(error_msg.to_string()), vec![])
+                results.push(SearchBatchResultItem {
+                    total: 0,
+                    results: vec![],
+                    search_after: None,
+                    lineage_summary: None,
+                    error: Some(error_msg.to_string()),
+                });
             }
             None => {
-                // Successful query — extract hits and status
+                // Successful query — transform hits into {index, id, score, result} format.
                 let hit_count = response
                     .get("hits")
                     .and_then(|h| h.get("total"))
@@ -563,36 +652,54 @@ pub async fn post_search_batch(
                     })
                     .unwrap_or(0);
 
-                let took = response.get("took").and_then(|t| t.as_u64()).unwrap_or(0);
-
-                // Extract actual document results
-                let hits_docs: Vec<Value> = response
+                let result_docs: Vec<Value> = response
                     .get("hits")
                     .and_then(|h| h.get("hits"))
                     .and_then(|h| h.as_array())
                     .map(|arr| {
                         arr.iter()
-                            .filter_map(|hit| hit.get("_source").cloned())
+                            .map(|hit| {
+                                deserialize_helpers::transform_es_hit(
+                                    hit,
+                                    &meta.group,
+                                    meta.include_lineage,
+                                    meta.include_taxon_names,
+                                )
+                            })
                             .collect()
                     })
                     .unwrap_or_default();
 
+                // Extract search_after cursor for pagination.
+                let search_after = response
+                    .get("hits")
+                    .and_then(|h| h.get("hits"))
+                    .and_then(|hits| hits.as_array())
+                    .and_then(|arr| arr.last())
+                    .and_then(|last| last.get("sort"))
+                    .cloned();
+
+                // Extract lineage summary if it was requested for this query.
+                let lineage_summary = meta
+                    .lineage_specs
+                    .as_deref()
+                    .filter(|specs| !specs.is_empty())
+                    .map(|specs| super::lineage_agg::extract_lineage_summary(response, specs));
+
                 total_hits += hit_count;
-                (ApiStatus::query_ok(hit_count, took), hits_docs)
+                results.push(SearchBatchResultItem {
+                    total: hit_count,
+                    results: result_docs,
+                    search_after,
+                    lineage_summary,
+                    error: None,
+                });
             }
-        };
-
-        let count = hits_docs.len();
-
-        results.push(SearchBatchResultItem {
-            status: status_result,
-            count,
-            hits: hits_docs,
-        });
+        }
     }
 
-    // Aggregate status — success if all queries succeeded, error otherwise
-    let all_ok = results.iter().all(|r| r.status.success);
+    // Aggregate status — success if all queries succeeded, error otherwise.
+    let all_ok = results.iter().all(|r| r.error.is_none());
     let aggregate_status = if all_ok {
         ApiStatus::query_ok(total_hits, 0)
     } else {

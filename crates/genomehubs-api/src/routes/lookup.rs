@@ -74,7 +74,7 @@ pub(crate) fn build_sayt_query(term: &str, size: usize) -> serde_json::Value {
 pub(crate) fn build_suggest_query(term: &str) -> serde_json::Value {
     json!({
         "suggest": {
-            "name_suggest": {
+            // "name_suggest": {
                 "text": term,
                 "simple_phrase": {
                     "phrase": {
@@ -82,18 +82,23 @@ pub(crate) fn build_suggest_query(term: &str) -> serde_json::Value {
                         "size": 3,
                         "gram_size": 3,
                         "confidence": 1,
+                        "max_errors": 3,
                         "direct_generator": [
                             {
                                 "field": "taxon_names.name.trigram",
                                 "suggest_mode": "always"
                             },
                             {
-                                "field": "taxon_names.name.trigram",
+                                "field": "taxon_names.name.reverse",
                                 "suggest_mode": "always",
                                 "pre_filter": "reverse",
                                 "post_filter": "reverse"
                             }
                         ],
+                        "highlight": {
+                            "pre_tag": "<em>",
+                            "post_tag": "</em>"
+                        },
                         "collate": {
                             "query": {
                                 "source": {
@@ -106,7 +111,7 @@ pub(crate) fn build_suggest_query(term: &str) -> serde_json::Value {
                         }
                     }
                 }
-            }
+            // }
         }
     })
 }
@@ -149,7 +154,7 @@ pub(crate) fn extract_suggest_results(resp: &serde_json::Value) -> Vec<LookupRes
 
     if let Some(suggestions) = resp
         .get("suggest")
-        .and_then(|s| s.get("name_suggest"))
+        .and_then(|s| s.get("simple_phrase"))
         .and_then(|ns| ns.as_array())
     {
         for suggestion in suggestions {

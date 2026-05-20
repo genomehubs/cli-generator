@@ -42,9 +42,9 @@ class TestBatchConstraints:
 
         with patch("urllib.request.urlopen") as mock_urlopen:
             mock_resp = MagicMock()
-            mock_resp.read.return_value = json.dumps({"status": {"success": True}, "results": [{"hits": 100}]}).encode(
-                "utf-8"
-            )
+            mock_resp.read.return_value = json.dumps(
+                {"status": {"success": True}, "results": [{"results": [], "total": 0}]}
+            ).encode("utf-8")
             mock_resp.__enter__.return_value = mock_resp
             mock_urlopen.return_value = mock_resp
 
@@ -57,17 +57,15 @@ class TestBatchConstraints:
         queries = [QueryBuilder("taxon") for _ in range(100)]
 
         with patch("urllib.request.urlopen") as mock_urlopen:
-            with patch("cli_generator.parse_batch_json") as mock_parse:
-                mock_resp = MagicMock()
-                results = [{"hits": i} for i in range(100)]
-                response_data = {"status": {"success": True}, "results": results}
-                mock_parse.return_value = json.dumps(response_data)
-                mock_resp.read.return_value = json.dumps(response_data).encode("utf-8")
-                mock_resp.__enter__.return_value = mock_resp
-                mock_urlopen.return_value = mock_resp
+            mock_resp = MagicMock()
+            results = [{"results": [], "total": i} for i in range(100)]
+            response_data = {"status": {"success": True}, "results": results}
+            mock_resp.read.return_value = json.dumps(response_data).encode("utf-8")
+            mock_resp.__enter__.return_value = mock_resp
+            mock_urlopen.return_value = mock_resp
 
-                result = qb.search_batch(queries)
-                assert len(result) == 100
+            result = qb.search_batch(queries)
+            assert len(result) == 100
 
 
 class TestSearchBatchHTTPHandling:
@@ -180,11 +178,12 @@ class TestCountBatchHTTPHandling:
         with patch("urllib.request.urlopen") as mock_urlopen:
             with patch("cli_generator.parse_batch_json") as mock_parse:
                 mock_resp = MagicMock()
+                # parse_batch_json normalises totals into "total", not "status.hits"
                 response_data = {
                     "status": {"success": True},
                     "results": [
-                        {"status": {"hits": 1000}},
-                        {"status": {"hits": 2000}},
+                        {"records": [], "total": 1000, "error": None},
+                        {"records": [], "total": 2000, "error": None},
                     ],
                 }
                 mock_parse.return_value = json.dumps(response_data)
@@ -299,65 +298,67 @@ class TestErrorHandling:
                 qb.count_batch(queries)
 
     def test_search_batch_handles_malformed_response(self):
-        """search_batch should handle malformed JSON responses gracefully."""
+        """search_batch should raise JSONDecodeError on invalid server JSON."""
         qb = QueryBuilder("taxon")
         queries = [QueryBuilder("taxon")]
 
         with patch("urllib.request.urlopen") as mock_urlopen:
-            with patch("cli_generator.parse_batch_json") as mock_parse:
-                mock_resp = MagicMock()
-                mock_resp.read.return_value = b"invalid json"
-                mock_resp.__enter__.return_value = mock_resp
-                mock_urlopen.return_value = mock_resp
-                # parse_batch_json can transform the response; if it returns invalid JSON, json.loads will fail
-                mock_parse.return_value = "not valid json"
+            mock_resp = MagicMock()
+            mock_resp.read.return_value = b"invalid json"
+            mock_resp.__enter__.return_value = mock_resp
+            mock_urlopen.return_value = mock_resp
 
-                # This should raise an error since json.loads will fail
-                with pytest.raises(json.JSONDecodeError):
-                    qb.search_batch(queries)
+            with pytest.raises(json.JSONDecodeError):
+                qb.search_batch(queries)
 
 
 class TestResponseParsing:
     """Test response parsing integration."""
 
     def test_search_batch_returns_results_array(self):
-        """search_batch should return array of result objects."""
+        """search_batch should return list of raw search-response-like dicts."""
         qb = QueryBuilder("taxon")
         queries = [QueryBuilder("taxon"), QueryBuilder("taxon")]
 
         with patch("urllib.request.urlopen") as mock_urlopen:
-            with patch("cli_generator.parse_batch_json") as mock_parse:
-                mock_resp = MagicMock()
-                response_data = {
-                    "status": {"success": True},
-                    "results": [{"hits": 100, "result": "obj1"}, {"hits": 50, "result": "obj2"}],
-                }
-                mock_parse.return_value = json.dumps(response_data)
-                mock_resp.read.return_value = json.dumps(response_data).encode("utf-8")
-                mock_resp.__enter__.return_value = mock_resp
-                mock_urlopen.return_value = mock_resp
+            mock_resp = MagicMock()
+            # Batch API format: results[i] has {total, results:[{index,result}...], error}
+            hit = {"index": "taxon", "result": {"taxon_id": "9606"}}
+            response_data = {
+                "status": {"success": True},
+                "results": [
+                    {"total": 100, "results": [hit], "error": None},
+                    {"total": 50, "results": [], "error": None},
+                ],
+            }
+            mock_resp.read.return_value = json.dumps(response_data).encode("utf-8")
+            mock_resp.__enter__.return_value = mock_resp
+            mock_urlopen.return_value = mock_resp
 
-                result = qb.search_batch(queries)
+            result = qb.search_batch(queries)
 
-                assert isinstance(result, list)
-                assert len(result) == 2
-                assert result[0]["hits"] == 100
-                assert result[1]["hits"] == 50
+            assert isinstance(result, list)
+            assert len(result) == 2
+            # Each item is a search-response-like dict with "results" and "status"
+            assert result[0]["status"]["hits"] == 100
+            assert result[0]["results"] == [hit]
+            assert result[1]["status"]["hits"] == 50
 
     def test_count_batch_extracts_hits_from_each_result(self):
-        """count_batch should extract status.hits from each result."""
+        """count_batch should extract total from each parse_batch_json result."""
         qb = QueryBuilder("taxon")
         queries = [QueryBuilder("taxon"), QueryBuilder("taxon"), QueryBuilder("taxon")]
 
         with patch("urllib.request.urlopen") as mock_urlopen:
             with patch("cli_generator.parse_batch_json") as mock_parse:
                 mock_resp = MagicMock()
+                # parse_batch_json normalises counts into "total"
                 response_data = {
                     "status": {"success": True},
                     "results": [
-                        {"status": {"hits": 150}},
-                        {"status": {"hits": 250}},
-                        {"status": {"hits": 350}},
+                        {"records": [], "total": 150, "error": None},
+                        {"records": [], "total": 250, "error": None},
+                        {"records": [], "total": 350, "error": None},
                     ],
                 }
                 mock_parse.return_value = json.dumps(response_data)
@@ -375,17 +376,14 @@ class TestResponseParsing:
         queries = [QueryBuilder("taxon")]
 
         with patch("urllib.request.urlopen") as mock_urlopen:
-            with patch("cli_generator.parse_batch_json") as mock_parse:
-                mock_resp = MagicMock()
-                response_data = {"status": {"success": True}, "results": []}
-                mock_parse.return_value = json.dumps(response_data)
-                mock_resp.read.return_value = json.dumps(response_data).encode("utf-8")
-                mock_resp.__enter__.return_value = mock_resp
-                mock_urlopen.return_value = mock_resp
+            mock_resp = MagicMock()
+            mock_resp.read.return_value = json.dumps({"status": {"success": True}, "results": []}).encode("utf-8")
+            mock_resp.__enter__.return_value = mock_resp
+            mock_urlopen.return_value = mock_resp
 
-                result = qb.search_batch(queries)
+            result = qb.search_batch(queries)
 
-                assert result == []
+            assert result == []
 
     def test_count_batch_handles_empty_results(self):
         """count_batch should handle responses with no results."""
@@ -404,3 +402,59 @@ class TestResponseParsing:
                 result = qb.count_batch(queries)
 
                 assert result == []
+
+
+class TestToFlatRecordsRawResponse:
+    """Test to_flat_records and to_tidy_records with a pre-fetched raw_response."""
+
+    _SEARCH_RESPONSE = {
+        "status": {"hits": 1, "success": True},
+        "results": [
+            {
+                "index": "taxon",
+                "result": {
+                    "taxon_id": "9606",
+                    "scientific_name": "Homo sapiens",
+                    "taxon_rank": "species",
+                    "fields": {},
+                },
+            }
+        ],
+    }
+
+    def test_to_flat_records_with_raw_response_parses_correctly(self) -> None:
+        """to_flat_records(raw_response=...) should parse a search response dict."""
+        qb = QueryBuilder("taxon")
+        records = qb.to_flat_records(raw_response=self._SEARCH_RESPONSE)
+        assert isinstance(records, list)
+        assert len(records) == 1
+        assert records[0]["taxon_id"] == "9606"
+        assert records[0]["scientific_name"] == "Homo sapiens"
+
+    def test_to_flat_records_with_search_batch_item(self) -> None:
+        """to_flat_records(raw_response=batch_item) works on search_batch() output."""
+        qb = QueryBuilder("taxon")
+        # search_batch() restructures each result into {"results": [...hits...], "status": {"hits": N}}
+        batch_item = {
+            "results": self._SEARCH_RESPONSE["results"],
+            "status": {"hits": 1},
+        }
+        records = qb.to_flat_records(raw_response=batch_item)
+        assert isinstance(records, list)
+        assert len(records) == 1
+        assert records[0]["taxon_id"] == "9606"
+
+    def test_to_tidy_records_with_raw_response_parses_correctly(self) -> None:
+        """to_tidy_records(raw_response=...) should parse then reshape."""
+        qb = QueryBuilder("taxon")
+        tidy = qb.to_tidy_records(raw_response=self._SEARCH_RESPONSE)
+        assert isinstance(tidy, list)
+        assert all("field" in row for row in tidy)
+
+    def test_to_flat_records_records_takes_priority_over_raw_response(self) -> None:
+        """When both records and raw_response are given, records wins."""
+        qb = QueryBuilder("taxon")
+        flat = [{"taxon_id": "1234", "scientific_name": "Test species", "taxon_rank": "species"}]
+        tidy = qb.to_tidy_records(records=flat, raw_response=self._SEARCH_RESPONSE)
+        assert isinstance(tidy, list)
+        assert all(r["taxon_id"] == "1234" for r in tidy)
