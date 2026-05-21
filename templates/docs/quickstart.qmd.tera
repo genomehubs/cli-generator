@@ -2,6 +2,11 @@
 title: "Quick start"
 ---
 
+::: {.callout-note}
+This is a v3 API preview. Packaged SDK files and CLI binaries are available from
+[{{ site_name }}.cog.sanger.ac.uk/#dev/sdk/](https://{{ site_name }}.cog.sanger.ac.uk/#dev/sdk/).
+:::
+
 ## Prerequisites
 
 ::: {.panel-tabset group="language"}
