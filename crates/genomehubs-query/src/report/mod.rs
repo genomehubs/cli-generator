@@ -259,7 +259,9 @@ pub fn plot_spec_to_vega_lite_json(input: &str) -> String {
     let vl = match report_type {
         "histogram" => vl_histogram(spec_val, base),
         "scatter" => vl_scatter(spec_val, base),
+        "oxford" | "ribbon" => vl_scatter(spec_val, base),
         "count_per_rank" | "countPerRank" | "sources" => vl_bar(spec_val, base),
+        "painting" => vl_painting(spec_val, base),
         "tree" => {
             base["mark"] = serde_json::Value::String("point".to_string());
             base["data"] = serde_json::json!({"values": []});
@@ -434,6 +436,24 @@ fn vl_bar(spec: &serde_json::Value, mut base: serde_json::Value) -> serde_json::
             "axis": {"title": x_label}
         },
         "x": {"field": "count", "type": "quantitative"}
+    });
+    base
+}
+
+fn vl_painting(spec: &serde_json::Value, mut base: serde_json::Value) -> serde_json::Value {
+    let segments = spec
+        .get("data")
+        .and_then(|d| d.get("segments"))
+        .cloned()
+        .unwrap_or_else(|| serde_json::json!([]));
+
+    base["data"] = serde_json::json!({"values": segments});
+    base["mark"] = serde_json::json!({"type": "bar"});
+    base["encoding"] = serde_json::json!({
+        "x": {"field": "start", "type": "quantitative", "axis": {"title": "Start"}},
+        "x2": {"field": "end"},
+        "y": {"field": "sequenceId", "type": "nominal", "axis": {"title": "Sequence"}},
+        "color": {"field": "cat", "type": "nominal"}
     });
     base
 }

@@ -205,14 +205,17 @@ pub fn transform_es_hit(
                         } else {
                             dv_val.clone()
                         };
-                        // Map typed value fields (e.g. long_value, half_float_value) to "value"
-                        let out_key = if short.ends_with("_value") && short != "is_primary_value" {
+                        // Map typed value fields (e.g. long_value, half_float_value)
+                        // to the canonical "value" key.  Trim any ".raw" suffix
+                        // first so keys like "keyword_value.raw" also map to
+                        // "value" when appropriate.
+                        let base = short.trim_end_matches(".raw");
+                        let out_key = if base.ends_with("_value") && base != "is_primary_value" {
                             "value".to_string()
-                        } else if short == "is_primary_value" {
+                        } else if base == "is_primary_value" {
                             "is_primary".to_string()
                         } else {
-                            // strip ".raw" suffix (e.g. keyword_value.raw → keyword_value already mapped)
-                            short.trim_end_matches(".raw").to_string()
+                            base.to_string()
                         };
                         // Don't overwrite "value" if already set to a non-null value;
                         // but do replace a null placeholder with a real value

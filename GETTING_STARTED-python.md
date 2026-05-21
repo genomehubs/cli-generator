@@ -70,6 +70,12 @@ status_json = json.loads(parse_response_status(json.dumps(response)))
 # Access metadata
 print(f"Total hits: {status_json['hits']}")
 print(f"Took: {status_json['took']}ms")
+
+Note: by default the SDK requests and parses lineage summaries computed as background
+distributions (available in the server response as ``lineage_summary_background``).
+To request summaries restricted to the matched results only, call
+``qb.set_lineage_summary_mode("matched")`` before executing the query, or set
+``lineage_summary_mode`` in the parameters YAML.
 ```
 
 ## Examples

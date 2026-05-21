@@ -161,6 +161,7 @@ class QueryBuilder {
     this._queryYamlOverride = null;
     this._paramsYamlOverride = null;
     this._lineageRankSummary = [];
+    this._lineageSummaryMode = "background";
     this._namedQueries = {};
   }
 
@@ -332,6 +333,16 @@ class QueryBuilder {
    */
   setLineageRankSummary(specs) {
     this._lineageRankSummary = specs.map((s) => ({ ...s }));
+    return this;
+  }
+
+  /**
+   * Set the lineage summary mode used when requesting lineage summaries.
+   * @param {string|null} mode - "background" or "matched", or null to clear.
+   * @returns {QueryBuilder}
+   */
+  setLineageSummaryMode(mode) {
+    this._lineageSummaryMode = mode;
     return this;
   }
 
@@ -717,6 +728,9 @@ class QueryBuilder {
     if (this._idType) {
       lines.push(`id_type: ${this._idType}`);
     }
+    if (this._lineageSummaryMode) {
+      lines.push(`lineage_summary_mode: "${this._lineageSummaryMode}"`);
+    }
     return lines.join("\n") + "\n";
   }
 
@@ -940,8 +954,13 @@ class QueryBuilder {
    * @param {string} [apiBase=API_BASE] - Base URL of the API (ignored when rawResponse given)
    * @returns {Promise<object[]>} - Array of flat record objects
    */
-  async toFlatRecords(rawResponse = null, lineageSummary = null, apiBase = API_BASE) {
-    const response = rawResponse !== null ? rawResponse : await this.search("json", apiBase);
+  async toFlatRecords(
+    rawResponse = null,
+    lineageSummary = null,
+    apiBase = API_BASE,
+  ) {
+    const response =
+      rawResponse !== null ? rawResponse : await this.search("json", apiBase);
     const responseJson = JSON.stringify(response);
 
     if (lineageSummary === null) {
@@ -1006,10 +1025,14 @@ class QueryBuilder {
     return (batchData.results ?? []).map((result) => ({
       results: result.results ?? [],
       status: { hits: result.total ?? 0 },
-      ...(result.lineage_summary != null ? { lineage_summary: result.lineage_summary } : {}),
+      ...(result.lineage_summary != null
+        ? { lineage_summary: result.lineage_summary }
+        : {}),
+      ...(result.lineage_summary_background != null
+        ? { lineage_summary_background: result.lineage_summary_background }
+        : {}),
       ...(result.error != null ? { error: result.error } : {}),
     }));
-  }
   }
 
   /**
@@ -1118,6 +1141,8 @@ class QueryBuilder {
       filter,
       regions,
       maxConnectionsPerGroup,
+      includePlotSpec,
+      display,
     } = opts;
     const positionalDoc = {
       report,
@@ -1150,6 +1175,8 @@ class QueryBuilder {
       body: JSON.stringify({
         query_yaml: this.toQueryYaml(),
         positional_yaml: positionalYaml,
+        ...(includePlotSpec ? { include_plot_spec: true } : {}),
+        ...(display ? { display } : {}),
       }),
     });
     if (!resp.ok)

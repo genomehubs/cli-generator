@@ -296,6 +296,12 @@ CANONICAL_METHODS = {
         "js_name": "setLineageRankSummary",
         "r_name": "set_lineage_rank_summary",
     },
+    "set_lineage_summary_mode": {
+        "params": ["mode"],
+        "python_name": "set_lineage_summary_mode",
+        "js_name": "setLineageSummaryMode",
+        "r_name": "set_lineage_summary_mode",
+    },
     "to_flat_records": {
         "params": ["lineage_summary"],
         "python_name": "to_flat_records",

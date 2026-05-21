@@ -79,7 +79,7 @@ QueryBuilder <- R6::R6Class(
     exclude_direct = character(0),
     exclude_missing = character(0),
     attributes = list(),
-    fields = list(),
+    fields_list = list(),
     sort_key = NULL,
     sort_order = "asc",
     size = 10L,
@@ -94,6 +94,7 @@ QueryBuilder <- R6::R6Class(
     query_yaml_override = NULL,
     params_yaml_override = NULL,
     lineage_rank_summary = list(),
+    lineage_summary_mode = "background",
     named_queries = list(),
 
     # Return a copy of `fields` as a character vector, or character(0) if NULL.
@@ -118,7 +119,7 @@ QueryBuilder <- R6::R6Class(
       private$exclude_direct <- character(0)
       private$exclude_missing <- character(0)
       private$attributes <- list()
-      private$fields <- list()
+      private$fields_list <- list()
       private$sort_key <- NULL
       private$sort_order <- "asc"
       private$size <- 10L
@@ -127,6 +128,7 @@ QueryBuilder <- R6::R6Class(
       private$tidy <- FALSE
       private$taxonomy <- "ncbi"
       private$lineage_rank_summary <- list()
+      private$lineage_summary_mode <- "background"
       private$named_queries <- list()
       invisible(self)
     },
@@ -212,14 +214,14 @@ QueryBuilder <- R6::R6Class(
       if (!is.null(modifiers) && length(modifiers) > 0) {
         entry$modifiers <- as.list(modifiers)
       }
-      private$fields[[length(private$fields) + 1]] <- entry
+      private$fields_list[[length(private$fields_list) + 1]] <- entry
       invisible(self)
     },
 
     #' @description Replace the field selection at once.
     #' @param fields A list of field items, each a named list with at least a \code{name} entry.
     set_fields = function(fields) {
-      private$fields <- as.list(fields)
+      private$fields_list <- as.list(fields)
       invisible(self)
     },
 
@@ -241,6 +243,13 @@ QueryBuilder <- R6::R6Class(
     #' @param specs A list of spec lists, each with `rank` and `fields` entries.
     set_lineage_rank_summary = function(specs) {
       private$lineage_rank_summary <- lapply(specs, function(s) s)
+      invisible(self)
+    },
+
+    #' @description Set the lineage summary mode used when requesting lineage summaries.
+    #' @param mode Character scalar, either "background" or "matched", or NULL to clear.
+    set_lineage_summary_mode = function(mode) {
+      private$lineage_summary_mode <- mode
       invisible(self)
     },
 
@@ -452,8 +461,8 @@ QueryBuilder <- R6::R6Class(
         doc$attributes <- private$attributes
       }
 
-      if (length(private$fields) > 0) {
-        doc$fields <- private$fields
+      if (length(private$fields_list) > 0) {
+        doc$fields <- private$fields_list
       }
 
       yaml::as.yaml(doc)
@@ -490,6 +499,9 @@ QueryBuilder <- R6::R6Class(
       }
       if (!is.null(private$id_type)) {
         lines <- c(lines, paste0("id_type: ", private$id_type))
+      }
+      if (!is.null(private$lineage_summary_mode)) {
+        lines <- c(lines, paste0("lineage_summary_mode: ", private$lineage_summary_mode))
       }
       paste(c(lines, ""), collapse = "\n")
     },
@@ -756,7 +768,7 @@ QueryBuilder <- R6::R6Class(
         list()
       }
 
-      selections <- vapply(private$fields, function(f) f[["name"]], character(1))
+      selections <- vapply(private$fields_list, function(f) f[["name"]], character(1))
 
       snapshot <- list(
         index        = jsonlite::unbox(private$index_name),
@@ -913,6 +925,7 @@ QueryBuilder <- R6::R6Class(
           status = list(hits = result$total %||% 0)
         )
         if (!is.null(result$lineage_summary)) search_like$lineage_summary <- result$lineage_summary
+        if (!is.null(result$lineage_summary_background)) search_like$lineage_summary_background <- result$lineage_summary_background
         if (!is.null(result$error)) search_like$error <- result$error
         jsonlite::toJSON(search_like, auto_unbox = TRUE, null = "null")
       })
@@ -1013,7 +1026,8 @@ QueryBuilder <- R6::R6Class(
     positional = function(report, group_by, assemblies, feature_type = NULL,
                           window_size = NULL, reorient = TRUE, max_features = 10000L,
                           cat = NULL, cat_opts = NULL, filter = NULL, regions = NULL,
-                          max_connections_per_group = NULL) {
+                          max_connections_per_group = NULL,
+                          include_plot_spec = FALSE, display = NULL) {
       doc <- list(report = report, group_by = group_by, assemblies = as.list(assemblies))
       if (!is.null(feature_type)) doc$feature_type <- feature_type
       if (!is.null(window_size)) doc$window_size <- as.integer(window_size)
@@ -1026,10 +1040,13 @@ QueryBuilder <- R6::R6Class(
       if (!is.null(max_connections_per_group)) doc$max_connections_per_group <- as.integer(max_connections_per_group)
 
       positional_yaml <- yaml::as.yaml(doc)
-      payload <- jsonlite::toJSON(list(
+      body_list <- list(
         query_yaml = self$to_query_yaml(),
         positional_yaml = positional_yaml
-      ), auto_unbox = TRUE)
+      )
+      if (isTRUE(include_plot_spec)) body_list$include_plot_spec <- TRUE
+      if (!is.null(display)) body_list$display <- display
+      payload <- jsonlite::toJSON(body_list, auto_unbox = TRUE)
       url <- paste0(private$api_base_url, "/", private$api_version, "/positional")
       resp <- httr::POST(url, body = payload, httr::content_type_json(), httr::accept("application/json"))
       httr::stop_for_status(resp)
@@ -1364,7 +1381,7 @@ QueryBuilder <- R6::R6Class(
       private$names_list <- character(0)
       private$ranks_list <- character(0)
       private$attributes <- list()
-      private$fields <- list()
+      private$fields_list <- list()
       private$sort_key <- NULL
       private$sort_order <- "asc"
       invisible(self)
@@ -1397,7 +1414,7 @@ QueryBuilder <- R6::R6Class(
         private$attributes <- other_p$attributes
       }
       if (length(other_p$fields) > 0) {
-        private$fields <- other_p$fields
+        private$fields_list <- other_p$fields_list
       }
       if (!is.null(other_p$sort_key)) {
         private$sort_key <- other_p$sort_key

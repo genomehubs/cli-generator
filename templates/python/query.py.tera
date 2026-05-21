@@ -94,9 +94,11 @@ class QueryBuilder:
         # Pre-parsed YAML overrides (set by from_v2_url; take priority in to_*_yaml)
         self._query_yaml_override: str | None = None
         self._params_yaml_override: str | None = None
+        self._lineage_rank_summary: list[dict[str, Any]] = []
+        # Lineage summary mode: 'background' (default) or 'matched'
+        self._lineage_summary_mode: str = "background"
         # Named sub-queries for chain substitution (queryA= style).
         self._named_queries: dict[str, dict[str, Any]] | None = None
-        self._lineage_rank_summary: list[dict[str, Any]] = []
 
     # ── Identifiers ──────────────────────────────────────────────────────────
 
@@ -552,6 +554,11 @@ class QueryBuilder:
             doc["id_set"] = self._id_set
         if self._id_type:
             doc["id_type"] = self._id_type
+
+        # Lineage summary computation mode: 'background' (default) or 'matched'
+        if self._lineage_summary_mode:
+            doc["lineage_summary_mode"] = self._lineage_summary_mode
+
         return yaml.safe_dump(doc, sort_keys=False)
 
     def reset(self) -> "QueryBuilder":
@@ -838,6 +845,24 @@ class QueryBuilder:
         tsv = self.search(format="tsv")
         return pl.read_csv(io.StringIO(tsv), separator="\t")
 
+
+    def set_lineage_summary_mode(self, mode: str) -> "QueryBuilder":
+        """Set how lineage summaries are computed by the API.
+
+        Args:
+            mode: ``"background"`` (default) to compute background distributions
+                across descendant taxa, or ``"matched"`` to compute summaries
+                restricted to the matched results only.
+
+        Returns:
+            Self for chaining.
+        """
+        if mode not in ("background", "matched"):
+            raise ValueError("lineage_summary_mode must be 'background' or 'matched'")
+        self._lineage_summary_mode = mode
+        return self
+
+
     def search_all(
         self,
         max_records: int | None = None,
@@ -956,8 +981,9 @@ class QueryBuilder:
             {
                 "results": result.get("results", []),
                 "status": {"hits": result.get("total", 0)},
-                **({"lineage_summary": result["lineage_summary"]} if result.get("lineage_summary") else {}),
-                **({"error": result["error"]} if result.get("error") else {}),
+                **({"lineage_summary": result["lineage_summary"]} if "lineage_summary" in result else {}),
+                **({"lineage_summary_background": result["lineage_summary_background"]} if "lineage_summary_background" in result else {}),
+                **({"error": result["error"]} if "error" in result else {}),
             }
             for result in batch_data.get("results", [])
         ]
@@ -1056,6 +1082,8 @@ class QueryBuilder:
         filter: "list[dict[str, Any]] | None" = None,
         regions: "dict[str, Any] | None" = None,
         max_connections_per_group: "int | None" = None,
+        include_plot_spec: bool = False,
+        display: "dict[str, Any] | None" = None,
     ) -> Any:
         """Run a positional report (oxford / ribbon / painting / circos).
 
@@ -1104,11 +1132,20 @@ class QueryBuilder:
             positional_doc["regions"] = regions
         if max_connections_per_group is not None:
             positional_doc["max_connections_per_group"] = max_connections_per_group
+        if include_plot_spec:
+            # Request a PlotSpec in the response
+            payload_include = {"include_plot_spec": True}
+        else:
+            payload_include = {}
 
-        payload = json.dumps({
+        body = {
             "query_yaml": self.to_query_yaml(),
             "positional_yaml": _yaml.dump(positional_doc, default_flow_style=False),
-        }).encode("utf-8")
+        }
+        if display is not None:
+            body["display"] = display
+        body.update(payload_include)
+        payload = json.dumps(body).encode("utf-8")
         url = f"{API_BASE}/v3/positional"
         req = urllib.request.Request(url, data=payload, headers={"Content-Type": "application/json"})
         with urllib.request.urlopen(req) as resp:

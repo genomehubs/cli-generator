@@ -3,7 +3,7 @@ use axum::{
     Extension,
 };
 use serde::{Deserialize, Deserializer, Serialize};
-use serde_json::Value;
+use serde_json::{json, Value};
 use std::sync::Arc;
 
 use super::deserialize_helpers;
@@ -109,6 +109,10 @@ pub struct SearchResponse {
     /// Only present when `lineage_rank_summary` was requested.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub lineage_summary: Option<Value>,
+    /// Background per-rank ancestor aggregation results: distributions
+    /// computed across all descendant taxa for the ancestor (default).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub lineage_summary_background: Option<Value>,
 }
 
 #[utoipa::path(
@@ -147,6 +151,7 @@ pub async fn post_search(
                 results: vec![],
                 search_after: None,
                 lineage_summary: None,
+                lineage_summary_background: None,
             })
         };
     }
@@ -335,6 +340,7 @@ pub async fn post_search(
             results,
             search_after,
             lineage_summary: None,
+            lineage_summary_background: None,
         });
     }
 
@@ -501,12 +507,83 @@ pub async fn post_search(
         .and_then(|last| last.get("sort"))
         .cloned();
 
-    // Extract lineage summary if it was requested
-    let lineage_summary = query
-        .lineage_rank_summary
-        .as_deref()
-        .filter(|specs| !specs.is_empty())
-        .map(|specs| super::lineage_agg::extract_lineage_summary(&raw, specs));
+    // Decide whether to return matched summary or background summary.
+    // Default mode is Background (see QueryParams.lineage_summary_mode).
+    let lineage_summary =
+        if params.lineage_summary_mode == genomehubs_query::query::LineageSummaryMode::Matched {
+            query
+                .lineage_rank_summary
+                .as_deref()
+                .filter(|specs| !specs.is_empty())
+                .map(|specs| super::lineage_agg::extract_lineage_summary(&raw, specs))
+        } else {
+            None
+        };
+
+    // Background summary: for each requested spec, extract ancestor IDs from
+    // the matched-results aggregation (we injected those above), then run a
+    // second ES request aggregating across the full index but limited to the
+    // observed ancestor IDs. This produces distributions across all
+    // descendant taxa for each ancestor.
+    let mut lineage_summary_background: Option<Value> = None;
+    if let Some(specs) = &query.lineage_rank_summary {
+        if !specs.is_empty() {
+            let mut bg_aggs_map = serde_json::Map::new();
+            let mut any_include = false;
+            for spec in specs {
+                let agg_name = format!("lineage_{}", spec.rank);
+                let buckets = raw
+                    .pointer(&format!(
+                        "/aggregations/{agg_name}/by_rank/by_ancestor/buckets"
+                    ))
+                    .and_then(|b| b.as_array())
+                    .cloned()
+                    .unwrap_or_default();
+                let ids: Vec<String> = buckets
+                    .iter()
+                    .filter_map(|b| {
+                        b.get("key").and_then(|k| {
+                            k.as_str()
+                                .map(|s| s.to_string())
+                                .or_else(|| k.as_u64().map(|n| n.to_string()))
+                        })
+                    })
+                    .collect();
+                if !ids.is_empty() {
+                    any_include = true;
+                    let size = super::lineage_agg::ancestor_bucket_size_for_rank(&spec.rank);
+                    match super::lineage_agg::build_lineage_rank_summary_agg_with_include(
+                        spec,
+                        size,
+                        &state.cache,
+                        Some(&ids),
+                    ) {
+                        Ok((name, agg_body)) => {
+                            bg_aggs_map.insert(name, agg_body);
+                        }
+                        Err(e) => bail!(format!("lineage_rank_summary: {e}")),
+                    }
+                }
+            }
+
+            if any_include {
+                let bg_body = json!({
+                    "size": 0,
+                    "query": { "match_all": {} },
+                    "aggs": Value::Object(bg_aggs_map)
+                });
+                let bg_raw =
+                    match es_client::execute_search(&state.client, &state.es_base, &idx, &bg_body)
+                        .await
+                    {
+                        Ok(v) => v,
+                        Err(e) => bail!(format!("background lineage aggregation failed: {}", e)),
+                    };
+                lineage_summary_background =
+                    Some(super::lineage_agg::extract_lineage_summary(&bg_raw, specs));
+            }
+        }
+    }
 
     Json(SearchResponse {
         status: ApiStatus::query_ok(hits_count, took_ms),
@@ -514,6 +591,7 @@ pub async fn post_search(
         results,
         search_after,
         lineage_summary,
+        lineage_summary_background,
     })
 }
 
@@ -550,6 +628,7 @@ pub async fn get_search(
                 results: vec![],
                 search_after: None,
                 lineage_summary: None,
+                lineage_summary_background: None,
             })
         };
     }

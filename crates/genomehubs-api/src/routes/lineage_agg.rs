@@ -28,10 +28,15 @@ use genomehubs_query::query::LineageRankSummarySpec;
 /// Build one outer `nested(lineage)` aggregation for a [`LineageRankSummarySpec`].
 ///
 /// Returns `(agg_name, agg_body)` where `agg_name` is `lineage_{rank}`.
-pub fn build_lineage_rank_summary_agg(
+// New: build lineage agg with optional ancestor include list. When
+// `ancestor_include` is Some(list) the `by_ancestor` terms agg will be
+// restricted to those ancestor IDs — useful for background summaries
+// computed only for the ancestors observed in the matched results.
+pub fn build_lineage_rank_summary_agg_with_include(
     spec: &LineageRankSummarySpec,
     ancestor_bucket_size: usize,
     cache: &Option<Arc<tokio::sync::RwLock<MetadataCache>>>,
+    ancestor_include: Option<&[String]>,
 ) -> Result<(String, Value), String> {
     if spec.fields.is_empty() {
         return Err(format!(
@@ -48,6 +53,15 @@ pub fn build_lineage_rank_summary_agg(
         field_aggs.insert(field.clone(), sub);
     }
 
+    // Build terms object for by_ancestor, optionally adding `include` list.
+    let mut terms_obj = serde_json::Map::new();
+    terms_obj.insert("field".to_string(), json!("lineage.taxon_id"));
+    terms_obj.insert("size".to_string(), json!(ancestor_bucket_size));
+    if let Some(ids) = ancestor_include {
+        let arr = ids.iter().map(|s| Value::String(s.clone())).collect();
+        terms_obj.insert("include".to_string(), Value::Array(arr));
+    }
+
     let agg_body = json!({
         "nested": { "path": "lineage" },
         "aggs": {
@@ -55,10 +69,7 @@ pub fn build_lineage_rank_summary_agg(
                 "filter": { "term": { "lineage.taxon_rank": spec.rank } },
                 "aggs": {
                     "by_ancestor": {
-                        "terms": {
-                            "field": "lineage.taxon_id",
-                            "size": ancestor_bucket_size
-                        },
+                        "terms": Value::Object(terms_obj),
                         "aggs": {
                             "back_to_root": {
                                 "reverse_nested": {},
@@ -77,6 +88,15 @@ pub fn build_lineage_rank_summary_agg(
     });
 
     Ok((agg_name, agg_body))
+}
+
+/// Backward-compatible wrapper kept for existing call sites.
+pub fn build_lineage_rank_summary_agg(
+    spec: &LineageRankSummarySpec,
+    ancestor_bucket_size: usize,
+    cache: &Option<Arc<tokio::sync::RwLock<MetadataCache>>>,
+) -> Result<(String, Value), String> {
+    build_lineage_rank_summary_agg_with_include(spec, ancestor_bucket_size, cache, None)
 }
 
 /// Select the appropriate ancestor bucket size for a given taxonomic rank.

@@ -57,12 +57,18 @@ use crate::{
 };
 // ── Request / Response types ──────────────────────────────────────────────────
 
-#[derive(utoipa::ToSchema)]
+#[derive(Serialize, utoipa::ToSchema)]
 pub struct PositionalRequest {
     /// Optional query filter.  When omitted features are filtered only by
     /// `group_by` (as `primary_type`) and the `assemblies` list.
     pub query_yaml: Option<String>,
     pub positional_yaml: String,
+    /// When true, produce a serialisable `PlotSpec` alongside the report.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub include_plot_spec: Option<bool>,
+    /// Optional display spec (JSON) applied to the returned PlotSpec.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub display: Option<serde_json::Value>,
 }
 
 impl<'de> Deserialize<'de> for PositionalRequest {
@@ -93,9 +99,15 @@ impl<'de> Deserialize<'de> for PositionalRequest {
                 return Err(de::Error::missing_field("positional or positional_yaml"));
             };
 
+        let include_plot_spec = map.get("include_plot_spec").and_then(|v| v.as_bool());
+
+        let display = map.get("display").cloned();
+
         Ok(PositionalRequest {
             query_yaml,
             positional_yaml,
+            include_plot_spec,
+            display,
         })
     }
 }
@@ -104,6 +116,8 @@ impl<'de> Deserialize<'de> for PositionalRequest {
 pub struct PositionalResponse {
     pub status: ApiStatus,
     pub report: Value,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub plot_spec: Option<Value>,
 }
 
 // ── Handler ───────────────────────────────────────────────────────────────────
@@ -168,6 +182,7 @@ pub async fn post_positional(
             return Json(PositionalResponse {
                 status: ApiStatus::error($msg),
                 report: Value::Null,
+                plot_spec: None,
             })
         };
     }
@@ -484,9 +499,103 @@ pub async fn post_positional(
 
     let took = started.elapsed().as_millis() as u64;
 
+    // Optionally build a minimal PlotSpec for positional reports when requested.
+    let plot_spec_value: Option<Value> = if req.include_plot_spec.unwrap_or(false) {
+        // Map positional report type → PlotReportType
+        let pr = match spec.report {
+            PositionalReportType::Oxford => {
+                genomehubs_query::report::plot_spec::PlotReportType::Oxford
+            }
+            PositionalReportType::Ribbon => {
+                genomehubs_query::report::plot_spec::PlotReportType::Ribbon
+            }
+            PositionalReportType::Painting => {
+                genomehubs_query::report::plot_spec::PlotReportType::Painting
+            }
+            PositionalReportType::Circos => {
+                // Circos maps to arc-style PlotReportType
+                genomehubs_query::report::plot_spec::PlotReportType::Arc
+            }
+        };
+
+        // Build a simple data payload consumable by the existing PlotSpec→Vega-Lite
+        // converter: for dot-plot like outputs, expose `cells` with `x`/`y` numeric
+        // coordinates; for painting expose `segments` with start/end positions.
+        let mut data_obj = serde_json::Map::new();
+
+        if let Some(points) = report_data.get("points").and_then(|v| v.as_array()) {
+            // Convert each point to a single (x,y) cell using midpoints when ranges present.
+            let mut cells: Vec<Value> = Vec::new();
+            for p in points {
+                let x = p
+                    .get("x2")
+                    .and_then(|v| v.as_u64())
+                    .or_else(|| p.get("x").and_then(|v| v.as_u64()))
+                    .map(|n| n as f64)
+                    .unwrap_or(0.0);
+                let y = p
+                    .get("y2")
+                    .and_then(|v| v.as_u64())
+                    .or_else(|| p.get("y").and_then(|v| v.as_u64()))
+                    .map(|n| n as f64)
+                    .unwrap_or(0.0);
+                let mut obj = serde_json::Map::new();
+                obj.insert("x".to_string(), Value::from(x));
+                obj.insert("y".to_string(), Value::from(y));
+                if let Some(g) = p.get("group") {
+                    obj.insert("group".to_string(), g.clone());
+                }
+                if let Some(cat) = p.get("cat") {
+                    obj.insert("cat".to_string(), cat.clone());
+                }
+                cells.push(Value::Object(obj));
+            }
+            data_obj.insert("cells".to_string(), Value::Array(cells));
+        } else if let Some(windowed) = report_data.get("windowedPoints").and_then(|v| v.as_array())
+        {
+            // Windowed points: use window midpoint as x coordinate and count as y.
+            let mut cells: Vec<Value> = Vec::new();
+            for w in windowed {
+                let start = w.get("start").and_then(|v| v.as_u64()).unwrap_or(0) as f64;
+                let end = w.get("end").and_then(|v| v.as_u64()).unwrap_or(0) as f64;
+                let mid = (start + end) / 2.0;
+                let count = w.get("count").and_then(|v| v.as_u64()).unwrap_or(0) as f64;
+                let mut obj = serde_json::Map::new();
+                obj.insert("x".to_string(), Value::from(mid));
+                obj.insert("y".to_string(), Value::from(count));
+                cells.push(Value::Object(obj));
+            }
+            data_obj.insert("cells".to_string(), Value::Array(cells));
+        }
+
+        // Painting: forward segments array as-is to `segments` key so converters
+        // can build interval marks (x/x2) per sequence.
+        if let Some(segments) = report_data.get("segments") {
+            data_obj.insert("segments".to_string(), segments.clone());
+        }
+
+        // Construct PlotSpec with a default DisplaySpec (clients may provide richer
+        // display hints in the `display` request key — currently ignored).
+        let plot_spec = genomehubs_query::report::plot_spec::PlotSpec {
+            report_type: pr,
+            x: None,
+            y: None,
+            z: None,
+            series: Vec::new(),
+            display: genomehubs_query::report::DisplaySpec::default(),
+            data: Value::Object(data_obj),
+        };
+
+        // Serialise to JSON value for inclusion in the response
+        serde_json::to_value(&plot_spec).ok()
+    } else {
+        None
+    };
+
     Json(PositionalResponse {
         status: ApiStatus::query_ok(hit_count, took),
         report: report_data,
+        plot_spec: plot_spec_value,
     })
 }
 

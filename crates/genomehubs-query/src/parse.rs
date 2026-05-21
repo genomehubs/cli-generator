@@ -220,9 +220,12 @@ pub fn parse_search_with_lineage_summary(raw: &str, config_json: &str) -> Result
     let envelope: serde_json::Value =
         serde_json::from_str(raw).map_err(|e| format!("invalid JSON: {e}"))?;
 
+    // Prefer background lineage summary if the server attached it; fall back
+    // to the matched-only `lineage_summary` for compatibility.
     let lineage_summary = envelope
-        .get("lineage_summary")
+        .get("lineage_summary_background")
         .cloned()
+        .or_else(|| envelope.get("lineage_summary").cloned())
         .unwrap_or_else(|| serde_json::json!({}));
 
     let results = match envelope.get("results").and_then(|v| v.as_array()) {

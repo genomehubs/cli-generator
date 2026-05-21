@@ -139,6 +139,7 @@ class QueryBuilder {
     this._idType = null;
     // Lineage rank summary aggregation specs
     this._lineageRankSummary = [];
+    this._lineageSummaryMode = "background";
     // Named sub-queries for chain substitution (queryA= style)
     this._namedQueries = null;
   }
@@ -268,7 +269,7 @@ class QueryBuilder {
    */
   fieldModifiers() {
     return this._fields.flatMap((f) =>
-      (f.modifier || []).map((mod) => `${f.name}__${mod}`),
+      (f.modifier || []).map((mod) => `${f.name}__${mod}`)
     );
   }
 
@@ -547,6 +548,16 @@ class QueryBuilder {
   }
 
   /**
+   * Set the lineage summary mode used when requesting lineage summaries.
+   * @param {string|null} mode - "background" or "matched", or null to clear.
+   * @returns {QueryBuilder}
+   */
+  setLineageSummaryMode(mode) {
+    this._lineageSummaryMode = mode;
+    return this;
+  }
+
+  /**
    * Register a named sub-query for chain substitution.
    *
    * Values in attribute filters may reference this query using dot-notation,
@@ -694,6 +705,9 @@ class QueryBuilder {
     }
     if (this._idType !== null) {
       lines.push(`id_type: ${this._idType}`);
+    }
+    if (this._lineageSummaryMode !== null) {
+      lines.push(`lineage_summary_mode: "${this._lineageSummaryMode}"`);
     }
     return lines.join("\n") + "\n";
   }
@@ -869,7 +883,13 @@ class QueryBuilder {
     });
     if (!resp.ok) throw new Error(`API request failed: ${resp.status} ${resp.statusText}`);
     const data = JSON.parse(_parseBatchJson(await resp.text()));
-    return data.results ?? [];
+    return (data.results ?? []).map((result) => ({
+      results: result.results ?? [],
+      status: { hits: result.total ?? 0 },
+      ...(result.lineage_summary != null ? { lineage_summary: result.lineage_summary } : {}),
+      ...(result.lineage_summary_background != null ? { lineage_summary_background: result.lineage_summary_background } : {}),
+      ...(result.error != null ? { error: result.error } : {}),
+    }));
   }
 
   /**

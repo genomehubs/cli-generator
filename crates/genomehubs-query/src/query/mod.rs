@@ -201,6 +201,11 @@ pub struct QueryParams {
     /// Include taxon_names array in each result (default false — heavyweight).
     #[serde(default)]
     pub include_taxon_names: bool,
+    /// Which lineage summary mode to return: background (default) computes
+    /// per-ancestor distributions across all descendant taxa; matched returns
+    /// distributions restricted to the matched query results.
+    #[serde(default)]
+    pub lineage_summary_mode: LineageSummaryMode,
     /// Filter results to exactly this set of IDs.
     ///
     /// Injected as an ES `terms` clause ANDed with the main query.
@@ -233,10 +238,20 @@ impl Default for QueryParams {
             search_after: None,
             include_lineage: false,
             include_taxon_names: false,
+            lineage_summary_mode: LineageSummaryMode::default(),
             id_set: None,
             id_type: None,
         }
     }
+}
+
+/// Mode for lineage summary computation.
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum LineageSummaryMode {
+    #[default]
+    Background,
+    Matched,
 }
 
 /// Sort direction for search results.

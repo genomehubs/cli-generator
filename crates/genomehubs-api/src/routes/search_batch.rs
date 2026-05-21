@@ -1,6 +1,6 @@
 use axum::{extract::Json, Extension};
 use serde::{Deserialize, Deserializer, Serialize};
-use serde_json::Value;
+use serde_json::{json, Value};
 use std::sync::Arc;
 
 use super::deserialize_helpers;
@@ -62,6 +62,10 @@ pub struct SearchBatchResultItem {
     /// Per-rank ancestor aggregation results (only present when `lineage_rank_summary` was requested).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub lineage_summary: Option<serde_json::Value>,
+    /// Background per-rank ancestor aggregation results: distributions
+    /// computed across all descendant taxa for the ancestor (default).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub lineage_summary_background: Option<serde_json::Value>,
     /// Error message for this query if it failed independently.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
@@ -73,7 +77,16 @@ struct BatchQueryMeta {
     include_lineage: bool,
     include_taxon_names: bool,
     lineage_specs: Option<Vec<genomehubs_query::query::LineageRankSummarySpec>>,
+    lineage_summary_mode: genomehubs_query::query::LineageSummaryMode,
 }
+
+// Type alias for background aggregation task tuple used in two-phase _msearch.
+type BgTask = (
+    usize,
+    String,
+    Vec<genomehubs_query::query::LineageRankSummarySpec>,
+    Vec<Option<Vec<String>>>,
+);
 
 #[derive(Serialize, utoipa::ToSchema)]
 pub struct SearchBatchResponse {
@@ -592,6 +605,7 @@ pub async fn post_search_batch(
             include_lineage,
             include_taxon_names: params.include_taxon_names,
             lineage_specs,
+            lineage_summary_mode: params.lineage_summary_mode.clone(),
         });
         index_bodies.push((idx, body));
     }
@@ -624,7 +638,10 @@ pub async fn post_search_batch(
     let mut results: Vec<SearchBatchResultItem> = vec![];
     let mut total_hits = 0u64;
 
-    for (response, meta) in responses.iter().zip(metas.iter()) {
+    // Collect background aggregation tasks to run in a single second-phase _msearch.
+    let mut bg_tasks: Vec<BgTask> = vec![];
+
+    for (i, (response, meta)) in responses.iter().zip(metas.iter()).enumerate() {
         match response.get("error") {
             Some(error_obj) => {
                 // Individual query error — return empty results with error message.
@@ -637,6 +654,7 @@ pub async fn post_search_batch(
                     results: vec![],
                     search_after: None,
                     lineage_summary: None,
+                    lineage_summary_background: None,
                     error: Some(error_msg.to_string()),
                 });
             }
@@ -692,13 +710,147 @@ pub async fn post_search_batch(
                     results: result_docs,
                     search_after,
                     lineage_summary,
+                    lineage_summary_background: None,
                     error: None,
                 });
+
+                // If caller requested background lineage summaries (default), collect
+                // ancestor IDs observed in the matched-results aggregation and queue
+                // a second-phase aggregation restricted to those ancestors.
+                if let Some(specs) = &meta.lineage_specs {
+                    if meta.lineage_summary_mode
+                        != genomehubs_query::query::LineageSummaryMode::Matched
+                    {
+                        let mut spec_includes: Vec<Option<Vec<String>>> = Vec::new();
+                        for spec in specs {
+                            let agg_name = format!("lineage_{}", spec.rank);
+                            let buckets = response
+                                .pointer(&format!(
+                                    "/aggregations/{agg_name}/by_rank/by_ancestor/buckets"
+                                ))
+                                .and_then(|b| b.as_array())
+                                .cloned()
+                                .unwrap_or_default();
+                            let ids: Vec<String> = buckets
+                                .iter()
+                                .filter_map(|b| {
+                                    b.get("key").and_then(|k| {
+                                        k.as_str()
+                                            .map(|s| s.to_string())
+                                            .or_else(|| k.as_u64().map(|n| n.to_string()))
+                                    })
+                                })
+                                .collect();
+                            if ids.is_empty() {
+                                spec_includes.push(None);
+                            } else {
+                                spec_includes.push(Some(ids));
+                            }
+                        }
+
+                        if spec_includes.iter().any(|o| o.is_some()) {
+                            let idx_str = index_bodies
+                                .get(i)
+                                .map(|pair| pair.0.clone())
+                                .unwrap_or_default();
+                            bg_tasks.push((i, idx_str, specs.clone(), spec_includes));
+                        }
+                    }
+                }
             }
         }
     }
 
     // Aggregate status — success if all queries succeeded, error otherwise.
+    // Second-phase background aggregation: run a single _msearch for all queued bg tasks
+    if !bg_tasks.is_empty() {
+        let mut bg_bodies: Vec<(String, serde_json::Value)> = Vec::new();
+        // Keep mapping from bg response order -> original query index & specs
+        let mut bg_mapping: Vec<(usize, Vec<genomehubs_query::query::LineageRankSummarySpec>)> =
+            Vec::new();
+
+        for (orig_idx, idx_str, specs, spec_includes) in &bg_tasks {
+            let mut aggs_map = serde_json::Map::new();
+            let mut any_include = false;
+            for (spec, include_opt) in specs.iter().zip(spec_includes.iter()) {
+                if let Some(ids) = include_opt {
+                    any_include = true;
+                    let size = super::lineage_agg::ancestor_bucket_size_for_rank(&spec.rank);
+                    match super::lineage_agg::build_lineage_rank_summary_agg_with_include(
+                        spec,
+                        size,
+                        &state.cache,
+                        Some(ids),
+                    ) {
+                        Ok((name, agg_body)) => {
+                            aggs_map.insert(name, agg_body);
+                        }
+                        Err(e) => {
+                            // Mark the corresponding result item with an error and skip BG for it
+                            if let Some(item) = results.get_mut(*orig_idx) {
+                                item.error = Some(format!("lineage_rank_summary: {e}"));
+                            }
+                        }
+                    }
+                }
+            }
+
+            if any_include {
+                let bg_body = json!({
+                    "size": 0,
+                    "query": { "match_all": {} },
+                    "aggs": Value::Object(aggs_map)
+                });
+                bg_bodies.push((idx_str.clone(), bg_body));
+                bg_mapping.push((*orig_idx, specs.clone()));
+            }
+        }
+
+        if !bg_bodies.is_empty() {
+            let bg_ndjson = build_msearch_body(&bg_bodies);
+            match execute_msearch(&state.client, &state.es_base, &bg_ndjson).await {
+                Ok(bg_raw) => {
+                    let bg_responses = bg_raw
+                        .get("responses")
+                        .and_then(|r| r.as_array())
+                        .cloned()
+                        .unwrap_or_default();
+                    for (j, bg_resp) in bg_responses.into_iter().enumerate() {
+                        let (orig_idx, specs) = &bg_mapping[j];
+                        if bg_resp.get("error").is_some() {
+                            if let Some(item) = results.get_mut(*orig_idx) {
+                                let err_msg = bg_resp
+                                    .get("error")
+                                    .and_then(|e| e.get("reason"))
+                                    .and_then(|r| r.as_str())
+                                    .unwrap_or("background aggregation error")
+                                    .to_string();
+                                item.error = Some(err_msg);
+                            }
+                            continue;
+                        }
+
+                        // Extract background lineage summary and attach to result
+                        let bg_summary =
+                            super::lineage_agg::extract_lineage_summary(&bg_resp, specs);
+                        if let Some(item) = results.get_mut(*orig_idx) {
+                            item.lineage_summary_background = Some(bg_summary);
+                        }
+                    }
+                }
+                Err(e) => {
+                    // Whole second-phase failed — attach error to all bg task items
+                    for (orig_idx, _, _, _) in &bg_tasks {
+                        if let Some(item) = results.get_mut(*orig_idx) {
+                            item.error =
+                                Some(format!("background lineage aggregation failed: {}", e));
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     let all_ok = results.iter().all(|r| r.error.is_none());
     let aggregate_status = if all_ok {
         ApiStatus::query_ok(total_hits, 0)
@@ -710,4 +862,102 @@ pub async fn post_search_batch(
         status: aggregate_status,
         results,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use serde_json::json;
+    use std::sync::Arc;
+
+    #[test]
+    fn test_build_lineage_rank_summary_agg_with_include_inserts_include() {
+        let spec = genomehubs_query::query::LineageRankSummarySpec {
+            rank: "genus".to_string(),
+            fields: vec!["assembly_level".to_string()],
+        };
+
+        let ids = ["10088".to_string(), "10114".to_string()];
+        let cache: Option<Arc<tokio::sync::RwLock<crate::es_metadata::MetadataCache>>> = None;
+
+        let (_name, body) = super::super::lineage_agg::build_lineage_rank_summary_agg_with_include(
+            &spec,
+            50_000,
+            &cache,
+            Some(&ids[..]),
+        )
+        .unwrap();
+
+        let include_arr = body["aggs"]["by_rank"]["aggs"]["by_ancestor"]["terms"]["include"]
+            .as_array()
+            .expect("include present");
+
+        assert_eq!(include_arr.len(), 2);
+        assert_eq!(include_arr[0].as_str().unwrap(), "10088");
+        assert_eq!(include_arr[1].as_str().unwrap(), "10114");
+    }
+
+    #[test]
+    fn test_extract_ancestor_ids_and_build_include() {
+        let phase_a = json!({
+            "aggregations": {
+                "lineage_genus": {
+                    "by_rank": {
+                        "by_ancestor": {
+                            "buckets": [
+                                { "key": "100", "back_to_root": {} },
+                                { "key": 101, "back_to_root": {} },
+                                { "key": "102", "back_to_root": {} }
+                            ]
+                        }
+                    }
+                }
+            }
+        });
+
+        let buckets = phase_a
+            .pointer("/aggregations/lineage_genus/by_rank/by_ancestor/buckets")
+            .and_then(|b| b.as_array())
+            .cloned()
+            .unwrap_or_default();
+
+        let ids: Vec<String> = buckets
+            .iter()
+            .filter_map(|b| {
+                b.get("key").and_then(|k| {
+                    k.as_str()
+                        .map(|s| s.to_string())
+                        .or_else(|| k.as_u64().map(|n| n.to_string()))
+                })
+            })
+            .collect();
+
+        assert_eq!(
+            ids,
+            vec!["100".to_string(), "101".to_string(), "102".to_string()]
+        );
+
+        let spec = genomehubs_query::query::LineageRankSummarySpec {
+            rank: "genus".to_string(),
+            fields: vec!["assembly_level".to_string()],
+        };
+        let cache: Option<Arc<tokio::sync::RwLock<crate::es_metadata::MetadataCache>>> = None;
+
+        let (_name, body) = super::super::lineage_agg::build_lineage_rank_summary_agg_with_include(
+            &spec,
+            50_000,
+            &cache,
+            Some(&ids[..]),
+        )
+        .unwrap();
+
+        // Verify include exists and matches the ids collected from phase A
+        let include_arr = body["aggs"]["by_rank"]["aggs"]["by_ancestor"]["terms"]["include"]
+            .as_array()
+            .expect("include present");
+        let got: Vec<String> = include_arr
+            .iter()
+            .map(|v| v.as_str().unwrap().to_string())
+            .collect();
+        assert_eq!(got, ids);
+    }
 }

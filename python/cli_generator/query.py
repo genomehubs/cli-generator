@@ -111,6 +111,8 @@ class QueryBuilder:
         # Pre-parsed YAML overrides (set by from_v2_url; take priority in to_*_yaml)
         self._query_yaml_override: str | None = None
         self._params_yaml_override: str | None = None
+        # Lineage summary mode: 'background' (default) or 'matched'
+        self._lineage_summary_mode: str = "background"
         # Named sub-queries for chain substitution (queryA= style).
         self._named_queries: dict[str, dict[str, Any]] | None = None
 
@@ -699,6 +701,10 @@ class QueryBuilder:
         if self._id_type:
             doc["id_type"] = self._id_type
 
+        # Lineage summary computation mode: 'background' (default) or 'matched'
+        if self._lineage_summary_mode:
+            doc["lineage_summary_mode"] = self._lineage_summary_mode
+
         return yaml.safe_dump(doc, sort_keys=False)
 
     # ── URL + API calls ───────────────────────────────────────────────────────
@@ -998,6 +1004,22 @@ class QueryBuilder:
         )
         return data
 
+    def set_lineage_summary_mode(self, mode: str) -> "QueryBuilder":
+        """Set how lineage summaries are computed by the API.
+
+        Args:
+            mode: ``"background"`` (default) to compute background distributions
+                across descendant taxa, or ``"matched"`` to compute summaries
+                restricted to the matched results only.
+
+        Returns:
+            Self for chaining.
+        """
+        if mode not in ("background", "matched"):
+            raise ValueError("lineage_summary_mode must be 'background' or 'matched'")
+        self._lineage_summary_mode = mode
+        return self
+
     def search_all(
         self,
         max_records: int | None = None,
@@ -1225,8 +1247,13 @@ class QueryBuilder:
             {
                 "results": result.get("results", []),
                 "status": {"hits": result.get("total", 0)},
-                **({"lineage_summary": result["lineage_summary"]} if result.get("lineage_summary") else {}),
-                **({"error": result["error"]} if result.get("error") else {}),
+                **({"lineage_summary": result["lineage_summary"]} if "lineage_summary" in result else {}),
+                **(
+                    {"lineage_summary_background": result["lineage_summary_background"]}
+                    if "lineage_summary_background" in result
+                    else {}
+                ),
+                **({"error": result["error"]} if "error" in result else {}),
             }
             for result in batch_data.get("results", [])
         ]
@@ -1380,6 +1407,8 @@ class QueryBuilder:
         filter: list[dict[str, Any]] | None = None,
         regions: dict[str, Any] | None = None,
         max_connections_per_group: int | None = None,
+        include_plot_spec: bool = False,
+        display: dict | None = None,
         api_base: str = "https://goat.genomehubs.org/api",
         api_version: str = "v3",
     ) -> Any:
@@ -1441,13 +1470,15 @@ class QueryBuilder:
         if max_connections_per_group is not None:
             positional_doc["max_connections_per_group"] = max_connections_per_group
 
-        data = self._post_json(
-            f"{api_base}/{api_version}/positional",
-            {
-                "query_yaml": self.to_query_yaml(),
-                "positional_yaml": _yaml.dump(positional_doc, default_flow_style=False),
-            },
-        )
+        body: dict[str, Any] = {
+            "query_yaml": self.to_query_yaml(),
+            "positional_yaml": _yaml.dump(positional_doc, default_flow_style=False),
+        }
+        if include_plot_spec:
+            body["include_plot_spec"] = True
+        if display is not None:
+            body["display"] = display
+        data = self._post_json(f"{api_base}/{api_version}/positional", body)
         return data.get("report", data)
 
     def oxford(

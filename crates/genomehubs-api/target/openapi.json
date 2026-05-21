@@ -1656,6 +1656,9 @@
           "lineage_summary": {
             "description": "Per-rank ancestor aggregation results (only present when `lineage_rank_summary` was requested)."
           },
+          "lineage_summary_background": {
+            "description": "Background per-rank ancestor aggregation results: distributions\ncomputed across all descendant taxa for the ancestor (default)."
+          },
           "results": {
             "type": "array",
             "items": {},
@@ -1697,6 +1700,9 @@
         "properties": {
           "lineage_summary": {
             "description": "Per-rank ancestor aggregation results.\n\nShape: `{rank: {ancestor_taxon_id: {field: distribution}}}`.\nOnly present when `lineage_rank_summary` was requested."
+          },
+          "lineage_summary_background": {
+            "description": "Background per-rank ancestor aggregation results: distributions\ncomputed across all descendant taxa for the ancestor (default)."
           },
           "results": {
             "type": "array",
