@@ -312,7 +312,7 @@ index defaults to `taxon_id`).
 |---|---|---|
 | `id_type` | str | One of `"taxon"`, `"assembly"`, `"sample"`, `"feature"`. |
 
-
+### `set_lineage_rank_summary(specs)`
 
 Configure per-rank ancestor aggregation for lineage rank summary columns.
 Each spec must have a `"rank"` key and a `"fields"` key listing attribute names
@@ -389,6 +389,54 @@ const records = await qb.toFlatRecords({
     genome_size: 'stats'
   }
 });
+```
+
+:::
+
+### `set_lineage_summary_mode(mode)`
+
+Control whether lineage summary columns are included by default in results.
+Set the mode to `"foreground"` to include summaries for the queried taxa,
+`"background"` to include aggregations from deeper lineages, or `None` to disable.
+
+Overrides the API default setting per-query. When not set, the API uses the
+server-wide default (typically `"background"`).
+
+| Parameter | Type | Description |
+|---|---|---|
+| `mode` | str \| None | `"foreground"`, `"background"`, or `None` (clear). |
+
+::: {.panel-tabset group="language"}
+
+## Python
+
+```python
+qb = (
+    QueryBuilder("taxon")
+    .set_taxa(["Mammalia"])
+    .set_lineage_summary_mode("background")
+)
+results = qb.to_flat_records()
+```
+
+## R
+
+```r
+qb <- query_builder("taxon") |>
+  set_taxa(c("Mammalia")) |>
+  set_lineage_summary_mode("background")
+
+results <- qb$to_flat_records()
+```
+
+## JavaScript
+
+```javascript
+const qb = new QueryBuilder('taxon')
+  .setTaxa(['Mammalia'])
+  .setLineageSummaryMode('background');
+
+const results = await qb.toFlatRecords();
 ```
 
 :::
@@ -963,6 +1011,61 @@ curl -s -X POST {{ api_base }}/v3/count/batch \
 
 ---
 
+### `chain_query(query_key, query_string) -> QueryBuilder`
+
+Chain a new query onto the results of the previous query.  Specifies that this
+query should only return records that match the referenced previous query.
+The `query_key` parameter is a placeholder key and `query_string` is a complete
+query string (passed to a recursive query).
+
+Use this method to build complex nested queries that return results matching
+multiple conditions in sequence.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `query_key` | str | Key referring to a previously saved query result. |
+| `query_string` | str | Query string to apply on chained results. |
+
+::: {.panel-tabset group="language"}
+
+## Python
+
+```python
+qb = (
+    QueryBuilder("taxon")
+    .set_taxa(["Mammalia"], filter_type="tree")
+    .add_field("genome_size")
+    .chain_query("base_mammals", "sex_determination:yes")
+)
+results = qb.search(api_base="{{ api_base }}", api_version="{{ api_version }}")
+```
+
+## R
+
+```r
+qb <- query_builder("taxon") |>
+  set_taxa(c("Mammalia"), filter_type = "tree") |>
+  add_field("genome_size") |>
+  chain_query("base_mammals", "sex_determination:yes")
+
+results <- qb$search()
+```
+
+## JavaScript
+
+```javascript
+const qb = new QueryBuilder('taxon')
+  .setTaxa(['Mammalia'], 'tree')
+  .addField('genome_size')
+  .chainQuery('base_mammals', 'sex_determination:yes');
+
+const results = await qb.search();
+```
+
+:::
+
+---
+
 ### `record(record_id, result=None, api_base, api_version) -> dict`
 
 Fetch a single record by its ID via GET to `/v3/record`.
@@ -1442,6 +1545,264 @@ const data = await qb.summary("9606", "genome_size");
 
 ```bash
 curl -s "{{ api_base }}/v3/summary?recordId=9606&result=taxon&fields=genome_size&summary=min,max,mean"
+```
+
+:::
+
+---
+
+## Positional reports
+
+Positional reports visualize aligned sequence features (genes, repeats, etc.)
+across multiple reference assemblies.  Each method builds a request to the
+corresponding `/v3/{report}` endpoint.
+
+### `positional(report, group_by, assemblies, api_base, api_version) -> dict`
+
+Run a positional alignment report.  The `report` parameter specifies the feature
+type to display (e.g. `"repeat"`, `"gene"`, `"seq_region_synonym"`).
+`group_by` specifies the field to cluster results (e.g. `"seq_region_name"`).
+`assemblies` is a list of assembly IDs to include.
+
+Returns the raw JSON response containing positioned features and metadata.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `report` | str | Feature type (e.g. `"gene"`, `"repeat"`) (required). |
+| `group_by` | str | Clustering field (e.g. `"seq_region_name"`). |
+| `assemblies` | list[str] | Assembly IDs to include (required). |
+
+::: {.panel-tabset group="language"}
+
+## Python
+
+```python
+qb = QueryBuilder("taxon").set_taxa(["Homo sapiens"])
+results = qb.positional(
+    report="gene",
+    group_by="seq_region_name",
+    assemblies=["GCF_000001405.40"],
+    api_base="{{ api_base }}",
+    api_version="{{ api_version }}"
+)
+```
+
+## R
+
+```r
+qb <- query_builder("taxon") |> set_taxa(c("Homo sapiens"))
+results <- qb$positional(
+  report = "gene",
+  group_by = "seq_region_name",
+  assemblies = c("GCF_000001405.40")
+)
+```
+
+## JavaScript
+
+```javascript
+const qb = new QueryBuilder('taxon').setTaxa(['Homo sapiens']);
+const results = await qb.positional({
+  report: 'gene',
+  groupBy: 'seq_region_name',
+  assemblies: ['GCF_000001405.40']
+});
+```
+
+:::
+
+---
+
+### `oxford(group_by, assemblies, api_base, api_version) -> dict`
+
+Run an Oxford (stacked bar) comparative report showing feature density across
+multiple assemblies.  Requires `assemblies` list and optional `group_by` clustering field.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `group_by` | str | Clustering field (e.g. `"seq_region_name"`). |
+| `assemblies` | list[str] | Assembly IDs to compare (required). |
+
+::: {.panel-tabset group="language"}
+
+## Python
+
+```python
+qb = QueryBuilder("taxon").set_taxa(["Mus musculus"])
+results = qb.oxford(
+    group_by="seq_region_name",
+    assemblies=["GCF_000001635.27", "GCA_000001635.9"],
+    api_base="{{ api_base }}",
+    api_version="{{ api_version }}"
+)
+```
+
+## R
+
+```r
+qb <- query_builder("taxon") |> set_taxa(c("Mus musculus"))
+results <- qb$oxford(
+  group_by = "seq_region_name",
+  assemblies = c("GCF_000001635.27", "GCA_000001635.9")
+)
+```
+
+## JavaScript
+
+```javascript
+const qb = new QueryBuilder('taxon').setTaxa(['Mus musculus']);
+const results = await qb.oxford({
+  groupBy: 'seq_region_name',
+  assemblies: ['GCF_000001635.27', 'GCA_000001635.9']
+});
+```
+
+:::
+
+---
+
+### `ribbon(group_by, assemblies, api_base, api_version) -> dict`
+
+Run a ribbon comparative report showing syntenic relationships between assemblies.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `group_by` | str | Clustering field (e.g. `"seq_region_name"`). |
+| `assemblies` | list[str] | Assembly IDs to compare (minimum 2; required). |
+
+::: {.panel-tabset group="language"}
+
+## Python
+
+```python
+qb = QueryBuilder("taxon").set_taxa(["Canis lupus"])
+results = qb.ribbon(
+    group_by="seq_region_name",
+    assemblies=["GCF_000002035.6", "GCA_000002035.2"],
+    api_base="{{ api_base }}",
+    api_version="{{ api_version }}"
+)
+```
+
+## R
+
+```r
+qb <- query_builder("taxon") |> set_taxa(c("Canis lupus"))
+results <- qb$ribbon(
+  group_by = "seq_region_name",
+  assemblies = c("GCF_000002035.6", "GCA_000002035.2")
+)
+```
+
+## JavaScript
+
+```javascript
+const qb = new QueryBuilder('taxon').setTaxa(['Canis lupus']);
+const results = await qb.ribbon({
+  groupBy: 'seq_region_name',
+  assemblies: ['GCF_000002035.6', 'GCA_000002035.2']
+});
+```
+
+:::
+
+---
+
+### `painting(group_by, assembly, api_base, api_version) -> dict`
+
+Run a painting report showing which assembly regions align to a reference
+assembly's chromosome coordinates.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `group_by` | str | Clustering field (e.g. `"seq_region_name"`). |
+| `assembly` | str | Target assembly ID to paint onto (required). |
+
+::: {.panel-tabset group="language"}
+
+## Python
+
+```python
+qb = QueryBuilder("taxon").set_taxa(["Pan troglodytes"])
+results = qb.painting(
+    group_by="seq_region_name",
+    assembly="GCF_000001405.40",
+    api_base="{{ api_base }}",
+    api_version="{{ api_version }}"
+)
+```
+
+## R
+
+```r
+qb <- query_builder("taxon") |> set_taxa(c("Pan troglodytes"))
+results <- qb$painting(
+  group_by = "seq_region_name",
+  assembly = "GCF_000001405.40"
+)
+```
+
+## JavaScript
+
+```javascript
+const qb = new QueryBuilder('taxon').setTaxa(['Pan troglodytes']);
+const results = await qb.painting({
+  groupBy: 'seq_region_name',
+  assembly: 'GCF_000001405.40'
+});
+```
+
+:::
+
+---
+
+### `hybrid_positional(report, group_by, local_files, api_base, api_version) -> dict`
+
+Run a positional report using pre-computed local alignment data.  Similar to
+`positional()` but loads feature coordinates from local GFF/GTF files instead
+of querying remote assemblies.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `report` | str | Feature type (e.g. `"gene"`) (required). |
+| `group_by` | str | Clustering field (e.g. `"seq_region_name"`). |
+| `local_files` | list[str] | File paths to GFF/GTF files (required). |
+
+::: {.panel-tabset group="language"}
+
+## Python
+
+```python
+qb = QueryBuilder("taxon").set_taxa(["Arabidopsis thaliana"])
+results = qb.hybrid_positional(
+    report="gene",
+    group_by="seq_region_name",
+    local_files=["/path/to/assembly1.gff", "/path/to/assembly2.gff"],
+    api_base="{{ api_base }}",
+    api_version="{{ api_version }}"
+)
+```
+
+## R
+
+```r
+qb <- query_builder("taxon") |> set_taxa(c("Arabidopsis thaliana"))
+results <- qb$hybrid_positional(
+  report = "gene",
+  group_by = "seq_region_name",
+  local_files = c("/path/to/assembly1.gff", "/path/to/assembly2.gff")
+)
+```
+
+## JavaScript
+
+```javascript
+const qb = new QueryBuilder('taxon').setTaxa(['Arabidopsis thaliana']);
+const results = await qb.hybridPositional({
+  report: 'gene',
+  groupBy: 'seq_region_name',
+  localFiles: ['/path/to/assembly1.gff', '/path/to/assembly2.gff']
+});
 ```
 
 :::

@@ -280,7 +280,7 @@ jobs:
           const qb = new QueryBuilder("taxon")
             .setTaxa(["Mammalia"], "tree")
             .addField("genome_size");
-          const url = qb.toUrl();
+          const url = qb.toV2Url();
           if (!url.includes("result=taxon")) throw new Error("Invalid URL: " + url);
           console.log("JS SDK smoke test PASSED: " + url.substring(0, 80));
           EOF

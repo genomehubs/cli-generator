@@ -272,7 +272,7 @@ from .{} import (
     report_yaml_from_url_params,
     values_only,
 )
-from .query import QueryBuilder
+from .query import QueryBuilder, ReportBuilder
 
 __all__ = [
     "annotate_source_labels",
