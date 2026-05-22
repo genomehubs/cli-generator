@@ -709,7 +709,7 @@ def test_js_snippet_is_valid_js() -> None:
     # Basic JS syntax checks
     assert "require(" in code
     assert "new QueryBuilder(" in code
-    assert "toUrl()" in code
+    assert "toV2Url()" in code
     assert "const " in code
     # Should not contain Python or R syntax
     assert "import " not in code or code.index("import ") > code.index("require(")
