@@ -301,8 +301,8 @@ describe("response status parsing", () => {
 
 describe("URL building", () => {
   for (const [name, factory] of Object.entries(FIXTURE_TO_BUILDER)) {
-    test(`toUrl: ${name}`, () => {
-      const url = factory().toUrl();
+    test(`toV2Url: ${name}`, () => {
+      const url = factory().toV2Url();
       assert.ok(
         url.startsWith(API_BASE),
         `${name}: URL should start with API base — got ${url}`,
@@ -316,8 +316,8 @@ describe("URL building", () => {
   }
 
   for (const [name, parts] of Object.entries(FIXTURE_EXPECTED_URL_PARTS)) {
-    test(`toUrl encodes state: ${name}`, () => {
-      const url = FIXTURE_TO_BUILDER[name]().toUrl();
+    test(`toV2Url encodes state: ${name}`, () => {
+      const url = FIXTURE_TO_BUILDER[name]().toV2Url();
       for (const expected of parts) {
         assert.ok(
           url.includes(expected),
@@ -454,7 +454,7 @@ describe("browser build (pkg-web) — URL building", () => {
     for (const [name, factory] of Object.entries(FIXTURE_TO_BUILDER)) {
       test(`build_url_for_endpoint: ${name}`, () => {
         const qb = factory();
-        const nodeUrl = qb.toUrl();
+        const nodeUrl = qb.toV2Url();
         // Re-run the underlying WASM call via browser bundle to confirm parity.
         const qbJson = JSON.stringify({
           index: qb.getIndex?.() ?? "taxon",
@@ -466,7 +466,7 @@ describe("browser build (pkg-web) — URL building", () => {
           "browser bundle should export a URL-building function",
         );
         // Verify the node and browser bundles agree on the URL.
-        const browserUrl = qb.toUrl();
+        const browserUrl = qb.toV2Url();
         assert.equal(
           browserUrl,
           nodeUrl,

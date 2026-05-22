@@ -74,7 +74,7 @@ qb.positional({
 
 {% else -%}
 // Build the URL without making a network request
-const url = qb.toUrl();
+const url = qb.toV2Url();
 console.log("Query URL:", url);
 
 // Fetch the count

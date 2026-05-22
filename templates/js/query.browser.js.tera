@@ -715,14 +715,15 @@ class QueryBuilder {
   // ── URL building ───────────────────────────────────────────────────────────
 
   /**
-   * Build and return the full API URL without making a network request.
+   * Build and return the full v2 API URL without making a network request.
    * Delegates to the Rust WASM module for identical output to the Python SDK.
    *
    * @param {string} [apiBase] - Override the default API base URL.
    * @param {string} [apiVersion] - Override the default API version.
+   * @param {string} [endpoint="search"] - API endpoint name.
    * @returns {string}
    */
-  toUrl(apiBase = API_BASE, apiVersion = API_VERSION, endpoint = "search") {
+  toV2Url(apiBase = API_BASE, apiVersion = API_VERSION, endpoint = "search") {
     const queryYaml = this.toQueryYaml();
     const paramsYaml = this.toParamsYaml();
     if (endpoint === "search") {
@@ -738,22 +739,58 @@ class QueryBuilder {
   }
 
   /**
-   * Build the v2-format API URL (alias for toUrl).
+   * @param {string} [apiBase]
    * @param {string} [endpoint="search"]
    * @returns {string}
    */
-  toV2Url(endpoint = "search") {
-    return this.toUrl(API_BASE, API_VERSION, endpoint);
+  toV3Url(apiBase = API_BASE, endpoint = "search") {
+    // Warn when query features can't be represented in a GET v3 URL.
+    const incomplete = [];
+    if (this._names && this._names.length > 0)
+      incomplete.push(`name classes (${JSON.stringify(this._names)})`);
+    if (this._ranks && this._ranks.length > 0)
+      incomplete.push(`rank columns (${JSON.stringify(this._ranks)})`);
+    if (incomplete.length > 0) {
+      console.warn(
+        `toV3Url() cannot fully represent this query: ${incomplete.join(", ")} will be omitted from the URL. Use toV2Url() or the POST endpoint for full fidelity.`,
+      );
+    }
+    const uiUrl = _buildUiUrl(
+      this.toQueryYaml(),
+      this.toParamsYaml(),
+      UI_BASE,
+      endpoint,
+    );
+    const encoded = encodeURIComponent(uiUrl);
+    return `${apiBase}/v3/${endpoint}?url=${encoded}`;
   }
 
   /**
-   * Build the web UI URL for this query.
+   * @param {string} [apiBase]
+   * @param {string} [apiVersion]
    * @param {string} [endpoint="search"]
-   * @param {string} [uiBase="{{ ui_base }}"]
    * @returns {string}
    */
-  toUiUrl(endpoint = "search", uiBase = "{{ ui_base }}") {
-    return _buildUiUrl(this.toQueryYaml(), this.toParamsYaml(), uiBase, endpoint);
+  toUrl(apiBase = API_BASE, apiVersion = API_VERSION, endpoint = "search") {
+    if (apiVersion === "v3") {
+      return this.toV3Url(apiBase, endpoint);
+    }
+    return this.toV2Url(apiBase, apiVersion, endpoint);
+  }
+
+  /**
+   * Build and return the full UI URL without making a network request.
+   * Targets the web interface rather than the REST API — no API version
+   * component is inserted.
+   *
+   * @param {string} [uiBase] - Override the default UI base URL.
+   * @param {string} [endpoint="search"] - UI route name.
+   * @returns {string}
+   */
+  toUiUrl(uiBase = UI_BASE, endpoint = "search") {
+    const queryYaml = this.toQueryYaml();
+    const paramsYaml = this.toParamsYaml();
+    return _buildUiUrl(queryYaml, paramsYaml, uiBase, endpoint);
   }
 
   // ── API calls ──────────────────────────────────────────────────────────────

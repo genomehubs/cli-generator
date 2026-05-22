@@ -574,7 +574,7 @@ class QueryBuilder {
    * @returns {QueryBuilder}
    */
   chainQuery(queryKey, queryString, opts = {}) {
-    const spec = { query: queryString };
+    const spec = { filter_expr: queryString };
     if (opts.index != null) spec.index = opts.index;
     if (opts.limit != null) spec.limit = opts.limit;
     if (opts.inheritScope != null) spec.inherit_scope = opts.inheritScope;
@@ -819,14 +819,42 @@ class QueryBuilder {
   }
 
   /**
-   * @deprecated Use {@link toV2Url} instead.
+   * @param {string} [apiBase]
+   * @param {string} [endpoint="search"]
+   * @returns {string}
+   */
+  toV3Url(apiBase = API_BASE, endpoint = "search") {
+    // Warn when query features can't be represented in a GET v3 URL.
+    const incomplete = [];
+    if (this._names && this._names.length > 0)
+      incomplete.push(`name classes (${JSON.stringify(this._names)})`);
+    if (this._ranks && this._ranks.length > 0)
+      incomplete.push(`rank columns (${JSON.stringify(this._ranks)})`);
+    if (incomplete.length > 0) {
+      console.warn(
+        `toV3Url() cannot fully represent this query: ${incomplete.join(", ")} will be omitted from the URL. Use toV2Url() or the POST endpoint for full fidelity.`,
+      );
+    }
+    const uiUrl = _buildUiUrl(
+      this.toQueryYaml(),
+      this.toParamsYaml(),
+      UI_BASE,
+      endpoint,
+    );
+    const encoded = encodeURIComponent(uiUrl);
+    return `${apiBase}/v3/${endpoint}?url=${encoded}`;
+  }
+
+  /**
    * @param {string} [apiBase]
    * @param {string} [apiVersion]
    * @param {string} [endpoint="search"]
    * @returns {string}
    */
   toUrl(apiBase = API_BASE, apiVersion = API_VERSION, endpoint = "search") {
-    console.warn("toUrl() is deprecated; use toV2Url() instead.");
+    if (apiVersion === "v3") {
+      return this.toV3Url(apiBase, endpoint);
+    }
     return this.toV2Url(apiBase, apiVersion, endpoint);
   }
 
@@ -1794,6 +1822,25 @@ class QueryBuilder {
       // keep original if parse fails
     }
 
+    // Ensure identity field metadata exists for the current index (e.g. taxon_id),
+    // since generated `field_meta.json` may omit identity fields. This provides a
+    // minimal fallback so validation of common identity attributes succeeds.
+    try {
+      const slice = JSON.parse(indexFieldMetadataJson || "{}");
+      const idField = `${this._index}_id`;
+      if (!slice[idField]) {
+        slice[idField] = {
+          constraint_enum: null,
+          processed_type: "",
+          summary: ["primary"],
+          traverse_direction: null,
+        };
+        indexFieldMetadataJson = JSON.stringify(slice);
+      }
+    } catch {
+      // ignore
+    }
+
     const result = _validateQueryJson(
       this.toQueryYaml(),
       indexFieldMetadataJson,
@@ -2345,3 +2392,15 @@ export {
   toTidyRecords,
   parseSearchWithLineageSummary,
 };
+
+// Backwards-compat: expose commonly-constructed builders on globalThis so
+// tests and simple scripts can use `new ReportBuilder(...)` without
+// destructuring the module namespace.
+try {
+  if (typeof globalThis !== "undefined") {
+    globalThis.ReportBuilder = ReportBuilder;
+    globalThis.QueryBuilder = QueryBuilder;
+  }
+} catch (e) {
+  // noop in restrictive runtimes
+}

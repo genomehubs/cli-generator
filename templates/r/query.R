@@ -517,8 +517,22 @@ QueryBuilder <- R6::R6Class(
     #' @param endpoint API endpoint name (default: "search").
     #' @return A character string containing the full URL.
     to_url = function(endpoint = "search") {
-      .Deprecated("to_v2_url")
-      self$to_v2_url(endpoint)
+      # Emit a warning when the query contains features that cannot be
+      # represented in a GET v3 URL (names or rank columns).
+      incomplete <- character(0)
+      if (!is.null(private$names_list) && length(private$names_list) > 0) {
+        incomplete <- c(incomplete, paste0("name classes (", paste(private$names_list, collapse = ", "), ")"))
+      }
+      if (!is.null(private$ranks_list) && length(private$ranks_list) > 0) {
+        incomplete <- c(incomplete, paste0("rank columns (", paste(private$ranks_list, collapse = ", "), ")"))
+      }
+      if (length(incomplete) > 0) {
+        warning(sprintf("to_url() cannot fully represent this query: %s will be omitted from the URL. Use to_v2_url() or the POST endpoint for full fidelity.", paste(incomplete, collapse = ", ")))
+      }
+
+      ui_url <- build_ui_url(self$to_query_yaml(), self$to_params_yaml(), endpoint)
+      encoded <- utils::URLencode(ui_url, reserved = TRUE)
+      paste0(private$api_base_url, "/v3/", endpoint, "?url=", encoded)
     },
 
     #' @description Reconstruct a builder from a v2 API or UI URL.
