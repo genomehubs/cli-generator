@@ -1012,8 +1012,27 @@ pub async fn run_tree_report(
     // One extra ES query using nested lineage → reverse_nested to count how many
     // taxa at `count_rank` descend from each tree node.
     if let Some(ref rank) = count_rank {
-        let descendant_counts =
-            fetch_descendant_counts(&state.client, &state.es_base, index, &lca_id, rank).await?;
+        // Speed-up: restrict descendant count aggregation to the set of tree
+        // node IDs we've already collected so ES only computes counts for
+        // those ancestors. This is much faster than enumerating all
+        // ancestors under the LCA when the tree is small or moderate-sized.
+        let candidate_ids: Vec<String> = tree_nodes.keys().cloned().collect();
+        // Use fast-path only when candidate set is reasonably small to avoid
+        // building a huge `terms` filter; fallback to composite when > 10k.
+        let candidate_slice: Option<&[String]> = if candidate_ids.len() <= 10_000 {
+            Some(candidate_ids.as_slice())
+        } else {
+            None
+        };
+        let descendant_counts = fetch_descendant_counts(
+            &state.client,
+            &state.es_base,
+            index,
+            &lca_id,
+            rank,
+            candidate_slice,
+        )
+        .await?;
         took_total += descendant_counts.took;
         for (taxon_id, count) in descendant_counts.counts {
             if let Some(node) = tree_nodes.get_mut(&taxon_id) {
@@ -1790,63 +1809,172 @@ async fn fetch_descendant_counts(
     index: &str,
     lca_id: &str,
     count_rank: &str,
+    candidate_ids: Option<&[String]>,
 ) -> Result<DescendantCounts, String> {
-    let body = json!({
-        "size": 0,
-        "query": {
-            "bool": {
-                "must": [
-                    { "term": { "taxon_rank": count_rank } },
-                    {
-                        "nested": {
-                            "path": "lineage",
-                            "query": { "term": { "lineage.taxon_id": lca_id } }
+    // If caller provides a candidate ID set, restrict to those IDs using a
+    // nested `filter` + `terms` agg. This avoids paging and is much faster
+    // when the ID set is small relative to the full space.
+    if let Some(ids) = candidate_ids {
+        if ids.is_empty() {
+            return Ok(DescendantCounts {
+                counts: std::collections::HashMap::new(),
+                took: 0,
+            });
+        }
+        // Build a nested -> filter(terms(ids)) -> terms agg over lineage.taxon_id
+        let body = json!({
+            "size": 0,
+            "query": {
+                "bool": {
+                    "must": [
+                        { "term": { "taxon_rank": count_rank } },
+                        {
+                            "nested": {
+                                "path": "lineage",
+                                "query": { "term": { "lineage.taxon_id": lca_id } }
+                            }
                         }
-                    }
-                ]
-            }
-        },
-        "aggs": {
-            "by_ancestor": {
-                "nested": { "path": "lineage" },
-                "aggs": {
-                    "ancestors": {
-                        "terms": {
-                            "field": "lineage.taxon_id",
-                            "size": 100000
-                        },
-                        "aggs": {
-                            "node_count": { "reverse_nested": {} }
+                    ]
+                }
+            },
+            "aggs": {
+                "by_ancestor": {
+                    "nested": { "path": "lineage" },
+                    "aggs": {
+                        "filtered": {
+                            "filter": { "terms": { "lineage.taxon_id": ids } },
+                            "aggs": {
+                                "ancestors": {
+                                    "terms": { "field": "lineage.taxon_id", "size": 10000 },
+                                    "aggs": { "node_count": { "reverse_nested": {} } }
+                                }
+                            }
                         }
                     }
                 }
             }
+        });
+
+        let resp = crate::es_client::execute_search(client, es_base, index, &body).await?;
+        let took = resp.get("took").and_then(|t| t.as_u64()).unwrap_or(0);
+        let buckets = resp
+            .pointer("/aggregations/by_ancestor/filtered/ancestors/buckets")
+            .and_then(|b| b.as_array())
+            .cloned()
+            .unwrap_or_default();
+        let mut counts = std::collections::HashMap::with_capacity(buckets.len());
+        for bucket in &buckets {
+            let taxon_id = match bucket.get("key").and_then(|k| k.as_str()) {
+                Some(id) => id.to_string(),
+                None => continue,
+            };
+            let count = bucket
+                .pointer("/node_count/doc_count")
+                .and_then(|c| c.as_u64())
+                .unwrap_or(0);
+            counts.insert(taxon_id, count);
         }
-    });
-
-    let resp = crate::es_client::execute_search(client, es_base, index, &body).await?;
-    let took = resp.get("took").and_then(|t| t.as_u64()).unwrap_or(0);
-
-    let buckets = resp
-        .pointer("/aggregations/by_ancestor/ancestors/buckets")
-        .and_then(|b| b.as_array())
-        .cloned()
-        .unwrap_or_default();
-
-    let mut counts = std::collections::HashMap::with_capacity(buckets.len());
-    for bucket in &buckets {
-        let taxon_id = match bucket.get("key").and_then(|k| k.as_str()) {
-            Some(id) => id.to_string(),
-            None => continue,
-        };
-        let count = bucket
-            .pointer("/node_count/doc_count")
-            .and_then(|c| c.as_u64())
-            .unwrap_or(0);
-        counts.insert(taxon_id, count);
+        return Ok(DescendantCounts { counts, took });
     }
 
-    Ok(DescendantCounts { counts, took })
+    // Use a composite aggregation inside the nested `lineage` agg so we can
+    // page through ancestor buckets without materialising them all at once.
+    // Loop until `after_key` is absent.
+    let mut counts: std::collections::HashMap<String, u64> = std::collections::HashMap::new();
+    let mut took_total: u64 = 0;
+    let mut after_key: Option<serde_json::Value> = None;
+
+    loop {
+        // Build composite aggregation block, including `after` when present.
+        let mut composite_obj = json!({
+            "size": 1000,
+            "sources": [{ "ancestor_id": { "terms": { "field": "lineage.taxon_id" } } }]
+        });
+        if let Some(ref ak) = after_key {
+            composite_obj["after"] = ak.clone();
+        }
+
+        let body = json!({
+            "size": 0,
+            "query": {
+                "bool": {
+                    "must": [
+                        { "term": { "taxon_rank": count_rank } },
+                        {
+                            "nested": {
+                                "path": "lineage",
+                                "query": { "term": { "lineage.taxon_id": lca_id } }
+                            }
+                        }
+                    ]
+                }
+            },
+            "aggs": {
+                "by_ancestor": {
+                    "nested": { "path": "lineage" },
+                    "aggs": {
+                        "ancestors": {
+                            "composite": composite_obj,
+                            "aggs": {
+                                "node_count": { "reverse_nested": {} }
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        let resp = crate::es_client::execute_search(client, es_base, index, &body).await?;
+        took_total += resp.get("took").and_then(|t| t.as_u64()).unwrap_or(0);
+
+        let buckets = resp
+            .pointer("/aggregations/by_ancestor/ancestors/buckets")
+            .and_then(|b| b.as_array())
+            .cloned()
+            .unwrap_or_default();
+
+        for bucket in &buckets {
+            // Composite bucket keys are objects like { "ancestor_id": "123" }
+            let taxon_id = if let Some(obj) = bucket.get("key").and_then(|k| k.as_object()) {
+                if let Some(v) = obj.get("ancestor_id") {
+                    if let Some(s) = v.as_str() {
+                        s.to_string()
+                    } else if let Some(n) = v.as_f64() {
+                        n.to_string()
+                    } else {
+                        continue;
+                    }
+                } else {
+                    continue;
+                }
+            } else if let Some(s) = bucket.get("key").and_then(|k| k.as_str()) {
+                s.to_string()
+            } else if let Some(n) = bucket.get("key").and_then(|k| k.as_f64()) {
+                n.to_string()
+            } else {
+                continue;
+            };
+
+            let count = bucket
+                .pointer("/node_count/doc_count")
+                .and_then(|c| c.as_u64())
+                .unwrap_or(0);
+            counts.insert(taxon_id, count);
+        }
+
+        // Check for pagination `after_key`
+        after_key = resp
+            .pointer("/aggregations/by_ancestor/ancestors/after_key")
+            .cloned();
+        if after_key.is_none() {
+            break;
+        }
+    }
+
+    Ok(DescendantCounts {
+        counts,
+        took: took_total,
+    })
 }
 
 /// Compute subtree counts via iterative post-order DFS.
