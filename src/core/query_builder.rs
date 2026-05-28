@@ -85,6 +85,7 @@ pub fn build_search_body(
         "size": size,
         "from": offset,
         "query": { "bool": { "filter": [] } },
+        "track_total_hits": true,
         "_source": { "include": ["taxon_id","scientific_name","taxon_rank","parent","taxon_names.*","lineage.*"], "exclude": [] }
     });
 
