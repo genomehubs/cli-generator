@@ -2,6 +2,8 @@
 //!
 //! Each `compute_*_bounds()` function issues one ES aggregation query to determine
 //! the actual data range for a field, then wraps it in a `BoundsResult`.
+//!
+//! All field-type detection delegates to [`crate::report::field`].
 
 use genomehubs_query::report::axis::{DateInterval, Scale, ValueType};
 use genomehubs_query::report::{AxisSpec, BoundsResult};
@@ -10,77 +12,7 @@ use serde_json::{json, Value};
 
 use crate::es_client;
 use crate::es_metadata::MetadataCache;
-
-/// Determine if a field is a taxonomic rank (from lineage).
-/// Ranks are stored in the lineage.taxon_rank nested field.
-fn is_rank(
-    field: &str,
-    cache: &Option<std::sync::Arc<tokio::sync::RwLock<MetadataCache>>>,
-) -> bool {
-    if let Some(cache_lock) = cache {
-        if let Ok(c) = cache_lock.try_read() {
-            return c.taxonomic_ranks.contains(&field.to_string());
-        }
-    }
-    false
-}
-
-/// Determine if a field is an attribute (from attributes nested array).
-fn is_attribute(
-    field: &str,
-    cache: &Option<std::sync::Arc<tokio::sync::RwLock<MetadataCache>>>,
-) -> bool {
-    if let Some(cache_lock) = cache {
-        if let Ok(c) = cache_lock.try_read() {
-            // If the field is listed as a taxonomic rank, it should not be
-            // treated as an attribute even if an attribute with the same name
-            // exists in the metadata. Prefer rank interpretation.
-            if c.taxonomic_ranks.contains(&field.to_string()) {
-                return false;
-            }
-            if let Value::Object(groups) = &c.attr_types {
-                for (_, group) in groups {
-                    if let Value::Object(fields) = group {
-                        if fields.contains_key(field) {
-                            return true;
-                        }
-                    }
-                }
-            }
-        }
-    }
-    false
-}
-
-/// Get the exact value field for an attribute from metadata.
-/// Returns the processed_summary field (e.g., "attributes.long_value" for type=long).
-/// This MUST come from metadata, not guessed.
-fn get_attribute_value_field(
-    field: &str,
-    cache: &Option<std::sync::Arc<tokio::sync::RwLock<MetadataCache>>>,
-) -> Result<String, String> {
-    dbg!(&field);
-    if let Some(cache_lock) = cache {
-        if let Ok(c) = cache_lock.try_read() {
-            if let Value::Object(groups) = &c.attr_types {
-                // Search all groups for this field
-                for (_, group) in groups {
-                    if let Value::Object(fields) = group {
-                        if let Some(Value::Object(meta_obj)) = fields.get(field) {
-                            // Get processed_summary which is the exact ES field name
-                            if let Some(ps) =
-                                meta_obj.get("processed_summary").and_then(|v| v.as_str())
-                            {
-                                return Ok(format!("attributes.{}", ps));
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-    Err(format!("field '{}' not found in metadata", field))
-}
+use crate::report::field::{get_attribute_value_field, is_attribute, is_rank};
 
 /// Probe Elasticsearch for the domain of a single axis field.
 ///
@@ -128,8 +60,6 @@ async fn compute_numeric_bounds(
 ) -> Result<BoundsResult, String> {
     let is_attr = is_attribute(&spec.field, cache);
     let is_rk = is_rank(&spec.field, cache);
-    dbg!(&is_attr);
-    dbg!(&is_rk);
 
     // If this field is a taxonomic rank, prefer that interpretation and
     // return a `BoundsResult` for rank-type axes without probing attribute
@@ -336,9 +266,6 @@ async fn compute_keyword_bounds(
 
     let is_attr = is_attribute(&spec.field, cache);
     let is_rk = is_rank(&spec.field, cache);
-
-    dbg!(&is_attr);
-    dbg!(&is_rk);
 
     // Prefer taxon ranks over attributes: if the field looks like a rank,
     // query lineage buckets rather than attribute nested terms.

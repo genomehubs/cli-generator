@@ -88,6 +88,111 @@ fn build_series_from_cats(cats: Option<&Value>) -> Vec<SeriesMeta> {
     }
 }
 
+/// Compute bin boundary values from an ordered list of numeric bucket keys.
+///
+/// Returns `keys.len() + 1` values: the original `keys` plus one extra right
+/// boundary estimated as `last_key + (last_key − second_to_last_key)`.
+///
+/// The boundary list is used by Vega-Lite `binned` encodings to draw each bar
+/// from its left edge to its right edge without overlap or gap.
+fn bucket_keys_to_boundaries(sorted_keys: &[f64], axis_obj: &Value) -> Vec<f64> {
+    if sorted_keys.is_empty() {
+        return vec![];
+    }
+    let width = if sorted_keys.len() >= 2 {
+        sorted_keys[1] - sorted_keys[0]
+    } else {
+        // Estimate width from domain / tickCount when there is only one bucket.
+        axis_obj
+            .get("domain")
+            .and_then(|d| d.as_array())
+            .map(|arr| {
+                if arr.len() >= 2 {
+                    let lo = arr[0].as_f64().unwrap_or(0.0);
+                    let hi = arr[1].as_f64().unwrap_or(lo + 1.0);
+                    let ticks = axis_obj
+                        .get("tickCount")
+                        .and_then(|v| v.as_u64())
+                        .unwrap_or(10) as f64;
+                    (hi - lo) / ticks.max(1.0)
+                } else {
+                    1.0
+                }
+            })
+            .unwrap_or(1.0)
+    };
+    let mut boundaries = sorted_keys.to_vec();
+    boundaries.push(sorted_keys[sorted_keys.len() - 1] + width);
+    boundaries
+}
+
+/// Extract numeric or keyword tick data from a bucket array and write it onto `meta`.
+///
+/// For keyword axes: extracts `label` (or `id`) strings → `meta.tick_labels`.
+/// For numeric axes: extracts `key` / `id` floats, sorts them, computes bin
+/// boundaries → `meta.tick_values`.
+///
+/// `axis_obj` is the axis spec JSON object (provides `domain` / `tickCount`
+/// for single-bucket width estimation).
+///
+/// `label_source` is an optional pre-built label list that takes priority over
+/// bucket-derived labels (used for y-axis when the server supplies
+/// `yBucketLabels` directly).
+fn fill_tick_data_from_buckets(
+    meta: &mut AxisMeta,
+    axis_obj: &Value,
+    buckets: &[Value],
+    label_source: Option<&[Value]>,
+) {
+    if meta.value_type == "keyword" {
+        // Prefer explicit labels when provided (e.g. yBucketLabels for taxon ranks).
+        if let Some(lbls) = label_source {
+            let labels: Vec<String> = lbls
+                .iter()
+                .map(|v| v.as_str().unwrap_or("").to_string())
+                .collect();
+            if !labels.is_empty() {
+                meta.tick_labels = labels;
+                return;
+            }
+        }
+        // Fall back to label/id fields from bucket objects.
+        let labels: Vec<String> = buckets
+            .iter()
+            .map(|b| {
+                b.get("label")
+                    .and_then(|l| l.as_str())
+                    .map(|s| s.to_string())
+                    .or_else(|| {
+                        b.get("id")
+                            .or_else(|| b.get("key"))
+                            .and_then(|v| v.as_str().map(|s| s.to_string()))
+                    })
+                    .unwrap_or_default()
+            })
+            .collect();
+        if !labels.is_empty() {
+            meta.tick_labels = labels;
+        }
+    } else {
+        // Numeric: build sorted boundary list from bucket numeric keys.
+        let mut keys: Vec<f64> = buckets
+            .iter()
+            .filter_map(|b| {
+                b.get("key").and_then(|v| v.as_f64()).or_else(|| {
+                    b.get("id")
+                        .and_then(|v| v.as_str())
+                        .and_then(|s| s.parse().ok())
+                })
+            })
+            .collect();
+        if !keys.is_empty() {
+            keys.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+            meta.tick_values = bucket_keys_to_boundaries(&keys, axis_obj);
+        }
+    }
+}
+
 /// Build a `PlotSpec` from a v3 report payload and optional `display` hints.
 ///
 /// `report_type` is the canonical report string (e.g. "histogram", "scatter").
@@ -158,85 +263,12 @@ pub fn build_plot_spec(
                         genomehubs_query::report::spec_builder::resolve_axis_display(
                             meta, axis_opts,
                         );
-
-                        if meta.value_type == "keyword" {
-                            if let Some(buckets) =
-                                report_data.get("buckets").and_then(|v| v.as_array())
-                            {
-                                let labels: Vec<String> = buckets
-                                    .iter()
-                                    .map(|b| {
-                                        b.get("label")
-                                            .and_then(|l| l.as_str())
-                                            .map(|s| s.to_string())
-                                            .unwrap_or_else(|| {
-                                                if let Some(kv) = b.get("key") {
-                                                    if let Some(s) = kv.as_str() {
-                                                        s.to_string()
-                                                    } else {
-                                                        kv.to_string()
-                                                    }
-                                                } else {
-                                                    String::new()
-                                                }
-                                            })
-                                    })
-                                    .collect();
-                                if !labels.is_empty() {
-                                    meta.tick_labels = labels;
-                                }
-                            }
-                        } else {
-                            // Numeric: try to derive bin boundaries from buckets
-                            if let Some(buckets) =
-                                report_data.get("buckets").and_then(|v| v.as_array())
-                            {
-                                let mut keys_num: Vec<f64> = Vec::new();
-                                for b in buckets.iter() {
-                                    if let Some(k) = b.get("key").and_then(|v| v.as_f64()) {
-                                        keys_num.push(k);
-                                    } else if let Some(id_s) = b.get("id").and_then(|v| v.as_str())
-                                    {
-                                        if let Ok(n) = id_s.parse::<f64>() {
-                                            keys_num.push(n);
-                                        }
-                                    }
-                                }
-                                if !keys_num.is_empty() {
-                                    keys_num.sort_by(|a, b| {
-                                        a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal)
-                                    });
-                                    let width = if keys_num.len() >= 2 {
-                                        keys_num[1] - keys_num[0]
-                                    } else if let Some(domain_arr) =
-                                        x_obj.get("domain").and_then(|d| d.as_array())
-                                    {
-                                        if domain_arr.len() >= 2 {
-                                            let lo = domain_arr[0].as_f64().unwrap_or(0.0);
-                                            let hi = domain_arr[1].as_f64().unwrap_or(lo + 1.0);
-                                            let tick_count = x_obj
-                                                .get("tickCount")
-                                                .and_then(|v| v.as_u64())
-                                                .unwrap_or(10)
-                                                as f64;
-                                            (hi - lo) / tick_count.max(1.0)
-                                        } else {
-                                            1.0
-                                        }
-                                    } else {
-                                        1.0
-                                    };
-                                    let mut boundaries = keys_num.clone();
-                                    let last_right = if keys_num.len() >= 2 {
-                                        keys_num[keys_num.len() - 1] + (keys_num[1] - keys_num[0])
-                                    } else {
-                                        keys_num[0] + width
-                                    };
-                                    boundaries.push(last_right);
-                                    meta.tick_values = boundaries;
-                                }
-                            }
-                        }
+                        let buckets = report_data
+                            .get("buckets")
+                            .and_then(|v| v.as_array())
+                            .map(|a| a.as_slice())
+                            .unwrap_or(&[]);
+                        fill_tick_data_from_buckets(meta, x_obj, buckets, None);
                     }
                 }
             }
@@ -297,81 +329,12 @@ pub fn build_plot_spec(
                         genomehubs_query::report::spec_builder::resolve_axis_display(
                             meta, axis_opts,
                         );
-
-                        if meta.value_type == "keyword" {
-                            if let Some(buckets) =
-                                report_data.get("buckets").and_then(|v| v.as_array())
-                            {
-                                let labels: Vec<String> = buckets
-                                    .iter()
-                                    .map(|b| {
-                                        b.get("label")
-                                            .and_then(|l| l.as_str())
-                                            .map(|s| s.to_string())
-                                            .unwrap_or_else(|| {
-                                                if let Some(kv) = b.get("id") {
-                                                    if let Some(s) = kv.as_str() {
-                                                        s.to_string()
-                                                    } else {
-                                                        kv.to_string()
-                                                    }
-                                                } else {
-                                                    String::new()
-                                                }
-                                            })
-                                    })
-                                    .collect();
-                                if !labels.is_empty() {
-                                    meta.tick_labels = labels;
-                                }
-                            }
-                        } else if let Some(buckets) =
-                            report_data.get("buckets").and_then(|v| v.as_array())
-                        {
-                            let mut keys_num: Vec<f64> = Vec::new();
-                            for b in buckets.iter() {
-                                if let Some(k) = b.get("key").and_then(|v| v.as_f64()) {
-                                    keys_num.push(k);
-                                } else if let Some(id_s) = b.get("id").and_then(|v| v.as_str()) {
-                                    if let Ok(n) = id_s.parse::<f64>() {
-                                        keys_num.push(n);
-                                    }
-                                }
-                            }
-                            if !keys_num.is_empty() {
-                                keys_num.sort_by(|a, b| {
-                                    a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal)
-                                });
-                                let width = if keys_num.len() >= 2 {
-                                    keys_num[1] - keys_num[0]
-                                } else if let Some(domain_arr) =
-                                    x_obj.get("domain").and_then(|d| d.as_array())
-                                {
-                                    if domain_arr.len() >= 2 {
-                                        let lo = domain_arr[0].as_f64().unwrap_or(0.0);
-                                        let hi = domain_arr[1].as_f64().unwrap_or(lo + 1.0);
-                                        let tick_count = x_obj
-                                            .get("tickCount")
-                                            .and_then(|v| v.as_u64())
-                                            .unwrap_or(10)
-                                            as f64;
-                                        (hi - lo) / tick_count.max(1.0)
-                                    } else {
-                                        1.0
-                                    }
-                                } else {
-                                    1.0
-                                };
-                                let mut boundaries = keys_num.clone();
-                                let last_right = if keys_num.len() >= 2 {
-                                    keys_num[keys_num.len() - 1] + (keys_num[1] - keys_num[0])
-                                } else {
-                                    keys_num[0] + width
-                                };
-                                boundaries.push(last_right);
-                                meta.tick_values = boundaries;
-                            }
-                        }
+                        let buckets = report_data
+                            .get("buckets")
+                            .and_then(|v| v.as_array())
+                            .map(|a| a.as_slice())
+                            .unwrap_or(&[]);
+                        fill_tick_data_from_buckets(meta, x_obj, buckets, None);
                     }
                 }
             }
@@ -395,81 +358,29 @@ pub fn build_plot_spec(
                         genomehubs_query::report::spec_builder::resolve_axis_display(
                             meta, axis_opts,
                         );
-
-                        if meta.value_type == "keyword" {
-                            // Prefer explicit `yBucketLabels` when the server has
-                            // provided human-readable labels for taxon-rank buckets.
-                            // If `yBucketLabels` exists but is empty, fall back to
-                            // `yBuckets` so categorical axes still receive tick labels.
-                            let mut labels: Vec<String> = Vec::new();
-                            if let Some(lbls) =
-                                report_data.get("yBucketLabels").and_then(|v| v.as_array())
-                            {
-                                labels = lbls
-                                    .iter()
-                                    .map(|v| v.as_str().unwrap_or("").to_string())
-                                    .collect();
-                            }
-                            if labels.is_empty() {
-                                if let Some(yb) =
-                                    report_data.get("yBuckets").and_then(|v| v.as_array())
-                                {
-                                    labels = yb
-                                        .iter()
-                                        .map(|v| v.as_str().unwrap_or("").to_string())
-                                        .collect();
-                                }
-                            }
-                            if !labels.is_empty() {
-                                meta.tick_labels = labels;
-                            }
-                        } else if let Some(yb) =
-                            report_data.get("yBuckets").and_then(|v| v.as_array())
-                        {
-                            let mut y_keys: Vec<f64> = Vec::new();
-                            for k in yb.iter() {
-                                if let Some(n) = k.as_f64() {
-                                    y_keys.push(n);
-                                } else if let Some(s) = k.as_str() {
-                                    if let Ok(n) = s.parse::<f64>() {
-                                        y_keys.push(n);
-                                    }
-                                }
-                            }
-                            if !y_keys.is_empty() {
-                                y_keys.sort_by(|a, b| {
-                                    a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal)
-                                });
-                                let height = if y_keys.len() >= 2 {
-                                    y_keys[1] - y_keys[0]
-                                } else if let Some(domain_arr) =
-                                    y_obj.get("domain").and_then(|d| d.as_array())
-                                {
-                                    if domain_arr.len() >= 2 {
-                                        let lo = domain_arr[0].as_f64().unwrap_or(0.0);
-                                        let hi = domain_arr[1].as_f64().unwrap_or(lo + 1.0);
-                                        let tick_count = y_obj
-                                            .get("tickCount")
-                                            .and_then(|v| v.as_u64())
-                                            .unwrap_or(10)
-                                            as f64;
-                                        (hi - lo) / tick_count.max(1.0)
-                                    } else {
-                                        1.0
-                                    }
-                                } else {
-                                    1.0
-                                };
-                                let mut boundaries = y_keys.clone();
-                                let last_top = if y_keys.len() >= 2 {
-                                    y_keys[y_keys.len() - 1] + (y_keys[1] - y_keys[0])
-                                } else {
-                                    y_keys[0] + height
-                                };
-                                boundaries.push(last_top);
-                                meta.tick_values = boundaries;
-                            }
-                        }
+                        // Prefer explicit yBucketLabels (human-readable taxon rank names)
+                        // then fall back to yBuckets for both keyword and numeric axes.
+                        let explicit_labels: Option<&[Value]> = report_data
+                            .get("yBucketLabels")
+                            .and_then(|v| v.as_array())
+                            .map(|a| a.as_slice());
+                        let y_buckets: Vec<Value> = report_data
+                            .get("yBuckets")
+                            .and_then(|v| v.as_array())
+                            .map(|arr| {
+                                arr.iter()
+                                    .map(|v| match v {
+                                        // Convert raw scalar bucket keys into fake bucket objects
+                                        // so fill_tick_data_from_buckets can process them.
+                                        Value::Number(_) | Value::String(_) => {
+                                            serde_json::json!({ "key": v })
+                                        }
+                                        other => other.clone(),
+                                    })
+                                    .collect()
+                            })
+                            .unwrap_or_default();
+                        fill_tick_data_from_buckets(meta, y_obj, &y_buckets, explicit_labels);
                     }
                 }
             }
@@ -575,6 +486,17 @@ pub fn build_plot_spec(
             if let Some(label) = display_spec.cat_label.as_ref() {
                 cm.label = Some(label.clone());
             }
+            // Prefer explicit tick labels supplied under `report_data["cat"]["tick_labels"]`.
+            if let Some(lbls) = cat_obj.get("tick_labels").and_then(|v| v.as_array()) {
+                let labels: Vec<String> = lbls
+                    .iter()
+                    .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                    .collect();
+                if !labels.is_empty() {
+                    cm.tick_labels = labels;
+                }
+            }
+
             // Populate tick labels for categorical cat axes from report_data["cats"]
             if cm.value_type == "keyword" {
                 if let Some(cats_arr) = report_data.get("cats").and_then(|v| v.as_array()) {
@@ -587,8 +509,19 @@ pub fn build_plot_spec(
                     }
                 }
             } else {
-                // numeric cat axes: try to populate numeric tick_values from `cats`
-                if let Some(cats_arr) = report_data.get("cats").and_then(|v| v.as_array()) {
+                // Numeric cat axes: prefer explicit numeric `tick_values` supplied
+                // in `report_data["cat"]["tick_values"]`. Fall back to parsing
+                // `report_data["cats"]` when not present.
+                if let Some(vals) = report_data
+                    .get("cat")
+                    .and_then(|c| c.get("tick_values"))
+                    .and_then(|v| v.as_array())
+                {
+                    let nums: Vec<f64> = vals.iter().filter_map(|v| v.as_f64()).collect();
+                    if !nums.is_empty() {
+                        cm.tick_values = nums;
+                    }
+                } else if let Some(cats_arr) = report_data.get("cats").and_then(|v| v.as_array()) {
                     let mut nums: Vec<f64> = Vec::new();
                     for v in cats_arr.iter() {
                         if let Some(n) = v.as_f64() {
@@ -614,6 +547,20 @@ pub fn build_plot_spec(
                 }
             }
             cat_meta = Some(cm);
+        }
+    }
+
+    // If the server supplied human-readable category tick labels, apply
+    // them to the series labels so the legend displays friendly names while
+    // the underlying series keys remain the raw category keys used in
+    // `data.by_cat`.
+    if let Some(ref cm) = cat_meta {
+        if !cm.tick_labels.is_empty() {
+            for (i, lbl) in cm.tick_labels.iter().enumerate() {
+                if let Some(s) = series.get_mut(i) {
+                    s.label = lbl.clone();
+                }
+            }
         }
     }
 

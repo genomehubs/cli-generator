@@ -531,6 +531,20 @@ fn make_vl_axis_encoding(
     }))
 }
 
+/// Compute the pixel width for a single bar in a grouped histogram or scatter bar chart.
+///
+/// Divides the available `plot_width_px` evenly across `n_bins` bins, reserves 90 %
+/// of each bin for bar content, then splits that space evenly among `n_cats` categories.
+/// The result is clamped to a minimum of 2 px so bars remain visible for large datasets.
+fn grouped_bar_size_px(n_bins: f64, n_cats: f64, plot_width_px: f64) -> f64 {
+    let bin_pixel = if n_bins > 0.0 {
+        plot_width_px / n_bins
+    } else {
+        10.0
+    };
+    ((bin_pixel * 0.9) / n_cats.max(1.0)).max(2.0)
+}
+
 fn vl_histogram(spec: &serde_json::Value, mut base: serde_json::Value) -> serde_json::Value {
     let x_meta = spec.get("x").unwrap_or(&serde_json::Value::Null);
     let x_field = x_meta
@@ -600,6 +614,31 @@ fn vl_histogram(spec: &serde_json::Value, mut base: serde_json::Value) -> serde_
                 })
                 .unwrap_or_else(|| by_cat_val.as_object().unwrap().keys().cloned().collect());
 
+            // Optional mapping from raw cat key -> human-readable label. If
+            // the server provided `report_data.cat.tick_labels` and a
+            // parallel `report_data.cats` ordering, use that to map keys to
+            // friendly labels for display (legend, color). This preserves
+            // raw keys for lookups while presenting readable names.
+            let mut cat_label_map: Option<std::collections::HashMap<String, String>> = None;
+            if let Some(lbls) = spec
+                .get("data")
+                .and_then(|d| d.get("cat"))
+                .and_then(|c| c.get("tick_labels"))
+                .and_then(|v| v.as_array())
+            {
+                if lbls.len() == cats.len() {
+                    let mut m = std::collections::HashMap::new();
+                    for (i, k) in cats.iter().enumerate() {
+                        if let Some(lbl) = lbls.get(i).and_then(|v| v.as_str()) {
+                            m.insert(k.clone(), lbl.to_string());
+                        }
+                    }
+                    if !m.is_empty() {
+                        cat_label_map = Some(m);
+                    }
+                }
+            }
+
             // Decide how to treat the x axis: preserve numeric/temporal type
             // when the server indicates it (so axis ticks/formatting are kept).
             let x_value_type = x_meta
@@ -663,7 +702,12 @@ fn vl_histogram(spec: &serde_json::Value, mut base: serde_json::Value) -> serde_
                         bucket_sum += display_count;
                         let mut obj = serde_json::Map::new();
                         obj.insert("x".to_string(), serde_json::Value::String(bl.clone()));
-                        obj.insert("cat".to_string(), serde_json::Value::String(cat.clone()));
+                        let display_cat = cat_label_map
+                            .as_ref()
+                            .and_then(|m| m.get(cat))
+                            .cloned()
+                            .unwrap_or_else(|| cat.clone());
+                        obj.insert("cat".to_string(), serde_json::Value::String(display_cat));
                         obj.insert(
                             "doc_count".to_string(),
                             serde_json::Value::from(display_count),
@@ -768,14 +812,11 @@ fn vl_histogram(spec: &serde_json::Value, mut base: serde_json::Value) -> serde_
                 // Compute pixel-based grouped bar size for categorical bins
                 let plot_width_px =
                     base.get("width").and_then(|v| v.as_u64()).unwrap_or(600) as f64;
-                let n_bins = bucket_labels.len() as f64;
-                let bin_pixel = if n_bins > 0.0 {
-                    plot_width_px / n_bins
-                } else {
-                    10.0
-                };
-                let n_cats = cats.len() as f64;
-                let grouped_bar_px = ((bin_pixel * 0.9) / n_cats).max(2.0);
+                let grouped_bar_px = grouped_bar_size_px(
+                    bucket_labels.len() as f64,
+                    cats.len() as f64,
+                    plot_width_px,
+                );
 
                 match hist_mode {
                     "grouped" => {
@@ -886,14 +927,9 @@ fn vl_histogram(spec: &serde_json::Value, mut base: serde_json::Value) -> serde_
                 // Compute pixel-based bar size for grouped mode so bars fit side-by-side
                 let plot_width_px =
                     base.get("width").and_then(|v| v.as_u64()).unwrap_or(600) as f64;
-                let n_bins = keys_num.len() as f64;
-                let bin_pixel = if n_bins > 0.0 {
-                    plot_width_px / n_bins
-                } else {
-                    10.0
-                };
                 let n_cats = cats.len() as f64;
-                let grouped_bar_px = ((bin_pixel * 0.9) / n_cats).max(2.0);
+                let grouped_bar_px =
+                    grouped_bar_size_px(keys_num.len() as f64, n_cats, plot_width_px);
 
                 // Precompute domain span for converting pixel offsets into data units
                 let domain_min = boundaries_f64.first().cloned().unwrap_or(0.0);
@@ -943,7 +979,12 @@ fn vl_histogram(spec: &serde_json::Value, mut base: serde_json::Value) -> serde_
                             obj.insert("x".to_string(), serde_json::Value::from(*left));
                             obj.insert("x2".to_string(), serde_json::Value::from(right));
                         }
-                        obj.insert("cat".to_string(), serde_json::Value::String(cat.clone()));
+                        let display_cat = cat_label_map
+                            .as_ref()
+                            .and_then(|m| m.get(cat))
+                            .cloned()
+                            .unwrap_or_else(|| cat.clone());
+                        obj.insert("cat".to_string(), serde_json::Value::String(display_cat));
                         obj.insert(
                             "doc_count".to_string(),
                             serde_json::Value::from(display_count),

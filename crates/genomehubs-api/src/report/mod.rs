@@ -11,6 +11,7 @@
 pub mod agg;
 pub mod arc;
 pub mod bounds;
+pub mod field;
 pub mod filter_expr;
 pub mod pipeline;
 pub mod positional;

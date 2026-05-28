@@ -3,6 +3,7 @@
 //! Each handler issues ES queries, applies bounds/aggregation/pipeline logic,
 //! and returns structured report data.
 
+use chrono::Datelike;
 use genomehubs_query::query::{QueryParams, SearchQuery};
 use genomehubs_query::report::axis::{AxisInput, AxisRole, AxisSpec, AxisSummary, ValueType};
 use serde_json::{json, Value};
@@ -15,6 +16,7 @@ use crate::report::agg::{
     build_nested_attribute_scatter_agg, x_bucket_agg_name,
 };
 use crate::report::bounds::compute_bounds;
+use crate::report::field::{resolve_field_storage, FieldStorage};
 use crate::report::pipeline::{Pipeline, ReportContext, ScaleStep};
 use crate::AppState;
 
@@ -28,18 +30,21 @@ fn value_type_to_string(v: ValueType) -> &'static str {
     }
 }
 
-/// Extract per-category per-bucket counts from a v2-pattern `categoryHistograms` response.
+/// Extract per-category per-bucket counts from a `categoryHistograms` ES response.
 ///
-/// For each category label the function follows:
-/// `.../categoryHistograms/by_attribute/by_cat/by_value/buckets/{label}/histogram/by_attribute/{x_field}/histogram/buckets`
+/// Uses [`FieldStorage`] to compute deterministic JSON pointer paths rather
+/// than searching a candidate list.  The x-axis inner histogram container
+/// is always `"by_key"` (attribute) or `"at_rank"` (lineage) — see
+/// [`build_inner_x_agg_block`][crate::report::field::build_inner_x_agg_block].
 ///
-/// Returns a JSON object mapping each category key to an array of `doc_count` values, one per
-/// main-histogram bucket. Includes an `"other"` key when `show_other` is true.
+/// Returns a JSON object mapping each category key to an array of `doc_count`
+/// values, one per main-histogram bucket, aligned by key to the main buckets.
 #[allow(clippy::too_many_arguments)]
 fn extract_cat_histograms(
     resp: &Value,
     agg_name: &str,
-    x_field: &str,
+    x_storage: &FieldStorage,
+    cat_storage: &FieldStorage,
     x_bucket_agg: &str,
     main_bucket_count: usize,
     cat_labels: &[String],
@@ -48,46 +53,14 @@ fn extract_cat_histograms(
     main_counts: &[u64],
     main_buckets: &[Value],
 ) -> Value {
-    // Try several possible locations where categoryHistograms may place the
-    // per-category buckets. There are two top-level insertion points (the
-    // `by_key` attributes path and the `at_rank` lineage path) and two
-    // category anchoring strategies inside `categoryHistograms` (attribute
-    // keyed or lineage keyed). Try these candidates in order and pick the
-    // first that exists in the response.
-    let candidates = vec![
-        format!(
-            "/aggregations/{}/by_key/categoryHistograms/by_attribute/by_cat/by_value/buckets",
-            agg_name
-        ),
-        format!(
-            "/aggregations/{}/by_key/categoryHistograms/by_lineage/at_cat_rank/by_value/buckets",
-            agg_name
-        ),
-        format!(
-            "/aggregations/{}/at_rank/categoryHistograms/by_attribute/by_cat/by_value/buckets",
-            agg_name
-        ),
-        format!(
-            "/aggregations/{}/at_rank/categoryHistograms/by_lineage/at_cat_rank/by_value/buckets",
-            agg_name
-        ),
-    ];
+    let base = match x_storage.cat_histograms_base(agg_name, cat_storage) {
+        Some(p) if resp.pointer(&p).is_some() => p,
+        _ => return Value::Null,
+    };
 
-    let base = candidates
-        .into_iter()
-        .find(|p| resp.pointer(p).is_some())
-        .unwrap_or_default();
+    let inner_x = x_storage.inner_x_path(x_bucket_agg);
 
-    if base.is_empty() {
-        return Value::Null;
-    }
-
-    let mut by_cat = serde_json::Map::new();
-
-    // Build a list of main bucket keys (stringified) so per-category
-    // histograms can be aligned to the top-level bucket ordering. This
-    // avoids placing category counts in the wrong bin when inner
-    // per-category aggregations return buckets in a different order.
+    // Build main bucket keys list for alignment.
     let main_keys: Vec<String> = main_buckets
         .iter()
         .map(|b| {
@@ -99,6 +72,8 @@ fn extract_cat_histograms(
         })
         .collect();
 
+    let mut by_cat = serde_json::Map::new();
+
     if cat_is_numeric {
         // by_value uses a histogram agg — buckets is an array of { key, histogram: {…} }.
         let cat_buckets = resp
@@ -107,7 +82,6 @@ fn extract_cat_histograms(
             .cloned()
             .unwrap_or_default();
         for bucket in &cat_buckets {
-            // bucket key may be numeric
             let key_val = bucket.get("key").cloned().unwrap_or(json!(0));
             let label = if let Some(kf) = key_val.as_f64() {
                 kf.to_string()
@@ -116,126 +90,54 @@ fn extract_cat_histograms(
             } else {
                 key_val.to_string()
             };
-
-            // Try attribute-style inner histogram path, then lineage-style.
-            let hist_path_attr = format!(
-                "/histogram/by_attribute/{}/{}/buckets",
-                x_field, x_bucket_agg
-            );
-            let hist_path_lineage =
-                format!("/histogram/by_lineage/at_rank/{}/buckets", x_bucket_agg);
             let hist_buckets = bucket
-                .pointer(&hist_path_attr)
-                .or_else(|| bucket.pointer(&hist_path_lineage))
+                .pointer(&inner_x)
                 .and_then(|b| b.as_array())
                 .cloned()
                 .unwrap_or_default();
-
-            // Map inner bucket keys -> counts for alignment
-            let mut counts_map: std::collections::HashMap<String, u64> =
-                std::collections::HashMap::new();
-            for hb in &hist_buckets {
-                let k = hb.get("key").cloned().unwrap_or(json!(""));
-                let kstr = if let Some(s) = k.as_str() {
-                    s.to_string()
-                } else if let Some(n) = k.as_f64() {
-                    n.to_string()
-                } else {
-                    k.to_string()
-                };
-                let cnt = hb.get("doc_count").and_then(|c| c.as_u64()).unwrap_or(0);
-                counts_map.insert(kstr, cnt);
-            }
-
-            // Build aligned counts vector according to main_keys
-            let mut counts: Vec<u64> = Vec::with_capacity(main_bucket_count);
-            for mk in &main_keys {
-                counts.push(*counts_map.get(mk).unwrap_or(&0));
-            }
-            counts.resize(main_bucket_count, 0);
-            by_cat.insert(label, json!(counts));
+            by_cat.insert(
+                label,
+                json!(align_to_keys(&hist_buckets, &main_keys, main_bucket_count)),
+            );
         }
     } else {
         // by_value uses a filters agg — buckets is an object keyed by label.
         let mut named_sums: Vec<Vec<u64>> = Vec::with_capacity(cat_labels.len());
 
         for label in cat_labels {
-            // Prefer attribute-style inner histogram path, fall back to lineage-style.
-            let hist_path_attr = format!(
-                "{}/{}/histogram/by_attribute/{}/{}/buckets",
-                base, label, x_field, x_bucket_agg
-            );
-            let hist_path_lineage = format!(
-                "{}/{}/histogram/by_lineage/at_rank/{}/buckets",
-                base, label, x_bucket_agg
-            );
+            let hist_path = format!("{}/{}{}", base, label, inner_x);
             let hist_buckets = resp
-                .pointer(&hist_path_attr)
-                .or_else(|| resp.pointer(&hist_path_lineage))
+                .pointer(&hist_path)
                 .and_then(|b| b.as_array())
                 .cloned()
                 .unwrap_or_default();
-
-            // Map inner bucket keys -> counts for alignment
-            let mut counts_map: std::collections::HashMap<String, u64> =
-                std::collections::HashMap::new();
-            for hb in &hist_buckets {
-                let k = hb.get("key").cloned().unwrap_or(json!(""));
-                let kstr = if let Some(s) = k.as_str() {
-                    s.to_string()
-                } else if let Some(n) = k.as_f64() {
-                    n.to_string()
-                } else {
-                    k.to_string()
-                };
-                let cnt = hb.get("doc_count").and_then(|c| c.as_u64()).unwrap_or(0);
-                counts_map.insert(kstr, cnt);
-            }
-
-            let mut counts: Vec<u64> = Vec::with_capacity(main_bucket_count);
-            for mk in &main_keys {
-                counts.push(*counts_map.get(mk).unwrap_or(&0));
-            }
-            counts.resize(main_bucket_count, 0);
+            let counts = align_to_keys(&hist_buckets, &main_keys, main_bucket_count);
             named_sums.push(counts.clone());
             by_cat.insert(label.clone(), json!(counts));
         }
 
         if show_other {
-            let other_path_attr = format!(
-                "{}/other/histogram/by_attribute/{}/{}/buckets",
-                base, x_field, x_bucket_agg
-            );
-            let other_path_lineage = format!(
-                "{}/other/histogram/by_lineage/at_rank/{}/buckets",
-                base, x_bucket_agg
-            );
-            let other_counts: Vec<u64> = if let Some(buckets) = resp
-                .pointer(&other_path_attr)
-                .or_else(|| resp.pointer(&other_path_lineage))
-                .and_then(|b| b.as_array())
-            {
-                let mut v: Vec<u64> = buckets
-                    .iter()
-                    .map(|b| b.get("doc_count").and_then(|c| c.as_u64()).unwrap_or(0))
-                    .collect();
-                v.resize(main_bucket_count, 0);
-                v
-            } else {
-                (0..main_bucket_count)
-                    .map(|i| {
-                        let cat_sum: u64 = named_sums
-                            .iter()
-                            .map(|c| c.get(i).copied().unwrap_or(0))
-                            .sum();
-                        main_counts
-                            .get(i)
-                            .copied()
-                            .unwrap_or(0)
-                            .saturating_sub(cat_sum)
-                    })
-                    .collect()
-            };
+            let other_path = format!("{}/other{}", base, inner_x);
+            let other_counts: Vec<u64> =
+                if let Some(buckets) = resp.pointer(&other_path).and_then(|b| b.as_array()) {
+                    let mut v = align_to_keys(buckets, &main_keys, main_bucket_count);
+                    v.resize(main_bucket_count, 0);
+                    v
+                } else {
+                    (0..main_bucket_count)
+                        .map(|i| {
+                            let cat_sum: u64 = named_sums
+                                .iter()
+                                .map(|c| c.get(i).copied().unwrap_or(0))
+                                .sum();
+                            main_counts
+                                .get(i)
+                                .copied()
+                                .unwrap_or(0)
+                                .saturating_sub(cat_sum)
+                        })
+                        .collect()
+                };
             by_cat.insert("other".to_string(), json!(other_counts));
         }
     }
@@ -245,6 +147,38 @@ fn extract_cat_histograms(
     } else {
         Value::Object(by_cat)
     }
+}
+
+/// Align a per-category inner histogram bucket list to the main-axis key ordering.
+///
+/// Returns a `Vec<u64>` of length `main_bucket_count`, each entry being the
+/// `doc_count` for the corresponding main bucket key.  Missing inner keys
+/// produce a zero count.
+fn align_to_keys(
+    inner_buckets: &[Value],
+    main_keys: &[String],
+    main_bucket_count: usize,
+) -> Vec<u64> {
+    let mut map: std::collections::HashMap<String, u64> =
+        std::collections::HashMap::with_capacity(inner_buckets.len());
+    for b in inner_buckets {
+        let k = b.get("key").cloned().unwrap_or(json!(""));
+        let kstr = if let Some(s) = k.as_str() {
+            s.to_string()
+        } else if let Some(n) = k.as_f64() {
+            n.to_string()
+        } else {
+            k.to_string()
+        };
+        let cnt = b.get("doc_count").and_then(|c| c.as_u64()).unwrap_or(0);
+        map.insert(kstr, cnt);
+    }
+    let mut counts: Vec<u64> = main_keys
+        .iter()
+        .map(|k| *map.get(k).unwrap_or(&0))
+        .collect();
+    counts.resize(main_bucket_count, 0);
+    counts
 }
 
 /// Run a histogram (or categorised histogram) report.
@@ -261,14 +195,25 @@ pub async fn run_histogram_report(
     let x_spec = resolve_axis_spec(AxisRole::X, report_config, state)
         .await
         .ok_or("report config missing 'x' axis (set 'x' field or use 'axes')")?;
-    let x_field = x_spec.field.clone();
     let cat_spec_opt = resolve_axis_spec(AxisRole::Cat, report_config, state).await;
+
+    // Resolve storage types up-front so presence filters and extraction paths
+    // are computed from the same source of truth.
+    let x_storage = resolve_field_storage(&x_spec.field, x_spec.value_type, &state.cache)?;
+    let cat_storage_opt: Option<FieldStorage> = if let Some(ref cat_spec) = cat_spec_opt {
+        Some(resolve_field_storage(
+            &cat_spec.field,
+            cat_spec.value_type,
+            &state.cache,
+        )?)
+    } else {
+        None
+    };
 
     // Augment the base query for bounds computation with a presence-filter
     // for the opposite axis so bounds reflect only records that will be
-    // plotted. This mirrors the scatter report behaviour and avoids empty
-    // category buckets when one axis lacks values for certain categories.
-    let cat_presence = cat_spec_opt.as_ref().and_then(presence_filter_for_axis);
+    // plotted.
+    let cat_presence = cat_storage_opt.as_ref().map(|s| s.presence_filter());
     let x_base_query = if let Some(f) = cat_presence {
         json!({ "bool": { "must": [ base_query.clone(), f ] } })
     } else {
@@ -286,22 +231,15 @@ pub async fn run_histogram_report(
     .await?;
 
     let agg_name = "x_agg";
-
     let x_inner_agg = x_bucket_agg_name(x_spec.value_type);
 
     // Build aggregation — categorized path supports both keyword (filters) and numeric (histogram) cat.
     let (final_agg, cat_labels, show_other_cat, cat_is_numeric) =
         if let Some(ref cat_spec) = cat_spec_opt {
-            // When computing category bounds, require the x-axis presence
-            // so categories returned are only those that will be plotted
-            // (i.e., documents that contain an x value). This prevents
-            // returning category labels with no corresponding x buckets.
-            let x_presence = presence_filter_for_axis(&x_spec);
-            let cat_base_query = if let Some(f) = x_presence {
-                json!({ "bool": { "must": [ base_query.clone(), f ] } })
-            } else {
-                base_query.clone()
-            };
+            // Require the x-axis presence when computing cat bounds so returned
+            // categories are only those that will be plotted.
+            let x_presence = x_storage.presence_filter();
+            let cat_base_query = json!({ "bool": { "must": [ base_query.clone(), x_presence ] } });
 
             let cat_bounds = compute_bounds(
                 &state.client,
@@ -336,18 +274,7 @@ pub async fn run_histogram_report(
         };
 
     let es_body = json!({ "size": 0, "query": base_query, "aggs": final_agg });
-    // DEBUG: print ES body to help diagnose nested aggregation shapes for
-    // category histograms. Remove this eprintln once debugging is complete.
-    eprintln!(
-        "ES body for histogram: {}",
-        serde_json::to_string_pretty(&es_body).unwrap_or_default()
-    );
     let resp = es_client::execute_search(&state.client, &state.es_base, index, &es_body).await?;
-    // DEBUG: print ES response for inspection
-    eprintln!(
-        "ES resp for histogram: {}",
-        serde_json::to_string_pretty(&resp).unwrap_or_default()
-    );
 
     let took = resp.get("took").and_then(|t| t.as_u64()).unwrap_or(0);
     let total_hits = resp
@@ -364,19 +291,24 @@ pub async fn run_histogram_report(
         .map(|b| b.get("doc_count").and_then(|c| c.as_u64()).unwrap_or(0))
         .collect();
 
-    let by_cat = if !cat_labels.is_empty() || cat_is_numeric {
-        extract_cat_histograms(
-            &resp,
-            agg_name,
-            x_field.as_str(),
-            x_inner_agg,
-            raw_buckets.len(),
-            &cat_labels,
-            show_other_cat,
-            cat_is_numeric,
-            &main_counts,
-            &raw_buckets,
-        )
+    let by_cat = if let Some(ref cat_storage) = cat_storage_opt {
+        if !cat_labels.is_empty() || cat_is_numeric {
+            extract_cat_histograms(
+                &resp,
+                agg_name,
+                &x_storage,
+                cat_storage,
+                x_inner_agg,
+                raw_buckets.len(),
+                &cat_labels,
+                show_other_cat,
+                cat_is_numeric,
+                &main_counts,
+                &raw_buckets,
+            )
+        } else {
+            Value::Null
+        }
     } else {
         Value::Null
     };
@@ -425,7 +357,7 @@ pub async fn run_histogram_report(
     let mut report_data = json!({
         "type": "histogram",
         "x": {
-            "field": &x_field,
+            "field": x_spec.field.as_str(),
             "scale": format!("{:?}", x_spec.opts.scale).to_lowercase(),
             "domain": x_bounds.domain,
             "tickCount": x_bounds.tick_count,
@@ -436,7 +368,7 @@ pub async fn run_histogram_report(
     });
 
     if !by_cat.is_null() {
-        report_data["by_cat"] = by_cat;
+        report_data["by_cat"] = by_cat.clone();
         if let Some(ref cat_spec) = cat_spec_opt {
             report_data["cat"] = json!({
                 "field": cat_spec.field,
@@ -444,7 +376,191 @@ pub async fn run_histogram_report(
                 "scale": format!("{:?}", cat_spec.opts.scale).to_lowercase()
             });
         }
-        report_data["cats"] = json!(cat_labels);
+
+        // Determine the final `cats` labels. Prefer the pre-computed
+        // `cat_labels` (from bounds) when present; otherwise derive
+        // readable labels from the `by_cat` histogram keys. This covers
+        // numeric/date category histograms where `cat_labels` is empty.
+        // Also compute numeric `tick_values` (boundaries) when applicable
+        // and attach them to `report_data["cat"]["tick_values"]` so the
+        // plot-spec builder can use them for binned encodings.
+        let mut final_cat_labels = cat_labels.clone();
+        let mut cat_tick_values: Option<Vec<f64>> = None;
+        // Keep canonical raw category keys (object keys) for `report.cats`
+        // so downstream converters can look up `by_cat[cat_key]`. We'll add
+        // human-readable labels into `report.cat.tick_labels`.
+        let mut cat_keys: Vec<String> = Vec::new();
+        if final_cat_labels.is_empty() {
+            if let Some(obj) = by_cat.as_object() {
+                if !obj.is_empty() {
+                    // Preserve insertion order of the buckets as returned by ES.
+                    let keys: Vec<String> = obj.keys().cloned().collect();
+                    cat_keys = keys.clone();
+                    if let Some(ref cat_spec) = cat_spec_opt {
+                        match cat_spec.value_type {
+                            ValueType::Date => {
+                                // Parse numeric keys and compute adjacent boundaries
+                                // to present human-friendly date ranges.
+                                let nums: Vec<f64> = keys
+                                    .iter()
+                                    .map(|k| k.parse::<f64>().unwrap_or_default())
+                                    .collect();
+                                if nums.is_empty() {
+                                    final_cat_labels = keys;
+                                } else {
+                                    // estimate interval from first two keys, fallback to 1
+                                    let width = if nums.len() >= 2 {
+                                        nums[1] - nums[0]
+                                    } else {
+                                        1.0
+                                    };
+                                    let mut boundaries = nums.clone();
+                                    boundaries.push(nums.last().copied().unwrap_or(0.0) + width);
+                                    // Attach numeric boundaries for the axis
+                                    cat_tick_values = Some(boundaries.clone());
+                                    let mut labels: Vec<String> = Vec::with_capacity(nums.len());
+                                    for i in 0..nums.len() {
+                                        let left = nums[i];
+                                        let right = boundaries[i + 1];
+                                        // Heuristic: treat large values as milliseconds,
+                                        // otherwise seconds since epoch.
+                                        let left_i = left as i64;
+                                        let right_i = right as i64;
+                                        let left_dt = if left_i.abs() > 1_000_000_000_000 {
+                                            // milliseconds -> seconds + nanos
+                                            let s = left_i / 1000;
+                                            #[allow(clippy::cast_abs_to_unsigned)]
+                                            let ns = ((left_i % 1000).abs() as u32) * 1_000_000;
+                                            #[allow(deprecated)]
+                                            chrono::NaiveDateTime::from_timestamp_opt(s, ns)
+                                        } else {
+                                            #[allow(deprecated)]
+                                            chrono::NaiveDateTime::from_timestamp_opt(left_i, 0)
+                                        };
+                                        let right_dt = if right_i.abs() > 1_000_000_000_000 {
+                                            let s = right_i / 1000;
+                                            #[allow(clippy::cast_abs_to_unsigned)]
+                                            let ns = ((right_i % 1000).abs() as u32) * 1_000_000;
+                                            #[allow(deprecated)]
+                                            chrono::NaiveDateTime::from_timestamp_opt(s, ns)
+                                        } else {
+                                            #[allow(deprecated)]
+                                            chrono::NaiveDateTime::from_timestamp_opt(right_i, 0)
+                                        };
+                                        if let (Some(ldt), Some(rdt)) = (left_dt, right_dt) {
+                                            #[allow(deprecated)]
+                                            let ldt = chrono::DateTime::<chrono::Utc>::from_utc(
+                                                ldt,
+                                                chrono::Utc,
+                                            );
+                                            #[allow(deprecated)]
+                                            let rdt = chrono::DateTime::<chrono::Utc>::from_utc(
+                                                rdt,
+                                                chrono::Utc,
+                                            );
+                                            // Format as %Y-%m if day is 1, else %Y-%m-%d; collapse to %Y if month and day are both 1
+                                            let fmt_date = |dt: &chrono::DateTime<chrono::Utc>| {
+                                                let y = dt.year();
+                                                let m = dt.month();
+                                                let d = dt.day();
+                                                if m == 1 && d == 1 {
+                                                    format!("{:04}", y)
+                                                } else if d == 1 {
+                                                    format!("{:04}-{:02}", y, m)
+                                                } else {
+                                                    format!("{:04}-{:02}-{:02}", y, m, d)
+                                                }
+                                            };
+                                            labels.push(format!(
+                                                "{} to {}",
+                                                fmt_date(&ldt),
+                                                fmt_date(&rdt)
+                                            ));
+                                        } else if let Some(ldt) = left_dt {
+                                            #[allow(deprecated)]
+                                            let ldt = chrono::DateTime::<chrono::Utc>::from_utc(
+                                                ldt,
+                                                chrono::Utc,
+                                            );
+                                            labels.push(format!("{}", ldt.format("%Y-%m-%d")));
+                                        } else {
+                                            labels.push(keys[i].clone());
+                                        }
+                                    }
+                                    final_cat_labels = labels;
+                                }
+                            }
+                            _ => {
+                                // Numeric buckets: produce readable range labels
+                                let nums: Vec<f64> = keys
+                                    .iter()
+                                    .map(|k| k.parse::<f64>().unwrap_or_default())
+                                    .collect();
+                                if nums.is_empty() {
+                                    final_cat_labels = keys;
+                                } else {
+                                    let width = if nums.len() >= 2 {
+                                        nums[1] - nums[0]
+                                    } else {
+                                        1.0
+                                    };
+                                    let mut boundaries = nums.clone();
+                                    boundaries.push(nums.last().copied().unwrap_or(0.0) + width);
+                                    // Attach numeric boundaries for the axis
+                                    cat_tick_values = Some(boundaries.clone());
+                                    let mut labels: Vec<String> = Vec::with_capacity(nums.len());
+                                    for i in 0..nums.len() {
+                                        let left = nums[i];
+                                        let right = boundaries[i + 1];
+                                        let fmt = |v: f64| {
+                                            // Format as 3sf scientific/engineering notation (e.g. 2.13G)
+                                            let abs_v = v.abs();
+                                            let (scaled, suffix) = if abs_v >= 1e9 {
+                                                (v / 1e9, "G")
+                                            } else if abs_v >= 1e6 {
+                                                (v / 1e6, "M")
+                                            } else if abs_v >= 1e3 {
+                                                (v / 1e3, "k")
+                                            } else {
+                                                (v, "")
+                                            };
+                                            if suffix.is_empty() {
+                                                format!("{:.3}", scaled)
+                                            } else {
+                                                format!("{:.3}{}", scaled, suffix)
+                                            }
+                                        };
+                                        labels.push(format!("{} to{}", fmt(left), fmt(right)));
+                                    }
+                                    final_cat_labels = labels;
+                                }
+                            }
+                        }
+                    } else {
+                        final_cat_labels = keys.clone();
+                        cat_keys = keys;
+                    }
+                }
+            }
+        }
+        if let Some(tvals) = cat_tick_values {
+            report_data["cat"]["tick_values"] = json!(tvals);
+        }
+
+        // Use raw category keys for `report.cats` (these are the keys used
+        // to index `by_cat`). Provide human-readable labels under
+        // `report.cat.tick_labels` so the plot-spec builder can use them for
+        // legend/axis labeling while converters still match counts by key.
+        if cat_keys.is_empty() {
+            // Fallback: when we didn't capture keys earlier, attempt to
+            // populate from final_cat_labels (they may already be raw keys).
+            report_data["cats"] = json!(final_cat_labels.clone());
+        } else {
+            report_data["cats"] = json!(cat_keys);
+        }
+        if !final_cat_labels.is_empty() {
+            report_data["cat"]["tick_labels"] = json!(final_cat_labels);
+        }
     }
 
     Ok((total_hits, took, report_data))
@@ -2126,8 +2242,9 @@ fn find_attr_keyword(attrs: &[Value], field: &str) -> Option<String> {
 fn extract_scatter_by_cat(
     resp: &Value,
     agg_name: &str,
-    x_field: &str,
+    x_storage: &FieldStorage,
     x_bucket_agg: &str,
+    cat_storage: &FieldStorage,
     y_field: &str,
     y_inner_agg: &str,
     x_bucket_count: usize,
@@ -2138,14 +2255,13 @@ fn extract_scatter_by_cat(
     main_counts: &[u64],
     y_fixed_terms: Option<&[String]>,
 ) -> (Value, Value) {
-    let base = format!(
-        "/aggregations/{}/by_key/categoryHistograms/by_attribute/by_cat/by_value/buckets",
-        agg_name
-    );
+    let base = match x_storage.cat_histograms_base(agg_name, cat_storage) {
+        Some(p) if resp.pointer(&p).is_some() => p,
+        _ => return (Value::Null, Value::Null),
+    };
 
-    if resp.pointer(&base).is_none() {
-        return (Value::Null, Value::Null);
-    }
+    // Relative path from a per-category bucket to the inner x histogram buckets.
+    let inner_x = x_storage.inner_x_path(x_bucket_agg);
 
     let mut by_cat = serde_json::Map::new();
     let mut y_values_by_cat = serde_json::Map::new();
@@ -2160,12 +2276,8 @@ fn extract_scatter_by_cat(
         for bucket in &cat_buckets {
             let key = bucket.get("key").and_then(|k| k.as_f64()).unwrap_or(0.0);
             let label = key.to_string();
-            let x_path = format!(
-                "/histogram/by_attribute/{}/{}/buckets",
-                x_field, x_bucket_agg
-            );
             let x_buckets_inner = bucket
-                .pointer(&x_path)
+                .pointer(&inner_x)
                 .and_then(|b| b.as_array())
                 .cloned()
                 .unwrap_or_default();
@@ -2225,10 +2337,7 @@ fn extract_scatter_by_cat(
         };
 
         for label in &all_labels {
-            let x_hist_path = format!(
-                "{}/{}/histogram/by_attribute/{}/{}/buckets",
-                base, label, x_field, x_bucket_agg
-            );
+            let x_hist_path = format!("{}/{}{}", base, label, inner_x);
             let x_buckets = resp
                 .pointer(&x_hist_path)
                 .and_then(|b| b.as_array())
@@ -2375,42 +2484,6 @@ async fn fetch_taxon_labels(
         }
     }
     Ok(labels)
-}
-
-/// Build a presence-filter query for an axis that matches documents which
-/// contain a value for that axis. Used to augment the base query when
-/// computing bounds so bounds reflect only records that will be plotted.
-fn presence_filter_for_axis(spec: &AxisSpec) -> Option<Value> {
-    match spec.value_type {
-        ValueType::TaxonRank => Some(json!({
-            "nested": {
-                "path": "lineage",
-                "query": {
-                    "term": { "lineage.taxon_rank": spec.field }
-                }
-            }
-        })),
-        _ => {
-            // For other types try either a nested attribute entry or a
-            // top-level field existence. For keywords prefer the `.keyword`
-            // accessor.
-            let attr_nested = json!({
-                "nested": {
-                    "path": "attributes",
-                    "query": { "term": { "attributes.key": spec.field } }
-                }
-            });
-            let top_field = if matches!(spec.value_type, ValueType::Keyword) {
-                format!("{}.keyword", spec.field)
-            } else {
-                spec.field.clone()
-            };
-            let top_exists = json!({ "exists": { "field": top_field } });
-            Some(
-                json!({ "bool": { "should": [ attr_nested, top_exists ], "minimum_should_match": 1 } }),
-            )
-        }
-    }
 }
 
 /// Build a canonical, labelled buckets array from raw ES buckets.
@@ -2826,12 +2899,10 @@ pub async fn run_scatter_report(
     // for the opposite axis so bounds reflect only records that will appear
     // in the final plot. This avoids empty buckets caused by one axis being
     // filtered out by the other.
-    let x_presence = presence_filter_for_axis(&y_spec);
-    let x_base_query = if let Some(f) = x_presence {
-        json!({ "bool": { "must": [ base_query.clone(), f ] } })
-    } else {
-        base_query.clone()
-    };
+    let y_storage = resolve_field_storage(&y_spec.field, y_spec.value_type, &state.cache)?;
+    let x_base_query = json!({
+        "bool": { "must": [ base_query.clone(), y_storage.presence_filter() ] }
+    });
 
     let x_bounds = compute_bounds(
         &state.client,
@@ -2842,7 +2913,6 @@ pub async fn run_scatter_report(
         &state.cache,
     )
     .await?;
-    dbg!(&x_bounds);
     // If this is a taxon-rank axis and bounds provided a fixed term list (ids),
     // attempt to fetch human-readable labels (scientific names) for each id so
     // the final report can include a labelled mapping. Fall back to the
@@ -2855,12 +2925,9 @@ pub async fn run_scatter_report(
             }
         }
     }
-    let y_presence = presence_filter_for_axis(&x_spec);
-    let y_base_query = if let Some(f) = y_presence {
-        json!({ "bool": { "must": [ base_query.clone(), f ] } })
-    } else {
-        base_query.clone()
-    };
+    let x_storage = resolve_field_storage(&x_spec.field, x_spec.value_type, &state.cache)?;
+    let y_presence = x_storage.presence_filter();
+    let y_base_query = json!({ "bool": { "must": [ base_query.clone(), y_presence ] } });
 
     let y_bounds = compute_bounds(
         &state.client,
@@ -2923,7 +2990,7 @@ pub async fn run_scatter_report(
         .unwrap_or(0);
 
     // ---- Extract main x buckets (histogram or terms depending on x type) ----
-    let x_hist_path = format!("/aggregations/{}/by_key/{}/buckets", agg_name, x_inner_agg);
+    let x_hist_path = x_storage.main_bucket_path(agg_name, x_inner_agg);
     let mut x_raw_buckets = resp
         .pointer(&x_hist_path)
         .and_then(|b| b.as_array())
@@ -3127,11 +3194,19 @@ pub async fn run_scatter_report(
 
     // ---- Extract per-category data ----
     let (by_cat, y_values_by_cat) = if !cat_labels.is_empty() || cat_is_numeric {
+        // Resolve cat_storage so extract_scatter_by_cat can build deterministic paths.
+        let cat_storage_for_extract = cat_spec_opt
+            .as_ref()
+            .and_then(|spec| resolve_field_storage(&spec.field, spec.value_type, &state.cache).ok())
+            .unwrap_or(FieldStorage::Root {
+                es_field: String::new(),
+            });
         extract_scatter_by_cat(
             &resp,
             agg_name,
-            x_field.as_str(),
+            &x_storage,
             x_inner_agg,
+            &cat_storage_for_extract,
             y_field.as_str(),
             y_inner_agg,
             x_bucket_count,
