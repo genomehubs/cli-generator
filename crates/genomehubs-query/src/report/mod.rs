@@ -1906,6 +1906,16 @@ fn vl_scatter(spec: &serde_json::Value, mut base: serde_json::Value) -> serde_js
             );
         }
 
+        if spec.get("data").and_then(|d| d.get("cats")).is_some() {
+            // If the spec includes a top-level `cats` array, add a color encoding
+            // that maps the category field to a color scheme.
+            // This is a common pattern for scatter plots with categorical grouping.
+            encoding_map.insert(
+                "color".to_string(),
+                serde_json::json!({"field": "cat", "type": "nominal"}),
+            );
+        }
+
         if !transforms.is_empty() {
             base["transform"] = serde_json::Value::Array(transforms);
         }
