@@ -1390,6 +1390,16 @@
           "positional_yaml"
         ],
         "properties": {
+          "display": {
+            "description": "Optional display spec (JSON) applied to the returned PlotSpec."
+          },
+          "include_plot_spec": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "When true, produce a serialisable `PlotSpec` alongside the report."
+          },
           "positional_yaml": {
             "type": "string"
           },
@@ -1409,6 +1419,7 @@
           "report"
         ],
         "properties": {
+          "plot_spec": {},
           "report": {},
           "status": {
             "$ref": "#/components/schemas/ApiStatus"
@@ -1539,6 +1550,13 @@
           "report_yaml"
         ],
         "properties": {
+          "display": {},
+          "include_plot_spec": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
           "params_yaml": {
             "type": "string"
           },
@@ -1557,6 +1575,7 @@
           "report"
         ],
         "properties": {
+          "plot_spec": {},
           "report": {},
           "status": {
             "$ref": "#/components/schemas/ApiStatus"

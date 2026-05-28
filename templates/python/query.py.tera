@@ -2051,7 +2051,7 @@ def plot_spec_to_vega_lite(spec: dict[str, Any]) -> dict[str, Any]:
     """
     display: dict[str, Any] = spec.get("display") or {}
     base: dict[str, Any] = {
-        "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+        "$schema": "https://vega.github.io/schema/vega-lite/v6.json",
         "width": display.get("width", 600),
         "height": display.get("height", 400),
         "config": {

@@ -94,6 +94,9 @@ pub struct AxisOptions {
 pub struct HistogramOptions {
     /// Stack category series instead of overlaying them.
     pub stacked: Option<bool>,
+    /// Display mode for categorized histograms: "stacked", "grouped", or "facet".
+    /// When present, overrides `stacked` where applicable.
+    pub mode: Option<String>,
     /// Cumulative sum mode: each bar shows the sum of all preceding bars.
     pub cumulative: Option<bool>,
     /// Y-axis scale: `"linear"` (default), `"log10"`, or `"proportion"`.

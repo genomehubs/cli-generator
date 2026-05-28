@@ -121,6 +121,7 @@ pub fn local_plot_spec(
         x: Some(x_meta),
         y: y_meta,
         z: None,
+        cat: None,
         series: vec![],
         display,
         data,

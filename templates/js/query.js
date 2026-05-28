@@ -2204,7 +2204,7 @@ function parseSearchWithLineageSummary(raw, configJson) {
 function plotSpecToVegaLite(plotSpec) {
   const display = plotSpec.display ?? {};
   const base = {
-    $schema: "https://vega.github.io/schema/vega-lite/v5.json",
+    $schema: "https://vega.github.io/schema/vega-lite/v6.json",
     title: display.title ?? undefined,
     width: display.width ?? 600,
     height: display.height ?? 400,

@@ -580,6 +580,7 @@ pub async fn post_positional(
             report_type: pr,
             x: None,
             y: None,
+            cat: None,
             z: None,
             series: Vec::new(),
             display: genomehubs_query::report::DisplaySpec::default(),

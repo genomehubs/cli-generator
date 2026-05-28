@@ -318,7 +318,7 @@ Vega-Lite JSON. Called by the user when they want interactive rendering.
 export function plotSpecToVegaLite(plotSpec) {
   const display = plotSpec.display ?? {};
   const base = {
-    $schema: "https://vega.github.io/schema/vega-lite/v5.json",
+    $schema: "https://vega.github.io/schema/vega-lite/v6.json",
     title: display.title,
     width: display.width ?? 600,
     height: display.height ?? 400,

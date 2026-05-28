@@ -64,7 +64,6 @@ pub enum DateInterval {
     Month,
     Quarter,
     Year,
-    Decade,
 }
 
 impl DateInterval {
@@ -74,9 +73,8 @@ impl DateInterval {
             DateInterval::Day => "1d",
             DateInterval::Week => "1w",
             DateInterval::Month => "1M",
-            DateInterval::Quarter => "3M",
+            DateInterval::Quarter => "1q",
             DateInterval::Year => "1y",
-            DateInterval::Decade => "10y",
         }
     }
 }
@@ -356,9 +354,8 @@ fn parse_date_interval(s: &str) -> Option<DateInterval> {
         "day" | "1d" => Some(DateInterval::Day),
         "week" | "1w" => Some(DateInterval::Week),
         "month" | "1M" | "1m" => Some(DateInterval::Month),
-        "quarter" | "3M" | "3m" => Some(DateInterval::Quarter),
+        "quarter" | "3M" | "3m" | "1q" => Some(DateInterval::Quarter),
         "year" | "1y" => Some(DateInterval::Year),
-        "decade" | "10y" => Some(DateInterval::Decade),
         _ => None,
     }
 }
@@ -700,10 +697,9 @@ mod tests {
             ("1M", DateInterval::Month),
             ("quarter", DateInterval::Quarter),
             ("3M", DateInterval::Quarter),
+            ("1q", DateInterval::Quarter),
             ("year", DateInterval::Year),
             ("1y", DateInterval::Year),
-            ("decade", DateInterval::Decade),
-            ("10y", DateInterval::Decade),
         ];
         for (interval_str, expected_interval) in intervals {
             let opts = AxisOpts::parse(&format!(";;;;;{}", interval_str));
@@ -721,9 +717,8 @@ mod tests {
         assert_eq!(DateInterval::Day.to_es_interval(), "1d");
         assert_eq!(DateInterval::Week.to_es_interval(), "1w");
         assert_eq!(DateInterval::Month.to_es_interval(), "1M");
-        assert_eq!(DateInterval::Quarter.to_es_interval(), "3M");
+        assert_eq!(DateInterval::Quarter.to_es_interval(), "1q");
         assert_eq!(DateInterval::Year.to_es_interval(), "1y");
-        assert_eq!(DateInterval::Decade.to_es_interval(), "10y");
     }
 
     // ── AxisSpec tests ──

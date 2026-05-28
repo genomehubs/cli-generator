@@ -7,7 +7,7 @@
 use serde_json::{json, Value};
 
 use crate::es_metadata::MetadataCache;
-use genomehubs_query::report::axis::{Scale, ValueType};
+use genomehubs_query::report::axis::{DateInterval, Scale, ValueType};
 use genomehubs_query::report::{AxisSpec, BoundsResult};
 use std::sync::Arc;
 
@@ -280,6 +280,11 @@ fn is_rank(field: &str, cache: &Option<Arc<tokio::sync::RwLock<MetadataCache>>>)
 fn is_attribute(field: &str, cache: &Option<Arc<tokio::sync::RwLock<MetadataCache>>>) -> bool {
     if let Some(cache_lock) = cache {
         if let Ok(c) = cache_lock.try_read() {
+            // If the field is a recognised taxonomic rank, prefer that
+            // interpretation and do not treat it as a nested attribute.
+            if c.taxonomic_ranks.contains(&field.to_string()) {
+                return false;
+            }
             if let Value::Object(groups) = &c.attr_types {
                 for (_, group) in groups {
                     if let Value::Object(fields) = group {
@@ -301,6 +306,7 @@ fn get_attribute_value_field(
     field: &str,
     cache: &Option<Arc<tokio::sync::RwLock<MetadataCache>>>,
 ) -> Result<String, String> {
+    dbg!(&field);
     if let Some(cache_lock) = cache {
         if let Ok(c) = cache_lock.try_read() {
             if let Value::Object(groups) = &c.attr_types {
@@ -357,6 +363,22 @@ fn build_x_agg_params(
             }
             t
         }
+        ValueType::Date => {
+            // For date histograms use calendar_interval.
+            let calendar_interval = x_bounds
+                .interval
+                .map(|i| i.to_es_interval().to_string())
+                .unwrap_or_else(|| "1y".to_string());
+            let mut params = json!({
+                "field": x_value_field,
+                "calendar_interval": calendar_interval,
+                "min_doc_count": 0
+            });
+            if let Some(domain_arr) = x_bounds.domain {
+                params["extended_bounds"] = json!({ "min": domain_arr[0], "max": domain_arr[1] });
+            }
+            params
+        }
         _ => {
             let [domain_min, domain_max] = x_bounds.domain.unwrap_or([0.0, 1.0]);
             let (hist_min, hist_max, script_opt) = match x_spec.opts.scale {
@@ -394,79 +416,172 @@ fn build_x_agg_params(
     (agg_type, params)
 }
 
-/// Build the `yHistograms` sub-aggregation used inside each x-histogram bucket.
-///
-/// Escapes nested context via `reverse_nested`, re-enters attributes, and runs a histogram
-/// on the y-field value. Supports log/sqrt scale transforms via ES script.
-///
-/// ```text
-/// yHistograms: reverse_nested
-///   by_attribute: nested(attributes)
-///     {y_field}: filter(y_field)
-///       histogram: histogram(y_value_field)
-/// ```
-fn build_y_histogram_sub_agg(
+#[allow(clippy::too_many_arguments)]
+/// Build a Y-axis sub-aggregation that adapts to the Y value type.
+/// For numeric values this produces a histogram, for date a date_histogram,
+/// and for keyword/taxon-rank a `terms` (named `top_terms`) aggregation.
+fn build_y_sub_agg(
     y_field: &str,
     y_value_field: &str,
+    y_value_type: ValueType,
     y_scale: Scale,
-    y_domain_min: f64,
-    y_domain_max: f64,
+    y_bounds_min: f64,
+    y_bounds_max: f64,
     y_ticks: usize,
+    y_interval: Option<DateInterval>,
 ) -> Value {
-    let (hist_min, hist_max, script_opt) = match y_scale {
-        Scale::Log | Scale::Log10 => {
-            let mn = y_domain_min.max(1.0).log10();
-            let mx = y_domain_max.max(1.0).log10();
-            (mn, mx, Some("Math.log10(_value)".to_string()))
+    match y_value_type {
+        ValueType::TaxonRank => {
+            // For taxon ranks, aggregate within the `lineage` nested path and
+            // filter ancestors by the requested rank (e.g., "genus"), then
+            // terms-aggregate on `lineage.taxon_id` (or configured y_value_field).
+            let mut y_field_agg = serde_json::Map::new();
+            y_field_agg.insert(
+                y_field.to_string(),
+                json!({
+                    "filter": { "term": { "lineage.taxon_rank": y_field } },
+                    "aggs": {
+                        "top_terms": {
+                            "terms": {
+                                "field": y_value_field,
+                                "size": y_ticks,
+                                "min_doc_count": 0
+                            }
+                        }
+                    }
+                }),
+            );
+            json!({
+                "reverse_nested": {},
+                "aggs": {
+                    "by_attribute": {
+                        "nested": { "path": "lineage" },
+                        "aggs": Value::Object(y_field_agg)
+                    }
+                }
+            })
         }
-        Scale::Log2 => {
-            let mn = y_domain_min.max(1.0).log2();
-            let mx = y_domain_max.max(1.0).log2();
-            (
-                mn,
-                mx,
-                Some("Math.max(Math.log(_value)/Math.log(2), 0)".to_string()),
-            )
+        ValueType::Keyword => {
+            // terms agg named `top_terms` inside the `attributes` nested path
+            let mut y_field_agg = serde_json::Map::new();
+            y_field_agg.insert(
+                y_field.to_string(),
+                json!({
+                    "filter": { "term": { "attributes.key": y_field } },
+                    "aggs": {
+                        "top_terms": {
+                            "terms": {
+                                "field": y_value_field,
+                                "size": y_ticks,
+                                "min_doc_count": 0
+                            }
+                        }
+                    }
+                }),
+            );
+            json!({
+                "reverse_nested": {},
+                "aggs": {
+                    "by_attribute": {
+                        "nested": { "path": "attributes" },
+                        "aggs": Value::Object(y_field_agg)
+                    }
+                }
+            })
         }
-        Scale::Sqrt => {
-            let mn = y_domain_min.max(0.0).sqrt();
-            let mx = y_domain_max.sqrt();
-            (mn, mx, None)
+        ValueType::Date => {
+            // date_histogram using calendar_interval derived from bounds tick_count or provided interval
+            let calendar_interval = y_interval
+                .map(|i| i.to_es_interval().to_string())
+                .unwrap_or_else(|| "1y".to_string());
+
+            let mut date_hist_params = json!({
+                "field": y_value_field,
+                "calendar_interval": calendar_interval,
+                "min_doc_count": 0
+            });
+            // Ensure buckets for empty intervals cover the full domain
+            date_hist_params["extended_bounds"] =
+                json!({ "min": y_bounds_min, "max": y_bounds_max });
+
+            let mut y_field_agg = serde_json::Map::new();
+            y_field_agg.insert(
+                y_field.to_string(),
+                json!({
+                    "filter": { "term": { "attributes.key": y_field } },
+                    "aggs": {
+                        "date_histogram": { "date_histogram": date_hist_params }
+                    }
+                }),
+            );
+            json!({
+                "reverse_nested": {},
+                "aggs": {
+                    "by_attribute": {
+                        "nested": { "path": "attributes" },
+                        "aggs": Value::Object(y_field_agg)
+                    }
+                }
+            })
         }
-        _ => (y_domain_min, y_domain_max, None),
-    };
+        _ => {
+            // Numeric histogram path (existing behaviour)
+            let (hist_min, hist_max, script_opt) = match y_scale {
+                Scale::Log | Scale::Log10 => {
+                    let mn = y_bounds_min.max(1.0).log10();
+                    let mx = y_bounds_max.max(1.0).log10();
+                    (mn, mx, Some("Math.log10(_value)".to_string()))
+                }
+                Scale::Log2 => {
+                    let mn = y_bounds_min.max(1.0).log2();
+                    let mx = y_bounds_max.max(1.0).log2();
+                    (
+                        mn,
+                        mx,
+                        Some("Math.max(Math.log(_value)/Math.log(2), 0)".to_string()),
+                    )
+                }
+                Scale::Sqrt => {
+                    let mn = y_bounds_min.max(0.0).sqrt();
+                    let mx = y_bounds_max.sqrt();
+                    (mn, mx, None)
+                }
+                _ => (y_bounds_min, y_bounds_max, None),
+            };
 
-    let interval = (hist_max - hist_min) / y_ticks.max(1) as f64;
+            let interval = (hist_max - hist_min) / y_ticks.max(1) as f64;
 
-    let mut hist_params = json!({
-        "field": y_value_field,
-        "interval": interval,
-        "extended_bounds": { "min": hist_min, "max": hist_max },
-        "offset": hist_min,
-        "min_doc_count": 0
-    });
-    if let Some(script) = script_opt {
-        hist_params["script"] = Value::String(script);
-    }
-
-    let mut y_field_agg = serde_json::Map::new();
-    y_field_agg.insert(
-        y_field.to_string(),
-        json!({
-            "filter": { "term": { "attributes.key": y_field } },
-            "aggs": { "histogram": { "histogram": hist_params } }
-        }),
-    );
-
-    json!({
-        "reverse_nested": {},
-        "aggs": {
-            "by_attribute": {
-                "nested": { "path": "attributes" },
-                "aggs": Value::Object(y_field_agg)
+            let mut hist_params = json!({
+                "field": y_value_field,
+                "interval": interval,
+                "extended_bounds": { "min": hist_min, "max": hist_max },
+                "offset": hist_min,
+                "min_doc_count": 0
+            });
+            if let Some(script) = script_opt {
+                hist_params["script"] = Value::String(script);
             }
+
+            let mut y_field_agg = serde_json::Map::new();
+            y_field_agg.insert(
+                y_field.to_string(),
+                json!({
+                    "filter": { "term": { "attributes.key": y_field } },
+                    "aggs": { "histogram": { "histogram": hist_params } }
+                }),
+            );
+
+            json!({
+                "reverse_nested": {},
+                "aggs": {
+                    "by_attribute": {
+                        "nested": { "path": "attributes" },
+                        "aggs": Value::Object(y_field_agg)
+                    }
+                }
+            })
         }
-    })
+    }
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -501,19 +616,29 @@ pub fn build_nested_attribute_scatter_agg(
     cache: &Option<Arc<tokio::sync::RwLock<MetadataCache>>>,
 ) -> Result<Value, String> {
     let x_field = x_spec.field.as_str();
-    let x_value_field = get_attribute_value_field(x_field, cache)?;
-    let y_value_field = get_attribute_value_field(y_field, cache)?;
-
+    let is_x_rank = is_rank(x_field, cache);
+    let x_value_field = if is_x_rank {
+        "lineage.taxon_id".to_string()
+    } else {
+        get_attribute_value_field(x_field, cache)?
+    };
+    let is_y_rank = is_rank(y_field, cache);
+    let y_value_field = if is_y_rank {
+        "lineage.taxon_id".to_string()
+    } else {
+        get_attribute_value_field(y_field, cache)?
+    };
     let (x_agg_type, x_agg_params) = build_x_agg_params(x_spec, &x_value_field, x_bounds);
-
     let [y_domain_min, y_domain_max] = y_bounds.domain.unwrap_or([0.0, 1.0]);
-    let y_histogram_sub_agg = build_y_histogram_sub_agg(
+    let y_histogram_sub_agg = build_y_sub_agg(
         y_field,
         &y_value_field,
+        y_bounds.value_type,
         y_scale,
         y_domain_min,
         y_domain_max,
         y_bounds.tick_count,
+        y_bounds.interval,
     );
 
     // Main x agg with nested y-histograms.
@@ -591,17 +716,31 @@ pub fn build_nested_attribute_scatter_agg(
         by_key_aggs["categoryHistograms"] = cat_hist;
     }
 
-    Ok(json!({
-        agg_name: {
-            "nested": { "path": "attributes" },
-            "aggs": {
-                "by_key": {
-                    "filter": { "term": { "attributes.key": x_field } },
-                    "aggs": by_key_aggs
+    if is_x_rank {
+        Ok(json!({
+            agg_name: {
+                "nested": { "path": "lineage" },
+                "aggs": {
+                    "by_key": {
+                        "filter": { "term": { "lineage.taxon_rank": x_field } },
+                        "aggs": by_key_aggs
+                    }
                 }
             }
-        }
-    }))
+        }))
+    } else {
+        Ok(json!({
+            agg_name: {
+                "nested": { "path": "attributes" },
+                "aggs": {
+                    "by_key": {
+                        "filter": { "term": { "attributes.key": x_field } },
+                        "aggs": by_key_aggs
+                    }
+                }
+            }
+        }))
+    }
 }
 
 /// Build the `by_value` aggregation used for per-category sub-histograms.
@@ -627,6 +766,20 @@ fn build_by_value_agg(
                 def["other_bucket_key"] = json!("other");
             }
             ("filters", def)
+        }
+        ValueType::Date => {
+            let calendar_interval = cat_bounds
+                .interval
+                .map(|i| i.to_es_interval().to_string())
+                .unwrap_or_else(|| "1y".to_string());
+            (
+                "date_histogram",
+                json!({
+                    "field": cat_value_field,
+                    "calendar_interval": calendar_interval,
+                    "min_doc_count": 0
+                }),
+            )
         }
         _ => {
             let [domain_min, domain_max] = cat_bounds.domain.unwrap_or([0.0, 1.0]);
@@ -682,8 +835,18 @@ pub fn build_nested_attribute_histogram_with_categories(
     cache: &Option<Arc<tokio::sync::RwLock<MetadataCache>>>,
 ) -> Result<Value, String> {
     let x_field = x_spec.field.as_str();
-    let x_value_field = get_attribute_value_field(x_field, cache)?;
-    let cat_value_field = get_attribute_value_field(cat_field, cache)?;
+    let is_x_rank = is_rank(x_field, cache);
+    let x_value_field = if is_x_rank {
+        "lineage.taxon_id".to_string()
+    } else {
+        get_attribute_value_field(x_field, cache)?
+    };
+    let is_cat_rank = is_rank(cat_field, cache);
+    let cat_value_field = if is_cat_rank {
+        "lineage.taxon_id".to_string()
+    } else {
+        get_attribute_value_field(cat_field, cache)?
+    };
 
     let (x_agg_type, x_agg_params) = build_x_agg_params(x_spec, &x_value_field, x_bounds);
     let (by_value_agg_type, by_value_def) = build_by_value_agg(
@@ -694,34 +857,97 @@ pub fn build_nested_attribute_histogram_with_categories(
         show_other,
     );
 
-    // Per-category inner x agg (same type as main).
-    let mut x_field_agg = serde_json::Map::new();
-    x_field_agg.insert(
-        x_field.to_string(),
-        json!({
-            "filter": { "term": { "attributes.key": x_field } },
-            "aggs": { x_agg_type: { x_agg_type: x_agg_params.clone() } }
-        }),
-    );
+    // Build the per-category histogram payload. There are two axes of variation:
+    // - whether the category axis is an attribute (attributes path) or a
+    //   taxonomic rank (lineage path);
+    // - whether the x-axis itself is a rank (lineage) or an attribute/root
+    //   field. We generate a `categoryHistograms` block that uses the correct
+    // nested path for the category values and, inside each category bucket,
+    // computes the per-category x-aggregation using the appropriate nested
+    // path for `x`.
+    let category_histograms = if is_cat_rank {
+        // Category values live under `lineage` (taxon ids). Build a lineage-anchored
+        // category histogram, then for each category value compute the x histogram
+        // by reversing to the document root and nesting into the appropriate path
+        // for `x`.
+        let x_hist_inner = if is_x_rank {
+            // x is a taxon rank: compute x agg in a lineage nested path at the rank
+            json!({
+                "by_lineage": {
+                    "nested": { "path": "lineage" },
+                    "aggs": {
+                        "at_rank": {
+                            "filter": { "term": { "lineage.taxon_rank": x_field } },
+                            "aggs": { x_agg_type: { x_agg_type: x_agg_params.clone() } }
+                        }
+                    }
+                }
+            })
+        } else {
+            // x is an attribute (or other non-lineage field): compute x agg under attributes
+            let mut x_field_agg = serde_json::Map::new();
+            x_field_agg.insert(
+                x_field.to_string(),
+                json!({
+                    "filter": { "term": { "attributes.key": x_field } },
+                    "aggs": { x_agg_type: { x_agg_type: x_agg_params.clone() } }
+                }),
+            );
+            json!({ "by_attribute": { "nested": { "path": "attributes" }, "aggs": Value::Object(x_field_agg) } })
+        };
 
-    let category_histograms = json!({
-        "reverse_nested": {},
-        "aggs": {
-            "by_attribute": {
-                "nested": { "path": "attributes" },
-                "aggs": {
-                    "by_cat": {
-                        "filter": { "term": { "attributes.key": cat_field } },
-                        "aggs": {
-                            "by_value": {
-                                by_value_agg_type: by_value_def,
-                                "aggs": {
-                                    "histogram": {
-                                        "reverse_nested": {},
-                                        "aggs": {
-                                            "by_attribute": {
-                                                "nested": { "path": "attributes" },
-                                                "aggs": Value::Object(x_field_agg)
+        json!({
+            "reverse_nested": {},
+            "aggs": {
+                "by_lineage": {
+                    "nested": { "path": "lineage" },
+                    "aggs": {
+                        "at_cat_rank": {
+                            "filter": { "term": { "lineage.taxon_rank": cat_field } },
+                            "aggs": {
+                                "by_value": {
+                                    by_value_agg_type: by_value_def,
+                                    "aggs": {
+                                        "histogram": {
+                                            "reverse_nested": {},
+                                            "aggs": x_hist_inner
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        })
+    } else if is_x_rank {
+        // Category values are attributes; x is a rank. Keep the existing
+        // attribute->by_cat arrangement but compute x inside a lineage nested
+        // path per-category.
+        json!({
+            "reverse_nested": {},
+            "aggs": {
+                "by_attribute": {
+                    "nested": { "path": "attributes" },
+                    "aggs": {
+                        "by_cat": {
+                            "filter": { "term": { "attributes.key": cat_field } },
+                            "aggs": {
+                                "by_value": {
+                                    by_value_agg_type: by_value_def,
+                                    "aggs": {
+                                        "histogram": {
+                                            "reverse_nested": {},
+                                            "aggs": {
+                                                "by_lineage": {
+                                                    "nested": { "path": "lineage" },
+                                                    "aggs": {
+                                                        "at_rank": {
+                                                            "filter": { "term": { "lineage.taxon_rank": x_field } },
+                                                            "aggs": { x_agg_type: { x_agg_type: x_agg_params.clone() } }
+                                                        }
+                                                    }
+                                                }
                                             }
                                         }
                                     }
@@ -731,23 +957,72 @@ pub fn build_nested_attribute_histogram_with_categories(
                     }
                 }
             }
-        }
-    });
+        })
+    } else {
+        // Both x and cat are attributes (legacy path): attribute->by_cat->by_value,
+        // then compute x under attributes inside each category.
+        let mut x_field_agg = serde_json::Map::new();
+        x_field_agg.insert(
+            x_field.to_string(),
+            json!({
+                "filter": { "term": { "attributes.key": x_field } },
+                "aggs": { x_agg_type: { x_agg_type: x_agg_params.clone() } }
+            }),
+        );
 
-    Ok(json!({
-        agg_name: {
-            "nested": { "path": "attributes" },
+        json!({
+            "reverse_nested": {},
             "aggs": {
-                "by_key": {
-                    "filter": { "term": { "attributes.key": x_field } },
+                "by_attribute": {
+                    "nested": { "path": "attributes" },
                     "aggs": {
-                        x_agg_type: { x_agg_type: x_agg_params },
-                        "categoryHistograms": category_histograms
+                        "by_cat": {
+                            "filter": { "term": { "attributes.key": cat_field } },
+                            "aggs": {
+                                "by_value": {
+                                    by_value_agg_type: by_value_def,
+                                    "aggs": {
+                                        "histogram": {
+                                            "reverse_nested": {},
+                                            "aggs": {
+                                                "by_attribute": {
+                                                    "nested": { "path": "attributes" },
+                                                    "aggs": Value::Object(x_field_agg)
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
+        })
+    };
+
+    // Start from the canonical x-aggregation built by `agg_builder_for()` so
+    // extraction paths and naming conventions remain consistent.
+    let x_agg_builder = agg_builder_for(x_spec, x_bounds, cache)?;
+    let mut final_agg = x_agg_builder.build(agg_name);
+
+    // Inject `categoryHistograms` into the appropriate inner `aggs` map.
+    if let Some(root) = final_agg.get_mut(agg_name) {
+        if let Some(aggs_obj) = root.get_mut("aggs") {
+            // Try `by_key` (attributes path) then `at_rank` (lineage path)
+            if let Some(by_key) = aggs_obj.get_mut("by_key") {
+                if let Some(inner_aggs) = by_key.get_mut("aggs") {
+                    inner_aggs["categoryHistograms"] = category_histograms;
+                }
+            } else if let Some(at_rank) = aggs_obj.get_mut("at_rank") {
+                if let Some(inner_aggs) = at_rank.get_mut("aggs") {
+                    inner_aggs["categoryHistograms"] = category_histograms;
+                }
+            }
         }
-    }))
+    }
+
+    Ok(final_agg)
 }
 
 /// Select the appropriate `AggBuilder` for an axis spec.
@@ -761,6 +1036,8 @@ pub fn agg_builder_for(
 ) -> Result<Box<dyn AggBuilder>, String> {
     let is_attr = is_attribute(&spec.field, cache);
     let is_rk = is_rank(&spec.field, cache);
+    dbg!(&is_attr);
+    dbg!(&is_rk);
 
     match spec.value_type {
         ValueType::Numeric => {
@@ -867,7 +1144,26 @@ pub fn agg_builder_for(
             }
         }
         ValueType::Keyword | ValueType::TaxonRank => {
-            if is_attr {
+            // Prefer taxon-rank handling when the field is recognised as a rank.
+            // This avoids attempting attribute lookups on rank names that are
+            // present in `taxonomic_ranks` but not in `attr_types`.
+
+            dbg!(&is_attr);
+            dbg!(&is_rk);
+            if is_rk {
+                let inner_agg = json!({
+                    "terms": {
+                        "field": "lineage.taxon_id",
+                        "size": spec.opts.size,
+                        "min_doc_count": 0
+                    }
+                });
+                Ok(Box::new(NestedRankAggBuilder {
+                    field: spec.field.clone(),
+                    inner_agg_body: inner_agg,
+                    inner_agg_name: "terms".to_string(),
+                }))
+            } else if is_attr {
                 let value_field = get_attribute_value_field(&spec.field, cache)?;
                 let inner_agg = json!({
                     "terms": {
@@ -877,19 +1173,6 @@ pub fn agg_builder_for(
                     }
                 });
                 Ok(Box::new(NestedAttributeAggBuilder {
-                    field: spec.field.clone(),
-                    inner_agg_body: inner_agg,
-                    inner_agg_name: "terms".to_string(),
-                }))
-            } else if is_rk {
-                let inner_agg = json!({
-                    "terms": {
-                        "field": "lineage.taxon_id",
-                        "size": spec.opts.size,
-                        "min_doc_count": 0
-                    }
-                });
-                Ok(Box::new(NestedRankAggBuilder {
                     field: spec.field.clone(),
                     inner_agg_body: inner_agg,
                     inner_agg_name: "terms".to_string(),
