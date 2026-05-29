@@ -2,6 +2,7 @@
 name = "genomehubs-api"
 version = "0.1.0"
 edition = "2021"
+default-run = "genomehubs-api"
 
 [dependencies]
 axum = { version = "0.7", features = ["tokio", "http1", "macros"] }

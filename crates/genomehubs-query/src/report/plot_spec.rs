@@ -151,6 +151,8 @@ pub struct PlotSpec {
     pub x: Option<AxisMeta>,
     /// Secondary (Y) axis metadata, if applicable.
     pub y: Option<AxisMeta>,
+    /// Category axis metadata (for series / categorical axes), if applicable.
+    pub cat: Option<AxisMeta>,
     /// Tertiary (Z / heatmap density) axis metadata, if applicable.
     pub z: Option<AxisMeta>,
     /// Series (category) metadata. Empty for non-categorised plots.
@@ -207,6 +209,7 @@ mod tests {
                 tick_label_max_length: None,
             }),
             y: None,
+            cat: None,
             z: None,
             series: vec![SeriesMeta {
                 key: "chromosome".to_string(),

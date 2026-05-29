@@ -94,6 +94,9 @@ pub struct AxisOptions {
 pub struct HistogramOptions {
     /// Stack category series instead of overlaying them.
     pub stacked: Option<bool>,
+    /// Display mode for categorized histograms: "stacked", "grouped", or "facet".
+    /// When present, overrides `stacked` where applicable.
+    pub mode: Option<String>,
     /// Cumulative sum mode: each bar shows the sum of all preceding bars.
     pub cumulative: Option<bool>,
     /// Y-axis scale: `"linear"` (default), `"log10"`, or `"proportion"`.
@@ -203,6 +206,11 @@ pub struct TreeOptions {
 pub struct ArcOptions {
     /// Show percentage labels inside arc segments (default: `true`).
     pub show_labels: Option<bool>,
+    /// Display mode for multiple arcs: "grouped", or "facet".
+    pub mode: Option<String>,
+    /// Shape of the arcs: "auto" (default), "ring", "pie", "rainbow", "horizontal" or "vertical".
+    /// "auto" resolves to "ring" for single arc, and "rainbow" for 2 or more.
+    pub shape: Option<String>,
 }
 
 /// Sources data-attribution bar chart display options.

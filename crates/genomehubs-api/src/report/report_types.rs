@@ -3,47 +3,74 @@
 //! Each handler issues ES queries, applies bounds/aggregation/pipeline logic,
 //! and returns structured report data.
 
+use chrono::Datelike;
 use genomehubs_query::query::{QueryParams, SearchQuery};
 use genomehubs_query::report::axis::{AxisInput, AxisRole, AxisSpec, AxisSummary, ValueType};
 use serde_json::{json, Value};
 use std::sync::Arc;
 
 use crate::es_client;
+use crate::index_name;
 use crate::report::agg::{
     agg_builder_for, build_nested_attribute_histogram_with_categories,
     build_nested_attribute_scatter_agg, x_bucket_agg_name,
 };
 use crate::report::bounds::compute_bounds;
+use crate::report::field::{resolve_field_storage, FieldStorage};
 use crate::report::pipeline::{Pipeline, ReportContext, ScaleStep};
 use crate::AppState;
 
-/// Extract per-category per-bucket counts from a v2-pattern `categoryHistograms` response.
+fn value_type_to_string(v: ValueType) -> &'static str {
+    match v {
+        ValueType::Numeric => "float",
+        ValueType::Keyword => "keyword",
+        ValueType::Date => "date",
+        ValueType::GeoPoint => "coordinate",
+        ValueType::TaxonRank => "keyword",
+    }
+}
+
+/// Extract per-category per-bucket counts from a `categoryHistograms` ES response.
 ///
-/// For each category label the function follows:
-/// `.../categoryHistograms/by_attribute/by_cat/by_value/buckets/{label}/histogram/by_attribute/{x_field}/histogram/buckets`
+/// Uses [`FieldStorage`] to compute deterministic JSON pointer paths rather
+/// than searching a candidate list.  The x-axis inner histogram container
+/// is always `"by_key"` (attribute) or `"at_rank"` (lineage) — see
+/// [`build_inner_x_agg_block`][crate::report::field::build_inner_x_agg_block].
 ///
-/// Returns a JSON object mapping each category key to an array of `doc_count` values, one per
-/// main-histogram bucket. Includes an `"other"` key when `show_other` is true.
+/// Returns a JSON object mapping each category key to an array of `doc_count`
+/// values, one per main-histogram bucket, aligned by key to the main buckets.
 #[allow(clippy::too_many_arguments)]
 fn extract_cat_histograms(
     resp: &Value,
     agg_name: &str,
-    x_field: &str,
+    x_storage: &FieldStorage,
+    cat_storage: &FieldStorage,
     x_bucket_agg: &str,
     main_bucket_count: usize,
     cat_labels: &[String],
     show_other: bool,
     cat_is_numeric: bool,
     main_counts: &[u64],
+    main_buckets: &[Value],
 ) -> Value {
-    let base = format!(
-        "/aggregations/{}/by_key/categoryHistograms/by_attribute/by_cat/by_value/buckets",
-        agg_name
-    );
+    let base = match x_storage.cat_histograms_base(agg_name, cat_storage) {
+        Some(p) if resp.pointer(&p).is_some() => p,
+        _ => return Value::Null,
+    };
 
-    if resp.pointer(&base).is_none() {
-        return Value::Null;
-    }
+    let inner_x = x_storage.inner_x_path(x_bucket_agg);
+
+    // Build main bucket keys list for alignment.
+    let main_keys: Vec<String> = main_buckets
+        .iter()
+        .map(|b| {
+            b.get("key")
+                .and_then(|k| k.as_str().map(|s| s.to_string()))
+                .or_else(|| b.get("key").map(|k| k.to_string()))
+                .or_else(|| b.get("id").and_then(|i| i.as_str().map(|s| s.to_string())))
+                .unwrap_or_default()
+        })
+        .collect();
 
     let mut by_cat = serde_json::Map::new();
 
@@ -55,60 +82,45 @@ fn extract_cat_histograms(
             .cloned()
             .unwrap_or_default();
         for bucket in &cat_buckets {
-            let key = bucket.get("key").and_then(|k| k.as_f64()).unwrap_or(0.0);
-            let label = key.to_string();
-            let hist_path = format!(
-                "/histogram/by_attribute/{}/{}/buckets",
-                x_field, x_bucket_agg
-            );
-            let mut counts: Vec<u64> = bucket
-                .pointer(&hist_path)
+            let key_val = bucket.get("key").cloned().unwrap_or(json!(0));
+            let label = if let Some(kf) = key_val.as_f64() {
+                kf.to_string()
+            } else if let Some(ks) = key_val.as_str() {
+                ks.to_string()
+            } else {
+                key_val.to_string()
+            };
+            let hist_buckets = bucket
+                .pointer(&inner_x)
                 .and_then(|b| b.as_array())
-                .map(|buckets| {
-                    buckets
-                        .iter()
-                        .map(|b| b.get("doc_count").and_then(|c| c.as_u64()).unwrap_or(0))
-                        .collect()
-                })
+                .cloned()
                 .unwrap_or_default();
-            counts.resize(main_bucket_count, 0);
-            by_cat.insert(label, json!(counts));
+            by_cat.insert(
+                label,
+                json!(align_to_keys(&hist_buckets, &main_keys, main_bucket_count)),
+            );
         }
     } else {
         // by_value uses a filters agg — buckets is an object keyed by label.
         let mut named_sums: Vec<Vec<u64>> = Vec::with_capacity(cat_labels.len());
 
         for label in cat_labels {
-            let hist_path = format!(
-                "{}/{}/histogram/by_attribute/{}/{}/buckets",
-                base, label, x_field, x_bucket_agg
-            );
-            let mut counts: Vec<u64> = resp
+            let hist_path = format!("{}/{}{}", base, label, inner_x);
+            let hist_buckets = resp
                 .pointer(&hist_path)
                 .and_then(|b| b.as_array())
-                .map(|buckets| {
-                    buckets
-                        .iter()
-                        .map(|b| b.get("doc_count").and_then(|c| c.as_u64()).unwrap_or(0))
-                        .collect()
-                })
+                .cloned()
                 .unwrap_or_default();
-            counts.resize(main_bucket_count, 0);
+            let counts = align_to_keys(&hist_buckets, &main_keys, main_bucket_count);
             named_sums.push(counts.clone());
             by_cat.insert(label.clone(), json!(counts));
         }
 
         if show_other {
-            let other_path = format!(
-                "{}/other/histogram/by_attribute/{}/{}/buckets",
-                base, x_field, x_bucket_agg
-            );
+            let other_path = format!("{}/other{}", base, inner_x);
             let other_counts: Vec<u64> =
                 if let Some(buckets) = resp.pointer(&other_path).and_then(|b| b.as_array()) {
-                    let mut v: Vec<u64> = buckets
-                        .iter()
-                        .map(|b| b.get("doc_count").and_then(|c| c.as_u64()).unwrap_or(0))
-                        .collect();
+                    let mut v = align_to_keys(buckets, &main_keys, main_bucket_count);
                     v.resize(main_bucket_count, 0);
                     v
                 } else {
@@ -137,6 +149,38 @@ fn extract_cat_histograms(
     }
 }
 
+/// Align a per-category inner histogram bucket list to the main-axis key ordering.
+///
+/// Returns a `Vec<u64>` of length `main_bucket_count`, each entry being the
+/// `doc_count` for the corresponding main bucket key.  Missing inner keys
+/// produce a zero count.
+fn align_to_keys(
+    inner_buckets: &[Value],
+    main_keys: &[String],
+    main_bucket_count: usize,
+) -> Vec<u64> {
+    let mut map: std::collections::HashMap<String, u64> =
+        std::collections::HashMap::with_capacity(inner_buckets.len());
+    for b in inner_buckets {
+        let k = b.get("key").cloned().unwrap_or(json!(""));
+        let kstr = if let Some(s) = k.as_str() {
+            s.to_string()
+        } else if let Some(n) = k.as_f64() {
+            n.to_string()
+        } else {
+            k.to_string()
+        };
+        let cnt = b.get("doc_count").and_then(|c| c.as_u64()).unwrap_or(0);
+        map.insert(kstr, cnt);
+    }
+    let mut counts: Vec<u64> = main_keys
+        .iter()
+        .map(|k| *map.get(k).unwrap_or(&0))
+        .collect();
+    counts.resize(main_bucket_count, 0);
+    counts
+}
+
 /// Run a histogram (or categorised histogram) report.
 ///
 /// Returns `(doc_count, took_ms, report_json)` or error.
@@ -149,33 +193,60 @@ pub async fn run_histogram_report(
     base_query: &Value,
 ) -> Result<(u64, u64, Value), String> {
     let x_spec = resolve_axis_spec(AxisRole::X, report_config, state)
+        .await
         .ok_or("report config missing 'x' axis (set 'x' field or use 'axes')")?;
-    let x_field = x_spec.field.clone();
-    let cat_spec_opt = resolve_axis_spec(AxisRole::Cat, report_config, state);
+    let cat_spec_opt = resolve_axis_spec(AxisRole::Cat, report_config, state).await;
+
+    // Resolve storage types up-front so presence filters and extraction paths
+    // are computed from the same source of truth.
+    let x_storage = resolve_field_storage(&x_spec.field, x_spec.value_type, &state.cache)?;
+    let cat_storage_opt: Option<FieldStorage> = if let Some(ref cat_spec) = cat_spec_opt {
+        Some(resolve_field_storage(
+            &cat_spec.field,
+            cat_spec.value_type,
+            &state.cache,
+        )?)
+    } else {
+        None
+    };
+
+    // Augment the base query for bounds computation with a presence-filter
+    // for the opposite axis so bounds reflect only records that will be
+    // plotted.
+    let cat_presence = cat_storage_opt.as_ref().map(|s| s.presence_filter());
+    let x_base_query = if let Some(f) = cat_presence {
+        json!({ "bool": { "must": [ base_query.clone(), f ] } })
+    } else {
+        base_query.clone()
+    };
 
     let x_bounds = compute_bounds(
         &state.client,
         &state.es_base,
         index,
         &x_spec,
-        base_query,
+        &x_base_query,
         &state.cache,
     )
     .await?;
 
     let agg_name = "x_agg";
-
     let x_inner_agg = x_bucket_agg_name(x_spec.value_type);
 
     // Build aggregation — categorized path supports both keyword (filters) and numeric (histogram) cat.
     let (final_agg, cat_labels, show_other_cat, cat_is_numeric) =
         if let Some(ref cat_spec) = cat_spec_opt {
+            // Require the x-axis presence when computing cat bounds so returned
+            // categories are only those that will be plotted.
+            let x_presence = x_storage.presence_filter();
+            let cat_base_query = json!({ "bool": { "must": [ base_query.clone(), x_presence ] } });
+
             let cat_bounds = compute_bounds(
                 &state.client,
                 &state.es_base,
                 index,
                 cat_spec,
-                base_query,
+                &cat_base_query,
                 &state.cache,
             )
             .await?;
@@ -220,18 +291,24 @@ pub async fn run_histogram_report(
         .map(|b| b.get("doc_count").and_then(|c| c.as_u64()).unwrap_or(0))
         .collect();
 
-    let by_cat = if !cat_labels.is_empty() || cat_is_numeric {
-        extract_cat_histograms(
-            &resp,
-            agg_name,
-            x_field.as_str(),
-            x_inner_agg,
-            raw_buckets.len(),
-            &cat_labels,
-            show_other_cat,
-            cat_is_numeric,
-            &main_counts,
-        )
+    let by_cat = if let Some(ref cat_storage) = cat_storage_opt {
+        if !cat_labels.is_empty() || cat_is_numeric {
+            extract_cat_histograms(
+                &resp,
+                agg_name,
+                &x_storage,
+                cat_storage,
+                x_inner_agg,
+                raw_buckets.len(),
+                &cat_labels,
+                show_other_cat,
+                cat_is_numeric,
+                &main_counts,
+                &raw_buckets,
+            )
+        } else {
+            Value::Null
+        }
     } else {
         Value::Null
     };
@@ -242,7 +319,34 @@ pub async fn run_histogram_report(
         cat_labels: x_bounds.cat_labels.clone(),
         show_other: x_spec.opts.show_other,
     };
-    let processed_buckets = pipeline.run(raw_buckets.clone(), &ctx);
+    let processed_raw = pipeline.run(raw_buckets.clone(), &ctx);
+
+    // Align and label processed buckets. When the bounds provide an
+    // authoritative `fixed_terms` list, use that ordering and drop any
+    // unexpected buckets. Otherwise, for keyword axes drop zero-count
+    // placeholder buckets and ensure each bucket has a label.
+    let processed_buckets = if !x_bounds.fixed_terms.is_empty() {
+        align_and_label_processed_buckets(
+            processed_raw,
+            &x_bounds.fixed_terms,
+            &x_bounds.cat_labels,
+        )
+    } else {
+        let mut pb = processed_raw;
+        if matches!(x_spec.value_type, ValueType::Keyword) {
+            pb.retain(|b| b.get("doc_count").and_then(|c| c.as_u64()).unwrap_or(0) > 0);
+        }
+        for b in pb.iter_mut() {
+            if b.get("label").is_none() {
+                let id_str = b
+                    .get("key")
+                    .and_then(|k| k.as_str().map(|s| s.to_string()))
+                    .unwrap_or_else(|| b.get("key").map(|k| k.to_string()).unwrap_or_default());
+                b["label"] = json!(id_str);
+            }
+        }
+        pb
+    };
 
     // allValues: flat array of doc_counts parallel to buckets.
     let all_values: Vec<u64> = raw_buckets
@@ -253,19 +357,210 @@ pub async fn run_histogram_report(
     let mut report_data = json!({
         "type": "histogram",
         "x": {
-            "field": &x_field,
+            "field": x_spec.field.as_str(),
             "scale": format!("{:?}", x_spec.opts.scale).to_lowercase(),
             "domain": x_bounds.domain,
-            "tickCount": x_bounds.tick_count
+            "tickCount": x_bounds.tick_count,
+            "value_type": value_type_to_string(x_spec.value_type)
         },
         "buckets": processed_buckets,
         "allValues": all_values
     });
 
     if !by_cat.is_null() {
-        report_data["by_cat"] = by_cat;
-        report_data["cat"] = json!(cat_spec_opt.as_ref().map(|s| s.field.as_str()));
-        report_data["cats"] = json!(cat_labels);
+        report_data["by_cat"] = by_cat.clone();
+        if let Some(ref cat_spec) = cat_spec_opt {
+            report_data["cat"] = json!({
+                "field": cat_spec.field,
+                "value_type": value_type_to_string(cat_spec.value_type),
+                "scale": format!("{:?}", cat_spec.opts.scale).to_lowercase()
+            });
+        }
+
+        // Determine the final `cats` labels. Prefer the pre-computed
+        // `cat_labels` (from bounds) when present; otherwise derive
+        // readable labels from the `by_cat` histogram keys. This covers
+        // numeric/date category histograms where `cat_labels` is empty.
+        // Also compute numeric `tick_values` (boundaries) when applicable
+        // and attach them to `report_data["cat"]["tick_values"]` so the
+        // plot-spec builder can use them for binned encodings.
+        let mut final_cat_labels = cat_labels.clone();
+        let mut cat_tick_values: Option<Vec<f64>> = None;
+        // Keep canonical raw category keys (object keys) for `report.cats`
+        // so downstream converters can look up `by_cat[cat_key]`. We'll add
+        // human-readable labels into `report.cat.tick_labels`.
+        let mut cat_keys: Vec<String> = Vec::new();
+        if final_cat_labels.is_empty() {
+            if let Some(obj) = by_cat.as_object() {
+                if !obj.is_empty() {
+                    // Preserve insertion order of the buckets as returned by ES.
+                    let keys: Vec<String> = obj.keys().cloned().collect();
+                    cat_keys = keys.clone();
+                    if let Some(ref cat_spec) = cat_spec_opt {
+                        match cat_spec.value_type {
+                            ValueType::Date => {
+                                // Parse numeric keys and compute adjacent boundaries
+                                // to present human-friendly date ranges.
+                                let nums: Vec<f64> = keys
+                                    .iter()
+                                    .map(|k| k.parse::<f64>().unwrap_or_default())
+                                    .collect();
+                                if nums.is_empty() {
+                                    final_cat_labels = keys;
+                                } else {
+                                    // estimate interval from first two keys, fallback to 1
+                                    let width = if nums.len() >= 2 {
+                                        nums[1] - nums[0]
+                                    } else {
+                                        1.0
+                                    };
+                                    let mut boundaries = nums.clone();
+                                    boundaries.push(nums.last().copied().unwrap_or(0.0) + width);
+                                    // Attach numeric boundaries for the axis
+                                    cat_tick_values = Some(boundaries.clone());
+                                    let mut labels: Vec<String> = Vec::with_capacity(nums.len());
+                                    for i in 0..nums.len() {
+                                        let left = nums[i];
+                                        let right = boundaries[i + 1];
+                                        // Heuristic: treat large values as milliseconds,
+                                        // otherwise seconds since epoch.
+                                        let left_i = left as i64;
+                                        let right_i = right as i64;
+                                        let left_dt = if left_i.abs() > 1_000_000_000_000 {
+                                            // milliseconds -> seconds + nanos
+                                            let s = left_i / 1000;
+                                            #[allow(clippy::cast_abs_to_unsigned)]
+                                            let ns = ((left_i % 1000).abs() as u32) * 1_000_000;
+                                            #[allow(deprecated)]
+                                            chrono::NaiveDateTime::from_timestamp_opt(s, ns)
+                                        } else {
+                                            #[allow(deprecated)]
+                                            chrono::NaiveDateTime::from_timestamp_opt(left_i, 0)
+                                        };
+                                        let right_dt = if right_i.abs() > 1_000_000_000_000 {
+                                            let s = right_i / 1000;
+                                            #[allow(clippy::cast_abs_to_unsigned)]
+                                            let ns = ((right_i % 1000).abs() as u32) * 1_000_000;
+                                            #[allow(deprecated)]
+                                            chrono::NaiveDateTime::from_timestamp_opt(s, ns)
+                                        } else {
+                                            #[allow(deprecated)]
+                                            chrono::NaiveDateTime::from_timestamp_opt(right_i, 0)
+                                        };
+                                        if let (Some(ldt), Some(rdt)) = (left_dt, right_dt) {
+                                            #[allow(deprecated)]
+                                            let ldt = chrono::DateTime::<chrono::Utc>::from_utc(
+                                                ldt,
+                                                chrono::Utc,
+                                            );
+                                            #[allow(deprecated)]
+                                            let rdt = chrono::DateTime::<chrono::Utc>::from_utc(
+                                                rdt,
+                                                chrono::Utc,
+                                            );
+                                            // Format as %Y-%m if day is 1, else %Y-%m-%d; collapse to %Y if month and day are both 1
+                                            let fmt_date = |dt: &chrono::DateTime<chrono::Utc>| {
+                                                let y = dt.year();
+                                                let m = dt.month();
+                                                let d = dt.day();
+                                                if m == 1 && d == 1 {
+                                                    format!("{:04}", y)
+                                                } else if d == 1 {
+                                                    format!("{:04}-{:02}", y, m)
+                                                } else {
+                                                    format!("{:04}-{:02}-{:02}", y, m, d)
+                                                }
+                                            };
+                                            labels.push(format!(
+                                                "{} to {}",
+                                                fmt_date(&ldt),
+                                                fmt_date(&rdt)
+                                            ));
+                                        } else if let Some(ldt) = left_dt {
+                                            #[allow(deprecated)]
+                                            let ldt = chrono::DateTime::<chrono::Utc>::from_utc(
+                                                ldt,
+                                                chrono::Utc,
+                                            );
+                                            labels.push(format!("{}", ldt.format("%Y-%m-%d")));
+                                        } else {
+                                            labels.push(keys[i].clone());
+                                        }
+                                    }
+                                    final_cat_labels = labels;
+                                }
+                            }
+                            _ => {
+                                // Numeric buckets: produce readable range labels
+                                let nums: Vec<f64> = keys
+                                    .iter()
+                                    .map(|k| k.parse::<f64>().unwrap_or_default())
+                                    .collect();
+                                if nums.is_empty() {
+                                    final_cat_labels = keys;
+                                } else {
+                                    let width = if nums.len() >= 2 {
+                                        nums[1] - nums[0]
+                                    } else {
+                                        1.0
+                                    };
+                                    let mut boundaries = nums.clone();
+                                    boundaries.push(nums.last().copied().unwrap_or(0.0) + width);
+                                    // Attach numeric boundaries for the axis
+                                    cat_tick_values = Some(boundaries.clone());
+                                    let mut labels: Vec<String> = Vec::with_capacity(nums.len());
+                                    for i in 0..nums.len() {
+                                        let left = nums[i];
+                                        let right = boundaries[i + 1];
+                                        let fmt = |v: f64| {
+                                            // Format as 3sf scientific/engineering notation (e.g. 2.13G)
+                                            let abs_v = v.abs();
+                                            let (scaled, suffix) = if abs_v >= 1e9 {
+                                                (v / 1e9, "G")
+                                            } else if abs_v >= 1e6 {
+                                                (v / 1e6, "M")
+                                            } else if abs_v >= 1e3 {
+                                                (v / 1e3, "k")
+                                            } else {
+                                                (v, "")
+                                            };
+                                            if suffix.is_empty() {
+                                                format!("{:.3}", scaled)
+                                            } else {
+                                                format!("{:.3}{}", scaled, suffix)
+                                            }
+                                        };
+                                        labels.push(format!("{} to{}", fmt(left), fmt(right)));
+                                    }
+                                    final_cat_labels = labels;
+                                }
+                            }
+                        }
+                    } else {
+                        final_cat_labels = keys.clone();
+                        cat_keys = keys;
+                    }
+                }
+            }
+        }
+        if let Some(tvals) = cat_tick_values {
+            report_data["cat"]["tick_values"] = json!(tvals);
+        }
+
+        // Use raw category keys for `report.cats` (these are the keys used
+        // to index `by_cat`). Provide human-readable labels under
+        // `report.cat.tick_labels` so the plot-spec builder can use them for
+        // legend/axis labeling while converters still match counts by key.
+        if cat_keys.is_empty() {
+            // Fallback: when we didn't capture keys earlier, attempt to
+            // populate from final_cat_labels (they may already be raw keys).
+            report_data["cats"] = json!(final_cat_labels.clone());
+        } else {
+            report_data["cats"] = json!(cat_keys);
+        }
+        if !final_cat_labels.is_empty() {
+            report_data["cat"]["tick_labels"] = json!(final_cat_labels);
+        }
     }
 
     Ok((total_hits, took, report_data))
@@ -506,7 +801,7 @@ pub async fn run_tree_report(
     // Prefer structured `axes` array; fall back to flat `y:` / `y_opts:` or legacy
     // `fields:` sequence (AxisSummary::Value for all).
     let tree_field_specs: Vec<(String, AxisSummary)> = {
-        let from_axes = resolve_y_specs(report_config, state);
+        let from_axes = resolve_y_specs(report_config, state).await;
         if !from_axes.is_empty() {
             from_axes
                 .into_iter()
@@ -531,7 +826,7 @@ pub async fn run_tree_report(
     };
 
     // --- Cat axis: resolve full AxisSpec + bounds (same pipeline as histogram) ---
-    let cat_spec_opt = resolve_axis_spec(AxisRole::Cat, report_config, state);
+    let cat_spec_opt = resolve_axis_spec(AxisRole::Cat, report_config, state).await;
     let cat_bounds_opt = if let Some(ref cat_spec) = cat_spec_opt {
         Some(
             compute_bounds(
@@ -717,8 +1012,27 @@ pub async fn run_tree_report(
     // One extra ES query using nested lineage → reverse_nested to count how many
     // taxa at `count_rank` descend from each tree node.
     if let Some(ref rank) = count_rank {
-        let descendant_counts =
-            fetch_descendant_counts(&state.client, &state.es_base, index, &lca_id, rank).await?;
+        // Speed-up: restrict descendant count aggregation to the set of tree
+        // node IDs we've already collected so ES only computes counts for
+        // those ancestors. This is much faster than enumerating all
+        // ancestors under the LCA when the tree is small or moderate-sized.
+        let candidate_ids: Vec<String> = tree_nodes.keys().cloned().collect();
+        // Use fast-path only when candidate set is reasonably small to avoid
+        // building a huge `terms` filter; fallback to composite when > 10k.
+        let candidate_slice: Option<&[String]> = if candidate_ids.len() <= 10_000 {
+            Some(candidate_ids.as_slice())
+        } else {
+            None
+        };
+        let descendant_counts = fetch_descendant_counts(
+            &state.client,
+            &state.es_base,
+            index,
+            &lca_id,
+            rank,
+            candidate_slice,
+        )
+        .await?;
         took_total += descendant_counts.took;
         for (taxon_id, count) in descendant_counts.counts {
             if let Some(node) = tree_nodes.get_mut(&taxon_id) {
@@ -823,7 +1137,7 @@ pub async fn run_map_report(
     let hexbin_field = format!("hexbin{hex_resolution}");
 
     // --- Cat axis (optional) ---
-    let cat_spec_opt = resolve_axis_spec(AxisRole::Cat, report_config, state);
+    let cat_spec_opt = resolve_axis_spec(AxisRole::Cat, report_config, state).await;
     let cat_bounds_opt = if let Some(ref spec) = cat_spec_opt {
         compute_bounds(
             &state.client,
@@ -1039,40 +1353,36 @@ pub async fn run_map_report(
 // Helper functions
 // ============================================================================
 
-/// Infer the ValueType of a field from metadata cache.
-/// Defaults to Numeric if not found or cache unavailable.
-fn infer_value_type(
+/// Async variant of `infer_value_type` that acquires the cache read lock
+/// via `read().await` so callers in async handlers can reliably observe
+/// populated metadata without falling back on the non-blocking `try_read`.
+async fn infer_value_type_async(
     field: &str,
     cache: &Option<Arc<tokio::sync::RwLock<crate::es_metadata::MetadataCache>>>,
 ) -> ValueType {
-    // Check if it's a rank in the metadata
     if let Some(cache_lock) = cache {
-        if let Ok(c) = cache_lock.try_read() {
-            if c.taxonomic_ranks.contains(&field.to_string()) {
-                return ValueType::TaxonRank;
-            }
-
-            // Check if it's an attribute in the metadata
-            if let serde_json::Value::Object(groups) = &c.attr_types {
-                for (_, group) in groups {
-                    if let serde_json::Value::Object(fields) = group {
-                        if let Some(serde_json::Value::Object(meta_obj)) = fields.get(field) {
-                            if let Some(type_str) = meta_obj.get("type").and_then(|v| v.as_str()) {
-                                return match type_str {
-                                    "date" => ValueType::Date,
-                                    "keyword" => ValueType::Keyword,
-                                    "long" | "integer" | "float" | "double" => ValueType::Numeric,
-                                    "geo_point" => ValueType::GeoPoint,
-                                    _ => ValueType::Keyword,
-                                };
-                            }
+        let guard = cache_lock.read().await;
+        if guard.taxonomic_ranks.contains(&field.to_string()) {
+            return ValueType::TaxonRank;
+        }
+        if let serde_json::Value::Object(groups) = &guard.attr_types {
+            for (_, group) in groups {
+                if let serde_json::Value::Object(fields) = group {
+                    if let Some(serde_json::Value::Object(meta_obj)) = fields.get(field) {
+                        if let Some(type_str) = meta_obj.get("type").and_then(|v| v.as_str()) {
+                            return match type_str {
+                                "date" => ValueType::Date,
+                                "keyword" => ValueType::Keyword,
+                                "long" | "integer" | "float" | "double" => ValueType::Numeric,
+                                "geo_point" => ValueType::GeoPoint,
+                                _ => ValueType::Keyword,
+                            };
                         }
                     }
                 }
             }
         }
     }
-    // Default to Numeric if not found in metadata
     ValueType::Numeric
 }
 
@@ -1081,7 +1391,7 @@ fn infer_value_type(
 /// Checks the structured `axes` array first. Falls back to legacy flat keys
 /// (`x`/`x_opts`, `y`/`y_opts`, `cat`/`cat_opts`) so existing request bodies
 /// continue to work unchanged.
-fn resolve_axis_spec(
+async fn resolve_axis_spec(
     role: AxisRole,
     report_config: &serde_yaml::Value,
     state: &Arc<AppState>,
@@ -1100,7 +1410,7 @@ fn resolve_axis_spec(
                 continue;
             }
             if let Ok(input) = serde_yaml::from_value::<AxisInput>(entry.clone()) {
-                let inferred = infer_value_type(&input.field, &state.cache);
+                let inferred = infer_value_type_async(&input.field, &state.cache).await;
                 return Some(input.into_spec(inferred));
             }
         }
@@ -1117,7 +1427,7 @@ fn resolve_axis_spec(
         .get(&opts_key)
         .and_then(|v| v.as_str())
         .unwrap_or("");
-    let value_type = infer_value_type(field, &state.cache);
+    let value_type = infer_value_type_async(field, &state.cache).await;
     Some(AxisSpec {
         field: field.to_string(),
         role,
@@ -1136,20 +1446,24 @@ fn resolve_axis_spec(
 /// Prefers the structured `axes` array (multiple entries, per-field `summary` and
 /// opts).  Falls back to the flat `y:` + `y_opts:` shorthand for a single field
 /// with `AxisSummary::Value`.  Returns an empty vec when neither is present.
-fn resolve_y_specs(report_config: &serde_yaml::Value, state: &Arc<AppState>) -> Vec<AxisSpec> {
+async fn resolve_y_specs(
+    report_config: &serde_yaml::Value,
+    state: &Arc<AppState>,
+) -> Vec<AxisSpec> {
     // Structured form: collect every entry with position == "y"
     if let Some(axes) = report_config.get("axes").and_then(|a| a.as_sequence()) {
-        let specs: Vec<AxisSpec> = axes
+        let inputs: Vec<AxisInput> = axes
             .iter()
             .filter(|e| e.get("position").and_then(|p| p.as_str()) == Some("y"))
             .filter_map(|e| serde_yaml::from_value::<AxisInput>(e.clone()).ok())
-            .map(|input| {
-                let inferred = infer_value_type(&input.field, &state.cache);
-                input.into_spec(inferred)
-            })
             .collect();
-        if !specs.is_empty() {
-            return specs;
+        if !inputs.is_empty() {
+            let mut out = Vec::with_capacity(inputs.len());
+            for input in inputs {
+                let inferred = infer_value_type_async(&input.field, &state.cache).await;
+                out.push(input.into_spec(inferred));
+            }
+            return out;
         }
     }
 
@@ -1162,7 +1476,7 @@ fn resolve_y_specs(report_config: &serde_yaml::Value, state: &Arc<AppState>) -> 
         .get("y_opts")
         .and_then(|v| v.as_str())
         .unwrap_or("");
-    let value_type = infer_value_type(field, &state.cache);
+    let value_type = infer_value_type_async(field, &state.cache).await;
     vec![AxisSpec {
         field: field.to_string(),
         role: AxisRole::Y,
@@ -1495,63 +1809,172 @@ async fn fetch_descendant_counts(
     index: &str,
     lca_id: &str,
     count_rank: &str,
+    candidate_ids: Option<&[String]>,
 ) -> Result<DescendantCounts, String> {
-    let body = json!({
-        "size": 0,
-        "query": {
-            "bool": {
-                "must": [
-                    { "term": { "taxon_rank": count_rank } },
-                    {
-                        "nested": {
-                            "path": "lineage",
-                            "query": { "term": { "lineage.taxon_id": lca_id } }
+    // If caller provides a candidate ID set, restrict to those IDs using a
+    // nested `filter` + `terms` agg. This avoids paging and is much faster
+    // when the ID set is small relative to the full space.
+    if let Some(ids) = candidate_ids {
+        if ids.is_empty() {
+            return Ok(DescendantCounts {
+                counts: std::collections::HashMap::new(),
+                took: 0,
+            });
+        }
+        // Build a nested -> filter(terms(ids)) -> terms agg over lineage.taxon_id
+        let body = json!({
+            "size": 0,
+            "query": {
+                "bool": {
+                    "must": [
+                        { "term": { "taxon_rank": count_rank } },
+                        {
+                            "nested": {
+                                "path": "lineage",
+                                "query": { "term": { "lineage.taxon_id": lca_id } }
+                            }
                         }
-                    }
-                ]
-            }
-        },
-        "aggs": {
-            "by_ancestor": {
-                "nested": { "path": "lineage" },
-                "aggs": {
-                    "ancestors": {
-                        "terms": {
-                            "field": "lineage.taxon_id",
-                            "size": 100000
-                        },
-                        "aggs": {
-                            "node_count": { "reverse_nested": {} }
+                    ]
+                }
+            },
+            "aggs": {
+                "by_ancestor": {
+                    "nested": { "path": "lineage" },
+                    "aggs": {
+                        "filtered": {
+                            "filter": { "terms": { "lineage.taxon_id": ids } },
+                            "aggs": {
+                                "ancestors": {
+                                    "terms": { "field": "lineage.taxon_id", "size": 10000 },
+                                    "aggs": { "node_count": { "reverse_nested": {} } }
+                                }
+                            }
                         }
                     }
                 }
             }
+        });
+
+        let resp = crate::es_client::execute_search(client, es_base, index, &body).await?;
+        let took = resp.get("took").and_then(|t| t.as_u64()).unwrap_or(0);
+        let buckets = resp
+            .pointer("/aggregations/by_ancestor/filtered/ancestors/buckets")
+            .and_then(|b| b.as_array())
+            .cloned()
+            .unwrap_or_default();
+        let mut counts = std::collections::HashMap::with_capacity(buckets.len());
+        for bucket in &buckets {
+            let taxon_id = match bucket.get("key").and_then(|k| k.as_str()) {
+                Some(id) => id.to_string(),
+                None => continue,
+            };
+            let count = bucket
+                .pointer("/node_count/doc_count")
+                .and_then(|c| c.as_u64())
+                .unwrap_or(0);
+            counts.insert(taxon_id, count);
         }
-    });
-
-    let resp = crate::es_client::execute_search(client, es_base, index, &body).await?;
-    let took = resp.get("took").and_then(|t| t.as_u64()).unwrap_or(0);
-
-    let buckets = resp
-        .pointer("/aggregations/by_ancestor/ancestors/buckets")
-        .and_then(|b| b.as_array())
-        .cloned()
-        .unwrap_or_default();
-
-    let mut counts = std::collections::HashMap::with_capacity(buckets.len());
-    for bucket in &buckets {
-        let taxon_id = match bucket.get("key").and_then(|k| k.as_str()) {
-            Some(id) => id.to_string(),
-            None => continue,
-        };
-        let count = bucket
-            .pointer("/node_count/doc_count")
-            .and_then(|c| c.as_u64())
-            .unwrap_or(0);
-        counts.insert(taxon_id, count);
+        return Ok(DescendantCounts { counts, took });
     }
 
-    Ok(DescendantCounts { counts, took })
+    // Use a composite aggregation inside the nested `lineage` agg so we can
+    // page through ancestor buckets without materialising them all at once.
+    // Loop until `after_key` is absent.
+    let mut counts: std::collections::HashMap<String, u64> = std::collections::HashMap::new();
+    let mut took_total: u64 = 0;
+    let mut after_key: Option<serde_json::Value> = None;
+
+    loop {
+        // Build composite aggregation block, including `after` when present.
+        let mut composite_obj = json!({
+            "size": 1000,
+            "sources": [{ "ancestor_id": { "terms": { "field": "lineage.taxon_id" } } }]
+        });
+        if let Some(ref ak) = after_key {
+            composite_obj["after"] = ak.clone();
+        }
+
+        let body = json!({
+            "size": 0,
+            "query": {
+                "bool": {
+                    "must": [
+                        { "term": { "taxon_rank": count_rank } },
+                        {
+                            "nested": {
+                                "path": "lineage",
+                                "query": { "term": { "lineage.taxon_id": lca_id } }
+                            }
+                        }
+                    ]
+                }
+            },
+            "aggs": {
+                "by_ancestor": {
+                    "nested": { "path": "lineage" },
+                    "aggs": {
+                        "ancestors": {
+                            "composite": composite_obj,
+                            "aggs": {
+                                "node_count": { "reverse_nested": {} }
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        let resp = crate::es_client::execute_search(client, es_base, index, &body).await?;
+        took_total += resp.get("took").and_then(|t| t.as_u64()).unwrap_or(0);
+
+        let buckets = resp
+            .pointer("/aggregations/by_ancestor/ancestors/buckets")
+            .and_then(|b| b.as_array())
+            .cloned()
+            .unwrap_or_default();
+
+        for bucket in &buckets {
+            // Composite bucket keys are objects like { "ancestor_id": "123" }
+            let taxon_id = if let Some(obj) = bucket.get("key").and_then(|k| k.as_object()) {
+                if let Some(v) = obj.get("ancestor_id") {
+                    if let Some(s) = v.as_str() {
+                        s.to_string()
+                    } else if let Some(n) = v.as_f64() {
+                        n.to_string()
+                    } else {
+                        continue;
+                    }
+                } else {
+                    continue;
+                }
+            } else if let Some(s) = bucket.get("key").and_then(|k| k.as_str()) {
+                s.to_string()
+            } else if let Some(n) = bucket.get("key").and_then(|k| k.as_f64()) {
+                n.to_string()
+            } else {
+                continue;
+            };
+
+            let count = bucket
+                .pointer("/node_count/doc_count")
+                .and_then(|c| c.as_u64())
+                .unwrap_or(0);
+            counts.insert(taxon_id, count);
+        }
+
+        // Check for pagination `after_key`
+        after_key = resp
+            .pointer("/aggregations/by_ancestor/ancestors/after_key")
+            .cloned();
+        if after_key.is_none() {
+            break;
+        }
+    }
+
+    Ok(DescendantCounts {
+        counts,
+        took: took_total,
+    })
 }
 
 /// Compute subtree counts via iterative post-order DFS.
@@ -1881,6 +2304,51 @@ fn find_attr_numeric(attrs: &[Value], field: &str) -> Option<f64> {
     None
 }
 
+/// Find the first date attribute value for `field` in an `attributes` array.
+/// Returns milliseconds since epoch as `f64` when possible.
+fn find_attr_date(attrs: &[Value], field: &str) -> Option<f64> {
+    for attr in attrs {
+        if attr.get("key").and_then(|k| k.as_str()) != Some(field) {
+            continue;
+        }
+
+        // If ES stored the date as a numeric epoch (stats use this), accept it.
+        if let Some(n) = attr.get("date_value").and_then(|v| v.as_f64()) {
+            return Some(n);
+        }
+
+        // If it's a string (ISO or yyyy-mm-dd), try parsing common formats.
+        if let Some(s) = attr.get("date_value").and_then(|v| v.as_str()) {
+            // Try RFC3339 first
+            if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(s) {
+                return Some(dt.timestamp_millis() as f64);
+            }
+            // Try simple date-only form YYYY-MM-DD
+            if let Ok(nd) = chrono::NaiveDate::parse_from_str(s, "%Y-%m-%d") {
+                if let Some(naive_dt) = nd.and_hms_opt(0, 0, 0) {
+                    let dt = chrono::DateTime::<chrono::Utc>::from_naive_utc_and_offset(
+                        naive_dt,
+                        chrono::Utc,
+                    );
+                    return Some(dt.timestamp_millis() as f64);
+                }
+            }
+            // Try common datetime without timezone
+            if let Ok(ndt) = chrono::NaiveDateTime::parse_from_str(s, "%Y-%m-%dT%H:%M:%S") {
+                let dt =
+                    chrono::DateTime::<chrono::Utc>::from_naive_utc_and_offset(ndt, chrono::Utc);
+                return Some(dt.timestamp_millis() as f64);
+            }
+            if let Ok(ndt) = chrono::NaiveDateTime::parse_from_str(s, "%Y-%m-%d %H:%M:%S") {
+                let dt =
+                    chrono::DateTime::<chrono::Utc>::from_naive_utc_and_offset(ndt, chrono::Utc);
+                return Some(dt.timestamp_millis() as f64);
+            }
+        }
+    }
+    None
+}
+
 /// Find the first keyword attribute value for `field` in an `attributes` array.
 fn find_attr_keyword(attrs: &[Value], field: &str) -> Option<String> {
     attrs
@@ -1902,24 +2370,26 @@ fn find_attr_keyword(attrs: &[Value], field: &str) -> Option<String> {
 fn extract_scatter_by_cat(
     resp: &Value,
     agg_name: &str,
-    x_field: &str,
+    x_storage: &FieldStorage,
     x_bucket_agg: &str,
+    cat_storage: &FieldStorage,
     y_field: &str,
+    y_inner_agg: &str,
     x_bucket_count: usize,
     y_bucket_count: usize,
     cat_labels: &[String],
     show_other: bool,
     cat_is_numeric: bool,
     main_counts: &[u64],
+    y_fixed_terms: Option<&[String]>,
 ) -> (Value, Value) {
-    let base = format!(
-        "/aggregations/{}/by_key/categoryHistograms/by_attribute/by_cat/by_value/buckets",
-        agg_name
-    );
+    let base = match x_storage.cat_histograms_base(agg_name, cat_storage) {
+        Some(p) if resp.pointer(&p).is_some() => p,
+        _ => return (Value::Null, Value::Null),
+    };
 
-    if resp.pointer(&base).is_none() {
-        return (Value::Null, Value::Null);
-    }
+    // Relative path from a per-category bucket to the inner x histogram buckets.
+    let inner_x = x_storage.inner_x_path(x_bucket_agg);
 
     let mut by_cat = serde_json::Map::new();
     let mut y_values_by_cat = serde_json::Map::new();
@@ -1934,12 +2404,8 @@ fn extract_scatter_by_cat(
         for bucket in &cat_buckets {
             let key = bucket.get("key").and_then(|k| k.as_f64()).unwrap_or(0.0);
             let label = key.to_string();
-            let x_path = format!(
-                "/histogram/by_attribute/{}/{}/buckets",
-                x_field, x_bucket_agg
-            );
             let x_buckets_inner = bucket
-                .pointer(&x_path)
+                .pointer(&inner_x)
                 .and_then(|b| b.as_array())
                 .cloned()
                 .unwrap_or_default();
@@ -1952,16 +2418,35 @@ fn extract_scatter_by_cat(
                         .and_then(|c| c.as_u64())
                         .unwrap_or(0),
                 );
-                let y_path = format!("/yHistograms/by_attribute/{}/histogram/buckets", y_field);
-                let y_counts = x_bucket
-                    .pointer(&y_path)
-                    .and_then(|b| b.as_array())
-                    .map(|yb| {
+                let y_path = format!(
+                    "/yHistograms/by_attribute/{}/{}/buckets",
+                    y_field, y_inner_agg
+                );
+                let y_counts = if let Some(yb) =
+                    x_bucket.pointer(&y_path).and_then(|b| b.as_array())
+                {
+                    if let Some(fixed) = y_fixed_terms {
+                        use std::collections::HashMap;
+                        let mut map: HashMap<String, u64> = HashMap::new();
+                        for b in yb {
+                            if let Some(k) = b.get("key").and_then(|k| k.as_str()) {
+                                let c = b.get("doc_count").and_then(|c| c.as_u64()).unwrap_or(0);
+                                map.insert(k.to_string(), c);
+                            }
+                        }
+                        let mut aligned = Vec::with_capacity(fixed.len());
+                        for key in fixed {
+                            aligned.push(map.get(key.as_str()).copied().unwrap_or(0));
+                        }
+                        aligned
+                    } else {
                         yb.iter()
                             .map(|b| b.get("doc_count").and_then(|c| c.as_u64()).unwrap_or(0))
                             .collect()
-                    })
-                    .unwrap_or_else(|| vec![0; y_bucket_count]);
+                    }
+                } else {
+                    vec![0; y_bucket_count]
+                };
                 y_counts_per_x.push(y_counts);
             }
             x_counts.resize(x_bucket_count, 0);
@@ -1980,10 +2465,7 @@ fn extract_scatter_by_cat(
         };
 
         for label in &all_labels {
-            let x_hist_path = format!(
-                "{}/{}/histogram/by_attribute/{}/{}/buckets",
-                base, label, x_field, x_bucket_agg
-            );
+            let x_hist_path = format!("{}/{}{}", base, label, inner_x);
             let x_buckets = resp
                 .pointer(&x_hist_path)
                 .and_then(|b| b.as_array())
@@ -1999,17 +2481,35 @@ fn extract_scatter_by_cat(
                         .and_then(|c| c.as_u64())
                         .unwrap_or(0),
                 );
-                let y_hist_path =
-                    format!("/yHistograms/by_attribute/{}/histogram/buckets", y_field);
-                let y_counts = x_bucket
-                    .pointer(&y_hist_path)
-                    .and_then(|b| b.as_array())
-                    .map(|yb| {
+                let y_hist_path = format!(
+                    "/yHistograms/by_attribute/{}/{}/buckets",
+                    y_field, y_inner_agg
+                );
+                let y_counts = if let Some(yb) =
+                    x_bucket.pointer(&y_hist_path).and_then(|b| b.as_array())
+                {
+                    if let Some(fixed) = y_fixed_terms {
+                        use std::collections::HashMap;
+                        let mut map: HashMap<String, u64> = HashMap::new();
+                        for b in yb {
+                            if let Some(k) = b.get("key").and_then(|k| k.as_str()) {
+                                let c = b.get("doc_count").and_then(|c| c.as_u64()).unwrap_or(0);
+                                map.insert(k.to_string(), c);
+                            }
+                        }
+                        let mut aligned = Vec::with_capacity(fixed.len());
+                        for key in fixed {
+                            aligned.push(map.get(key.as_str()).copied().unwrap_or(0));
+                        }
+                        aligned
+                    } else {
                         yb.iter()
                             .map(|b| b.get("doc_count").and_then(|c| c.as_u64()).unwrap_or(0))
                             .collect()
-                    })
-                    .unwrap_or_else(|| vec![0; y_bucket_count]);
+                    }
+                } else {
+                    vec![0; y_bucket_count]
+                };
                 y_counts_per_x.push(y_counts);
             }
             x_counts.resize(x_bucket_count, 0);
@@ -2059,6 +2559,189 @@ fn compute_z_domain(all_y_values: &[Vec<u64>]) -> [u64; 2] {
     }
 }
 
+/// Fetch scientific name labels for a list of taxon ids in the configured taxon index.
+/// Returns a Vec of labels aligned to the input `ids` (falls back to the id string when
+/// a name is not found).
+async fn fetch_taxon_labels(
+    state: &Arc<AppState>,
+    ids: &[String],
+    rank: &str,
+) -> Result<Vec<String>, String> {
+    if ids.is_empty() {
+        return Ok(vec![]);
+    }
+
+    let taxon_index = index_name::resolve_index_str(&state.default_result, state);
+
+    // Build msearch body: one query per id so we can preserve order in the
+    // responses.
+    let mut searches: Vec<(String, Value)> = Vec::new();
+    for id in ids {
+        let q = json!({
+            "query": {
+                "bool": {
+                    "filter": [
+                        { "term": { "taxon_id": id } },
+                        { "term": { "taxon_rank": rank } }
+                    ]
+                }
+            },
+            "_source": ["taxon_id", "scientific_name"]
+        });
+        searches.push((taxon_index.clone(), q));
+    }
+
+    let nd = es_client::build_msearch_body(&searches);
+    let resp = es_client::execute_msearch(&state.client, &state.es_base, &nd).await?;
+
+    let mut labels: Vec<String> = Vec::with_capacity(ids.len());
+    if let Some(resps) = resp.get("responses").and_then(|r| r.as_array()) {
+        for (i, r) in resps.iter().enumerate() {
+            if let Some(total) = r.pointer("/hits/total/value").and_then(|v| v.as_u64()) {
+                if total >= 1 {
+                    if let Some(hit) = r.pointer("/hits/hits/0/_source/scientific_name") {
+                        if let Some(s) = hit.as_str() {
+                            labels.push(s.to_string());
+                            continue;
+                        }
+                    }
+                }
+            }
+            // fallback: use the id string
+            labels.push(ids.get(i).cloned().unwrap_or_default());
+        }
+    }
+    Ok(labels)
+}
+
+/// Build a canonical, labelled buckets array from raw ES buckets.
+///
+/// If `fixed_terms` is non-empty, produce buckets in that order and
+/// include only those terms (this prevents appending unexpected buckets
+/// produced by ES). If `bucket_labels` aligns with `fixed_terms`, use
+/// those human-readable labels; otherwise fall back to any `label` field
+/// on the bucket or the id string.
+fn build_structured_buckets(
+    raw_buckets: &[Value],
+    fixed_terms: &[String],
+    bucket_labels: &[String],
+) -> Vec<Value> {
+    use std::collections::HashMap;
+    // Build key -> bucket map for fast lookup
+    let mut map: HashMap<String, Value> = HashMap::new();
+    for b in raw_buckets {
+        if let Some(kv) = b.get("key") {
+            let ks = if let Some(s) = kv.as_str() {
+                s.to_string()
+            } else {
+                kv.to_string()
+            };
+            map.insert(ks, b.clone());
+        }
+    }
+
+    let mut out: Vec<Value> = Vec::new();
+    if !fixed_terms.is_empty() {
+        // Use fixed_terms ordering and labels when available
+        for (i, id) in fixed_terms.iter().enumerate() {
+            let id_str = id.clone();
+            let label = if !bucket_labels.is_empty() && bucket_labels.len() == fixed_terms.len() {
+                bucket_labels.get(i).cloned().unwrap_or(id_str.clone())
+            } else if let Some(b) = map.get(&id_str) {
+                b.get("label")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string())
+                    .unwrap_or(id_str.clone())
+            } else {
+                id_str.clone()
+            };
+            let count = map
+                .get(&id_str)
+                .and_then(|b| b.get("doc_count").and_then(|c| c.as_u64()))
+                .unwrap_or(0);
+            out.push(json!({"id": id_str, "label": label, "count": count}));
+        }
+    } else {
+        // No fixed terms: preserve raw bucket order, attach label if present
+        for b in raw_buckets {
+            let id_val = b.get("key").cloned().unwrap_or(Value::Null);
+            let id_str = if let Some(s) = id_val.as_str() {
+                s.to_string()
+            } else {
+                id_val.to_string()
+            };
+            let label = b
+                .get("label")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string())
+                .unwrap_or(id_str.clone());
+            let count = b.get("doc_count").and_then(|v| v.as_u64()).unwrap_or(0);
+            out.push(json!({"id": id_str, "label": label, "count": count}));
+        }
+    }
+    out
+}
+
+/// Align processed buckets (which may include `key_scaled` etc.) to `fixed_terms` and
+/// attach `label` fields. If `fixed_terms` is empty, return processed buckets with
+/// labels attached where possible.
+fn align_and_label_processed_buckets(
+    mut processed: Vec<Value>,
+    fixed_terms: &[String],
+    fixed_labels: &[String],
+) -> Vec<Value> {
+    use std::collections::HashMap;
+    if fixed_terms.is_empty() {
+        // Attach labels if provided in fixed_labels (unlikely when empty)
+        for (i, b) in processed.iter_mut().enumerate() {
+            if let Some(_lbl) = b.get("label").and_then(|v| v.as_str()) {
+                // already has label
+            } else if i < fixed_labels.len() {
+                b["label"] = json!(fixed_labels[i].clone());
+            }
+        }
+        return processed;
+    }
+
+    // Map existing processed buckets by id string
+    let mut map: HashMap<String, Value> = HashMap::new();
+    for b in processed.into_iter() {
+        let id_str = if let Some(k) = b.get("key") {
+            if let Some(s) = k.as_str() {
+                s.to_string()
+            } else {
+                k.to_string()
+            }
+        } else if let Some(id) = b.get("id") {
+            id.as_str().map(|s| s.to_string()).unwrap_or(id.to_string())
+        } else {
+            continue;
+        };
+        map.insert(id_str, b);
+    }
+
+    let mut out: Vec<Value> = Vec::new();
+    for (i, id) in fixed_terms.iter().enumerate() {
+        let bucket = map.remove(id);
+        let mut b = if let Some(existing) = bucket {
+            existing
+        } else {
+            // Create empty bucket placeholder
+            json!({"key": id.clone(), "doc_count": 0})
+        };
+        let label = if !fixed_labels.is_empty() && fixed_labels.len() == fixed_terms.len() {
+            fixed_labels.get(i).cloned().unwrap_or(id.clone())
+        } else if let Some(lbl) = b.get("label").and_then(|v| v.as_str()) {
+            lbl.to_string()
+        } else {
+            id.clone()
+        };
+        b["label"] = json!(label);
+        out.push(b);
+    }
+    out
+}
+
 /// Fetch raw point data for scatter when total hits are within the scatter threshold.
 ///
 /// Returns an object mapping category name to an array of `{scientific_name, taxonId, x, y, cat}`
@@ -2069,16 +2752,68 @@ async fn fetch_raw_point_data(
     index: &str,
     base_query: &Value,
     x_field: &str,
+    x_is_taxon_rank: bool,
     y_field: &str,
+    y_is_taxon_rank: bool,
     cat_field: Option<&str>,
     cat_labels: &[String],
     show_other: bool,
+    x_fixed_terms: Option<&[String]>,
     threshold: usize,
 ) -> Value {
+    // Build combined query: base_query AND optional x_bucket filter when
+    // `x_fixed_terms` provided. This ensures raw points align with the
+    // canonical buckets used to compute axis ticks and avoid stray points
+    // that fall outside those buckets.
+    let mut final_query: Value = base_query.clone();
+    if let Some(fixed) = x_fixed_terms {
+        // Convert slice into JSON array
+        let fixed_json = json!(fixed);
+        if x_is_taxon_rank {
+            // Nested lineage filter: require ancestor at the requested rank
+            // whose taxon_id is one of the fixed terms.
+            let extra_filter = json!({
+                "nested": {
+                    "path": "lineage",
+                    "query": {
+                        "bool": {
+                            "must": [
+                                { "term": { "lineage.taxon_rank": x_field } },
+                                { "terms": { "lineage.taxon_id": fixed_json } }
+                            ]
+                        }
+                    }
+                }
+            });
+            final_query = json!({ "bool": { "must": [ base_query.clone(), extra_filter ] } });
+        } else {
+            // Non-rank: try to match either nested attributes (attributes.key)
+            // or a top-level `.keyword` field. Use a SHOULD so either form
+            // matching will include the document.
+            let attr_filter = json!({
+                "nested": {
+                    "path": "attributes",
+                    "query": {
+                        "bool": {
+                            "must": [
+                                { "term": { "attributes.key": x_field } },
+                                { "terms": { "attributes.keyword_value.raw": fixed_json } }
+                            ]
+                        }
+                    }
+                }
+            });
+            let top_filter = json!({ "terms": { format!("{}.keyword", x_field): fixed_json } });
+            let should_filter = json!({ "bool": { "should": [ attr_filter, top_filter ], "minimum_should_match": 1 } });
+            final_query = json!({ "bool": { "must": [ base_query.clone(), should_filter ] } });
+        }
+    }
+
+    // Request `lineage` so we can resolve ancestor IDs when the axis is a taxon rank.
     let es_body = json!({
         "size": threshold,
-        "query": base_query,
-        "_source": ["scientific_name", "taxon_id", "attributes"]
+        "query": final_query,
+        "_source": ["scientific_name", "taxon_id", "attributes", "lineage"]
     });
 
     let resp = match es_client::execute_search(&state.client, &state.es_base, index, &es_body).await
@@ -2120,13 +2855,105 @@ async fn fetch_raw_point_data(
             .cloned()
             .unwrap_or_default();
 
-        let x_val = match find_attr_numeric(&attrs, x_field) {
-            Some(v) => v,
-            None => continue,
+        // Extract x and y values. When the axis is a taxon rank, prefer the
+        // ancestor id found in `lineage`. Otherwise prefer numeric/date/keyword
+        // attributes as before.
+        let mut x_label_for_point: Option<String> = None;
+        let x_json_val = if x_is_taxon_rank {
+            // Try to find ancestor at the requested rank in the `lineage` array.
+            let mut found: Option<Value> = None;
+            if let Some(lineage_arr) = src.get("lineage").and_then(|l| l.as_array()) {
+                for anc in lineage_arr {
+                    if anc.get("taxon_rank").and_then(|r| r.as_str()) == Some(x_field) {
+                        if let Some(idv) = anc.get("taxon_id") {
+                            if let Some(s) = idv.as_str() {
+                                found = Some(json!(s.to_string()));
+                            } else if let Some(n) = idv.as_u64() {
+                                found = Some(json!(n.to_string()));
+                            }
+                        }
+                        // Try to capture scientific_name from the ancestor for labeling
+                        if x_label_for_point.is_none() {
+                            if let Some(sn) = anc.get("scientific_name").and_then(|v| v.as_str()) {
+                                x_label_for_point = Some(sn.to_string());
+                            } else if let Some(nm) = anc.get("name").and_then(|v| v.as_str()) {
+                                x_label_for_point = Some(nm.to_string());
+                            }
+                        }
+                        if found.is_some() {
+                            break;
+                        }
+                    }
+                }
+            }
+            if let Some(v) = found {
+                v
+            } else if let Some(v) = find_attr_numeric(&attrs, x_field) {
+                json!(v)
+            } else if let Some(d) = find_attr_date(&attrs, x_field) {
+                json!(d)
+            } else if let Some(s) = find_attr_keyword(&attrs, x_field) {
+                json!(s)
+            } else {
+                continue;
+            }
+        } else if let Some(v) = find_attr_numeric(&attrs, x_field) {
+            json!(v)
+        } else if let Some(d) = find_attr_date(&attrs, x_field) {
+            json!(d)
+        } else if let Some(s) = find_attr_keyword(&attrs, x_field) {
+            json!(s)
+        } else {
+            continue;
         };
-        let y_val = match find_attr_numeric(&attrs, y_field) {
-            Some(v) => v,
-            None => continue,
+
+        let mut y_label_for_point: Option<String> = None;
+        let y_json_val = if y_is_taxon_rank {
+            // y-axis as taxon rank — resolve ancestor id from lineage if present.
+            let mut found: Option<Value> = None;
+            if let Some(lineage_arr) = src.get("lineage").and_then(|l| l.as_array()) {
+                for anc in lineage_arr {
+                    if anc.get("taxon_rank").and_then(|r| r.as_str()) == Some(y_field) {
+                        if let Some(idv) = anc.get("taxon_id") {
+                            if let Some(s) = idv.as_str() {
+                                found = Some(json!(s.to_string()));
+                            } else if let Some(n) = idv.as_u64() {
+                                found = Some(json!(n.to_string()));
+                            }
+                        }
+                        // capture ancestor scientific name for label
+                        if y_label_for_point.is_none() {
+                            if let Some(sn) = anc.get("scientific_name").and_then(|v| v.as_str()) {
+                                y_label_for_point = Some(sn.to_string());
+                            } else if let Some(nm) = anc.get("name").and_then(|v| v.as_str()) {
+                                y_label_for_point = Some(nm.to_string());
+                            }
+                        }
+                        if found.is_some() {
+                            break;
+                        }
+                    }
+                }
+            }
+            if let Some(v) = found {
+                v
+            } else if let Some(v) = find_attr_numeric(&attrs, y_field) {
+                json!(v)
+            } else if let Some(d) = find_attr_date(&attrs, y_field) {
+                json!(d)
+            } else if let Some(s) = find_attr_keyword(&attrs, y_field) {
+                json!(s)
+            } else {
+                continue;
+            }
+        } else if let Some(v) = find_attr_numeric(&attrs, y_field) {
+            json!(v)
+        } else if let Some(d) = find_attr_date(&attrs, y_field) {
+            json!(d)
+        } else if let Some(s) = find_attr_keyword(&attrs, y_field) {
+            json!(s)
+        } else {
+            continue;
         };
 
         let cat_key = if let Some(cf) = cat_field {
@@ -2142,13 +2969,20 @@ async fn fetch_raw_point_data(
             "all".to_string()
         };
 
-        raw_data.entry(cat_key.clone()).or_default().push(json!({
+        let mut point_obj = json!({
             "scientific_name": scientific_name,
             "taxonId": taxon_id,
-            "x": x_val,
-            "y": y_val,
+            "x": x_json_val,
+            "y": y_json_val,
             "cat": cat_key
-        }));
+        });
+        if let Some(lbl) = x_label_for_point {
+            point_obj["x_label"] = json!(lbl);
+        }
+        if let Some(lbl) = y_label_for_point {
+            point_obj["y_label"] = json!(lbl);
+        }
+        raw_data.entry(cat_key.clone()).or_default().push(point_obj);
     }
 
     let mut result = serde_json::Map::new();
@@ -2176,32 +3010,59 @@ pub async fn run_scatter_report(
     base_query: &Value,
 ) -> Result<(u64, u64, Value), String> {
     let x_spec = resolve_axis_spec(AxisRole::X, report_config, state)
+        .await
         .ok_or("report config missing 'x' axis (set 'x' field or use 'axes')")?;
     let y_spec = resolve_axis_spec(AxisRole::Y, report_config, state)
+        .await
         .ok_or("scatter report requires 'y' axis (set 'y' field or use 'axes')")?;
     let x_field = x_spec.field.clone();
     let y_field = y_spec.field.clone();
-    let cat_spec_opt = resolve_axis_spec(AxisRole::Cat, report_config, state);
+    let cat_spec_opt = resolve_axis_spec(AxisRole::Cat, report_config, state).await;
     let scatter_threshold = report_config
         .get("scatter_threshold")
         .and_then(|v| v.as_u64())
         .unwrap_or(1000) as usize;
+
+    // Augment the base query for bounds computation with a presence-filter
+    // for the opposite axis so bounds reflect only records that will appear
+    // in the final plot. This avoids empty buckets caused by one axis being
+    // filtered out by the other.
+    let y_storage = resolve_field_storage(&y_spec.field, y_spec.value_type, &state.cache)?;
+    let x_base_query = json!({
+        "bool": { "must": [ base_query.clone(), y_storage.presence_filter() ] }
+    });
 
     let x_bounds = compute_bounds(
         &state.client,
         &state.es_base,
         index,
         &x_spec,
-        base_query,
+        &x_base_query,
         &state.cache,
     )
     .await?;
+    // If this is a taxon-rank axis and bounds provided a fixed term list (ids),
+    // attempt to fetch human-readable labels (scientific names) for each id so
+    // the final report can include a labelled mapping. Fall back to the
+    // original bounds.cat_labels when lookup fails.
+    let mut x_bucket_labels: Vec<String> = x_bounds.cat_labels.clone();
+    if matches!(x_spec.value_type, ValueType::TaxonRank) && !x_bounds.fixed_terms.is_empty() {
+        if let Ok(labels) = fetch_taxon_labels(state, &x_bounds.fixed_terms, &x_spec.field).await {
+            if labels.len() == x_bounds.fixed_terms.len() {
+                x_bucket_labels = labels;
+            }
+        }
+    }
+    let x_storage = resolve_field_storage(&x_spec.field, x_spec.value_type, &state.cache)?;
+    let y_presence = x_storage.presence_filter();
+    let y_base_query = json!({ "bool": { "must": [ base_query.clone(), y_presence ] } });
+
     let y_bounds = compute_bounds(
         &state.client,
         &state.es_base,
         index,
         &y_spec,
-        base_query,
+        &y_base_query,
         &state.cache,
     )
     .await?;
@@ -2257,19 +3118,36 @@ pub async fn run_scatter_report(
         .unwrap_or(0);
 
     // ---- Extract main x buckets (histogram or terms depending on x type) ----
-    let x_hist_path = format!("/aggregations/{}/by_key/{}/buckets", agg_name, x_inner_agg);
-    let x_raw_buckets = resp
+    let x_hist_path = x_storage.main_bucket_path(agg_name, x_inner_agg);
+    let mut x_raw_buckets = resp
         .pointer(&x_hist_path)
         .and_then(|b| b.as_array())
         .cloned()
         .unwrap_or_default();
-    let x_bucket_count = x_raw_buckets.len();
 
-    // Keys may be numeric (histogram) or string (terms) — collect as raw JSON Values.
-    let x_bucket_keys: Vec<Value> = x_raw_buckets
-        .iter()
-        .filter_map(|b| b.get("key").cloned())
-        .collect();
+    // Respect the definitive fixed term order calculated during bounds.
+    // If `x_bounds.fixed_terms` is non-empty, reorder the returned buckets to
+    // match that list. Append any unexpected buckets at the end.
+    if !x_bounds.fixed_terms.is_empty() {
+        let mut ordered: Vec<Value> = Vec::with_capacity(x_raw_buckets.len());
+        for id in &x_bounds.fixed_terms {
+            if let Some(pos) = x_raw_buckets
+                .iter()
+                .position(|b| b.get("key").and_then(|k| k.as_str()) == Some(id.as_str()))
+            {
+                ordered.push(x_raw_buckets[pos].clone());
+            }
+        }
+        // Append any remaining buckets not present in fixed_terms
+        for b in &x_raw_buckets {
+            let key = b.get("key").and_then(|k| k.as_str()).unwrap_or("");
+            if !x_bounds.fixed_terms.iter().any(|t| t == key) {
+                ordered.push(b.clone());
+            }
+        }
+        x_raw_buckets = ordered;
+    }
+    let x_bucket_count = x_raw_buckets.len();
 
     let all_values: Vec<u64> = x_raw_buckets
         .iter()
@@ -2279,27 +3157,164 @@ pub async fn run_scatter_report(
     // ---- Extract allYValues (per x-bucket y-histogram) and yBuckets ----
     let y_bucket_count = y_bounds.tick_count;
     let mut all_y_values: Vec<Vec<u64>> = Vec::with_capacity(x_bucket_count);
-    let mut y_bucket_keys: Vec<f64> = Vec::new();
+    let mut y_bucket_keys: Vec<Value> = Vec::new();
+    let mut y_bucket_labels: Vec<String> = Vec::new();
+
+    // If bounds provided canonical fixed terms for a keyword/rank Y axis,
+    // prefer that ordering for yBuckets so keys are consistent across x buckets.
+    if matches!(
+        y_bounds.value_type,
+        ValueType::Keyword | ValueType::TaxonRank
+    ) && !y_bounds.fixed_terms.is_empty()
+    {
+        y_bucket_keys = y_bounds
+            .fixed_terms
+            .iter()
+            .map(|s| Value::String(s.clone()))
+            .collect();
+    }
+
+    // If this is a taxon-rank Y axis and bounds provided fixed term ids,
+    // attempt to fetch human-readable labels (scientific names). Keep
+    // `y_bucket_keys` as the canonical ids used for bin alignment, and
+    // separately store `y_bucket_labels` for display.
+    if matches!(y_spec.value_type, ValueType::TaxonRank) && !y_bounds.fixed_terms.is_empty() {
+        if let Ok(labels) = fetch_taxon_labels(state, &y_bounds.fixed_terms, &y_spec.field).await {
+            if labels.len() == y_bounds.fixed_terms.len() {
+                y_bucket_labels = labels;
+                // Ensure the canonical keys remain the ids from fixed_terms
+                // (they were set earlier from `y_bounds.fixed_terms`).
+            }
+        }
+    }
+
+    // Determine inner agg name for y histograms so we can locate buckets
+    // inside each x-bucket's `yHistograms` result.
+    let y_inner_agg = if matches!(
+        y_bounds.value_type,
+        ValueType::Keyword | ValueType::TaxonRank
+    ) {
+        "top_terms"
+    } else if matches!(y_bounds.value_type, ValueType::Date) {
+        "date_histogram"
+    } else {
+        "histogram"
+    };
+
+    // If we still have no canonical y keys, scan *all* x-buckets and collect
+    // the union of y bucket keys found. This avoids using a single
+    // first-non-empty-bucket ordering which can produce too-small yBuckets
+    // when some x-buckets yield sparse date/rank histograms.
+    if y_bucket_keys.is_empty() {
+        use std::collections::HashSet;
+        let mut seen: HashSet<String> = HashSet::new();
+        let mut ordered_keys: Vec<Value> = Vec::new();
+        for x_bucket in &x_raw_buckets {
+            let y_hist_path = format!(
+                "/yHistograms/by_attribute/{}/{}/buckets",
+                y_field, y_inner_agg
+            );
+            if let Some(ybuckets) = x_bucket.pointer(&y_hist_path).and_then(|b| b.as_array()) {
+                for b in ybuckets {
+                    if let Some(kv) = b.get("key").cloned() {
+                        let ks = if let Some(s) = kv.as_str() {
+                            s.to_string()
+                        } else {
+                            kv.to_string()
+                        };
+                        if seen.insert(ks) {
+                            ordered_keys.push(kv);
+                        }
+                    }
+                }
+            }
+        }
+
+        if !ordered_keys.is_empty() {
+            // If all keys are numeric, sort ascending numerically; otherwise
+            // keep discovery order which tends to reflect term ordering.
+            let all_numeric = ordered_keys.iter().all(|v| v.as_f64().is_some());
+            if all_numeric {
+                ordered_keys.sort_by(|a, b| {
+                    a.as_f64()
+                        .partial_cmp(&b.as_f64())
+                        .unwrap_or(std::cmp::Ordering::Equal)
+                });
+            }
+            y_bucket_keys = ordered_keys;
+        }
+    }
 
     for x_bucket in &x_raw_buckets {
-        let y_hist_path = format!("/yHistograms/by_attribute/{}/histogram/buckets", y_field);
+        let y_hist_path = format!(
+            "/yHistograms/by_attribute/{}/{}/buckets",
+            y_field, y_inner_agg
+        );
         let y_buckets_opt = x_bucket.pointer(&y_hist_path).and_then(|b| b.as_array());
 
         if let Some(ybuckets) = y_buckets_opt {
+            // If we don't already have canonical keys, initialise from this first non-empty bucket
             if y_bucket_keys.is_empty() {
                 y_bucket_keys = ybuckets
                     .iter()
-                    .filter_map(|b| b.get("key").and_then(|k| k.as_f64()))
+                    .filter_map(|b| b.get("key").cloned())
                     .collect();
             }
-            all_y_values.push(
-                ybuckets
-                    .iter()
-                    .map(|b| b.get("doc_count").and_then(|c| c.as_u64()).unwrap_or(0))
-                    .collect(),
-            );
-        } else {
+
+            // Build counts aligned to `y_bucket_keys`. For keyword/rank keys this
+            // ensures the same ordering even if some x buckets lack particular terms.
+            if matches!(
+                y_bounds.value_type,
+                ValueType::Keyword | ValueType::TaxonRank
+            ) {
+                use std::collections::HashMap;
+                let mut map: HashMap<String, u64> = HashMap::new();
+                for b in ybuckets {
+                    if let Some(kv) = b.get("key") {
+                        // Normalize the bucket key to a string regardless of JSON type
+                        let key_s = if let Some(s) = kv.as_str() {
+                            s.to_string()
+                        } else if let Some(n) = kv.as_u64() {
+                            n.to_string()
+                        } else if let Some(n) = kv.as_i64() {
+                            n.to_string()
+                        } else if let Some(f) = kv.as_f64() {
+                            f.to_string()
+                        } else {
+                            kv.to_string()
+                        };
+                        let c = b.get("doc_count").and_then(|c| c.as_u64()).unwrap_or(0);
+                        map.insert(key_s, c);
+                    }
+                }
+                let mut aligned: Vec<u64> = Vec::with_capacity(y_bucket_keys.len());
+                for k in &y_bucket_keys {
+                    let key_s = if let Some(s) = k.as_str() {
+                        s.to_string()
+                    } else if let Some(n) = k.as_u64() {
+                        n.to_string()
+                    } else if let Some(n) = k.as_i64() {
+                        n.to_string()
+                    } else if let Some(f) = k.as_f64() {
+                        f.to_string()
+                    } else {
+                        k.to_string()
+                    };
+                    aligned.push(map.get(&key_s).copied().unwrap_or(0));
+                }
+                all_y_values.push(aligned);
+            } else {
+                all_y_values.push(
+                    ybuckets
+                        .iter()
+                        .map(|b| b.get("doc_count").and_then(|c| c.as_u64()).unwrap_or(0))
+                        .collect(),
+                );
+            }
+        } else if y_bucket_keys.is_empty() {
             all_y_values.push(vec![0; y_bucket_count]);
+        } else {
+            all_y_values.push(vec![0; y_bucket_keys.len()]);
         }
     }
 
@@ -2307,34 +3322,64 @@ pub async fn run_scatter_report(
 
     // ---- Extract per-category data ----
     let (by_cat, y_values_by_cat) = if !cat_labels.is_empty() || cat_is_numeric {
+        // Resolve cat_storage so extract_scatter_by_cat can build deterministic paths.
+        let cat_storage_for_extract = cat_spec_opt
+            .as_ref()
+            .and_then(|spec| resolve_field_storage(&spec.field, spec.value_type, &state.cache).ok())
+            .unwrap_or(FieldStorage::Root {
+                es_field: String::new(),
+            });
         extract_scatter_by_cat(
             &resp,
             agg_name,
-            x_field.as_str(),
+            &x_storage,
             x_inner_agg,
+            &cat_storage_for_extract,
             y_field.as_str(),
+            y_inner_agg,
             x_bucket_count,
             y_bucket_count,
             &cat_labels,
             show_other_cat,
             cat_is_numeric,
             &all_values,
+            if !y_bounds.fixed_terms.is_empty() {
+                Some(&y_bounds.fixed_terms[..])
+            } else {
+                None
+            },
         )
     } else {
         (Value::Null, Value::Null)
     };
 
-    // ---- Fetch raw point data if below threshold ----
-    let raw_data = if total_hits as usize <= scatter_threshold {
+    // ---- Fetch raw point data when needed ----
+    // Previously we only fetched raw points when total hits <= threshold.
+    // For categorical axes (keyword/taxon) we also want raw points so the
+    // client/converter can jitter points within categories for visibility.
+    // Only fetch rawData when the total matched hits are within the configured
+    // `scatter_threshold`. Previously we also fetched raw points for categorical
+    // axes to enable client jittering; that behaviour is opt-in and not the
+    // default — respect the threshold by default.
+    let should_fetch_raw = total_hits as usize <= scatter_threshold;
+
+    let raw_data = if should_fetch_raw {
         fetch_raw_point_data(
             state,
             index,
             base_query,
             x_field.as_str(),
+            matches!(x_spec.value_type, ValueType::TaxonRank),
             y_field.as_str(),
+            matches!(y_spec.value_type, ValueType::TaxonRank),
             cat_field_str,
             &cat_labels,
             show_other_cat,
+            if !x_bounds.fixed_terms.is_empty() {
+                Some(&x_bounds.fixed_terms[..])
+            } else {
+                None
+            },
             scatter_threshold,
         )
         .await
@@ -2342,29 +3387,49 @@ pub async fn run_scatter_report(
         Value::Null
     };
 
+    // Build a single structured `buckets` array where each element is an
+    // object `{ id, label, count }`. Use `x_bounds.fixed_terms` (when
+    // present) as the authoritative ordering to avoid appending spurious
+    // buckets returned by ES.
+    let buckets_struct: Vec<Value> =
+        build_structured_buckets(&x_raw_buckets, &x_bounds.fixed_terms, &x_bucket_labels);
+
     let mut report_data = json!({
         "type": "scatter",
         "x": {
             "field": x_field,
             "scale": format!("{:?}", x_spec.opts.scale).to_lowercase(),
-            "domain": x_bounds.domain
+            "domain": x_bounds.domain,
+            "value_type": value_type_to_string(x_spec.value_type)
         },
         "y": {
             "field": y_field,
             "scale": format!("{:?}", y_spec.opts.scale).to_lowercase(),
-            "domain": y_bounds.domain
+            "domain": y_bounds.domain,
+            "value_type": value_type_to_string(y_spec.value_type)
         },
-        "buckets": x_bucket_keys,
+        "buckets": buckets_struct,
         "allValues": all_values,
         "yBuckets": y_bucket_keys,
+        "yBucketLabels": y_bucket_labels,
         "allYValues": all_y_values,
         "zDomain": z_domain
     });
 
+    // Historically we returned `bucketLabels` separately; clients should now
+    // consume the structured `buckets` array. Keep `bucketLabels` absent to
+    // avoid duplication.
+
     if !by_cat.is_null() {
         report_data["by_cat"] = by_cat;
         report_data["yValuesByCat"] = y_values_by_cat;
-        report_data["cat"] = json!(cat_spec_opt.as_ref().map(|s| s.field.as_str()));
+        if let Some(ref cat_spec) = cat_spec_opt {
+            report_data["cat"] = json!({
+                "field": cat_spec.field,
+                "value_type": value_type_to_string(cat_spec.value_type),
+                "scale": format!("{:?}", cat_spec.opts.scale).to_lowercase()
+            });
+        }
         report_data["cats"] = json!(cat_labels);
     }
 

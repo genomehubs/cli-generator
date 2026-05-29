@@ -1,6 +1,6 @@
 use axum::{extract::Json, Extension};
 use serde::{Deserialize, Deserializer, Serialize};
-use serde_json::Value;
+use serde_json::{json, Value};
 use std::sync::Arc;
 
 use super::deserialize_helpers;
@@ -12,10 +12,14 @@ fn combine_es_bodies(
     combine_with: &genomehubs_query::query::CombineStrategy,
 ) -> serde_json::Value {
     if bodies.is_empty() {
-        return serde_json::json!({ "query": { "match_all": {} }, "size": 0 });
+        return serde_json::json!({ "query": { "match_all": {} }, "size": 0, "track_total_hits": true });
     }
     if bodies.len() == 1 {
-        return bodies.into_iter().next().unwrap();
+        let mut count_query = bodies.into_iter().next().unwrap();
+        if let Some(obj) = count_query.as_object_mut() {
+            obj.insert("track_total_hits".to_string(), serde_json::json!(true));
+        }
+        return count_query;
     }
 
     // Extract the "query" clause from each body; combine with bool.should/must
@@ -46,6 +50,7 @@ fn combine_es_bodies(
     let mut result = bodies.into_iter().next().unwrap();
     if let Some(obj) = result.as_object_mut() {
         obj.insert("query".to_string(), combined_query);
+        obj.insert("track_total_hits".to_string(), serde_json::json!(true));
     }
     result
 }
@@ -118,9 +123,13 @@ fn build_msearch_body(searches: &[(String, serde_json::Value)]) -> String {
         .iter()
         .flat_map(|(index, body)| {
             let header = serde_json::json!({ "index": index });
+            let count_body = json!({
+                "query": body.get("query").cloned().unwrap_or_else(|| serde_json::json!({"match_all": {}})),
+                "track_total_hits": true
+            });
             vec![
                 serde_json::to_string(&header).unwrap(),
-                serde_json::to_string(body).unwrap(),
+                serde_json::to_string(&count_body).unwrap(),
             ]
         })
         .collect::<Vec<_>>()

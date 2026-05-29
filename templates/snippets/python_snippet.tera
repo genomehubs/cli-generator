@@ -64,6 +64,13 @@ counts = qb.count_batch(queries)
 for i, n in enumerate(counts):
     print(f"Query {i}: {n} records")
 
+{% elif call_type == "report_batch" -%}
+# Run a batch of reports
+reports = [rb]  # extend this list with ReportBuilder instances or (QueryBuilder, ReportBuilder) pairs
+results = qb.report_batch(reports)
+for i, res in enumerate(results):
+    print(f"Report {i}: {res}")
+
 {% elif call_type == "positional" -%}
 # Run a positional report
 assemblies = [{% for asm in positional_assemblies %}"{{ asm }}", {% endfor %}]

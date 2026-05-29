@@ -8,11 +8,15 @@ use genomehubs_query::query::{QueryParams, SearchQuery};
 
 use crate::{index_name, report::report_types, routes::ApiStatus, AppState};
 
-#[derive(utoipa::ToSchema)]
+#[derive(Serialize, utoipa::ToSchema)]
 pub struct ReportRequest {
     pub query_yaml: String,
     pub params_yaml: String,
     pub report_yaml: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub include_plot_spec: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub display: Option<serde_json::Value>,
 }
 
 impl<'de> Deserialize<'de> for ReportRequest {
@@ -55,10 +59,15 @@ impl<'de> Deserialize<'de> for ReportRequest {
                 return Err(de::Error::missing_field("report or report_yaml"));
             };
 
+        let include_plot_spec = map.get("include_plot_spec").and_then(|v| v.as_bool());
+        let display = map.get("display").cloned();
+
         Ok(ReportRequest {
             query_yaml,
             params_yaml,
             report_yaml,
+            include_plot_spec,
+            display,
         })
     }
 }
@@ -67,6 +76,8 @@ impl<'de> Deserialize<'de> for ReportRequest {
 pub struct ReportResponse {
     pub status: ApiStatus,
     pub report: Value,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub plot_spec: Option<Value>,
 }
 
 #[utoipa::path(
@@ -88,6 +99,7 @@ pub async fn post_report(
             return Json(ReportResponse {
                 status: ApiStatus::error($msg),
                 report: Value::Null,
+                plot_spec: None,
             })
         };
     }
@@ -209,15 +221,33 @@ pub async fn post_report(
         unknown => Err(format!("unknown report type: {unknown}")),
     };
 
-    // Return response
+    // Return response (optionally include a minimal PlotSpec when requested)
     match result {
-        Ok((hits, took, report_data)) => Json(ReportResponse {
-            status: ApiStatus::query_ok(hits, took),
-            report: report_data,
-        }),
+        Ok((hits, took, report_data)) => {
+            let plot_spec_value: Option<Value> =
+                if req.include_plot_spec.unwrap_or(false) || req.display.is_some() {
+                    match crate::report::spec_builder::build_plot_spec(
+                        report_type,
+                        &report_data,
+                        req.display.as_ref(),
+                    ) {
+                        Ok(spec) => serde_json::to_value(&spec).ok(),
+                        Err(_) => None,
+                    }
+                } else {
+                    None
+                };
+
+            Json(ReportResponse {
+                status: ApiStatus::query_ok(hits, took),
+                report: report_data,
+                plot_spec: plot_spec_value,
+            })
+        }
         Err(e) => Json(ReportResponse {
             status: ApiStatus::error(e),
             report: Value::Null,
+            plot_spec: None,
         }),
     }
 }

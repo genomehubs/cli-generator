@@ -61,6 +61,7 @@ pub mod positional;
 pub mod record;
 pub mod record_batch;
 pub mod report;
+pub mod report_batch;
 pub mod result_fields;
 pub mod search;
 pub mod search_batch;

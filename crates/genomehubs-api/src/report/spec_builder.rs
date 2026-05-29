@@ -1,0 +1,737 @@
+//! Server-side PlotSpec construction helpers.
+//!
+//! Build a fully-resolved `PlotSpec` from a report payload and optional
+//! `display` hints. This lives in the API crate because it may consult
+//! server-side knowledge (report JSON shapes) and is not intended for the
+//! WASM-local build path.
+
+use serde_json::{json, Value};
+
+use genomehubs_query::report::display::TickLabelPlacement;
+use genomehubs_query::report::plot_spec::{AxisMeta, PlotReportType, SeriesMeta};
+use genomehubs_query::report::DisplaySpec;
+use genomehubs_query::report::PlotSpec;
+
+fn parse_display(display: Option<&Value>) -> DisplaySpec {
+    if let Some(dv) = display {
+        if let Some(s) = dv.as_str() {
+            serde_yaml::from_str(s).unwrap_or_default()
+        } else {
+            serde_json::from_value(dv.clone()).unwrap_or_default()
+        }
+    } else {
+        DisplaySpec::default()
+    }
+}
+
+fn domain_from_value(v: Option<&Value>) -> [f64; 2] {
+    if let Some(Value::Array(arr)) = v {
+        if arr.len() >= 2 {
+            let a = arr[0].as_f64().unwrap_or(0.0);
+            let b = arr[1].as_f64().unwrap_or(a + 1.0);
+            return [a, b];
+        }
+    }
+    [0.0, 1.0]
+}
+
+fn make_axis_meta(
+    field: &str,
+    scale: Option<&str>,
+    domain_val: Option<&Value>,
+    value_type_hint: Option<&str>,
+) -> AxisMeta {
+    let domain = domain_from_value(domain_val);
+    let scale_s = scale
+        .map(|s| s.to_string())
+        .unwrap_or_else(|| "linear".to_string());
+    let value_type = value_type_hint.map(|s| s.to_string()).unwrap_or_else(|| {
+        if domain != [0.0, 1.0] {
+            "float".to_string()
+        } else {
+            "keyword".to_string()
+        }
+    });
+
+    let tick_label_placement = if value_type == "keyword" {
+        TickLabelPlacement::BetweenTicks
+    } else {
+        TickLabelPlacement::OnTick
+    };
+
+    AxisMeta {
+        field: field.to_string(),
+        label: None,
+        scale: scale_s,
+        domain,
+        tick_values: vec![],
+        tick_labels: vec![],
+        value_type,
+        tick_label_placement,
+        tick_label_stride: 1,
+        tick_label_max_length: None,
+    }
+}
+
+fn build_series_from_cats(cats: Option<&Value>) -> Vec<SeriesMeta> {
+    if let Some(Value::Array(arr)) = cats {
+        arr.iter()
+            .filter_map(|v| v.as_str().map(|s| s.to_string()))
+            .map(|key| SeriesMeta {
+                key: key.clone(),
+                label: key,
+                color: None,
+            })
+            .collect()
+    } else {
+        Vec::new()
+    }
+}
+
+/// Compute bin boundary values from an ordered list of numeric bucket keys.
+///
+/// Returns `keys.len() + 1` values: the original `keys` plus one extra right
+/// boundary estimated as `last_key + (last_key − second_to_last_key)`.
+///
+/// The boundary list is used by Vega-Lite `binned` encodings to draw each bar
+/// from its left edge to its right edge without overlap or gap.
+fn bucket_keys_to_boundaries(sorted_keys: &[f64], axis_obj: &Value) -> Vec<f64> {
+    if sorted_keys.is_empty() {
+        return vec![];
+    }
+    let width = if sorted_keys.len() >= 2 {
+        sorted_keys[1] - sorted_keys[0]
+    } else {
+        // Estimate width from domain / tickCount when there is only one bucket.
+        axis_obj
+            .get("domain")
+            .and_then(|d| d.as_array())
+            .map(|arr| {
+                if arr.len() >= 2 {
+                    let lo = arr[0].as_f64().unwrap_or(0.0);
+                    let hi = arr[1].as_f64().unwrap_or(lo + 1.0);
+                    let ticks = axis_obj
+                        .get("tickCount")
+                        .and_then(|v| v.as_u64())
+                        .unwrap_or(10) as f64;
+                    (hi - lo) / ticks.max(1.0)
+                } else {
+                    1.0
+                }
+            })
+            .unwrap_or(1.0)
+    };
+    let mut boundaries = sorted_keys.to_vec();
+    boundaries.push(sorted_keys[sorted_keys.len() - 1] + width);
+    boundaries
+}
+
+/// Extract numeric or keyword tick data from a bucket array and write it onto `meta`.
+///
+/// For keyword axes: extracts `label` (or `id`) strings → `meta.tick_labels`.
+/// For numeric axes: extracts `key` / `id` floats, sorts them, computes bin
+/// boundaries → `meta.tick_values`.
+///
+/// `axis_obj` is the axis spec JSON object (provides `domain` / `tickCount`
+/// for single-bucket width estimation).
+///
+/// `label_source` is an optional pre-built label list that takes priority over
+/// bucket-derived labels (used for y-axis when the server supplies
+/// `yBucketLabels` directly).
+fn fill_tick_data_from_buckets(
+    meta: &mut AxisMeta,
+    axis_obj: &Value,
+    buckets: &[Value],
+    label_source: Option<&[Value]>,
+) {
+    if meta.value_type == "keyword" {
+        // Prefer explicit labels when provided (e.g. yBucketLabels for taxon ranks).
+        if let Some(lbls) = label_source {
+            let labels: Vec<String> = lbls
+                .iter()
+                .map(|v| v.as_str().unwrap_or("").to_string())
+                .collect();
+            if !labels.is_empty() {
+                meta.tick_labels = labels;
+                return;
+            }
+        }
+        // Fall back to label/id fields from bucket objects.
+        let labels: Vec<String> = buckets
+            .iter()
+            .map(|b| {
+                b.get("label")
+                    .and_then(|l| l.as_str())
+                    .map(|s| s.to_string())
+                    .or_else(|| {
+                        b.get("id")
+                            .or_else(|| b.get("key"))
+                            .and_then(|v| v.as_str().map(|s| s.to_string()))
+                    })
+                    .unwrap_or_default()
+            })
+            .collect();
+        if !labels.is_empty() {
+            meta.tick_labels = labels;
+        }
+    } else {
+        // Numeric: build sorted boundary list from bucket numeric keys.
+        let mut keys: Vec<f64> = buckets
+            .iter()
+            .filter_map(|b| {
+                b.get("key").and_then(|v| v.as_f64()).or_else(|| {
+                    b.get("id")
+                        .and_then(|v| v.as_str())
+                        .and_then(|s| s.parse().ok())
+                })
+            })
+            .collect();
+        if !keys.is_empty() {
+            keys.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+            meta.tick_values = bucket_keys_to_boundaries(&keys, axis_obj);
+        }
+    }
+}
+
+/// Build a merged PlotSpec for multiple arc reports.
+///
+/// Each entry in `reports` is expected to be the `report` object returned by
+/// the arc report handlers (either a scalar `arc` or an array of ring objects).
+/// The function normalises ring entries, computes a `scaled` value in [0,1]
+/// (arc is already in [0,1]; arc2 values are scaled relative to the max
+/// arc2 value across the batch), and returns a `PlotSpec` with `x` axis using
+/// the `scaled` field and a `data.entries` array containing all rings.
+pub fn build_arc_plot_spec_from_reports(
+    reports: &[Value],
+    batch_display: Option<&Value>,
+) -> Result<PlotSpec, String> {
+    // Parse batch display into a DisplaySpec so defaults are available.
+    let display_spec = parse_display(batch_display);
+
+    // Normalise reports into a flat list of ring-like objects.
+    let mut entries: Vec<Value> = Vec::new();
+    let mut report_labels: Vec<String> = Vec::new();
+
+    for (ri, rep) in reports.iter().enumerate() {
+        let label = rep
+            .get("featureTerm")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string())
+            .or_else(|| {
+                rep.get("referenceTerm")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string())
+            })
+            .or_else(|| {
+                rep.get("queryString")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string())
+            })
+            .unwrap_or_else(|| format!("report{}", ri));
+        report_labels.push(label.clone());
+
+        if let Some(arr) = rep.get("arc").and_then(|v| v.as_array()) {
+            for ring in arr.iter() {
+                let mut obj = match ring {
+                    Value::Object(m) => m.clone(),
+                    other => {
+                        let mut m = serde_json::Map::new();
+                        m.insert("arc".to_string(), other.clone());
+                        m
+                    }
+                };
+                obj.insert("report_index".to_string(), json!(ri));
+                obj.insert("report_label".to_string(), json!(label.clone()));
+                entries.push(Value::Object(obj));
+            }
+        } else if let Some(arc_v) = rep.get("arc") {
+            let mut obj = serde_json::Map::new();
+            obj.insert("arc".to_string(), arc_v.clone());
+            if let Some(arc2v) = rep.get("arc2") {
+                obj.insert("arc2".to_string(), arc2v.clone());
+            }
+            if let Some(fc) = rep.get("feature_count") {
+                obj.insert("feature_count".to_string(), fc.clone());
+            }
+            if let Some(rc) = rep.get("reference_count") {
+                obj.insert("reference_count".to_string(), rc.clone());
+            }
+            if let Some(ft) = rep.get("featureTerm") {
+                obj.insert("featureTerm".to_string(), ft.clone());
+            }
+            if let Some(rt) = rep.get("referenceTerm") {
+                obj.insert("referenceTerm".to_string(), rt.clone());
+            }
+            obj.insert("report_index".to_string(), json!(ri));
+            obj.insert("report_label".to_string(), json!(label.clone()));
+            entries.push(Value::Object(obj));
+        }
+    }
+
+    // Compute scaling factor for arc2 values (if present)
+    let max_arc2 = entries
+        .iter()
+        .filter_map(|e| e.get("arc2").and_then(|v| v.as_f64()))
+        .fold(0.0_f64, f64::max);
+
+    // Compute scaled value for each entry and assemble final entries array.
+    let mut final_entries: Vec<Value> = Vec::new();
+    for e in entries.into_iter() {
+        if let Value::Object(mut m) = e {
+            let scaled = if let Some(a) = m.get("arc").and_then(|v| v.as_f64()) {
+                a
+            } else if let Some(a2) = m.get("arc2").and_then(|v| v.as_f64()) {
+                if max_arc2 > 0.0 {
+                    a2 / max_arc2
+                } else {
+                    0.0
+                }
+            } else {
+                0.0
+            };
+            m.insert("scaled".to_string(), json!(scaled));
+            final_entries.push(Value::Object(m));
+        } else {
+            // Non-object entry: wrap it into an object with scaled=0
+            final_entries.push(json!({"scaled": 0.0}));
+        }
+    }
+
+    // Series metadata: one series per input report (labeled by report label)
+    let mut series_meta: Vec<SeriesMeta> = Vec::new();
+    for (i, label) in report_labels.iter().enumerate() {
+        series_meta.push(SeriesMeta {
+            key: format!("report_{i}"),
+            label: label.clone(),
+            color: None,
+        });
+    }
+
+    // X axis: scaled arc values in [0,1]
+    let x_meta = AxisMeta {
+        field: "scaled".to_string(),
+        label: Some("Arc (scaled)".to_string()),
+        scale: "linear".to_string(),
+        domain: [0.0, 1.0],
+        tick_values: vec![],
+        tick_labels: vec![],
+        value_type: "float".to_string(),
+        tick_label_placement: TickLabelPlacement::OnTick,
+        tick_label_stride: 1,
+        tick_label_max_length: None,
+    };
+
+    let data = json!({
+        "type": "arc_batch",
+        "entries": final_entries,
+        "reports": report_labels,
+    });
+
+    let spec = PlotSpec {
+        report_type: PlotReportType::Arc,
+        x: Some(x_meta),
+        y: None,
+        cat: None,
+        z: None,
+        series: series_meta,
+        display: display_spec,
+        data,
+    };
+
+    Ok(spec)
+}
+
+/// Build a `PlotSpec` from a v3 report payload and optional `display` hints.
+///
+/// `report_type` is the canonical report string (e.g. "histogram", "scatter").
+/// `report_data` is the JSON returned by the report handlers. `display` may be
+/// a YAML string or JSON object and will be merged into the resulting spec.
+pub fn build_plot_spec(
+    report_type: &str,
+    report_data: &Value,
+    display: Option<&Value>,
+) -> Result<PlotSpec, String> {
+    let pr = PlotReportType::parse(report_type).unwrap_or(PlotReportType::Histogram);
+    let display_spec = parse_display(display);
+
+    // Normalise histogram display options: prefer explicit `mode` when present;
+    // otherwise derive it from legacy boolean flags for compatibility.
+    if let Some(hist) = display_spec.histogram.as_ref() {
+        // nothing to do when mode already set
+        if hist.mode.is_none() {
+            // We'll fill in a sensible default later when serialising the
+            // PlotSpec; clone and adjust the DisplaySpec to ensure the
+            // resulting `plot_spec.display.histogram.mode` is always present
+            // for clients and converters.
+        }
+    }
+
+    // Ensure the returned DisplaySpec contains a canonical `histogram.mode`
+    // when histogram options are present. This keeps downstream converters
+    // simple: `mode` is authoritative and overrides `stacked`/`cumulative`.
+    let mut display_spec = display_spec;
+    if let Some(hist_opts) = display_spec.histogram.as_mut() {
+        if hist_opts.mode.is_none() {
+            if hist_opts.stacked.unwrap_or(false) {
+                hist_opts.mode = Some("stacked".to_string());
+            } else if hist_opts.cumulative.unwrap_or(false) {
+                hist_opts.mode = Some("cumulative".to_string());
+            } else {
+                // default behaviour remains stacked for backward-compatibility
+                hist_opts.mode = Some("stacked".to_string());
+            }
+        }
+        // Keep boolean `stacked` consistent with `mode` for consumers
+        match hist_opts.mode.as_deref() {
+            Some("stacked") => hist_opts.stacked = Some(true),
+            Some("grouped") | Some("facet") | Some("cumulative") => hist_opts.stacked = Some(false),
+            _ => {}
+        }
+    }
+    if let Some(arc_opts) = display_spec.arc.as_mut() {
+        if arc_opts.mode.is_none() {
+            arc_opts.mode = Some("grouped".to_string());
+        }
+        if arc_opts.shape.is_none() {
+            arc_opts.shape = Some("auto".to_string());
+        }
+    }
+
+    // Default empty values
+    let mut x: Option<AxisMeta> = None;
+    let mut y: Option<AxisMeta> = None;
+    let z: Option<AxisMeta> = None;
+    let mut series: Vec<SeriesMeta> = Vec::new();
+
+    match pr {
+        PlotReportType::Histogram => {
+            if let Some(x_obj) = report_data.get("x") {
+                if let Some(field) = x_obj.get("field").and_then(|v| v.as_str()) {
+                    let scale = x_obj.get("scale").and_then(|v| v.as_str());
+                    let domain = x_obj.get("domain");
+                    let value_type_hint = x_obj.get("value_type").and_then(|v| v.as_str());
+                    x = Some(make_axis_meta(field, scale, domain, value_type_hint));
+                    if let Some(meta) = x.as_mut() {
+                        let axis_opts = display_spec
+                            .histogram
+                            .as_ref()
+                            .and_then(|h| h.x_axis.as_ref());
+                        genomehubs_query::report::spec_builder::resolve_axis_display(
+                            meta, axis_opts,
+                        );
+                        let buckets = report_data
+                            .get("buckets")
+                            .and_then(|v| v.as_array())
+                            .map(|a| a.as_slice())
+                            .unwrap_or(&[]);
+                        fill_tick_data_from_buckets(meta, x_obj, buckets, None);
+                    }
+                }
+            }
+            // Series from cats
+            series = build_series_from_cats(report_data.get("cats"));
+            // Y axis: histogram counts (doc_count) — ensure converter receives
+            // authoritative axis metadata so it does not need to guess.
+            if let Some(buckets) = report_data.get("buckets").and_then(|v| v.as_array()) {
+                let counts: Vec<f64> = buckets
+                    .iter()
+                    .map(|b| b.get("doc_count").and_then(|c| c.as_f64()).unwrap_or(0.0))
+                    .collect();
+                let max = counts.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+                let domain = if max.is_finite() {
+                    [0.0, if max > 0.0 { max } else { 1.0 }]
+                } else {
+                    [0.0, 1.0]
+                };
+                y = Some(AxisMeta {
+                    field: "doc_count".to_string(),
+                    label: Some("count".to_string()),
+                    scale: "linear".to_string(),
+                    domain,
+                    tick_values: vec![],
+                    tick_labels: vec![],
+                    value_type: "integer".to_string(),
+                    tick_label_placement: TickLabelPlacement::OnTick,
+                    tick_label_stride: 1,
+                    tick_label_max_length: None,
+                });
+            } else {
+                y = Some(make_axis_meta(
+                    "doc_count",
+                    Some("linear"),
+                    None,
+                    Some("integer"),
+                ));
+            }
+        }
+        PlotReportType::Scatter => {
+            if let Some(x_obj) = report_data.get("x") {
+                if let Some(field) = x_obj.get("field").and_then(|v| v.as_str()) {
+                    let scale = x_obj.get("scale").and_then(|v| v.as_str());
+                    let domain = x_obj.get("domain");
+                    let value_type_hint = x_obj.get("value_type").and_then(|v| v.as_str());
+                    x = Some(make_axis_meta(field, scale, domain, value_type_hint));
+                    if let Some(meta) = x.as_mut() {
+                        let axis_opts = display_spec
+                            .scatter
+                            .as_ref()
+                            .and_then(|s| s.x_axis.as_ref())
+                            .or_else(|| {
+                                display_spec
+                                    .histogram
+                                    .as_ref()
+                                    .and_then(|h| h.x_axis.as_ref())
+                            });
+                        genomehubs_query::report::spec_builder::resolve_axis_display(
+                            meta, axis_opts,
+                        );
+                        let buckets = report_data
+                            .get("buckets")
+                            .and_then(|v| v.as_array())
+                            .map(|a| a.as_slice())
+                            .unwrap_or(&[]);
+                        fill_tick_data_from_buckets(meta, x_obj, buckets, None);
+                    }
+                }
+            }
+            if let Some(y_obj) = report_data.get("y") {
+                if let Some(field) = y_obj.get("field").and_then(|v| v.as_str()) {
+                    let scale = y_obj.get("scale").and_then(|v| v.as_str());
+                    let domain = y_obj.get("domain");
+                    let value_type_hint = y_obj.get("value_type").and_then(|v| v.as_str());
+                    y = Some(make_axis_meta(field, scale, domain, value_type_hint));
+                    if let Some(meta) = y.as_mut() {
+                        let axis_opts = display_spec
+                            .scatter
+                            .as_ref()
+                            .and_then(|s| s.y_axis.as_ref())
+                            .or_else(|| {
+                                display_spec
+                                    .histogram
+                                    .as_ref()
+                                    .and_then(|h| h.y_axis.as_ref())
+                            });
+                        genomehubs_query::report::spec_builder::resolve_axis_display(
+                            meta, axis_opts,
+                        );
+                        // Prefer explicit yBucketLabels (human-readable taxon rank names)
+                        // then fall back to yBuckets for both keyword and numeric axes.
+                        let explicit_labels: Option<&[Value]> = report_data
+                            .get("yBucketLabels")
+                            .and_then(|v| v.as_array())
+                            .map(|a| a.as_slice());
+                        let y_buckets: Vec<Value> = report_data
+                            .get("yBuckets")
+                            .and_then(|v| v.as_array())
+                            .map(|arr| {
+                                arr.iter()
+                                    .map(|v| match v {
+                                        // Convert raw scalar bucket keys into fake bucket objects
+                                        // so fill_tick_data_from_buckets can process them.
+                                        Value::Number(_) | Value::String(_) => {
+                                            serde_json::json!({ "key": v })
+                                        }
+                                        other => other.clone(),
+                                    })
+                                    .collect()
+                            })
+                            .unwrap_or_default();
+                        fill_tick_data_from_buckets(meta, y_obj, &y_buckets, explicit_labels);
+                    }
+                }
+            }
+            series = build_series_from_cats(report_data.get("cats"));
+        }
+        PlotReportType::CountPerRank => {
+            // Count per rank: x is rank labels (keyword), y is count
+            if let Some(buckets) = report_data.get("buckets").and_then(|v| v.as_array()) {
+                // pick first bucket's rank field name via keys
+                // we'll construct a dummy x axis named "rank"
+                x = Some(make_axis_meta(
+                    "rank",
+                    Some("ordinal"),
+                    None,
+                    Some("keyword"),
+                ));
+                // y domain from counts
+                let counts: Vec<f64> = buckets
+                    .iter()
+                    .map(|b| b.get("count").and_then(|c| c.as_f64()).unwrap_or(0.0))
+                    .collect();
+                let min = counts.iter().cloned().fold(f64::INFINITY, f64::min);
+                let max = counts.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+                let domain = if min.is_finite() && max.is_finite() {
+                    [min, if max > min { max } else { min + 1.0 }]
+                } else {
+                    [0.0, 1.0]
+                };
+                y = Some(AxisMeta {
+                    field: "count".to_string(),
+                    label: Some("count".to_string()),
+                    scale: "linear".to_string(),
+                    domain,
+                    tick_values: vec![],
+                    tick_labels: vec![],
+                    value_type: "integer".to_string(),
+                    tick_label_placement: TickLabelPlacement::OnTick,
+                    tick_label_stride: 1,
+                    tick_label_max_length: None,
+                });
+            }
+        }
+        PlotReportType::Sources => {
+            // Sources returns buckets; treat as categorical x + numeric y
+            if let Some(buckets) = report_data.get("buckets").and_then(|v| v.as_array()) {
+                x = Some(make_axis_meta(
+                    "source",
+                    Some("ordinal"),
+                    None,
+                    Some("keyword"),
+                ));
+                let counts: Vec<f64> = buckets
+                    .iter()
+                    .map(|b| b.get("count").and_then(|c| c.as_f64()).unwrap_or(0.0))
+                    .collect();
+                let min = counts.iter().cloned().fold(f64::INFINITY, f64::min);
+                let max = counts.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+                let domain = if min.is_finite() && max.is_finite() {
+                    [min, if max > min { max } else { min + 1.0 }]
+                } else {
+                    [0.0, 1.0]
+                };
+                y = Some(AxisMeta {
+                    field: "count".to_string(),
+                    label: Some("count".to_string()),
+                    scale: "linear".to_string(),
+                    domain,
+                    tick_values: vec![],
+                    tick_labels: vec![],
+                    value_type: "integer".to_string(),
+                    tick_label_placement: TickLabelPlacement::OnTick,
+                    tick_label_stride: 1,
+                    tick_label_max_length: None,
+                });
+            }
+        }
+        PlotReportType::Arc => {
+            dbg!(&report_data);
+        }
+        PlotReportType::Tree
+        | PlotReportType::Map
+        | PlotReportType::Oxford
+        | PlotReportType::Ribbon
+        | PlotReportType::Painting => {
+            // Positional / complex reports: rely on display/data only. Axis
+            // metadata for these are highly report-specific and are handled by
+            // the positional endpoint's own PlotSpec builder. Here we provide
+            // a conservative default: embed the full report JSON as data and
+            // leave axes empty.
+        }
+    }
+
+    // Build `cat` AxisMeta from report_data["cat"] when present. This keeps
+    // categorical metadata (field, value_type, scale, tick labels) in the
+    // canonical PlotSpec so converters can deterministically render legends
+    // and category axes.
+    let mut cat_meta: Option<AxisMeta> = None;
+    if let Some(cat_obj) = report_data.get("cat") {
+        if let Some(field) = cat_obj.get("field").and_then(|v| v.as_str()) {
+            let scale = cat_obj.get("scale").and_then(|v| v.as_str());
+            let domain = cat_obj.get("domain");
+            let value_type_hint = cat_obj.get("value_type").and_then(|v| v.as_str());
+            let mut cm = make_axis_meta(field, scale, domain, value_type_hint);
+            // Apply any top-level display label for categories if provided
+            if let Some(label) = display_spec.cat_label.as_ref() {
+                cm.label = Some(label.clone());
+            }
+            // Prefer explicit tick labels supplied under `report_data["cat"]["tick_labels"]`.
+            if let Some(lbls) = cat_obj.get("tick_labels").and_then(|v| v.as_array()) {
+                let labels: Vec<String> = lbls
+                    .iter()
+                    .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                    .collect();
+                if !labels.is_empty() {
+                    cm.tick_labels = labels;
+                }
+            }
+
+            // Populate tick labels for categorical cat axes from report_data["cats"]
+            if cm.value_type == "keyword" {
+                if let Some(cats_arr) = report_data.get("cats").and_then(|v| v.as_array()) {
+                    let labels: Vec<String> = cats_arr
+                        .iter()
+                        .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                        .collect();
+                    if !labels.is_empty() {
+                        cm.tick_labels = labels;
+                    }
+                }
+            } else {
+                // Numeric cat axes: prefer explicit numeric `tick_values` supplied
+                // in `report_data["cat"]["tick_values"]`. Fall back to parsing
+                // `report_data["cats"]` when not present.
+                if let Some(vals) = report_data
+                    .get("cat")
+                    .and_then(|c| c.get("tick_values"))
+                    .and_then(|v| v.as_array())
+                {
+                    let nums: Vec<f64> = vals.iter().filter_map(|v| v.as_f64()).collect();
+                    if !nums.is_empty() {
+                        cm.tick_values = nums;
+                    }
+                } else if let Some(cats_arr) = report_data.get("cats").and_then(|v| v.as_array()) {
+                    let mut nums: Vec<f64> = Vec::new();
+                    for v in cats_arr.iter() {
+                        if let Some(n) = v.as_f64() {
+                            nums.push(n);
+                        } else if let Some(s) = v.as_str() {
+                            if let Ok(n) = s.parse::<f64>() {
+                                nums.push(n);
+                            }
+                        }
+                    }
+                    if !nums.is_empty() {
+                        nums.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+                        let width = if nums.len() >= 2 {
+                            nums[1] - nums[0]
+                        } else {
+                            1.0
+                        };
+                        let mut boundaries = nums.clone();
+                        let last = nums[nums.len() - 1] + width;
+                        boundaries.push(last);
+                        cm.tick_values = boundaries;
+                    }
+                }
+            }
+            cat_meta = Some(cm);
+        }
+    }
+
+    // If the server supplied human-readable category tick labels, apply
+    // them to the series labels so the legend displays friendly names while
+    // the underlying series keys remain the raw category keys used in
+    // `data.by_cat`.
+    if let Some(ref cm) = cat_meta {
+        if !cm.tick_labels.is_empty() {
+            for (i, lbl) in cm.tick_labels.iter().enumerate() {
+                if let Some(s) = series.get_mut(i) {
+                    s.label = lbl.clone();
+                }
+            }
+        }
+    }
+
+    let plot_spec = PlotSpec {
+        report_type: pr,
+        x,
+        y,
+        cat: cat_meta,
+        z,
+        series,
+        display: display_spec,
+        data: report_data.clone(),
+    };
+
+    Ok(plot_spec)
+}
