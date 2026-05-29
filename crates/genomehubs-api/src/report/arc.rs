@@ -204,24 +204,31 @@ pub async fn run_arc_report(
     if config.ranks.is_some() {
         return run_per_rank_report(client, es_base, index, base_query, config).await;
     }
-    if config.rings.is_some() {
-        return run_rings_report(client, es_base, index, base_query, config).await;
-    }
-
     let feature_ref_filter = filter_expr_to_es_query(
         &combine_terms(&config.feature_term, &config.reference_term),
         base_query,
     )?;
     let reference_filter = filter_expr_to_es_query(&config.reference_term, base_query)?;
 
-    if let Some(ref context_term) = config.context_term {
+    let (feature_count, reference_count) = tokio::try_join!(
+        count_matching(client, es_base, index, &feature_ref_filter),
+        count_matching(client, es_base, index, &reference_filter),
+    )?;
+    let context_count = if let Some(ref context_term) = config.context_term {
         let context_filter = filter_expr_to_es_query(context_term, base_query)?;
 
-        let (feature_count, reference_count, context_count) = tokio::try_join!(
-            count_matching(client, es_base, index, &feature_ref_filter),
-            count_matching(client, es_base, index, &reference_filter),
-            count_matching(client, es_base, index, &context_filter),
-        )?;
+        let (context_count,) =
+            tokio::try_join!(count_matching(client, es_base, index, &context_filter))?;
+        Some(context_count)
+    } else {
+        None
+    };
+    if config.rings.is_some() {
+        return run_rings_report(client, es_base, index, base_query, config, context_count).await;
+    }
+
+    if let Some(ref context_term) = config.context_term {
+        let context_count = context_count.unwrap_or(0);
 
         let arc = safe_fraction(feature_count, reference_count);
         let arc2 = safe_fraction(reference_count, context_count);
@@ -240,11 +247,6 @@ pub async fn run_arc_report(
         });
         Ok((feature_count, 0, report_data))
     } else {
-        let (feature_count, reference_count) = tokio::try_join!(
-            count_matching(client, es_base, index, &feature_ref_filter),
-            count_matching(client, es_base, index, &reference_filter),
-        )?;
-
         let arc = safe_fraction(feature_count, reference_count);
 
         let report_data = json!({
@@ -274,6 +276,7 @@ async fn run_rings_report(
     index: &str,
     base_query: &Value,
     config: &ArcConfig,
+    context_count: Option<u64>,
 ) -> Result<(u64, u64, Value), String> {
     let rings = config.rings.as_deref().unwrap_or(&[]);
 
@@ -317,6 +320,16 @@ async fn run_rings_report(
             entry.insert("reference_count".to_string(), json!(reference_count));
             entry.insert("featureTerm".to_string(), json!(ring.feature_term));
             entry.insert("referenceTerm".to_string(), json!(ring_ref));
+
+            if let Some(context_count) = context_count {
+                let arc2 = safe_fraction(reference_count, context_count);
+                entry.insert("arc2".to_string(), json!(arc2));
+                entry.insert("context_count".to_string(), json!(context_count));
+                entry.insert(
+                    "contextTerm".to_string(),
+                    json!(config.context_term.as_deref().unwrap_or("")),
+                );
+            }
             Value::Object(entry)
         })
         .collect();
@@ -421,7 +434,10 @@ async fn msearch_counts(
     for query in queries {
         body.push_str(&serde_json::to_string(&header).unwrap());
         body.push('\n');
-        body.push_str(&serde_json::to_string(&json!({ "query": query, "size": 0 })).unwrap());
+        body.push_str(
+            &serde_json::to_string(&json!({ "query": query, "size": 0, "track_total_hits": true }))
+                .unwrap(),
+        );
         body.push('\n');
     }
 
