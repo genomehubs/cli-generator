@@ -296,6 +296,12 @@ enum {{ index.name | capitalize }}Commands {
         #[arg(long, default_value = "")]
         query: String,
 
+        /// YAML file containing a single report mapping or a sequence of report
+        /// mappings. When supplied the CLI will run each report in the file
+        /// (batch mode) or the single report mapping and print JSON results.
+        #[arg(long, value_name = "FILE")]
+        file: Option<std::path::PathBuf>,
+
         /// Maximum number of results to return per page.
         #[arg(long, default_value = "50")]
         size: usize,
@@ -994,7 +1000,7 @@ fn run(cli: Cli) -> anyhow::Result<()> {
                 }
             }
             {{ index.name | capitalize }}Commands::Report {
-                report_type, taxon, taxon_filter, filter, rank, query,
+                report_type, taxon, taxon_filter, filter, rank, query, file,
                 x, x_opts, y, cat, cat_rank, count_rank, collapse_monotypic,
                 include_plot_spec, display, taxonomy,
             } => {
@@ -1038,21 +1044,141 @@ fn run(cli: Cli) -> anyhow::Result<()> {
                     taxonomy,
                     ..Default::default()
                 };
-                let report_opts = generated::client::ReportOptions {
-                    x, x_opts, y, cat, cat_rank, count_rank,
-                    collapse_monotypic,
-                    include_plot_spec,
-                    display,
-                    ..Default::default()
-                };
-                let raw = generated::client::report(
-                    generated::indexes::Index::{{ index.name | capitalize }},
-                    &full_query,
-                    &report_type,
-                    &opts,
-                    &report_opts,
-                )?;
-                println!("{raw}");
+
+                // CLI-level report defaults are applied per-item when running a
+                // batch file (we construct the per-item opts from these values).
+
+                if let Some(ref path) = file {
+                    let reports = load_report_file(
+                        path,
+                        &taxon_filter,
+                        taxon.as_deref(),
+                        rank.as_deref(),
+                        &filter,
+                        &full_query,
+                        suppress_divergence_warnings,
+                    )?;
+
+                    let mut results: Vec<serde_json::Value> = Vec::new();
+                    for (q, cfg) in reports {
+                        let item_report_type = cfg
+                            .get("report")
+                            .and_then(|v| v.as_str())
+                            .map(str::to_string)
+                            .unwrap_or_else(|| report_type.clone());
+
+                        let mut per_report_opts = generated::client::ReportOptions {
+                            x: x.clone(),
+                            x_opts: x_opts.clone(),
+                            y: y.clone(),
+                            cat: cat.clone(),
+                            cat_rank: cat_rank.clone(),
+                            count_rank: count_rank.clone(),
+                            collapse_monotypic,
+                            include_plot_spec,
+                            display: display.clone(),
+                            ..Default::default()
+                        };
+
+                        if let Some(s) = cfg.get("x").and_then(|v| v.as_str()) {
+                            per_report_opts.x = Some(s.to_string());
+                        }
+                        if let Some(s) = cfg.get("x_opts").and_then(|v| v.as_str()).or(cfg.get("xOpts").and_then(|v| v.as_str())) {
+                            per_report_opts.x_opts = Some(s.to_string());
+                        }
+                        if let Some(s) = cfg.get("y").and_then(|v| v.as_str()) {
+                            per_report_opts.y = Some(s.to_string());
+                        }
+                        if let Some(s) = cfg.get("y_opts").and_then(|v| v.as_str()).or(cfg.get("yOpts").and_then(|v| v.as_str())) {
+                            per_report_opts.y_opts = Some(s.to_string());
+                        }
+                        if let Some(s) = cfg.get("cat").and_then(|v| v.as_str()) {
+                            per_report_opts.cat = Some(s.to_string());
+                        }
+                        if let Some(s) = cfg.get("cat_opts").and_then(|v| v.as_str()).or(cfg.get("catOpts").and_then(|v| v.as_str())) {
+                            per_report_opts.cat_opts = Some(s.to_string());
+                        }
+                        if let Some(s) = cfg.get("rank").and_then(|v| v.as_str()) {
+                            per_report_opts.rank = Some(s.to_string());
+                        }
+                        if let Some(arr) = cfg.get("fields").and_then(|v| v.as_array()) {
+                            per_report_opts.fields = arr.iter().filter_map(|vv| vv.as_str().map(|s| s.to_string())).collect();
+                        }
+                        if let Some(s) = cfg.get("status_filter").and_then(|v| v.as_str()) {
+                            per_report_opts.status_filter = Some(s.to_string());
+                        }
+                        if let Some(s) = cfg.get("cat_rank").and_then(|v| v.as_str()).or(cfg.get("catRank").and_then(|v| v.as_str())) {
+                            per_report_opts.cat_rank = Some(s.to_string());
+                        }
+                        if let Some(b) = cfg.get("collapse_monotypic").and_then(|v| v.as_bool()).or(cfg.get("collapseMonotypic").and_then(|v| v.as_bool())) {
+                            per_report_opts.collapse_monotypic = b;
+                        }
+                        if let Some(s) = cfg.get("preserve_rank").and_then(|v| v.as_str()).or(cfg.get("preserveRank").and_then(|v| v.as_str())) {
+                            per_report_opts.preserve_rank = Some(s.to_string());
+                        }
+                        if let Some(s) = cfg.get("count_rank").and_then(|v| v.as_str()).or(cfg.get("countRank").and_then(|v| v.as_str())) {
+                            per_report_opts.count_rank = Some(s.to_string());
+                        }
+                        if let Some(s) = cfg.get("location_field").and_then(|v| v.as_str()).or(cfg.get("locationField").and_then(|v| v.as_str())) {
+                            per_report_opts.location_field = Some(s.to_string());
+                        }
+                        if let Some(n) = cfg.get("hex_resolution").and_then(|v| v.as_i64()) {
+                            per_report_opts.hex_resolution = Some(n as u32);
+                        }
+                        if let Some(n) = cfg.get("map_threshold").and_then(|v| v.as_i64()) {
+                            per_report_opts.map_threshold = Some(n as u32);
+                        }
+                        if let Some(n) = cfg.get("scatter_threshold").and_then(|v| v.as_i64()) {
+                            per_report_opts.scatter_threshold = Some(n as u32);
+                        }
+                        if let Some(b) = cfg.get("include_plot_spec").and_then(|v| v.as_bool()) {
+                            per_report_opts.include_plot_spec = b;
+                        }
+                        if let Some(display_val) = cfg.get("display") {
+                            if let Ok(s) = serde_json::to_string(display_val) {
+                                per_report_opts.display = Some(s);
+                                per_report_opts.include_plot_spec = true;
+                            }
+                        }
+
+                        let raw = generated::client::report(
+                            generated::indexes::Index::{{ index.name | capitalize }},
+                            &q,
+                            &item_report_type,
+                            &opts,
+                            &per_report_opts,
+                        )?;
+                        if let Ok(val) = serde_json::from_str::<serde_json::Value>(&raw) {
+                            results.push(val);
+                        } else {
+                            results.push(serde_json::Value::String(raw));
+                        }
+                    }
+
+                    let json = serde_json::to_string(&results).context("serialising batch reports")?;
+                    println!("{json}");
+                } else {
+                    let report_opts = generated::client::ReportOptions {
+                        x: x.clone(),
+                        x_opts: x_opts.clone(),
+                        y: y.clone(),
+                        cat: cat.clone(),
+                        cat_rank: cat_rank.clone(),
+                        count_rank: count_rank.clone(),
+                        collapse_monotypic,
+                        include_plot_spec,
+                        display: display.clone(),
+                        ..Default::default()
+                    };
+                    let raw = generated::client::report(
+                        generated::indexes::Index::{{ index.name | capitalize }},
+                        &full_query,
+                        &report_type,
+                        &opts,
+                        &report_opts,
+                    )?;
+                    println!("{raw}");
+                }
             }
             {{ index.name | capitalize }}Commands::Lookup { search_term, size, format } => {
                 let body = generated::client::lookup(
@@ -1761,6 +1887,86 @@ fn build_queries_from_patches(
         })
         .collect()
 }
+
+    /// Load a report file and produce a list of `(query_string, report_cfg)` pairs.
+    ///
+    /// Supported forms:
+    /// - Mapping with top-level `reports:` sequence (optional `shared:` mapping)
+    /// - Sequence of report mappings
+    /// - Single report mapping
+    fn load_report_file(
+        file_path: &std::path::Path,
+        taxon_filter: &TaxonFilter,
+        cli_taxon: Option<&str>,
+        cli_rank: Option<&str>,
+        cli_filters: &[String],
+        base_query: &str,
+        suppress_divergence_warnings: bool,
+    ) -> anyhow::Result<Vec<(String, serde_json::Value)>> {
+        let content = std::fs::read_to_string(file_path)
+            .with_context(|| format!("reading report file {}", file_path.display()))?;
+        let trimmed = content.trim();
+
+        let parsed: serde_yaml::Value = serde_yaml::from_str(trimmed)
+            .unwrap_or(serde_yaml::Value::Null);
+
+        // Extract sequence of items and optional shared mapping.
+        let (items, shared) = match &parsed {
+            serde_yaml::Value::Mapping(map)
+                if map.contains_key(&serde_yaml::Value::String("reports".into())) =>
+            {
+                let shared = map
+                    .get(&serde_yaml::Value::String("shared".into()))
+                    .and_then(|v| v.as_mapping())
+                    .cloned();
+                let seq = map
+                    .get(&serde_yaml::Value::String("reports".into()))
+                    .and_then(|v| v.as_sequence())
+                    .cloned()
+                    .unwrap_or_default();
+                (seq, shared)
+            }
+            serde_yaml::Value::Sequence(seq) => (seq.clone(), None),
+            serde_yaml::Value::Mapping(map) => (vec![serde_yaml::Value::Mapping(map.clone())], None),
+            _ => anyhow::bail!("report file must be a YAML mapping or sequence"),
+        };
+
+        // Build query strings for items using existing query patch logic.
+        let queries = build_queries_from_patches(
+            &items,
+            shared.as_ref(),
+            taxon_filter,
+            cli_taxon,
+            cli_rank,
+            cli_filters,
+            base_query,
+            suppress_divergence_warnings,
+        )?;
+
+        // Convert each item mapping into a JSON object with report-specific keys
+        // (remove taxon/rank/filter which were applied to the query string).
+        let mut cfgs: Vec<serde_json::Value> = Vec::new();
+        for it in items.iter() {
+            let map = it.as_mapping().ok_or_else(|| anyhow::anyhow!("each report entry must be a YAML mapping"))?;
+            let mut obj = serde_json::Map::new();
+            for (k, v) in map.iter() {
+                if let Some(ks) = k.as_str() {
+                    if ks == "taxon" || ks == "rank" || ks == "filter" || ks == "shared" {
+                        continue;
+                    }
+                    let val = serde_json::to_value(v).unwrap_or(serde_json::Value::Null);
+                    obj.insert(ks.to_string(), val);
+                }
+            }
+            cfgs.push(serde_json::Value::Object(obj));
+        }
+
+        if queries.len() != cfgs.len() {
+            anyhow::bail!("internal error: queries/report configs length mismatch")
+        }
+
+        Ok(queries.into_iter().zip(cfgs.into_iter()).collect())
+    }
 
 /// Convert raw `--filter FIELD OP VALUE` triples into expression strings.
 fn cli_filter_fragments(filter: &[String]) -> Vec<String> {

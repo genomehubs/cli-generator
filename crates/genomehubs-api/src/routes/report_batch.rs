@@ -13,6 +13,12 @@ pub struct ReportBatchRequest {
     /// Optional concurrency limit (1..=32).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub concurrency: Option<usize>,
+    /// Optionally request a combined PlotSpec for the batch and provide
+    /// display hints that apply to the combined spec.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub include_plot_spec: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub display: Option<serde_json::Value>,
 }
 
 #[derive(Serialize, utoipa::ToSchema)]
@@ -28,6 +34,8 @@ pub struct ReportBatchResponse {
     pub status: ApiStatus,
     /// Per-request results in the same order as the input `reports`.
     pub results: Vec<ReportBatchResultItem>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub plot_spec: Option<Value>,
 }
 
 #[utoipa::path(
@@ -48,6 +56,7 @@ pub async fn post_report_batch(
         return Json(ReportBatchResponse {
             status: ApiStatus::error("maximum 50 reports per request".to_string()),
             results: vec![],
+            plot_spec: None,
         });
     }
 
@@ -88,8 +97,41 @@ pub async fn post_report_batch(
         }
     }
 
+    // If the caller requested a batch-level PlotSpec (or supplied a top-level
+    // `display`), attempt to build a combined arc PlotSpec from any arc
+    // reports in the results.  We only produce a combined spec when there
+    // are arc-type reports present.
+    let top_plot_spec: Option<Value> =
+        if req.include_plot_spec.unwrap_or(false) || req.display.is_some() {
+            let arc_reports: Vec<Value> = results
+                .iter()
+                .filter_map(|r| {
+                    r.report
+                        .get("type")
+                        .and_then(|v| v.as_str())
+                        .filter(|s| *s == "arc")
+                        .map(|_| r.report.clone())
+                })
+                .collect();
+
+            if !arc_reports.is_empty() {
+                match crate::report::spec_builder::build_arc_plot_spec_from_reports(
+                    &arc_reports,
+                    req.display.as_ref(),
+                ) {
+                    Ok(spec) => serde_json::to_value(&spec).ok(),
+                    Err(_) => None,
+                }
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
     Json(ReportBatchResponse {
         status: ApiStatus::ok(),
         results,
+        plot_spec: top_plot_spec,
     })
 }

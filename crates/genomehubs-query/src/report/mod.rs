@@ -277,8 +277,20 @@ pub fn plot_spec_to_vega_lite_json(input: &str) -> String {
             base
         }
         "arc" => {
-            base["mark"] = serde_json::Value::String("arc".to_string());
-            base
+            // Special-case batch arc payloads produced by the API: these use
+            // data.type == "arc_batch" and contain `entries` with per-ring
+            // `scaled` values (0..1) and `report_index`/`report_label`.
+            if spec_val
+                .get("data")
+                .and_then(|d| d.get("type"))
+                .and_then(|t| t.as_str())
+                == Some("arc_batch")
+            {
+                vl_arc_batch(spec_val, base)
+            } else {
+                base["mark"] = serde_json::Value::String("arc".to_string());
+                base
+            }
         }
         _ => base,
     };
@@ -1288,6 +1300,151 @@ fn vl_histogram(spec: &serde_json::Value, mut base: serde_json::Value) -> serde_
         "y2": {"datum": y_min}
     });
     let _ = x_field;
+    base
+}
+
+/// Vega-Lite renderer for `arc_batch` PlotSpec data.
+/// Produces a layered semicircular concentric ring chart coloured by series.
+fn vl_arc_batch(spec: &serde_json::Value, mut base: serde_json::Value) -> serde_json::Value {
+    let data_entries = spec
+        .get("data")
+        .and_then(|d| d.get("entries"))
+        .and_then(|v| v.as_array())
+        .cloned()
+        .unwrap_or_default();
+
+    // Top-level display options (unused for now but kept for future tuning)
+    let _display = spec.get("display").unwrap_or(&serde_json::Value::Null);
+    let width = base.get("width").and_then(|v| v.as_u64()).unwrap_or(600) as f64;
+    let height = base.get("height").and_then(|v| v.as_u64()).unwrap_or(400) as f64;
+
+    // Unique series (report labels) in encountered order
+    let mut labels: Vec<String> = Vec::new();
+    for e in &data_entries {
+        if let Some(lbl) = e.get("report_label").and_then(|v| v.as_str()) {
+            if !labels.contains(&lbl.to_string()) {
+                labels.push(lbl.to_string());
+            }
+        }
+    }
+    let n = labels.len().max(1) as f64;
+
+    // radius allocation: leave small inner padding and outer padding
+    let max_radius = (height.min(width) / 2.0) * 0.9;
+    let inner_padding = 8.0;
+    let slot = ((max_radius - inner_padding) / n).max(8.0);
+
+    // Shared color encoding using a rainbow scheme
+    let color_encoding = serde_json::json!({
+        "field": "report_label",
+        "type": "nominal",
+        "scale": {"scheme": "rainbow"}
+    });
+
+    // Build layers: one data-backed background + wedge per series
+    let mut layers: Vec<serde_json::Value> = Vec::new();
+    for (i, _lbl) in labels.iter().enumerate() {
+        // collect entries belonging to this report index
+        let mut entries_for_i: Vec<serde_json::Value> = Vec::new();
+        for e in &data_entries {
+            if let Some(idx) = e.get("report_index").and_then(|v| v.as_i64()) {
+                if idx as usize == i {
+                    entries_for_i.push(e.clone());
+                }
+            } else if let Some(idx) = e.get("report_index").and_then(|v| v.as_u64()) {
+                if idx as usize == i {
+                    entries_for_i.push(e.clone());
+                }
+            }
+        }
+        if entries_for_i.is_empty() {
+            continue;
+        }
+
+        let inner = (inner_padding + (i as f64) * slot).round();
+        let outer = (inner + slot * 0.8).round();
+
+        // Background full semicircle (light grey) values
+        let mut bg_vals: Vec<serde_json::Value> = Vec::new();
+        for ev in &entries_for_i {
+            let mut be = ev.clone();
+            if let serde_json::Value::Object(ref mut m) = be {
+                m.insert(
+                    "endAngle".to_string(),
+                    serde_json::json!(std::f64::consts::PI),
+                );
+            }
+            bg_vals.push(be);
+        }
+
+        // Foreground wedge values (scaled -> endAngle)
+        let mut wedge_vals: Vec<serde_json::Value> = Vec::new();
+        for ev in &entries_for_i {
+            let mut we = ev.clone();
+            let scaled = ev.get("scaled").and_then(|v| v.as_f64()).unwrap_or(0.0_f64);
+            if let serde_json::Value::Object(ref mut m) = we {
+                m.insert(
+                    "endAngle".to_string(),
+                    serde_json::json!(scaled * std::f64::consts::PI),
+                );
+            }
+            wedge_vals.push(we);
+        }
+
+        // Background layer
+        let background = serde_json::json!({
+            "data": {"values": bg_vals},
+            "mark": {
+                "type": "arc",
+                "innerRadius": {"value": inner},
+                "outerRadius": {"value": outer},
+                "cornerRadius": 6,
+                "opacity": 0.25
+            },
+            "encoding": {
+                "theta": {
+                    "field": "endAngle",
+                    "type": "quantitative",
+                    "scale": {"domain": [0.0, std::f64::consts::PI]}
+                },
+                "theta2": {"value": 0},
+                "color": {"value": "#d9d9d9"}
+            }
+        });
+
+        // Wedge layer (coloured)
+        let mut wedge = serde_json::json!({
+            "data": {"values": wedge_vals},
+            "mark": {
+                "type": "arc",
+                "innerRadius": {"value": inner + 1.0},
+                "outerRadius": {"value": outer - 1.0},
+                "cornerRadius": 6
+            },
+            "encoding": {
+                "theta": {
+                    "field": "endAngle",
+                    "type": "quantitative",
+                    "scale": {"domain": [0.0, std::f64::consts::PI]}
+                },
+                "theta2": {"value": 0}
+            }
+        });
+
+        // Insert color scale into wedge encoding
+        if let Some(obj) = wedge.as_object_mut() {
+            if let Some(enc) = obj.get_mut("encoding") {
+                if let Some(enc_obj) = enc.as_object_mut() {
+                    enc_obj.insert("color".to_string(), color_encoding.clone());
+                }
+            }
+        }
+
+        layers.push(background);
+        layers.push(wedge);
+    }
+
+    base["layer"] = serde_json::Value::Array(layers);
     base
 }
 

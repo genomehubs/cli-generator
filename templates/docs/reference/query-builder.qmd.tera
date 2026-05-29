@@ -1011,6 +1011,82 @@ curl -s -X POST {{ api_base }}/v3/count/batch \
 
 ---
 
+### `report_batch(reports, api_base, api_version) -> list[dict]`
+
+Execute multiple reports in a single request to `/v3/report/batch`. Each
+input item may be either a bare `ReportBuilder` (in which case the calling
+`QueryBuilder` is used as the query scope) or a `(QueryBuilder, ReportBuilder)`
+pair to run the report against a different query. Returns a list of per-report
+result dicts in the same order as the input. Individual results from `report_batch`
+may include `plot_spec` when requested by the client.
+
+::: {.panel-tabset group="language"}
+
+## Python
+
+```python
+from {{ sdk_name }}.query import QueryBuilder, ReportBuilder
+
+qb = QueryBuilder("taxon").set_taxa(["Mammalia"], filter_type="tree")
+rb1 = ReportBuilder("arc").set_feature("has_assembly")
+rb2 = ReportBuilder("arc").set_feature("has_annotation").set_include_plot_spec()
+results = qb.report_batch([rb1, rb2], api_base="{{ api_base }}", api_version="{{ api_version }}")
+for res in results:
+    print(res.get("status"))
+    if "plot_spec" in res:
+        print("plot_spec included")
+```
+
+## R
+
+```r
+rb1 <- ReportBuilder$new("arc")$set_feature("has_assembly")
+rb2 <- ReportBuilder$new("arc")$set_feature("has_annotation")$set_include_plot_spec(TRUE)
+results <- qb$report_batch(list(rb1, rb2))
+for (r in results) {
+  print(r$status)
+  if (!is.null(r$plot_spec)) cat("plot_spec included\n")
+}
+```
+
+## JavaScript
+
+```javascript
+const rb1 = new ReportBuilder('arc').setFeature('has_assembly');
+const rb2 = new ReportBuilder('arc').setFeature('has_annotation').setIncludePlotSpec(true);
+const results = await qb.reportBatch([rb1, rb2]);
+results.forEach(r => {
+  console.log(r.status);
+  if (r.plot_spec) console.log('plot_spec included');
+});
+```
+
+## API
+
+```bash
+curl -s -X POST {{ api_base }}/v3/report/batch \
+  -H "Content-Type: application/json" \
+  -d '{
+    "reports": [
+      {
+        "query_yaml": "index: taxon\n...",
+        "params_yaml": "size: 10\npage: 1\n",
+        "report_yaml": "report: arc\nfeature: has_assembly\n"
+      },
+      {
+        "query_yaml": "index: taxon\n...",
+        "params_yaml": "size: 10\npage: 1\n",
+        "report_yaml": "report: arc\nfeature: has_annotation\n",
+        "include_plot_spec": true
+      }
+    ]
+  }'
+```
+
+:::
+
+---
+
 ### `chain_query(query_key, query_string) -> QueryBuilder`
 
 Chain a new query onto the results of the previous query.  Specifies that this

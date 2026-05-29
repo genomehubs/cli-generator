@@ -61,6 +61,13 @@ qb.countBatch(queries).then((counts) =>
   counts.forEach((n, i) => console.log(`Query ${i}: ${n} records`))
 );
 
+{% elif call_type == "report_batch" -%}
+// Run a batch of reports
+const reports = [rb]; // extend with ReportBuilder instances or [QueryBuilder, ReportBuilder] pairs
+qb.reportBatch(reports).then((results) =>
+  results.forEach((res, i) => console.log(`Report ${i}:`, res))
+);
+
 {% elif call_type == "positional" -%}
 // Run a positional report
 const assemblies = [{% for asm in positional_assemblies %}"{{ asm }}", {% endfor %}];

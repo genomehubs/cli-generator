@@ -1589,6 +1589,14 @@
             "description": "Optional concurrency limit (1..=32).",
             "minimum": 0
           },
+          "display": {},
+          "include_plot_spec": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "Optionally request a combined PlotSpec for the batch and provide\ndisplay hints that apply to the combined spec."
+          },
           "reports": {
             "type": "array",
             "items": {
@@ -1605,6 +1613,7 @@
           "results"
         ],
         "properties": {
+          "plot_spec": {},
           "results": {
             "type": "array",
             "items": {

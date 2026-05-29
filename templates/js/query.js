@@ -1093,6 +1093,51 @@ class QueryBuilder {
   }
 
   /**
+   * Execute multiple reports in a single batch request.
+   * @param {(ReportBuilder|[QueryBuilder,ReportBuilder]|{query:QueryBuilder,report:ReportBuilder})[]} reports
+   * @param {string} [apiBase=API_BASE]
+   * @returns {Promise<object[]>}
+   */
+  async reportBatch(reports, apiBase = API_BASE) {
+    if (reports.length > 100)
+      throw new Error("maximum 100 reports per batch request");
+
+    const batchData = await this._postJson(`${apiBase}/v3/report/batch`, {
+      reports: reports.map((item) => {
+        let qb, rb;
+        if (Array.isArray(item) && item.length === 2) {
+          qb = item[0];
+          rb = item[1];
+        } else if (item && item.query && item.report) {
+          qb = item.query;
+          rb = item.report;
+        } else {
+          qb = this;
+          rb = item;
+        }
+        const entry = {
+          query_yaml: qb.toQueryYaml(),
+          params_yaml: qb.toParamsYaml(),
+          report_yaml: rb.toReportYaml(),
+        };
+        if (rb._display != null) entry.display = rb._display;
+        if (rb._includePlotSpec) entry.include_plot_spec = true;
+        return entry;
+      }),
+    });
+
+    return (batchData.results ?? []).map((res) => {
+      if (res.plot_spec != null) return res;
+      const out = {
+        report: res.report ?? {},
+        status: res.status ?? {},
+      };
+      if (res.error != null) out.error = res.error;
+      return out;
+    });
+  }
+
+  /**
    * Fetch a single record by ID or identifier.
    * @param {string} recordId - Record ID to fetch
    * @param {string} [result] - Result type (taxon|assembly|sample), default from index

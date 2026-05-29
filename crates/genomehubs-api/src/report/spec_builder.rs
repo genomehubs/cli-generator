@@ -5,7 +5,7 @@
 //! server-side knowledge (report JSON shapes) and is not intended for the
 //! WASM-local build path.
 
-use serde_json::Value;
+use serde_json::{json, Value};
 
 use genomehubs_query::report::display::TickLabelPlacement;
 use genomehubs_query::report::plot_spec::{AxisMeta, PlotReportType, SeriesMeta};
@@ -193,6 +193,154 @@ fn fill_tick_data_from_buckets(
     }
 }
 
+/// Build a merged PlotSpec for multiple arc reports.
+///
+/// Each entry in `reports` is expected to be the `report` object returned by
+/// the arc report handlers (either a scalar `arc` or an array of ring objects).
+/// The function normalises ring entries, computes a `scaled` value in [0,1]
+/// (arc is already in [0,1]; arc2 values are scaled relative to the max
+/// arc2 value across the batch), and returns a `PlotSpec` with `x` axis using
+/// the `scaled` field and a `data.entries` array containing all rings.
+pub fn build_arc_plot_spec_from_reports(
+    reports: &[Value],
+    batch_display: Option<&Value>,
+) -> Result<PlotSpec, String> {
+    // Parse batch display into a DisplaySpec so defaults are available.
+    let display_spec = parse_display(batch_display);
+
+    // Normalise reports into a flat list of ring-like objects.
+    let mut entries: Vec<Value> = Vec::new();
+    let mut report_labels: Vec<String> = Vec::new();
+
+    for (ri, rep) in reports.iter().enumerate() {
+        let label = rep
+            .get("featureTerm")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string())
+            .or_else(|| {
+                rep.get("referenceTerm")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string())
+            })
+            .or_else(|| {
+                rep.get("queryString")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string())
+            })
+            .unwrap_or_else(|| format!("report{}", ri));
+        report_labels.push(label.clone());
+
+        if let Some(arr) = rep.get("arc").and_then(|v| v.as_array()) {
+            for ring in arr.iter() {
+                let mut obj = match ring {
+                    Value::Object(m) => m.clone(),
+                    other => {
+                        let mut m = serde_json::Map::new();
+                        m.insert("arc".to_string(), other.clone());
+                        m
+                    }
+                };
+                obj.insert("report_index".to_string(), json!(ri));
+                obj.insert("report_label".to_string(), json!(label.clone()));
+                entries.push(Value::Object(obj));
+            }
+        } else if let Some(arc_v) = rep.get("arc") {
+            let mut obj = serde_json::Map::new();
+            obj.insert("arc".to_string(), arc_v.clone());
+            if let Some(arc2v) = rep.get("arc2") {
+                obj.insert("arc2".to_string(), arc2v.clone());
+            }
+            if let Some(fc) = rep.get("feature_count") {
+                obj.insert("feature_count".to_string(), fc.clone());
+            }
+            if let Some(rc) = rep.get("reference_count") {
+                obj.insert("reference_count".to_string(), rc.clone());
+            }
+            if let Some(ft) = rep.get("featureTerm") {
+                obj.insert("featureTerm".to_string(), ft.clone());
+            }
+            if let Some(rt) = rep.get("referenceTerm") {
+                obj.insert("referenceTerm".to_string(), rt.clone());
+            }
+            obj.insert("report_index".to_string(), json!(ri));
+            obj.insert("report_label".to_string(), json!(label.clone()));
+            entries.push(Value::Object(obj));
+        }
+    }
+
+    // Compute scaling factor for arc2 values (if present)
+    let max_arc2 = entries
+        .iter()
+        .filter_map(|e| e.get("arc2").and_then(|v| v.as_f64()))
+        .fold(0.0_f64, f64::max);
+
+    // Compute scaled value for each entry and assemble final entries array.
+    let mut final_entries: Vec<Value> = Vec::new();
+    for e in entries.into_iter() {
+        if let Value::Object(mut m) = e {
+            let scaled = if let Some(a) = m.get("arc").and_then(|v| v.as_f64()) {
+                a
+            } else if let Some(a2) = m.get("arc2").and_then(|v| v.as_f64()) {
+                if max_arc2 > 0.0 {
+                    a2 / max_arc2
+                } else {
+                    0.0
+                }
+            } else {
+                0.0
+            };
+            m.insert("scaled".to_string(), json!(scaled));
+            final_entries.push(Value::Object(m));
+        } else {
+            // Non-object entry: wrap it into an object with scaled=0
+            final_entries.push(json!({"scaled": 0.0}));
+        }
+    }
+
+    // Series metadata: one series per input report (labeled by report label)
+    let mut series_meta: Vec<SeriesMeta> = Vec::new();
+    for (i, label) in report_labels.iter().enumerate() {
+        series_meta.push(SeriesMeta {
+            key: format!("report_{i}"),
+            label: label.clone(),
+            color: None,
+        });
+    }
+
+    // X axis: scaled arc values in [0,1]
+    let x_meta = AxisMeta {
+        field: "scaled".to_string(),
+        label: Some("Arc (scaled)".to_string()),
+        scale: "linear".to_string(),
+        domain: [0.0, 1.0],
+        tick_values: vec![],
+        tick_labels: vec![],
+        value_type: "float".to_string(),
+        tick_label_placement: TickLabelPlacement::OnTick,
+        tick_label_stride: 1,
+        tick_label_max_length: None,
+    };
+
+    let data = json!({
+        "type": "arc_batch",
+        "entries": final_entries,
+        "reports": report_labels,
+    });
+
+    let spec = PlotSpec {
+        report_type: PlotReportType::Arc,
+        x: Some(x_meta),
+        y: None,
+        cat: None,
+        z: None,
+        series: series_meta,
+        display: display_spec,
+        data,
+    };
+
+    Ok(spec)
+}
+
 /// Build a `PlotSpec` from a v3 report payload and optional `display` hints.
 ///
 /// `report_type` is the canonical report string (e.g. "histogram", "scatter").
@@ -238,6 +386,14 @@ pub fn build_plot_spec(
             Some("stacked") => hist_opts.stacked = Some(true),
             Some("grouped") | Some("facet") | Some("cumulative") => hist_opts.stacked = Some(false),
             _ => {}
+        }
+    }
+    if let Some(arc_opts) = display_spec.arc.as_mut() {
+        if arc_opts.mode.is_none() {
+            arc_opts.mode = Some("grouped".to_string());
+        }
+        if arc_opts.shape.is_none() {
+            arc_opts.shape = Some("auto".to_string());
         }
     }
 
@@ -457,9 +613,11 @@ pub fn build_plot_spec(
                 });
             }
         }
+        PlotReportType::Arc => {
+            dbg!(&report_data);
+        }
         PlotReportType::Tree
         | PlotReportType::Map
-        | PlotReportType::Arc
         | PlotReportType::Oxford
         | PlotReportType::Ribbon
         | PlotReportType::Painting => {

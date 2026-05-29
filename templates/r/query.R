@@ -983,6 +983,52 @@ QueryBuilder <- R6::R6Class(
       if (length(counts) == 0) numeric(0) else counts
     },
 
+    #' @description Execute multiple reports in a single batch request.
+    #' @param reports List of ReportBuilder objects.
+    #' @param api_base Base URL of the API (default: from package).
+    #' @return List of per-report result lists, one per input report.
+    report_batch = function(reports, api_base = NULL) {
+      if (length(reports) > 100) {
+        stop("maximum 100 reports per batch request")
+      }
+
+      if (is.null(api_base)) {
+        api_base <- private$api_base_url
+      }
+
+      url <- paste0(api_base, "/", private$api_version, "/report/batch")
+      payload <- list(
+        reports = lapply(reports, function(rb) {
+          item <- list(
+            query_yaml = self$to_query_yaml(),
+            params_yaml = self$to_params_yaml(),
+            report_yaml = rb$to_report_yaml()
+          )
+          if (!is.null(rb$.__enclos_env__$private$._display)) item$display <- rb$.__enclos_env__$private$._display
+          if (isTRUE(rb$.__enclos_env__$private$._include_plot_spec)) item$include_plot_spec <- TRUE
+          item
+        })
+      )
+
+      resp <- httr::POST(url,
+        body = jsonlite::toJSON(payload, auto_unbox = TRUE),
+        httr::add_headers("Content-Type" = "application/json"),
+        httr::accept("application/json")
+      )
+      httr::stop_for_status(resp)
+      raw_text <- httr::content(resp, as = "text", encoding = "UTF-8")
+      batch_data <- jsonlite::fromJSON(raw_text, simplifyVector = FALSE)
+
+      lapply(batch_data$results %||% list(), function(item) {
+        if (!is.null(item$plot_spec)) {
+          return(item)
+        }
+        out <- list(report = item$report %||% list(), status = item$status %||% list())
+        if (!is.null(item$error)) out$error <- item$error
+        out
+      })
+    },
+
     #' @description Fetch a single record by ID or identifier.
     #' @param record_id Record ID to fetch (required).
     #' @param result Result type (taxon|assembly|sample); defaults to index type.

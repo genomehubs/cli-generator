@@ -26,7 +26,7 @@ Typical usage::
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Sequence
 
 if TYPE_CHECKING:
     import pandas
@@ -1311,6 +1311,91 @@ class QueryBuilder:
         for result in data.get("results", []):
             counts.append(int(result.get("total") or 0))
         return counts
+
+    def report_batch(
+        self,
+        reports: Sequence[ReportBuilder | tuple[QueryBuilder, ReportBuilder]],
+        api_base: str = "https://goat.genomehubs.org/api",
+        api_version: str = "v3",
+    ) -> list[dict[str, Any]]:
+        """Execute multiple reports in a single batch request.
+
+        Args:
+            reports: List of ReportBuilder objects or (QueryBuilder, ReportBuilder)
+                pairs. When a bare ReportBuilder is provided the calling
+                QueryBuilder (``self``) is used as the query scope.
+            api_base: Base URL of the API.
+            api_version: API version string (default: ``"v3"``).
+
+        Returns:
+            List of per-report result dicts. Each dict contains at least
+            ``"report"`` and ``"status"`` keys and may include ``"plot_spec"``.
+
+        Raises:
+            ValueError: If more than 100 reports are provided, or items are
+                of an unsupported shape.
+        """
+        import json
+        import urllib.request
+
+        if len(reports) > 100:
+            raise ValueError("maximum 100 reports per batch request")
+
+        url = f"{api_base}/{api_version}/report/batch"
+        payload_reports = []
+        for item in reports:
+            # Accept either a bare ReportBuilder (use self as the query)
+            # or a (QueryBuilder, ReportBuilder) pair.
+            if isinstance(item, tuple) or isinstance(item, list):
+                if len(item) != 2:
+                    raise ValueError("report_batch() tuple items must be (QueryBuilder, ReportBuilder)")
+                qb, rb = item[0], item[1]
+            else:
+                # Assume ReportBuilder and use self as the query scope.
+                qb, rb = self, item
+
+            # Help static type checkers: narrow dynamic unions to the expected types
+            from typing import cast
+
+            qb = cast("QueryBuilder", qb)
+            rb = cast("ReportBuilder", rb)
+
+            # Build per-item POST payload
+            payload_item: dict[str, Any] = {
+                "query_yaml": qb.to_query_yaml(),
+                "params_yaml": qb.to_params_yaml(),
+                "report_yaml": rb.to_report_yaml(),
+            }
+            if getattr(rb, "_display", None) is not None:
+                payload_item["display"] = rb._display
+            if getattr(rb, "_include_plot_spec", False):
+                payload_item["include_plot_spec"] = True
+            payload_reports.append(payload_item)
+
+        req = urllib.request.Request(
+            url,
+            data=json.dumps({"reports": payload_reports}).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+        )
+        with urllib.request.urlopen(req) as resp:
+            body_text = resp.read().decode("utf-8")
+
+        batch_data = json.loads(body_text)
+        results: list[dict[str, Any]] = []
+        for item in batch_data.get("results", []):
+            # Preserve plot_spec wrapper when present (client may request it).
+            if "plot_spec" in item:
+                results.append(item)
+            else:
+                entry: dict[str, Any] = {
+                    "report": item.get("report", {}),
+                    "status": item.get("status", {}),
+                }
+                if "error" in item:
+                    entry["error"] = item["error"]
+                results.append(entry)
+
+        return results
 
     def record(
         self,

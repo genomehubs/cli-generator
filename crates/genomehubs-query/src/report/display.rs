@@ -206,6 +206,11 @@ pub struct TreeOptions {
 pub struct ArcOptions {
     /// Show percentage labels inside arc segments (default: `true`).
     pub show_labels: Option<bool>,
+    /// Display mode for multiple arcs: "grouped", or "facet".
+    pub mode: Option<String>,
+    /// Shape of the arcs: "auto" (default), "ring", "pie", "rainbow", "horizontal" or "vertical".
+    /// "auto" resolves to "ring" for single arc, and "rainbow" for 2 or more.
+    pub shape: Option<String>,
 }
 
 /// Sources data-attribution bar chart display options.

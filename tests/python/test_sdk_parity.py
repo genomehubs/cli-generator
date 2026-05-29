@@ -362,6 +362,18 @@ CANONICAL_METHODS = {
         "js_name": "report",
         "r_name": "report",
     },
+    "report": {
+        "params": ["report"],
+        "python_name": "report",
+        "js_name": "report",
+        "r_name": "report",
+    },
+    "report_batch": {
+        "params": ["reports", "max_reports"],
+        "python_name": "report_batch",
+        "js_name": "reportBatch",
+        "r_name": "report_batch",
+    },
     "chain_query": {
         "params": ["query_key", "query_string"],
         "python_name": "chain_query",
