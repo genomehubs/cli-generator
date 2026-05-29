@@ -256,3 +256,31 @@ examples:
         - record_id: "7227"
           result: taxon
           fields: ["genome_size"]
+
+  # ── POST /api/v3/report/batch ─────────────────────────────────────────────
+
+  - path: "/api/v3/report/batch"
+    method: post
+    name: chordata_and_nematoda_report_batch
+    summary: "Run arc reports for Chordata and Nematoda in parallel"
+    value:
+      concurrency: 2
+      reports:
+        - query:
+            taxa: ["Chordata"]
+            taxon_filter_type: tree
+            rank: species
+          report:
+            report: arc
+            feature: "bioproject=prjna533106"
+            reference: assembly_level
+            context: ""
+        - query:
+            taxa: ["Nematoda"]
+            taxon_filter_type: tree
+            rank: species
+          report:
+            report: arc
+            feature: "bioproject=prjna533106"
+            reference: assembly_level
+            context: ""

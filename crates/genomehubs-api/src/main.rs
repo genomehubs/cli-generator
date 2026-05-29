@@ -63,6 +63,7 @@ pub struct AppState {
         routes::record::get_record,
         routes::record_batch::post_record_batch,
         routes::report::post_report,
+        routes::report_batch::post_report_batch,
         routes::positional::post_positional,
         routes::result_fields::get_result_fields,
         routes::search::post_search,
@@ -100,6 +101,9 @@ pub struct AppState {
         routes::record_batch::RecordBatchResponse,
         routes::report::ReportRequest,
         routes::report::ReportResponse,
+        routes::report_batch::ReportBatchRequest,
+        routes::report_batch::ReportBatchResponse,
+        routes::report_batch::ReportBatchResultItem,
         routes::positional::PositionalRequest,
         routes::positional::PositionalResponse,
         routes::metadata::MetadataResponse,
@@ -460,6 +464,10 @@ async fn main() {
         .route(
             "/api/v3/report",
             axum::routing::post(routes::report::post_report),
+        )
+        .route(
+            "/api/v3/report/batch",
+            axum::routing::post(routes::report_batch::post_report_batch),
         )
         .route(
             "/api/v3/positional",

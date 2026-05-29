@@ -588,6 +588,38 @@
         }
       }
     },
+    "/api/v3/report/batch": {
+      "post": {
+        "tags": [
+          "Data"
+        ],
+        "summary": "Generate multiple reports in a single request",
+        "description": "Execute multiple report requests concurrently; returns per-item report responses.",
+        "operationId": "post_report_batch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportBatchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Batch report results",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportBatchResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v3/search": {
       "get": {
         "tags": [
@@ -1537,6 +1569,63 @@
               "$ref": "#/components/schemas/RecordItem"
             }
           },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          }
+        }
+      },
+      "ReportBatchRequest": {
+        "type": "object",
+        "description": "Batch request for running multiple reports in one HTTP call.",
+        "required": [
+          "reports"
+        ],
+        "properties": {
+          "concurrency": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "Optional concurrency limit (1..=32).",
+            "minimum": 0
+          },
+          "reports": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReportRequest"
+            },
+            "description": "Array of report requests to execute in batch (max 50)."
+          }
+        }
+      },
+      "ReportBatchResponse": {
+        "type": "object",
+        "required": [
+          "status",
+          "results"
+        ],
+        "properties": {
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReportBatchResultItem"
+            },
+            "description": "Per-request results in the same order as the input `reports`."
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiStatus"
+          }
+        }
+      },
+      "ReportBatchResultItem": {
+        "type": "object",
+        "required": [
+          "status",
+          "report"
+        ],
+        "properties": {
+          "plot_spec": {},
+          "report": {},
           "status": {
             "$ref": "#/components/schemas/ApiStatus"
           }
