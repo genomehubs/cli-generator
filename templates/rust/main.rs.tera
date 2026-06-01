@@ -296,12 +296,6 @@ enum {{ index.name | capitalize }}Commands {
         #[arg(long, default_value = "")]
         query: String,
 
-        /// YAML file containing a single report mapping or a sequence of report
-        /// mappings. When supplied the CLI will run each report in the file
-        /// (batch mode) or the single report mapping and print JSON results.
-        #[arg(long, value_name = "FILE")]
-        file: Option<std::path::PathBuf>,
-
         /// Maximum number of results to return per page.
         #[arg(long, default_value = "50")]
         size: usize,
@@ -523,6 +517,16 @@ enum {{ index.name | capitalize }}Commands {
         /// Additional raw query string ANDed with all other filters.
         #[arg(long, default_value = "")]
         query: String,
+
+        /// YAML file containing a single report mapping or a sequence of report
+        /// mappings. When supplied the CLI will run each report in the file
+        /// (batch mode) or the single report mapping and print JSON results.
+        #[arg(long, value_name = "FILE")]
+        file: Option<std::path::PathBuf>,
+
+        /// Suppress per-query size/sort divergence warnings when using --file.
+        #[arg(long)]
+        suppress_divergence_warnings: bool,
 
         /// X-axis field name.
         #[arg(long)]
@@ -976,7 +980,7 @@ fn run(cli: Cli) -> anyhow::Result<()> {
                             generated::indexes::Index::{{ index.name | capitalize }},
                             batch_q,
                             &opts,
-                        )?;;
+                        )?;
                         let mut obj = serde_json::json!({ "count": n });
                         if include_query_col {
                             obj["query_index"] = serde_json::Value::Number(qi.into());
@@ -1002,7 +1006,7 @@ fn run(cli: Cli) -> anyhow::Result<()> {
             {{ index.name | capitalize }}Commands::Report {
                 report_type, taxon, taxon_filter, filter, rank, query, file,
                 x, x_opts, y, cat, cat_rank, count_rank, collapse_monotypic,
-                include_plot_spec, display, taxonomy,
+                include_plot_spec, display, taxonomy, suppress_divergence_warnings,
             } => {
                 let taxon_filter_type_str = match taxon_filter {
                     TaxonFilter::Name     => "name",
