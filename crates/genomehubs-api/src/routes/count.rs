@@ -7,7 +7,7 @@ use serde_json::{json, Value};
 use std::sync::Arc;
 
 use super::deserialize_helpers;
-use crate::{es_client, index_name, AppState};
+use crate::{es_client, index_name, request_shape::query_to_body_input, AppState};
 
 #[derive(utoipa::ToSchema)]
 pub struct CountRequest {
@@ -65,11 +65,11 @@ pub struct CountResponse {
         examples(
             ("Mammalia species count" = (
                 summary = "Count species in Mammalia with a genome size estimate",
-                value = json!({"query_yaml": "index: taxon\ntaxa:\n  - Mammalia\ntaxon_filter_type: tree\nfields:\n  - name: genome_size\n", "params_yaml": "size: 0\ninclude_estimates: true\ntaxonomy: ncbi\n"})
+                value = json!({"query": {"index": "taxon","taxa": ["Mammalia"],"taxon_filter_type": "tree","fields": [{"name": "genome_size"}]}, "params": {"include_estimates": true,"taxonomy": "ncbi"}})
             )),
             ("Assembly count" = (
                 summary = "Count assemblies for Mammalia",
-                value = json!({"query_yaml": "index: assembly\ntaxa:\n  - Mammalia\ntaxon_filter_type: tree\n", "params_yaml": "size: 0\ntaxonomy: ncbi\n"})
+                value = json!({"query": {"index": "assembly","taxa": ["Mammalia"],"taxon_filter_type": "tree"}, "params": {"taxonomy": "ncbi"}})
             ))
         )
     ),
@@ -106,72 +106,12 @@ pub async fn post_count(
     // Resolve index name using shared helper
     let idx = index_name::resolve_index(&query.index, &state);
 
-    // Build ES request body using the shared query_builder
-    let group = match query.index {
-        genomehubs_query::query::SearchIndex::Taxon => "taxon",
-        genomehubs_query::query::SearchIndex::Assembly => "assembly",
-        genomehubs_query::query::SearchIndex::Sample => "sample",
-        genomehubs_query::query::SearchIndex::Feature => "feature",
-    };
-
-    let fields_slice: Option<Vec<&str>> = if query.attributes.fields.is_empty() {
-        None
-    } else {
-        Some(
-            query
-                .attributes
-                .fields
-                .iter()
-                .map(|f| f.name.as_str())
-                .collect(),
-        )
-    };
-    let names_slice: Option<Vec<&str>> = if query.attributes.names.is_empty() {
-        None
-    } else {
-        Some(query.attributes.names.iter().map(|s| s.as_str()).collect())
-    };
-    let ranks_slice: Option<Vec<&str>> = if query.attributes.ranks.is_empty() {
-        None
-    } else {
-        Some(query.attributes.ranks.iter().map(|s| s.as_str()).collect())
-    };
-
-    let sort_by = params.sort_by.as_deref();
-    let sort_order = Some(match params.sort_order {
-        genomehubs_query::query::SortOrder::Asc => "asc",
-        genomehubs_query::query::SortOrder::Desc => "desc",
-    });
-
-    let size = 0usize;
-    let offset = (params.page.saturating_sub(1)) * params.size;
-
-    // Build taxa query fragment from identifiers
-    let taxa_query = query
-        .identifiers
-        .taxa
-        .as_ref()
-        .map(|t| format!("{}({})", t.filter_type.api_function(), t.names.join(",")));
-
     // Build a URL for the response (for debugging/reproduction)
     let built_url =
         genomehubs_query::query::build_query_url(&query, &params, &state.es_base, "v3", "count");
 
-    let mut body = match cli_generator::core::query_builder::build_search_body(
-        taxa_query.as_deref(),
-        fields_slice.as_deref(),
-        None,
-        Some(&query.attributes.attributes),
-        query.identifiers.rank.as_deref(),
-        names_slice.as_deref(),
-        ranks_slice.as_deref(),
-        sort_by,
-        sort_order,
-        size,
-        offset,
-        None,
-        Some(group),
-    ) {
+    let search_body_input = query_to_body_input("count", &query, &params, None);
+    let mut body = match cli_generator::core::query_builder::build_search_body(&search_body_input) {
         Ok(b) => b,
         Err(e) => {
             return Json(CountResponse {

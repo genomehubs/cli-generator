@@ -279,7 +279,7 @@ qb.addExcludeAncestral('c_value');
 
 Sort results.  `order` is `"asc"` or `"desc"`.
 
-### `set_include_estimates(value)` — include estimated values (default `True`)
+### `set_include_estimates(value)` — include estimated values (default `False`)
 
 ### `set_taxonomy(name)` — taxonomy name, e.g. `"ncbi"` or `"ott"` (default `"ncbi"`)
 

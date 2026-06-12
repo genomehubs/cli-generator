@@ -2,6 +2,7 @@ use crate::core::attr_types::TypesMap;
 use crate::core::query::{Attribute, AttributeOperator, AttributeValue};
 use anyhow::Result;
 use serde_json::{json, Value};
+use std::collections::HashMap;
 
 /// Build a minimal ES query body for counting.
 ///
@@ -62,29 +63,33 @@ pub fn build_count_body(query: Option<&str>, is_json: bool) -> Result<Value> {
     Ok(json!({ "query": { "bool": { "filter": filters } } }))
 }
 
+#[derive(Debug, Default, Clone)]
+pub struct SearchBodyInput {
+    pub query: Option<String>,
+    pub fields: Option<Vec<String>>,
+    pub optional_fields: Option<Vec<String>>,
+    pub attributes: Option<Vec<Attribute>>,
+    pub rank: Option<String>,
+    pub names: Option<Vec<String>>,
+    pub ranks: Option<Vec<String>>,
+    pub exclusions: Option<HashMap<String, Vec<String>>>,
+    pub sort_by: Option<String>,
+    pub sort_order: Option<String>,
+    pub size: usize,
+    pub offset: usize,
+    pub types_map: Option<TypesMap>,
+    pub group: Option<String>,
+}
+
 /// Build a minimal ES search body for simple queries.
 /// - `query` may contain `tax_name(NAME)` (preferred) or be empty.
 /// - `fields` is a list of attribute field names (e.g. ["genome_size"]).
-#[allow(clippy::cognitive_complexity, clippy::too_many_arguments)]
-pub fn build_search_body(
-    query: Option<&str>,
-    fields: Option<&[&str]>,
-    optional_fields: Option<&[&str]>,
-    attributes: Option<&[Attribute]>,
-    rank: Option<&str>,
-    names: Option<&[&str]>,
-    ranks: Option<&[&str]>,
-    sort_by: Option<&str>,
-    sort_order: Option<&str>,
-    size: usize,
-    offset: usize,
-    types_map: Option<&TypesMap>,
-    group: Option<&str>,
-) -> Result<Value> {
+#[allow(clippy::cognitive_complexity)]
+pub fn build_search_body(input: &SearchBodyInput) -> Result<Value> {
     let mut body = json!({
-        "size": size,
-        "from": offset,
-        "query": { "bool": { "filter": [] } },
+        "size": input.size,
+        "from": input.offset,
+        "query": { "bool": { "filter": [], "must_not": [], "should": [] } },
         "track_total_hits": true,
         "_source": { "include": ["taxon_id","scientific_name","taxon_rank","parent","taxon_names.*","lineage.*"], "exclude": [] }
     });
@@ -115,7 +120,7 @@ pub fn build_search_body(
             }
         }
     });
-    if let Some(flds) = fields {
+    if let Some(flds) = input.fields.as_ref() {
         if !flds.is_empty() {
             include_aggs = true;
             if let Some(filters_obj) = aggs_val
@@ -126,7 +131,7 @@ pub fn build_search_body(
                 .and_then(|v| v.get_mut("filters"))
                 .and_then(|v| v.as_object_mut())
             {
-                for &f in flds.iter() {
+                for f in flds.iter() {
                     filters_obj.insert(f.to_string(), json!({ "term": { "attributes.key": f } }));
                 }
             }
@@ -136,15 +141,15 @@ pub fn build_search_body(
         body["aggs"] = aggs_val;
     }
 
-    let q = query.unwrap_or("").trim();
+    let q = input.query.as_deref().unwrap_or("").trim();
     // Only return `match_all` when there is nothing at all to filter on.
     // If `rank`, `attributes`, or `optional_fields` are present we must
     // build a `bool.filter` body so those constraints are applied.
     if q.is_empty()
-        && fields.is_none()
-        && optional_fields.is_none()
-        && attributes.is_none()
-        && rank.is_none()
+        && input.fields.is_none()
+        && input.optional_fields.is_none()
+        && input.attributes.is_none()
+        && input.rank.is_none()
     {
         body["query"] = json!({ "match_all": {} });
         return Ok(body);
@@ -197,19 +202,20 @@ pub fn build_search_body(
     // Build a single combined `matchAttributes`-style wrapper for all
     // `fields` to match the legacy JS builder: one existence nested and
     // one `inner_hits` nested that contains all requested fields.
-    if let Some(flds) = fields {
+    if let Some(flds) = input.fields.as_ref() {
         // collect non-empty field names
-        let field_list: Vec<&str> = flds
+        let field_list: Vec<String> = flds
             .iter()
-            .filter(|&&f| !f.trim().is_empty())
+            .filter(|f| !f.trim().is_empty())
             .cloned()
             .collect();
         if !field_list.is_empty() {
             let mut exists_should: Vec<Value> = Vec::new();
             let mut inner_should: Vec<Value> = Vec::new();
+            let mut exclude_must: Vec<Value> = Vec::new();
             // Helper to pick processed summary (docvalue) field from metadata when available.
             let pick_docvalue_field = |name: &str| -> Option<String> {
-                if let (Some(tmap), Some(g)) = (types_map, group) {
+                if let (Some(tmap), Some(g)) = (input.types_map.as_ref(), input.group.as_ref()) {
                     if let Some(group_map) = tmap.get(g) {
                         if let Some(meta) = group_map.get(name) {
                             if let Some(ps) = &meta.processed_summary {
@@ -221,7 +227,7 @@ pub fn build_search_body(
                 None
             };
 
-            for &field in field_list.iter() {
+            for field in field_list.iter() {
                 // Determine existence check field: prefer the processed_summary
                 // base (strip any `.raw` suffix) when available, otherwise
                 // fallback to `attributes.long_value`.
@@ -244,14 +250,22 @@ pub fn build_search_body(
                     json!({ "match": { "attributes.key": field } }),
                     json!({ "exists": { "field": exists_field } }),
                 ];
-                if let Some(g) = group {
-                    if g == "taxon" {
+                if let Some(g) = input.group.as_ref() {
+                    if g == &"taxon".to_string() {
                         exists_filters.push(
                             json!({ "exists": { "field": "attributes.aggregation_source" } }),
                         );
                         exists_filters.push(
                             json!({ "exists": { "field": "attributes.aggregation_method" } }),
                         );
+                        // if field is in exclusions for this group, add must_not filters for aggregation_source values to the existence check filters
+                        if let Some(excl_map) = input.exclusions.as_ref() {
+                            if let Some(excl_values) = excl_map.get(field) {
+                                for excl in excl_values.iter() {
+                                    exclude_must.push(json!({ "nested": { "path": "attributes", "query": { "bool": { "filter": [ { "match": { "attributes.key": field } }, { "match": { "attributes.aggregation_source": excl } } ] } } } }));
+                                }
+                            }
+                        }
                     }
                 }
 
@@ -264,7 +278,7 @@ pub fn build_search_body(
             let nested_exists = json!({
                 "nested": {
                     "path": "attributes",
-                    "query": { "bool": { "should": exists_should } }
+                    "query": json!({"bool": { "should": exists_should }})
                 }
             });
 
@@ -292,8 +306,8 @@ pub fn build_search_body(
                 "attributes.aggregation_taxon_id".to_string(),
             ];
 
-            for &field in field_list.iter() {
-                if let (Some(tmap), Some(g)) = (types_map, group) {
+            for field in field_list.iter() {
+                if let (Some(tmap), Some(g)) = (input.types_map.as_ref(), input.group.as_ref()) {
                     if let Some(group_map) = tmap.get(g) {
                         if let Some(meta) = group_map.get(field) {
                             if let Some(ps) = &meta.processed_summary {
@@ -356,6 +370,15 @@ pub fn build_search_body(
                 .as_array_mut()
                 .unwrap()
                 .push(wrapper);
+
+            if !exclude_must.is_empty() {
+                for excl in exclude_must.iter() {
+                    body["query"]["bool"]["must_not"]
+                        .as_array_mut()
+                        .unwrap()
+                        .push(excl.clone());
+                }
+            }
         }
     }
 
@@ -363,10 +386,10 @@ pub fn build_search_body(
     // taxon names to return), add a dedicated `taxon_names` nested wrapper
     // with an `inner_hits` block mirroring the fixture shape. Include a
     // `match_all` fallback to preserve legacy shape parity.
-    if let Some(name_list) = names {
+    if let Some(name_list) = input.names.as_ref() {
         if !name_list.is_empty() {
             let mut should_items: Vec<Value> = Vec::new();
-            for &nm in name_list.iter() {
+            for nm in name_list.iter() {
                 should_items.push(
                     json!({ "bool": { "filter": [ { "match": { "taxon_names.class": nm } } ] } }),
                 );
@@ -400,10 +423,10 @@ pub fn build_search_body(
     // Build optional attribute wrappers (placed into `should` on the top
     // level bool). These mirror `matchAttributes(..., name: "optionalAttributes")`
     // in the JS code.
-    if let Some(opt_flds) = optional_fields {
-        let opt_list: Vec<&str> = opt_flds
+    if let Some(opt_flds) = input.optional_fields.as_ref() {
+        let opt_list: Vec<String> = opt_flds
             .iter()
-            .filter(|&&f| !f.trim().is_empty())
+            .filter(|f| !f.trim().is_empty())
             .cloned()
             .collect();
         if !opt_list.is_empty() {
@@ -431,8 +454,10 @@ pub fn build_search_body(
                 "attributes.aggregation_taxon_id".to_string(),
             ];
 
-            for &field in opt_list.iter() {
-                let exists_field = if let (Some(tmap), Some(g)) = (types_map, group) {
+            for field in opt_list.iter() {
+                let exists_field = if let (Some(tmap), Some(g)) =
+                    (input.types_map.as_ref(), input.group.as_ref())
+                {
                     if let Some(group_map) = tmap.get(g) {
                         if let Some(meta) = group_map.get(field) {
                             if let Some(ps) = &meta.processed_summary {
@@ -516,7 +541,7 @@ pub fn build_search_body(
     // existence checks and value comparisons (range/term/etc) under
     // `attributes.<type>_value` / `attributes.long_value` depending on the
     // operator.
-    if let Some(attrs) = attributes {
+    if let Some(attrs) = input.attributes.as_ref() {
         use std::collections::HashMap;
         // Group attributes by name so multiple constraints on the same
         // field (e.g. ge + le) are merged into a single nested clause,
@@ -531,8 +556,8 @@ pub fn build_search_body(
             // per-field wrappers added earlier already enforce its
             // existence and inner_hits; avoid adding a duplicate
             // attribute nested filter which would increase filter count.
-            if let Some(flds) = fields {
-                if flds.contains(&name.as_str()) {
+            if let Some(flds) = input.fields.as_ref() {
+                if flds.contains(&name) {
                     // If the grouped attributes contain only `exists` (or no
                     // operator), skip adding a separate attribute nested
                     // filter because the per-field wrapper already enforces
@@ -584,7 +609,7 @@ pub fn build_search_body(
                 // aggregation existence checks for those attributes to match
                 // fixture shapes.
                 if name != "data_freeze" {
-                    if let Some(g) = group {
+                    if let Some(g) = input.group.as_ref() {
                         if g == "taxon" {
                             clauses.push(
                                 json!({ "exists": { "field": "attributes.aggregation_source" } }),
@@ -759,8 +784,8 @@ pub fn build_search_body(
             // optional behaviour: a `should` containing a `must_not` branch
             // and the nested clause, matching legacy JS.
             let mut final_clause = nested.clone();
-            if let Some(opt_flds) = optional_fields {
-                if opt_flds.contains(&name.as_str()) {
+            if let Some(opt_flds) = input.optional_fields.as_ref() {
+                if opt_flds.contains(&name) {
                     let must_not_clause = json!({
                         "nested": {
                             "path": "attributes",
@@ -801,10 +826,10 @@ pub fn build_search_body(
         // taxa expression nor a rank is provided, many fixtures expect a default
         // taxonomy root identifier (e.g. NCBI Eukaryota `2759`). Use the
         // `group` hint to choose a safe default for taxon queries.
-        let idq = match rank {
+        let idq = match input.rank.as_ref() {
             Some(r) => r.to_string(),
             None => {
-                if let Some(g) = group {
+                if let Some(g) = input.group.as_ref() {
                     if g == "taxon" || g == "assembly" || g == "sample" {
                         "2759".to_string()
                     } else {
@@ -962,7 +987,7 @@ pub fn build_search_body(
     }
 
     // rank restriction: mirror JS behaviour that adds a `match` on `taxon_rank`
-    if let Some(r) = rank {
+    if let Some(r) = input.rank.as_ref() {
         body["query"]["bool"]["filter"]
             .as_array_mut()
             .unwrap()
@@ -974,10 +999,10 @@ pub fn build_search_body(
     // If `ranks` parameter was provided, add a `lineage` nested wrapper with
     // inner_hits listing the requested ranks (and a `match_all` fallback to
     // preserve fixture shape).
-    if let Some(ranks_list) = ranks {
+    if let Some(ranks_list) = input.ranks.as_ref() {
         if !ranks_list.is_empty() {
             let mut rank_should: Vec<Value> = Vec::new();
-            for &rk in ranks_list.iter() {
+            for rk in ranks_list.iter() {
                 rank_should.push(
                     json!({ "bool": { "filter": [ { "match": { "lineage.taxon_rank": rk } } ] } }),
                 );
@@ -1013,8 +1038,8 @@ pub fn build_search_body(
     // to choose the correct processed summary field (e.g. half_float_value,
     // long_value). If the requested `sort_by` is not an attribute or
     // metadata is unavailable fall back to a reasonable default.
-    if let Some(sb_raw) = sort_by {
-        let order = sort_order.unwrap_or("asc");
+    if let Some(sb_raw) = input.sort_by.as_ref() {
+        let order = input.sort_order.as_deref().unwrap_or("asc");
 
         // Parse `field[:param]` form; default param is "value".
         let mut parts = sb_raw.splitn(2, ':');
@@ -1027,8 +1052,8 @@ pub fn build_search_body(
 
         // Attempt to pick a processed_simple param and derive the attributes field
         let mut computed_sort_field: Option<String> = None;
-        if let Some(tm) = types_map {
-            if let Some(g) = group {
+        if let Some(tm) = input.types_map.as_ref() {
+            if let Some(g) = input.group.as_ref() {
                 if let Some(group_map) = tm.get(g) {
                     if let Some(meta) = group_map.get(by) {
                         if let Some(psimple) = &meta.processed_simple {
@@ -1067,8 +1092,8 @@ pub fn build_search_body(
         if sort_field.starts_with("attributes.") {
             // Determine attribute key name for nested filter (use meta.name when available)
             let mut key_name = by.to_string();
-            if let Some(tm) = types_map {
-                if let Some(g) = group {
+            if let Some(tm) = input.types_map.as_ref() {
+                if let Some(g) = input.group.as_ref() {
                     if let Some(group_map) = tm.get(g) {
                         if let Some(meta) = group_map.get(by) {
                             key_name = meta.name.clone();
@@ -1123,21 +1148,10 @@ mod tests {
 
     #[test]
     fn search_body_adds_non_empty_aggregation_filters_for_assembly_level() {
-        let body = build_search_body(
-            None,
-            Some(&["assembly_level"]),
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            0,
-            0,
-            None,
-            None,
-        )
+        let body = build_search_body(&SearchBodyInput {
+            fields: Some(vec!["assembly_level".to_string()]),
+            ..Default::default()
+        })
         .unwrap();
 
         let filters = body["aggs"]["fields"]["aggs"]["by_key"]["filters"]["filters"]

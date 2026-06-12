@@ -13,6 +13,7 @@ mod fetch_records;
 mod index_name;
 mod phylopic_client;
 mod report;
+mod request_shape;
 mod routes;
 mod swagger_customise;
 

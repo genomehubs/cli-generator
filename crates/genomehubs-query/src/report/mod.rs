@@ -23,6 +23,7 @@ pub use positional::{
     AttributeFilter, FilterOperator, FilterTarget, FilterValue, PositionalReportType,
     PositionalSpec, RegionBounds, RegionsSpec,
 };
+use serde::{Deserialize, Serialize};
 pub use spec_builder::resolve_axis_display;
 
 /// Supported v3 report types.
@@ -288,8 +289,7 @@ pub fn plot_spec_to_vega_lite_json(input: &str) -> String {
             {
                 vl_arc_batch(spec_val, base)
             } else {
-                base["mark"] = serde_json::Value::String("arc".to_string());
-                base
+                vl_arc(spec_val, base)
             }
         }
         _ => base,
@@ -1303,6 +1303,82 @@ fn vl_histogram(spec: &serde_json::Value, mut base: serde_json::Value) -> serde_
     base
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone)]
+struct ArcDataEntry {
+    report_label: String,
+    value: f64,
+    portion: f64,
+    label: String,
+    index: usize,
+    initial_offset: f64,
+    final_offset: f64,
+    feature_count: usize,
+    reference_count: usize,
+    context_count: usize,
+}
+
+impl ArcDataEntry {
+    fn from_report_data(
+        report_data: &serde_json::Value,
+        segment: usize,
+        initial_offset: f64,
+    ) -> Option<Self> {
+        dbg!(&report_data, segment);
+        let report_label = report_data.get("report_label")?.as_str()?.to_string();
+        let arc = report_data.get("arc")?.as_f64()?;
+        let arc2 = 1.0 - arc;
+        let mut offset = initial_offset;
+        let (value, portion, label) = match segment {
+            1 => {
+                offset -= arc * std::f64::consts::PI; // shift back by arc portion
+                (
+                    report_data.get("feature_count")?.as_f64()?,
+                    arc,
+                    "feature".to_string(),
+                )
+            }
+            2 => {
+                offset -= arc2 * std::f64::consts::PI; // shift back by arc2 portion
+                (
+                    report_data.get("reference_count")?.as_f64()?,
+                    arc2,
+                    "reference".to_string(),
+                )
+            }
+            // 3 => {
+            //     offset -= std::f64::consts::PI; // shift back by full circle
+            //     (
+            //     report_data.get("context_count")?.as_f64()?,
+            //     1.0, // context is the whole circle, so portion is 1.0
+            //     "context".to_string(),
+            // )},
+            _ => return None,
+        };
+        let feature_count = report_data
+            .get("feature_count")
+            .and_then(|v| v.as_u64())
+            .unwrap_or(0) as usize;
+        let reference_count = report_data
+            .get("reference_count")
+            .and_then(|v| v.as_u64())
+            .unwrap_or(0) as usize;
+        // let context_count = report_data.get("context_count").and_then(|v| v.as_u64()).unwrap_or(0) as usize;
+
+        Some(Self {
+            report_label,
+            value,
+            portion,
+            label,
+            index: segment - 1, // convert to 0-based index
+            initial_offset,
+            final_offset: offset,
+            feature_count,
+            reference_count,
+            context_count: 0, // context_count,
+        })
+    }
+}
+
 /// Vega-Lite renderer for `arc_batch` PlotSpec data.
 /// Produces a layered semicircular concentric ring chart coloured by series.
 fn vl_arc_batch(spec: &serde_json::Value, mut base: serde_json::Value) -> serde_json::Value {
@@ -1313,21 +1389,51 @@ fn vl_arc_batch(spec: &serde_json::Value, mut base: serde_json::Value) -> serde_
         .cloned()
         .unwrap_or_default();
 
+    let n = data_entries.len() as f64;
+
     // Top-level display options (unused for now but kept for future tuning)
     let _display = spec.get("display").unwrap_or(&serde_json::Value::Null);
     let width = base.get("width").and_then(|v| v.as_u64()).unwrap_or(600) as f64;
     let height = base.get("height").and_then(|v| v.as_u64()).unwrap_or(400) as f64;
 
     // Unique series (report labels) in encountered order
-    let mut labels: Vec<String> = Vec::new();
-    for e in &data_entries {
-        if let Some(lbl) = e.get("report_label").and_then(|v| v.as_str()) {
-            if !labels.contains(&lbl.to_string()) {
-                labels.push(lbl.to_string());
+    let mut labels = Vec::new();
+    let mut entries = Vec::new();
+    // loop through positions 1,2,3 for each entry to build ArcDataEntry structs
+    for segment in 1..=3 {
+        let mut offset = -std::f64::consts::PI / 2.0; // start at top of circle
+        let mut segment_entries = Vec::new();
+        for (i, e) in data_entries.iter().enumerate() {
+            if segment > 1 {
+                offset -= entries
+                    .last()
+                    .and_then(|seg_entries: &Vec<Option<ArcDataEntry>>| {
+                        seg_entries[i].as_ref().map(|e| e.final_offset)
+                    })
+                    .unwrap_or(offset);
+            }
+            if let Some(lbl) = e.get("report_label").and_then(|v| v.as_str()) {
+                if !labels.contains(&lbl.to_string()) {
+                    labels.push(lbl.to_string());
+                } else {
+                    // already have this label, append a suffix to make it unique
+                    let mut suffix = 2;
+                    let mut new_label = format!("{} ({})", lbl, suffix);
+                    while labels.contains(&new_label) {
+                        suffix += 1;
+                        new_label = format!("{} ({})", lbl, suffix);
+                    }
+                    labels.push(new_label);
+                }
+                let entry = ArcDataEntry::from_report_data(e, segment, offset);
+                segment_entries.push(entry);
+                if let Some(Some(e)) = segment_entries.last() {
+                    offset = e.final_offset;
+                }
             }
         }
+        entries.push(segment_entries);
     }
-    let n = labels.len().max(1) as f64;
 
     // radius allocation: leave small inner padding and outer padding
     let max_radius = (height.min(width) / 2.0) * 0.9;
@@ -1336,115 +1442,206 @@ fn vl_arc_batch(spec: &serde_json::Value, mut base: serde_json::Value) -> serde_
 
     // Shared color encoding using a rainbow scheme
     let color_encoding = serde_json::json!({
-        "field": "report_label",
+        "field": "label",
         "type": "nominal",
         "scale": {"scheme": "rainbow"}
     });
 
-    // Build layers: one data-backed background + wedge per series
+    // Build layers: one arc per series
     let mut layers: Vec<serde_json::Value> = Vec::new();
     for (i, _lbl) in labels.iter().enumerate() {
-        // collect entries belonging to this report index
-        let mut entries_for_i: Vec<serde_json::Value> = Vec::new();
-        for e in &data_entries {
-            if let Some(idx) = e.get("report_index").and_then(|v| v.as_i64()) {
-                if idx as usize == i {
-                    entries_for_i.push(e.clone());
-                }
-            } else if let Some(idx) = e.get("report_index").and_then(|v| v.as_u64()) {
-                if idx as usize == i {
-                    entries_for_i.push(e.clone());
-                }
-            }
-        }
-        if entries_for_i.is_empty() {
-            continue;
-        }
+        // collect entry belonging to this report index, filter out Nones
+        let data: Vec<_> = entries
+            .iter()
+            .flat_map(|segment_entries| segment_entries.iter().filter_map(|e| e.as_ref()))
+            .filter(|e| e.index == i) // segment index starts at 0
+            .map(|e| {
+                serde_json::json!({
+                    "report_label": e.report_label,
+                    "value": e.value,
+                    "portion": e.portion,
+                    "label": e.label,
+                    "offset": e.initial_offset,
+                    "index": e.index,
+                    "feature_count": e.feature_count,
+                    "reference_count": e.reference_count,
+                    "context_count": e.context_count
+                })
+            })
+            .collect();
 
         let inner = (inner_padding + (i as f64) * slot).round();
         let outer = (inner + slot * 0.8).round();
 
-        // Background full semicircle (light grey) values
-        let mut bg_vals: Vec<serde_json::Value> = Vec::new();
-        for ev in &entries_for_i {
-            let mut be = ev.clone();
-            if let serde_json::Value::Object(ref mut m) = be {
-                m.insert(
-                    "endAngle".to_string(),
-                    serde_json::json!(std::f64::consts::PI),
-                );
-            }
-            bg_vals.push(be);
-        }
-
-        // Foreground wedge values (scaled -> endAngle)
-        let mut wedge_vals: Vec<serde_json::Value> = Vec::new();
-        for ev in &entries_for_i {
-            let mut we = ev.clone();
-            let scaled = ev.get("scaled").and_then(|v| v.as_f64()).unwrap_or(0.0_f64);
-            if let serde_json::Value::Object(ref mut m) = we {
-                m.insert(
-                    "endAngle".to_string(),
-                    serde_json::json!(scaled * std::f64::consts::PI),
-                );
-            }
-            wedge_vals.push(we);
-        }
-
-        // Background layer
-        let background = serde_json::json!({
-            "data": {"values": bg_vals},
+        let layer = serde_json::json!({
+            "data": {"values": data},
             "mark": {
                 "type": "arc",
-                "innerRadius": {"value": inner},
-                "outerRadius": {"value": outer},
-                "cornerRadius": 6,
-                "opacity": 0.25
+                "innerRadius": inner,
+                "outerRadius": outer,
+                "thetaOffset": {"expr": "datum.offset"},
+                "theta2Offset": {"expr": "datum.offset"}
             },
             "encoding": {
                 "theta": {
-                    "field": "endAngle",
+                    "field": "portion",
                     "type": "quantitative",
-                    "scale": {"domain": [0.0, std::f64::consts::PI]}
+                    "scale": {"domain": [0.0, 2.0]}
                 },
                 "theta2": {"value": 0},
-                "color": {"value": "#d9d9d9"}
+                "color": color_encoding.clone()
             }
         });
 
-        // Wedge layer (coloured)
-        let mut wedge = serde_json::json!({
-            "data": {"values": wedge_vals},
-            "mark": {
-                "type": "arc",
-                "innerRadius": {"value": inner + 1.0},
-                "outerRadius": {"value": outer - 1.0},
-                "cornerRadius": 6
-            },
-            "encoding": {
-                "theta": {
-                    "field": "endAngle",
-                    "type": "quantitative",
-                    "scale": {"domain": [0.0, std::f64::consts::PI]}
-                },
-                "theta2": {"value": 0}
-            }
-        });
-
-        // Insert color scale into wedge encoding
-        if let Some(obj) = wedge.as_object_mut() {
-            if let Some(enc) = obj.get_mut("encoding") {
-                if let Some(enc_obj) = enc.as_object_mut() {
-                    enc_obj.insert("color".to_string(), color_encoding.clone());
-                }
-            }
-        }
-
-        layers.push(background);
-        layers.push(wedge);
+        layers.push(layer);
     }
 
     base["layer"] = serde_json::Value::Array(layers);
+    base
+}
+
+fn arc_values_from_report_data(report_data: &serde_json::Value) -> Vec<serde_json::Value> {
+    let mut entries = vec![];
+
+    fn get_count(report_data: &serde_json::Value, key: &str) -> f64 {
+        report_data.get(key).and_then(|v| v.as_f64()).unwrap_or(0.0)
+    }
+
+    let feature_count = get_count(report_data, "feature_count");
+    let reference_count = get_count(report_data, "reference_count");
+    let context_count = get_count(report_data, "context_count");
+
+    // add feature segment
+    let feature_portion = if feature_count > 0.0 {
+        let portion = if context_count > 0.0 {
+            feature_count / context_count
+        } else if reference_count > 0.0 {
+            feature_count / reference_count
+        } else {
+            1.0
+        };
+        entries.push(serde_json::json!({
+            "label": "feature",
+            "value": feature_count,
+            "portion": portion,
+            "query_term": report_data.get("featureTerm").and_then(|v| v.as_str()).unwrap_or("")
+        }));
+        portion
+    } else {
+        0.0
+    };
+
+    // add reference segment
+    let reference_portion = if reference_count > 0.0 {
+        let portion = if context_count > 0.0 {
+            (reference_count - feature_count) / context_count
+        } else {
+            1.0 - feature_portion
+        };
+        entries.push(serde_json::json!({
+            "label": "reference",
+            "value": reference_count,
+            "portion": portion,
+            "query_term": report_data.get("referenceTerm").and_then(|v| v.as_str()).unwrap_or("")
+        }));
+        portion
+    } else {
+        0.0
+    };
+
+    // add context segment if context_count is present and greater than feature+reference
+    let context_portion = 1.0 - feature_portion - reference_portion;
+    if context_portion > 0.0 {
+        entries.push(serde_json::json!({
+            "label": "context",
+            "value": context_count,
+            "portion": context_portion,
+            "query_term": report_data.get("contextTerm").and_then(|v| v.as_str()).unwrap_or("")
+        }));
+    }
+    entries
+}
+
+fn vl_arc(spec: &serde_json::Value, mut base: serde_json::Value) -> serde_json::Value {
+    let _mode = "grouped"; // for now only support grouped mode with explicit offsets; could add facet mode later if needed
+    let shape = "ring"; // for now only support ring shape; could add rainbow shape later if needed
+    let data_entries = [spec.get("data")];
+    // for simplicity only support a single arc for now
+    if data_entries.is_empty() {
+        return serde_json::json!({"error": "No data entries found"});
+    }
+    let maybe_data = data_entries[0];
+    if maybe_data.is_none() {
+        return serde_json::json!({"error": "No data found"});
+    }
+    let data = maybe_data.unwrap();
+    let inner_radius = 50.0;
+    let outer_radius = 100.0;
+    let start_angle = match shape {
+        "ring" => 0.0, // start at top of circle
+        "rainbow" => -std::f64::consts::PI / 2.0,
+        _ => -std::f64::consts::PI / 2.0,
+    };
+    let end_angle = match shape {
+        "ring" => start_angle + 2.0 * std::f64::consts::PI,
+        "rainbow" => start_angle + std::f64::consts::PI, // for rainbow we would need to encode each segment separately with different colors
+        _ => start_angle + 2.0 * std::f64::consts::PI,
+    };
+    let mut values = arc_values_from_report_data(data);
+
+    // draw simple ring with one segment per entry, using the portion field to determine the angle
+    for v in values.iter_mut() {
+        if let Some(obj) = v.as_object_mut() {
+            let portion = obj.get("portion").and_then(|v| v.as_f64()).unwrap_or(0.0);
+            let angle = portion * (end_angle - start_angle);
+            obj.insert(
+                "start_angle".to_string(),
+                serde_json::Value::from(start_angle),
+            );
+            obj.insert(
+                "end_angle".to_string(),
+                serde_json::Value::from(start_angle + angle),
+            );
+            obj.insert(
+                "inner_radius".to_string(),
+                serde_json::Value::from(inner_radius),
+            );
+            obj.insert(
+                "outer_radius".to_string(),
+                serde_json::Value::from(outer_radius),
+            );
+        }
+    }
+    base["data"] = serde_json::json!({"values": values});
+    // For grouped mode we can use Vega-Lite's built-in arc mark with theta encoding and explicit offsets
+    base["mark"] = serde_json::json!({
+        "type": "arc",
+        "innerRadius": inner_radius,
+        "outerRadius": outer_radius,
+        "thetaOffset": start_angle,
+        "theta2Offset": start_angle
+    });
+    // set color encoding based on label
+    base["encoding"] = serde_json::json!({
+        "theta": {
+            "field": "portion",
+            "type": "quantitative",
+            "scale": {"domain": [1.0, match shape {
+                "ring" => 0.0,
+                "rainbow" => -1.0,
+                _ => 0.0,
+            }]}
+        },
+        "theta2": {"value": 0},
+        "color": {
+            "field": "label",
+            "type": "nominal",
+            "scale": {
+                "scheme": "category10",
+                "domain":["feature","reference","context"]
+            }
+        }
+    });
     base
 }
 

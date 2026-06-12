@@ -207,9 +207,9 @@ def test_query_builder_set_sort() -> None:
 def test_query_builder_set_include_estimates() -> None:
     import yaml
 
-    q = QueryBuilder("taxon").set_include_estimates(False)
+    q = QueryBuilder("taxon").set_include_estimates(True)
     params = yaml.safe_load(q.to_params_yaml())
-    assert params["include_estimates"] is False
+    assert params["include_estimates"] is True
 
 
 def test_query_builder_set_taxonomy() -> None:

@@ -2,7 +2,7 @@ use genomehubs_query::plot_spec_to_vega_lite_json;
 use serde_json::json;
 
 #[test]
-fn y_axis_uses_yBuckets_for_raw_points() {
+fn y_axis_uses_ybuckets_for_raw_points() {
     let spec = json!({
         "report_type": "scatter",
         "x": {"field":"assembly_span", "label":"assembly_span", "scale":"linear"},

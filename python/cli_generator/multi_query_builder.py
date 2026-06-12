@@ -63,7 +63,7 @@ class MultiQueryBuilder:
         self._size: int = 10
         self._sort_by: str | None = None
         self._sort_order: str = "asc"
-        self._include_estimates: bool = True
+        self._include_estimates: bool = False
         self._taxonomy: str = "ncbi"
         self._fields: list[str | dict[str, Any]] = []
         self._names: list[str] = []

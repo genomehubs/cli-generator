@@ -101,7 +101,7 @@ class QueryBuilder:
         self._page: int = 1
         self._sort_by: str | None = None
         self._sort_order: str = "asc"
-        self._include_estimates: bool = True
+        self._include_estimates: bool = False
         self._tidy: bool = False
         self._taxonomy: str = "ncbi"
         # ID-set filter: restrict results to exactly this set of IDs
@@ -784,7 +784,7 @@ class QueryBuilder:
             qb._page = 1
             qb._sort_by = None
             qb._sort_order = "asc"
-            qb._include_estimates = True
+            qb._include_estimates = False
             qb._tidy = False
             qb._taxonomy = "ncbi"
             qb._query_yaml_override = query_yaml
@@ -815,7 +815,7 @@ class QueryBuilder:
         qb._page = 1
         qb._sort_by = None
         qb._sort_order = "asc"
-        qb._include_estimates = True
+        qb._include_estimates = False
         qb._tidy = False
         qb._taxonomy = "ncbi"
         qb._query_yaml_override = query_yaml

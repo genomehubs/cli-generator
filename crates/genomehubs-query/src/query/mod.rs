@@ -170,11 +170,11 @@ pub struct QueryParams {
     /// Sort direction (default ascending).
     #[serde(default)]
     pub sort_order: SortOrder,
-    /// Include ancestrally estimated values (`&includeEstimates=true`).
+    /// Include ancestrally derived estimated values (`&includeEstimates=true`).
     ///
-    /// Defaults to `true` to match the API default and MCP server behaviour.
-    /// Corresponds to `--include-estimates` CLI flag (gap-analysis item 5).
-    #[serde(default = "default_true")]
+    /// Defaults to `false` to match the API default and MCP server behaviour.
+    /// Corresponds to `--include-estimates` CLI flag.
+    #[serde(default = "default_false")]
     pub include_estimates: bool,
     /// Request tidy (long) format via `&summaryValues=false`.
     ///
@@ -232,7 +232,7 @@ impl Default for QueryParams {
             page: default_page(),
             sort_by: None,
             sort_order: SortOrder::default(),
-            include_estimates: true,
+            include_estimates: false,
             tidy: false,
             taxonomy: default_taxonomy(),
             search_after: None,
@@ -319,8 +319,8 @@ fn default_size() -> usize {
 fn default_page() -> usize {
     1
 }
-fn default_true() -> bool {
-    true
+fn default_false() -> bool {
+    false
 }
 fn default_taxonomy() -> String {
     "ncbi".to_string()
@@ -721,7 +721,7 @@ ranks: [genus]
         let params = QueryParams::default();
         assert_eq!(params.size, 10);
         assert_eq!(params.page, 1);
-        assert!(params.include_estimates);
+        assert!(!params.include_estimates);
         assert!(!params.tidy);
         assert_eq!(params.taxonomy, "ncbi");
         assert_eq!(params.sort_order, SortOrder::Asc);
@@ -857,12 +857,12 @@ taxa: []
     }
 
     #[test]
-    fn query_params_include_estimates_false() {
+    fn query_params_include_estimates_true() {
         let params = QueryParams {
-            include_estimates: false,
+            include_estimates: true,
             ..Default::default()
         };
-        assert!(!params.include_estimates);
+        assert!(params.include_estimates);
     }
 
     #[test]

@@ -530,7 +530,7 @@ mod tests {
         assert!(url.contains("tax_tree%28Mammalia%29"));
         assert!(url.contains("tax_rank%28species%29"));
         assert!(url.contains("taxonomy=ncbi"));
-        assert!(url.contains("includeEstimates=true"));
+        assert!(!url.contains("includeEstimates=true"));
     }
 
     #[test]

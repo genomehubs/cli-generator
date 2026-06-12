@@ -6,6 +6,7 @@ use std::sync::Arc;
 use genomehubs_query::query::chain::{collect_chain_refs, resolve_chain_refs};
 use genomehubs_query::query::{QueryParams, SearchQuery};
 
+use crate::request_shape::query_to_body_input;
 use crate::{index_name, report::report_types, routes::ApiStatus, AppState};
 
 #[derive(Serialize, utoipa::ToSchema)]
@@ -169,15 +170,11 @@ pub async fn post_report(
         };
 
     // Build base query from search parameters
-    let base_query = match build_report_query(
-        &search_query,
-        &params,
-        &state.default_taxonomy,
-        types_map.as_ref(),
-    ) {
-        Ok(q) => q,
-        Err(e) => bail!(e),
-    };
+    let base_query =
+        match build_report_query(&search_query, &params, &state.default_taxonomy, types_map) {
+            Ok(q) => q,
+            Err(e) => bail!(e),
+        };
 
     // Dispatch to appropriate report handler
     let result = match report_type {
@@ -258,66 +255,15 @@ pub async fn post_report(
 /// with the specified filters (taxa, filters, etc.).
 fn build_report_query(
     query: &SearchQuery,
-    _params: &QueryParams,
+    params: &QueryParams,
     _default_taxonomy: &str,
-    types_map: Option<&cli_generator::core::attr_types::TypesMap>,
+    types_map: Option<cli_generator::core::attr_types::TypesMap>,
 ) -> Result<Value, String> {
-    // Build taxa query expression from search query (None → match_all base)
-    let taxa_query: Option<String> = query
-        .identifiers
-        .taxa
-        .as_ref()
-        .map(|t| format!("{}({})", t.filter_type.api_function(), t.names.join(",")));
-
-    // Extract vectors for query builder
-    let field_names: Vec<&str> = query
-        .attributes
-        .fields
-        .iter()
-        .map(|f| f.name.as_str())
-        .collect();
-
-    let name_strs: Vec<&str> = query.attributes.names.iter().map(|s| s.as_str()).collect();
-
-    let rank_strs: Vec<&str> = query.attributes.ranks.iter().map(|s| s.as_str()).collect();
-
-    // Determine group from index
-    let group = match query.index {
-        genomehubs_query::query::SearchIndex::Assembly => "assembly",
-        genomehubs_query::query::SearchIndex::Sample => "sample",
-        genomehubs_query::query::SearchIndex::Taxon => "taxon",
-        genomehubs_query::query::SearchIndex::Feature => "feature",
-    };
+    let search_body_input = query_to_body_input("report", query, params, types_map);
 
     // Build full search body using query builder
-    let body = cli_generator::core::query_builder::build_search_body(
-        taxa_query.as_deref(),
-        if field_names.is_empty() {
-            None
-        } else {
-            Some(field_names.as_slice())
-        },
-        None,
-        Some(&query.attributes.attributes),
-        query.identifiers.rank.as_deref(),
-        if name_strs.is_empty() {
-            None
-        } else {
-            Some(name_strs.as_slice())
-        },
-        if rank_strs.is_empty() {
-            None
-        } else {
-            Some(rank_strs.as_slice())
-        },
-        None,
-        None,
-        1, // size: only use for structuring query, not actual size
-        0, // offset
-        types_map,
-        Some(group),
-    )
-    .map_err(|e| format!("query builder error: {e}"))?;
+    let body = cli_generator::core::query_builder::build_search_body(&search_body_input)
+        .map_err(|e| format!("query builder error: {e}"))?;
 
     // Extract just the query part from the full search body
     body.get("query")

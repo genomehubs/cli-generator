@@ -115,7 +115,7 @@ def query_api(query_dict: dict[str, Any], api_base: str) -> dict[str, Any]:
     params_yaml_dict = {
         "size": query_dict.get("size", 10),
         "page": query_dict.get("page", 1),
-        "include_estimates": query_dict.get("include_estimates", True),
+        "include_estimates": query_dict.get("include_estimates", False),
     }
     # Add optional params
     if query_dict.get("sort_by"):

@@ -84,7 +84,7 @@ QueryBuilder <- R6::R6Class(
     sort_order = "asc",
     size = 10L,
     page = 1L,
-    include_estimates = TRUE,
+    include_estimates = FALSE,
     tidy = FALSE,
     taxonomy = "ncbi",
     api_base_url = "{{ api_base | safe }}",
@@ -124,7 +124,7 @@ QueryBuilder <- R6::R6Class(
       private$sort_order <- "asc"
       private$size <- 10L
       private$page <- 1L
-      private$include_estimates <- TRUE
+      private$include_estimates <- FALSE
       private$tidy <- FALSE
       private$taxonomy <- "ncbi"
       private$lineage_rank_summary <- list()

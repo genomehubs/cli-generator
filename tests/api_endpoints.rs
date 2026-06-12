@@ -374,14 +374,17 @@ fn api_searchbatch_multiple_queries() {
             assert_eq!(results.len(), 2, "should have 2 result entries");
             for result in results {
                 assert!(
-                    result["status"]["success"].as_bool().unwrap_or(false),
+                    result["error"].is_null() || result["error"].as_str().unwrap_or("").is_empty(),
                     "each result status should be successful"
                 );
                 assert!(
-                    result["count"].is_number(),
-                    "result.count should be a number"
+                    result["total"].is_number(),
+                    "result.total should be a number"
                 );
-                assert!(result["hits"].is_array(), "result.hits should be an array");
+                assert!(
+                    result["results"].is_array(),
+                    "result.results should be an array"
+                );
             }
         }
     });

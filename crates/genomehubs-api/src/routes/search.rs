@@ -7,7 +7,9 @@ use serde_json::{json, Value};
 use std::sync::Arc;
 
 use super::deserialize_helpers;
-use crate::{es_client, index_name, routes::ApiStatus, AppState};
+use crate::{
+    es_client, index_name, request_shape::query_to_body_input, routes::ApiStatus, AppState,
+};
 
 /// Combine multiple ES query bodies using bool.should (OR) or bool.must (AND).
 fn combine_es_bodies(
@@ -177,6 +179,13 @@ pub async fn post_search(
             None
         };
 
+    let mut group_name = match query.index {
+        genomehubs_query::query::SearchIndex::Taxon => "taxon",
+        genomehubs_query::query::SearchIndex::Assembly => "assembly",
+        genomehubs_query::query::SearchIndex::Sample => "sample",
+        genomehubs_query::query::SearchIndex::Feature => "feature",
+    };
+
     // Check if this is a multi-query request (top-level OR/AND)
     if let Some(nested_queries) = &query.queries {
         if nested_queries.is_empty() {
@@ -195,77 +204,13 @@ pub async fn post_search(
         // Build a body for each nested query
         let mut bodies: Vec<Value> = vec![];
         for nested_query in nested_queries {
-            let group = match nested_query.index {
-                genomehubs_query::query::SearchIndex::Taxon => "taxon",
-                genomehubs_query::query::SearchIndex::Assembly => "assembly",
-                genomehubs_query::query::SearchIndex::Sample => "sample",
-                genomehubs_query::query::SearchIndex::Feature => "feature",
-            };
-
-            let offset = (params.page.saturating_sub(1)) * params.size;
-
-            // Create temporary vectors for field/name/rank references
-            let field_names: Vec<&str> = nested_query
-                .attributes
-                .fields
-                .iter()
-                .map(|f| f.name.as_str())
-                .collect();
-
-            let name_strs: Vec<&str> = nested_query
-                .attributes
-                .names
-                .iter()
-                .map(|s| s.as_str())
-                .collect();
-
-            let rank_strs: Vec<&str> = nested_query
-                .attributes
-                .ranks
-                .iter()
-                .map(|s| s.as_str())
-                .collect();
-
-            // Build taxa query fragment from identifiers
-            let taxa_query = nested_query
-                .identifiers
-                .taxa
-                .as_ref()
-                .map(|t| format!("{}({})", t.filter_type.api_function(), t.names.join(",")));
-
-            let body = match cli_generator::core::query_builder::build_search_body(
-                taxa_query.as_deref(),
-                if field_names.is_empty() {
-                    None
-                } else {
-                    Some(field_names.as_slice())
-                },
-                None,
-                Some(&nested_query.attributes.attributes),
-                nested_query.identifiers.rank.as_deref(),
-                if name_strs.is_empty() {
-                    None
-                } else {
-                    Some(name_strs.as_slice())
-                },
-                if rank_strs.is_empty() {
-                    None
-                } else {
-                    Some(rank_strs.as_slice())
-                },
-                params.sort_by.as_deref(),
-                Some(match params.sort_order {
-                    genomehubs_query::query::SortOrder::Asc => "asc",
-                    genomehubs_query::query::SortOrder::Desc => "desc",
-                }),
-                params.size,
-                offset,
-                types_map.as_ref(),
-                Some(group),
-            ) {
-                Ok(b) => b,
-                Err(e) => bail!(format!("failed to build ES body for nested query: {}", e)),
-            };
+            let search_body_input =
+                query_to_body_input("search", nested_query, &params, types_map.clone());
+            let body =
+                match cli_generator::core::query_builder::build_search_body(&search_body_input) {
+                    Ok(b) => b,
+                    Err(e) => bail!(format!("failed to build ES body for nested query: {}", e)),
+                };
             bodies.push(body);
         }
 
@@ -298,7 +243,7 @@ pub async fn post_search(
         let took_ms = raw.get("took").and_then(|v| v.as_u64()).unwrap_or(0);
 
         // Transform raw ES response to API response format expected by parse_search_json
-        let group_name = match first_index {
+        group_name = match first_index {
             genomehubs_query::query::SearchIndex::Taxon => "taxon",
             genomehubs_query::query::SearchIndex::Assembly => "assembly",
             genomehubs_query::query::SearchIndex::Sample => "sample",
@@ -347,67 +292,9 @@ pub async fn post_search(
     // Single-query mode (existing behavior)
     let idx = index_name::resolve_index(&query.index, &state);
 
-    let group = match query.index {
-        genomehubs_query::query::SearchIndex::Taxon => "taxon",
-        genomehubs_query::query::SearchIndex::Assembly => "assembly",
-        genomehubs_query::query::SearchIndex::Sample => "sample",
-        genomehubs_query::query::SearchIndex::Feature => "feature",
-    };
-    let fields_slice: Option<Vec<&str>> = if query.attributes.fields.is_empty() {
-        None
-    } else {
-        Some(
-            query
-                .attributes
-                .fields
-                .iter()
-                .map(|f| f.name.as_str())
-                .collect(),
-        )
-    };
+    let search_body_input = query_to_body_input("search", &query, &params, types_map.clone());
 
-    let names_slice: Option<Vec<&str>> = if query.attributes.names.is_empty() {
-        None
-    } else {
-        Some(query.attributes.names.iter().map(|s| s.as_str()).collect())
-    };
-    let ranks_slice: Option<Vec<&str>> = if query.attributes.ranks.is_empty() {
-        None
-    } else {
-        Some(query.attributes.ranks.iter().map(|s| s.as_str()).collect())
-    };
-
-    let sort_by = params.sort_by.as_deref();
-    let sort_order = Some(match params.sort_order {
-        genomehubs_query::query::SortOrder::Asc => "asc",
-        genomehubs_query::query::SortOrder::Desc => "desc",
-    });
-
-    let offset = (params.page.saturating_sub(1)) * params.size;
-
-    // Build taxa query fragment from identifiers
-    let taxa_query = query
-        .identifiers
-        .taxa
-        .as_ref()
-        .map(|t| format!("{}({})", t.filter_type.api_function(), t.names.join(",")));
-
-    // `build_search_body` is in cli_generator::core::query_builder
-    let mut body = match cli_generator::core::query_builder::build_search_body(
-        taxa_query.as_deref(),
-        fields_slice.as_deref(),
-        None,
-        Some(&query.attributes.attributes),
-        query.identifiers.rank.as_deref(),
-        names_slice.as_deref(),
-        ranks_slice.as_deref(),
-        sort_by,
-        sort_order,
-        params.size,
-        offset,
-        types_map.as_ref(),
-        Some(group),
-    ) {
+    let mut body = match cli_generator::core::query_builder::build_search_body(&search_body_input) {
         Ok(b) => b,
         Err(e) => bail!(format!("failed to build ES body: {}", e)),
     };
@@ -489,7 +376,7 @@ pub async fn post_search(
                 .map(|hit| {
                     deserialize_helpers::transform_es_hit(
                         hit,
-                        group,
+                        group_name,
                         include_lineage,
                         params.include_taxon_names,
                     )
