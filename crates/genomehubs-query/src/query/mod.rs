@@ -10,6 +10,8 @@ pub mod chain;
 pub mod identifiers;
 pub mod url;
 
+use std::collections::HashMap;
+
 pub use attributes::{Attribute, AttributeOperator, AttributeSet, AttributeValue, Field, Modifier};
 pub use chain::{ChainError, ChainRef, NamedQuerySpec};
 pub use identifiers::{Identifiers, TaxaIdentifier, TaxonFilterType};
@@ -170,6 +172,11 @@ pub struct QueryParams {
     /// Sort direction (default ascending).
     #[serde(default)]
     pub sort_order: SortOrder,
+    /// Sort: list of `field/direction` pairs (e.g. `[("genome_size", "desc"), ("taxon_id", "asc")]`).
+    /// Note: `sort_by` and `sort_order` are ignored if `sort` is present.
+    /// Corresponds to `--sort` CLI flag.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sort: Option<Vec<HashMap<String, SortOrder>>>,
     /// Include ancestrally derived estimated values (`&includeEstimates=true`).
     ///
     /// Defaults to `false` to match the API default and MCP server behaviour.
@@ -241,6 +248,7 @@ impl Default for QueryParams {
             lineage_summary_mode: LineageSummaryMode::default(),
             id_set: None,
             id_type: None,
+            sort: None,
         }
     }
 }

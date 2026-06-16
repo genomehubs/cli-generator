@@ -1,7 +1,7 @@
 use axum::{extract::Json, Extension};
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::{json, Value};
-use std::sync::Arc;
+use std::{collections::HashSet, sync::Arc};
 
 use super::deserialize_helpers;
 use crate::{index_name, request_shape::query_to_body_input, routes::ApiStatus, AppState};
@@ -255,11 +255,15 @@ pub async fn post_search_batch(
         });
     }
 
-    // Derive a TypesMap from startup metadata so build_search_body can select the
-    // correct typed-value docvalue field per attribute.
+    // Derive a TypesMap from the startup metadata cache so build_search_body can pick
+    // the single correct typed-value docvalue field per attribute.
+    let mut ranks_set: Option<HashSet<String>> = None;
+    let names_set: Option<HashSet<String>> = None;
     let types_map: Option<cli_generator::core::attr_types::TypesMap> =
         if let Some(ref arc) = state.cache {
             let guard = arc.read().await;
+            ranks_set = Some(HashSet::from_iter(guard.taxonomic_ranks.clone()));
+            // names_set = Some(HashSet::from_iter(guard.name_classes.clone()));
             Some(guard.as_types_map())
         } else {
             None
@@ -355,8 +359,14 @@ pub async fn post_search_batch(
                 //     }
                 // }
 
-                let search_body_input =
-                    query_to_body_input("search", nested_query, &params, types_map.clone());
+                let search_body_input = query_to_body_input(
+                    "search",
+                    nested_query,
+                    &params,
+                    types_map.clone(),
+                    ranks_set.clone(),
+                    names_set.clone(),
+                );
                 let b =
                     match cli_generator::core::query_builder::build_search_body(&search_body_input)
                     {
@@ -376,8 +386,14 @@ pub async fn post_search_batch(
             // Combine the bodies with OR or AND
             combine_es_bodies(bodies, &query.combine_with)
         } else {
-            let search_body_input =
-                query_to_body_input("search", &query, &params, types_map.clone());
+            let search_body_input = query_to_body_input(
+                "search",
+                &query,
+                &params,
+                types_map.clone(),
+                ranks_set.clone(),
+                names_set.clone(),
+            );
             match cli_generator::core::query_builder::build_search_body(&search_body_input) {
                 Ok(b) => b,
                 Err(e) => {

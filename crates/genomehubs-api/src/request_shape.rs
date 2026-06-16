@@ -1,5 +1,7 @@
 //! convert QueryParams/SearchQuery to SearchBodyInput
 
+use std::collections::{HashMap, HashSet};
+
 use cli_generator::core::query_builder::SearchBodyInput;
 use genomehubs_query::query::{Attribute, QueryParams, SearchQuery};
 
@@ -10,6 +12,8 @@ pub fn query_to_body_input(
     query: &SearchQuery,
     params: &QueryParams,
     types_map: Option<cli_generator::core::attr_types::TypesMap>,
+    ranks_set: Option<HashSet<String>>,
+    names_set: Option<HashSet<String>>,
 ) -> SearchBodyInput {
     let group = match query.index {
         genomehubs_query::query::SearchIndex::Taxon => "taxon",
@@ -94,6 +98,17 @@ pub fn query_to_body_input(
 
     let offset = (params.page.saturating_sub(1)) * size;
 
+    let mut sort = params.sort.clone().unwrap_or_default();
+    if sort.is_empty() {
+        // use sort_by if sort is empty
+        if let Some(sort_by) = &params.sort_by {
+            sort.push(HashMap::from([(
+                sort_by.clone(),
+                params.sort_order.clone(),
+            )]));
+        }
+    }
+
     SearchBodyInput {
         query: taxa_query,
         attributes: attributes_slice,
@@ -102,14 +117,12 @@ pub fn query_to_body_input(
         fields: fields_slice,
         optional_fields: None, // not currently supported in the API
         types_map,
+        names_set,
+        ranks_set,
         names: names_slice,
         ranks: ranks_slice,
         exclusions,
-        sort_by: params.sort_by.clone(),
-        sort_order: Some(match params.sort_order {
-            genomehubs_query::query::SortOrder::Asc => "asc".to_string(),
-            genomehubs_query::query::SortOrder::Desc => "desc".to_string(),
-        }),
+        sort: if sort.is_empty() { None } else { Some(sort) },
         size,
         offset,
     }

@@ -1,8 +1,9 @@
 use crate::core::attr_types::TypesMap;
 use crate::core::query::{Attribute, AttributeOperator, AttributeValue};
 use anyhow::Result;
+use genomehubs_query::query::SortOrder;
 use serde_json::{json, Value};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 /// Build a minimal ES query body for counting.
 ///
@@ -73,11 +74,12 @@ pub struct SearchBodyInput {
     pub names: Option<Vec<String>>,
     pub ranks: Option<Vec<String>>,
     pub exclusions: Option<HashMap<String, Vec<String>>>,
-    pub sort_by: Option<String>,
-    pub sort_order: Option<String>,
+    pub sort: Option<Vec<HashMap<String, SortOrder>>>,
     pub size: usize,
     pub offset: usize,
     pub types_map: Option<TypesMap>,
+    pub ranks_set: Option<HashSet<String>>,
+    pub names_set: Option<HashSet<String>>,
     pub group: Option<String>,
 }
 
@@ -1038,72 +1040,84 @@ pub fn build_search_body(input: &SearchBodyInput) -> Result<Value> {
     // to choose the correct processed summary field (e.g. half_float_value,
     // long_value). If the requested `sort_by` is not an attribute or
     // metadata is unavailable fall back to a reasonable default.
-    if let Some(sb_raw) = input.sort_by.as_ref() {
-        let order = input.sort_order.as_deref().unwrap_or("asc");
+    if let Some(sort) = input.sort.as_ref() {
+        let mut sort_array: Vec<Value> = Vec::new();
+        for sort_map in sort.iter() {
+            let (sb_raw, so_raw) = sort_map.iter().next().unwrap();
+            // Parse `field[:param]` form; default param is "value".
+            let mut parts = sb_raw.splitn(2, ':');
+            let by = parts.next().unwrap_or(sb_raw);
+            let mut param = parts.next().unwrap_or("value").to_string();
+            let order = match so_raw {
+                SortOrder::Asc => "asc",
+                SortOrder::Desc => "desc",
+            };
 
-        // Parse `field[:param]` form; default param is "value".
-        let mut parts = sb_raw.splitn(2, ':');
-        let by = parts.next().unwrap_or(sb_raw);
-        let mut param = parts.next().unwrap_or("value").to_string();
+            // helper: source subset values (JS `subsets.source`)
+            let is_source_param = |p: &str| -> bool {
+                matches!(p, "ancestor" | "descendant" | "direct" | "estimate")
+            };
 
-        // helper: source subset values (JS `subsets.source`)
-        let is_source_param =
-            |p: &str| -> bool { matches!(p, "ancestor" | "descendant" | "direct" | "estimate") };
-
-        // Attempt to pick a processed_simple param and derive the attributes field
-        let mut computed_sort_field: Option<String> = None;
-        if let Some(tm) = input.types_map.as_ref() {
-            if let Some(g) = input.group.as_ref() {
-                if let Some(group_map) = tm.get(g) {
-                    if let Some(meta) = group_map.get(by) {
-                        if let Some(psimple) = &meta.processed_simple {
-                            param = psimple.clone();
-                        }
-                        let type_field = if param != "value" && !is_source_param(&param) {
-                            param.clone()
-                        } else {
-                            let tname = meta.r#type.as_deref().unwrap_or("keyword");
-                            format!("{}_value", tname)
-                        };
-                        computed_sort_field = Some(format!("attributes.{}", type_field));
-                    }
-                }
-            }
-        }
-
-        let sort_field = computed_sort_field.unwrap_or_else(|| {
-            if by == "scientific_name"
-                || by == "taxon_id"
-                || by == "assembly_id"
-                || by == "feature_id"
-            {
-                by.to_string()
-            } else if by.contains('.') {
-                // metadata.field -> attributes.metadata.field
-                format!(
-                    "attributes.metadata.{}",
-                    by.split('.').skip(1).collect::<Vec<&str>>().join(".")
-                )
-            } else {
-                "attributes.long_value".to_string()
-            }
-        });
-
-        if sort_field.starts_with("attributes.") {
-            // Determine attribute key name for nested filter (use meta.name when available)
-            let mut key_name = by.to_string();
+            // Attempt to pick a processed_simple param and derive the attributes field
+            let mut computed_sort_field: Option<String> = None;
             if let Some(tm) = input.types_map.as_ref() {
                 if let Some(g) = input.group.as_ref() {
                     if let Some(group_map) = tm.get(g) {
                         if let Some(meta) = group_map.get(by) {
-                            key_name = meta.name.clone();
+                            if let Some(psimple) = &meta.processed_simple {
+                                param = psimple.clone();
+                            }
+                            let type_field = if param != "value" && !is_source_param(&param) {
+                                param.clone()
+                            } else {
+                                let tname = meta.r#type.as_deref().unwrap_or("keyword");
+                                format!("{}_value", tname)
+                            };
+                            computed_sort_field = Some(format!("attributes.{}", type_field));
                         }
                     }
                 }
             }
 
-            let mut sort_obj = serde_json::Map::new();
-            sort_obj.insert(
+            if let Some(ranks) = input.ranks_set.as_ref() {
+                if ranks.contains(by) {
+                    computed_sort_field = Some("lineage.scientific_name".to_string());
+                }
+            }
+
+            let sort_field = computed_sort_field.unwrap_or_else(|| {
+                if by == "scientific_name"
+                    || by == "taxon_id"
+                    || by == "assembly_id"
+                    || by == "feature_id"
+                {
+                    by.to_string()
+                } else if by.contains('.') {
+                    // metadata.field -> attributes.metadata.field
+                    format!(
+                        "attributes.metadata.{}",
+                        by.split('.').skip(1).collect::<Vec<&str>>().join(".")
+                    )
+                } else {
+                    "attributes.long_value".to_string()
+                }
+            });
+
+            if sort_field.starts_with("attributes.") {
+                // Determine attribute key name for nested filter (use meta.name when available)
+                let mut key_name = by.to_string();
+                if let Some(tm) = input.types_map.as_ref() {
+                    if let Some(g) = input.group.as_ref() {
+                        if let Some(group_map) = tm.get(g) {
+                            if let Some(meta) = group_map.get(by) {
+                                key_name = meta.name.clone();
+                            }
+                        }
+                    }
+                }
+
+                let mut sort_obj = serde_json::Map::new();
+                sort_obj.insert(
                 sort_field.clone(),
                 json!({
                     "mode": "max",
@@ -1111,11 +1125,23 @@ pub fn build_search_body(input: &SearchBodyInput) -> Result<Value> {
                     "nested": { "path": "attributes", "filter": { "term": { "attributes.key": key_name } } }
                 }),
             );
-            body["sort"] = Value::Array(vec![Value::Object(sort_obj)]);
-        } else {
-            let mut sort_obj = serde_json::Map::new();
-            sort_obj.insert(sort_field.clone(), json!({ "order": order }));
-            body["sort"] = Value::Array(vec![Value::Object(sort_obj)]);
+                sort_array.push(Value::Object(sort_obj));
+            } else if sort_field.starts_with("lineage.") {
+                let key_name = by.to_string();
+
+                let mut sort_obj = serde_json::Map::new();
+                sort_obj.insert(sort_field.clone(), json!({ "mode": "max",
+                    "order": order,
+                    "nested": { "path": "lineage", "filter": { "term": { "lineage.taxon_rank": key_name } } } }));
+                sort_array.push(Value::Object(sort_obj));
+            } else {
+                let mut sort_obj = serde_json::Map::new();
+                sort_obj.insert(sort_field.clone(), json!({ "order": order }));
+                sort_array.push(Value::Object(sort_obj));
+            }
+        }
+        if !sort_array.is_empty() {
+            body["sort"] = Value::Array(sort_array);
         }
     }
 

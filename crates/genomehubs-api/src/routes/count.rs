@@ -110,7 +110,7 @@ pub async fn post_count(
     let built_url =
         genomehubs_query::query::build_query_url(&query, &params, &state.es_base, "v3", "count");
 
-    let search_body_input = query_to_body_input("count", &query, &params, None);
+    let search_body_input = query_to_body_input("count", &query, &params, None, None, None);
     let mut body = match cli_generator::core::query_builder::build_search_body(&search_body_input) {
         Ok(b) => b,
         Err(e) => {

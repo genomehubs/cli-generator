@@ -1,6 +1,7 @@
 use axum::{extract::Json, Extension};
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::Value;
+use std::collections::HashSet;
 use std::sync::Arc;
 
 use genomehubs_query::query::chain::{collect_chain_refs, resolve_chain_refs};
@@ -161,20 +162,30 @@ pub async fn post_report(
 
     // Derive a TypesMap from the startup metadata cache so build_search_body can pick
     // the single correct typed-value docvalue field per attribute.
+    let mut ranks_set: Option<HashSet<String>> = None;
+    let names_set: Option<HashSet<String>> = None;
     let types_map: Option<cli_generator::core::attr_types::TypesMap> =
         if let Some(ref arc) = state.cache {
             let guard = arc.read().await;
+            ranks_set = Some(HashSet::from_iter(guard.taxonomic_ranks.clone()));
+            // names_set = Some(HashSet::from_iter(guard.name_classes.clone()));
             Some(guard.as_types_map())
         } else {
             None
         };
 
     // Build base query from search parameters
-    let base_query =
-        match build_report_query(&search_query, &params, &state.default_taxonomy, types_map) {
-            Ok(q) => q,
-            Err(e) => bail!(e),
-        };
+    let base_query = match build_report_query(
+        &search_query,
+        &params,
+        &state.default_taxonomy,
+        types_map,
+        ranks_set,
+        names_set,
+    ) {
+        Ok(q) => q,
+        Err(e) => bail!(e),
+    };
 
     // Dispatch to appropriate report handler
     let result = match report_type {
@@ -258,8 +269,11 @@ fn build_report_query(
     params: &QueryParams,
     _default_taxonomy: &str,
     types_map: Option<cli_generator::core::attr_types::TypesMap>,
+    ranks_set: Option<HashSet<String>>,
+    names_set: Option<HashSet<String>>,
 ) -> Result<Value, String> {
-    let search_body_input = query_to_body_input("report", query, params, types_map);
+    let search_body_input =
+        query_to_body_input("report", query, params, types_map, ranks_set, names_set);
 
     // Build full search body using query builder
     let body = cli_generator::core::query_builder::build_search_body(&search_body_input)

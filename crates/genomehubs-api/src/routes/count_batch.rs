@@ -392,7 +392,8 @@ pub async fn post_count_batch(
                 //     .as_ref()
                 //     .map(|t| format!("{}({})", t.filter_type.api_function(), t.names.join(",")));
 
-                let search_body_input = query_to_body_input("count", nested_query, &params, None);
+                let search_body_input =
+                    query_to_body_input("count", nested_query, &params, None, None, None);
                 let b =
                     match cli_generator::core::query_builder::build_search_body(&search_body_input)
                     {
@@ -472,7 +473,7 @@ pub async fn post_count_batch(
             // let taxa_query = resolved_taxa
             //     .as_ref()
             //     .map(|t| format!("{}({})", t.filter_type.api_function(), t.names.join(",")));
-            let search_body_input = query_to_body_input("count", &query, &params, None);
+            let search_body_input = query_to_body_input("count", &query, &params, None, None, None);
             match cli_generator::core::query_builder::build_search_body(&search_body_input) {
                 Ok(b) => b,
                 Err(e) => {

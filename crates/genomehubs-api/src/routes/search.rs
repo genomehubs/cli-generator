@@ -4,7 +4,7 @@ use axum::{
 };
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::{json, Value};
-use std::sync::Arc;
+use std::{collections::HashSet, sync::Arc};
 
 use super::deserialize_helpers;
 use crate::{
@@ -169,11 +169,14 @@ pub async fn post_search(
     };
 
     // Derive a TypesMap from the startup metadata cache so build_search_body can pick
-    // the single correct typed-value docvalue field (e.g. half_float_value) per attribute
-    // rather than requesting all possible typed-value fields.
+    // the single correct typed-value docvalue field per attribute.
+    let mut ranks_set: Option<HashSet<String>> = None;
+    let names_set: Option<HashSet<String>> = None;
     let types_map: Option<cli_generator::core::attr_types::TypesMap> =
         if let Some(ref arc) = state.cache {
             let guard = arc.read().await;
+            ranks_set = Some(HashSet::from_iter(guard.taxonomic_ranks.clone()));
+            // names_set = Some(HashSet::from_iter(guard.name_classes.clone()));
             Some(guard.as_types_map())
         } else {
             None
@@ -204,8 +207,14 @@ pub async fn post_search(
         // Build a body for each nested query
         let mut bodies: Vec<Value> = vec![];
         for nested_query in nested_queries {
-            let search_body_input =
-                query_to_body_input("search", nested_query, &params, types_map.clone());
+            let search_body_input = query_to_body_input(
+                "search",
+                nested_query,
+                &params,
+                types_map.clone(),
+                ranks_set.clone(),
+                names_set.clone(),
+            );
             let body =
                 match cli_generator::core::query_builder::build_search_body(&search_body_input) {
                     Ok(b) => b,
@@ -292,7 +301,14 @@ pub async fn post_search(
     // Single-query mode (existing behavior)
     let idx = index_name::resolve_index(&query.index, &state);
 
-    let search_body_input = query_to_body_input("search", &query, &params, types_map.clone());
+    let search_body_input = query_to_body_input(
+        "search",
+        &query,
+        &params,
+        types_map.clone(),
+        ranks_set.clone(),
+        names_set.clone(),
+    );
 
     let mut body = match cli_generator::core::query_builder::build_search_body(&search_body_input) {
         Ok(b) => b,
