@@ -116,6 +116,7 @@ pub fn query_to_body_input(
         group: Some(group.to_string()),
         fields: fields_slice,
         optional_fields: None, // not currently supported in the API
+        include_estimates: params.include_estimates,
         types_map,
         names_set,
         ranks_set,

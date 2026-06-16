@@ -70,6 +70,7 @@ pub struct SearchBodyInput {
     pub fields: Option<Vec<String>>,
     pub optional_fields: Option<Vec<String>>,
     pub attributes: Option<Vec<Attribute>>,
+    pub include_estimates: bool,
     pub rank: Option<String>,
     pub names: Option<Vec<String>>,
     pub ranks: Option<Vec<String>>,
@@ -252,6 +253,23 @@ pub fn build_search_body(input: &SearchBodyInput) -> Result<Value> {
                     json!({ "match": { "attributes.key": field } }),
                     json!({ "exists": { "field": exists_field } }),
                 ];
+                if !input.include_estimates {
+                    exists_filters.push(json!({
+                      "bool": {
+                        "should": [
+                          {
+                            "match": {
+                              "attributes.aggregation_source": "direct"
+                            }
+                          },{
+                            "match": {
+                              "attributes.aggregation_source": "descendant"
+                            }
+                          }
+                        ]
+                      }
+                    }));
+                }
                 if let Some(g) = input.group.as_ref() {
                     if g == &"taxon".to_string() {
                         exists_filters.push(
@@ -384,6 +402,7 @@ pub fn build_search_body(input: &SearchBodyInput) -> Result<Value> {
         }
     }
 
+    dbg!(&body);
     // If `names` parameter was provided (which restricts which classes of
     // taxon names to return), add a dedicated `taxon_names` nested wrapper
     // with an `inner_hits` block mirroring the fixture shape. Include a
