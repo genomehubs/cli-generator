@@ -10,8 +10,6 @@ pub mod chain;
 pub mod identifiers;
 pub mod url;
 
-use std::collections::HashMap;
-
 pub use attributes::{Attribute, AttributeOperator, AttributeSet, AttributeValue, Field, Modifier};
 pub use chain::{ChainError, ChainRef, NamedQuerySpec};
 pub use identifiers::{Identifiers, TaxaIdentifier, TaxonFilterType};
@@ -150,6 +148,19 @@ pub enum SearchIndex {
     Feature,
 }
 
+// ── SortEntry ───────────────────────────────────────────────────────────────
+
+/// Sort configuration entry for search results.
+/// entries have field and order keys, e.g. `{"by": "genome_size", "order": "desc"}` or `{"by": "taxon_id", "order": "asc"}`.
+/// Corresponds to the `--sort` CLI flag.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct SortConfig {
+    /// Field to sort results by.
+    pub by: String,
+    /// Sort direction (default ascending).
+    pub order: Option<SortOrder>,
+}
+
 // ── QueryParams ───────────────────────────────────────────────────────────────
 
 /// Execution parameters describing *how* to fetch and present results.
@@ -172,11 +183,11 @@ pub struct QueryParams {
     /// Sort direction (default ascending).
     #[serde(default)]
     pub sort_order: SortOrder,
-    /// Sort: list of `field/direction` pairs (e.g. `[("genome_size", "desc"), ("taxon_id", "asc")]`).
+    /// Sort: list of field and order pairs for sorting results, e.g. `[{"by": "genome_size", "order": "desc"}, {"by": "taxon_id", "order": "asc"}]`.
     /// Note: `sort_by` and `sort_order` are ignored if `sort` is present.
     /// Corresponds to `--sort` CLI flag.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub sort: Option<Vec<HashMap<String, SortOrder>>>,
+    pub sort: Option<Vec<SortConfig>>,
     /// Include ancestrally derived estimated values (`&includeEstimates=true`).
     ///
     /// Defaults to `false` to match the API default and MCP server behaviour.

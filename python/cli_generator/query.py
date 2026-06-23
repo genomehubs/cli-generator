@@ -99,8 +99,7 @@ class QueryBuilder:
         # QueryParams
         self._size: int = 10
         self._page: int = 1
-        self._sort_by: str | None = None
-        self._sort_order: str = "asc"
+        self._sort: list[tuple[str, str]] = []
         self._include_estimates: bool = False
         self._tidy: bool = False
         self._taxonomy: str = "ncbi"
@@ -578,10 +577,25 @@ class QueryBuilder:
         self._page = page
         return self
 
-    def set_sort(self, field: str, order: str = "asc") -> "QueryBuilder":
-        """Sort results by ``field`` in ``order`` (``"asc"`` or ``"desc"``)."""
-        self._sort_by = field
-        self._sort_order = order
+    def set_sort(self, sorts: list[tuple[str, str]]) -> "QueryBuilder":
+        """Set the sort order for results.
+
+        Args:
+            sorts: List of (field, order) tuples.  Order is ``"asc"`` or ``"desc"``.
+        """
+        self._sort = sorts
+        return self
+
+    def add_sort(self, field: str, order: str = "asc") -> "QueryBuilder":
+        """Add a sort key to the results.
+
+        Args:
+            field: Field name to sort by.
+            order: Sort order, either ``"asc"`` or ``"desc"``.
+        """
+        # check for duplicates and remove existing sort for the same field
+        self._sort = [(f, o) for f, o in self._sort if f != field]
+        self._sort.append((field, order))
         return self
 
     def set_include_estimates(self, value: bool) -> "QueryBuilder":
@@ -693,9 +707,8 @@ class QueryBuilder:
             "tidy": self._tidy,
             "taxonomy": self._taxonomy,
         }
-        if self._sort_by:
-            doc["sort_by"] = self._sort_by
-            doc["sort_order"] = self._sort_order
+        if self._sort:
+            doc["sort"] = [{"by": f, "order": o} for f, o in self._sort]
         if self._id_set:
             doc["id_set"] = self._id_set
         if self._id_type:
@@ -782,8 +795,7 @@ class QueryBuilder:
             qb._exclude_missing = []
             qb._size = 10
             qb._page = 1
-            qb._sort_by = None
-            qb._sort_order = "asc"
+            qb._sort = []
             qb._include_estimates = False
             qb._tidy = False
             qb._taxonomy = "ncbi"
@@ -813,11 +825,28 @@ class QueryBuilder:
         qb._exclude_missing = []
         qb._size = 10
         qb._page = 1
-        qb._sort_by = None
-        qb._sort_order = "asc"
+        qb._sort = []
         qb._include_estimates = False
         qb._tidy = False
         qb._taxonomy = "ncbi"
+        qb._query_yaml_override = query_yaml
+        qb._params_yaml_override = params_yaml
+        return qb
+
+    @classmethod
+    def from_yaml(cls, query_yaml: str, params_yaml: str, index: str = "taxon") -> "QueryBuilder":
+        """Create a :class:`QueryBuilder` pre-populated from YAML strings.
+
+        Args:
+            query_yaml: YAML string produced by the query schema.
+            params_yaml: YAML string produced by the params schema.
+            index: Index fallback when constructing the builder (default: "taxon").
+
+        Returns:
+            A :class:`QueryBuilder` whose `to_*_yaml()` methods will prefer the
+            supplied overrides.
+        """
+        qb = cls(index)
         qb._query_yaml_override = query_yaml
         qb._params_yaml_override = params_yaml
         return qb
@@ -838,11 +867,26 @@ class QueryBuilder:
         Returns:
             Fully encoded URL string.
         """
+        import yaml as _yaml
+
         from . import build_url as _build_url
+
+        # v2 build functions expect legacy params keys (sort_by/sort_order).
+        params_doc = _yaml.safe_load(self.to_params_yaml())
+        if isinstance(params_doc, dict) and "sort" in params_doc:
+            sort_list = params_doc.get("sort") or []
+            if isinstance(sort_list, list) and len(sort_list) > 0:
+                first = sort_list[0]
+                # Prefer explicit keys if present
+                params_doc["sort_by"] = first.get("by") if isinstance(first, dict) else None
+                params_doc["sort_order"] = first.get("order") if isinstance(first, dict) else None
+            # Remove modern `sort` key to avoid schema validation errors
+            params_doc.pop("sort", None)
+        params_yaml_compat = _yaml.safe_dump(params_doc, sort_keys=False)
 
         return _build_url(
             self.to_query_yaml(),
-            self.to_params_yaml(),
+            params_yaml_compat,
             api_base,
             api_version,
             endpoint,
@@ -915,11 +959,24 @@ class QueryBuilder:
         Returns:
             Fully encoded URL string.
         """
+        import yaml as _yaml
+
         from . import build_ui_url as _build_ui_url
+
+        # Ensure UI URL builder receives legacy params keys when needed
+        params_doc = _yaml.safe_load(self.to_params_yaml())
+        if isinstance(params_doc, dict) and "sort" in params_doc:
+            sort_list = params_doc.get("sort") or []
+            if isinstance(sort_list, list) and len(sort_list) > 0:
+                first = sort_list[0]
+                params_doc["sort_by"] = first.get("by") if isinstance(first, dict) else None
+                params_doc["sort_order"] = first.get("order") if isinstance(first, dict) else None
+            params_doc.pop("sort", None)
+        params_yaml_compat = _yaml.safe_dump(params_doc, sort_keys=False)
 
         return _build_ui_url(
             self.to_query_yaml(),
-            self.to_params_yaml(),
+            params_yaml_compat,
             ui_base,
             endpoint,
         )
@@ -928,6 +985,9 @@ class QueryBuilder:
         self,
         api_base: str = "https://goat.genomehubs.org/api",
         api_version: str = "v3",
+        *,
+        query_yaml: str | None = None,
+        params_yaml: str | None = None,
     ) -> int:
         """Fetch the count of records matching this query.
 
@@ -958,9 +1018,12 @@ class QueryBuilder:
             status = json.loads(parse_response_status(body_text))
             return int(status.get("hits") or 0)
 
+        qyaml = query_yaml if query_yaml is not None else self.to_query_yaml()
+        pyaml = params_yaml if params_yaml is not None else self.to_params_yaml()
+
         data = self._post_json(
             f"{api_base}/{api_version}/count",
-            {"query_yaml": self.to_query_yaml(), "params_yaml": self.to_params_yaml()},
+            {"query_yaml": qyaml, "params_yaml": pyaml},
         )
         status = json.loads(parse_response_status(json.dumps(data)))
         return int(status.get("hits") or 0)
@@ -970,6 +1033,9 @@ class QueryBuilder:
         format: str = "json",
         api_base: str = "https://goat.genomehubs.org/api",
         api_version: str = "v3",
+        *,
+        query_yaml: str | None = None,
+        params_yaml: str | None = None,
     ) -> Any:
         """Fetch results for this query.
 
@@ -998,9 +1064,12 @@ class QueryBuilder:
                 raw = resp.read().decode()
             return json.loads(raw) if format == "json" else raw
 
+        qyaml = query_yaml if query_yaml is not None else self.to_query_yaml()
+        pyaml = params_yaml if params_yaml is not None else self.to_params_yaml()
+
         data = self._post_json(
             f"{api_base}/{api_version}/search",
-            {"query_yaml": self.to_query_yaml(), "params_yaml": self.to_params_yaml()},
+            {"query_yaml": qyaml, "params_yaml": pyaml},
         )
         return data
 
@@ -1025,6 +1094,9 @@ class QueryBuilder:
         max_records: int | None = None,
         api_base: str = "https://goat.genomehubs.org/api",
         api_version: str = "v3",
+        *,
+        query_yaml: str | None = None,
+        params_yaml: str | None = None,
     ) -> list[dict[str, Any]]:
         """Fetch all matching records using cursor-based pagination.
 
@@ -1079,9 +1151,12 @@ class QueryBuilder:
         self.set_size(CHUNK_SIZE)
         try:
             while True:
+                qyaml = query_yaml if query_yaml is not None else self.to_query_yaml()
+                pyaml = params_yaml if params_yaml is not None else self.to_params_yaml()
+
                 payload: dict[str, Any] = {
-                    "query_yaml": self.to_query_yaml(),
-                    "params_yaml": self.to_params_yaml(),
+                    "query_yaml": qyaml,
+                    "params_yaml": pyaml,
                 }
                 if search_after_v3 is not None:
                     payload["search_after"] = search_after_v3
@@ -1102,6 +1177,9 @@ class QueryBuilder:
         self,
         api_base: str = "https://goat.genomehubs.org/api",
         api_version: str = "v3",
+        *,
+        query_yaml: str | None = None,
+        params_yaml: str | None = None,
     ) -> "pandas.DataFrame":
         """Execute a search and return results as a pandas DataFrame.
 
@@ -1124,13 +1202,18 @@ class QueryBuilder:
         except ModuleNotFoundError as e:
             raise ImportError("search_df() requires pandas. Install it with:\n\n" "    pip install pandas\n") from e
 
-        tsv = self.search(format="tsv", api_base=api_base, api_version=api_version)
+        tsv = self.search(
+            format="tsv", api_base=api_base, api_version=api_version, query_yaml=query_yaml, params_yaml=params_yaml
+        )
         return pd.read_csv(io.StringIO(tsv), sep="\t")
 
     def search_polars(
         self,
         api_base: str = "https://goat.genomehubs.org/api",
         api_version: str = "v3",
+        *,
+        query_yaml: str | None = None,
+        params_yaml: str | None = None,
     ) -> "polars.DataFrame":
         """Execute a search and return results as a polars DataFrame.
 
@@ -1153,7 +1236,9 @@ class QueryBuilder:
         except ModuleNotFoundError as e:
             raise ImportError("search_polars() requires polars. Install it with:\n\n" "    pip install polars\n") from e
 
-        tsv = self.search(format="tsv", api_base=api_base, api_version=api_version)
+        tsv = self.search(
+            format="tsv", api_base=api_base, api_version=api_version, query_yaml=query_yaml, params_yaml=params_yaml
+        )
         return pl.read_csv(io.StringIO(tsv), separator="\t")
 
     def report(
@@ -1161,6 +1246,9 @@ class QueryBuilder:
         report: "ReportBuilder",
         api_base: str = "https://goat.genomehubs.org/api",
         api_version: str = "v3",
+        *,
+        query_yaml: str | None = None,
+        params_yaml: str | None = None,
     ) -> Any:
         """Run a report query against the v3 ``/report`` endpoint.
 
@@ -1173,11 +1261,14 @@ class QueryBuilder:
         Returns:
             Raw ``report`` dict from the response.
         """
+        qyaml = query_yaml if query_yaml is not None else self.to_query_yaml()
+        pyaml = params_yaml if params_yaml is not None else self.to_params_yaml()
+
         data = self._post_json(
             f"{api_base}/{api_version}/report",
             {
-                "query_yaml": self.to_query_yaml(),
-                "params_yaml": self.to_params_yaml(),
+                "query_yaml": qyaml,
+                "params_yaml": pyaml,
                 "report_yaml": report.to_report_yaml(),
                 **({"display": report._display} if report._display is not None else {}),
                 **({"include_plot_spec": True} if report._include_plot_spec else {}),
@@ -2285,9 +2376,8 @@ class QueryBuilder:
             self._size = other._size
         if other._page != 1:
             self._page = other._page
-        if other._sort_by is not None:
-            self._sort_by = other._sort_by
-            self._sort_order = other._sort_order
+        if other._sort is not None:
+            self._sort = other._sort
         if not other._include_estimates:
             self._include_estimates = other._include_estimates
         if other._tidy:
@@ -2397,8 +2487,7 @@ class QueryBuilder:
         )
 
         if report is not None:
-            report_phrase = report.describe()
-            if report_phrase:
+            if report_phrase := report.describe():
                 # Strip trailing period from query part before appending
                 base = query_description.rstrip(".")
                 query_description = f"{base}, visualised as {report_phrase}."
@@ -2465,8 +2554,15 @@ class QueryBuilder:
             filters.append((name, operator_str, value_str))
 
         sorts: list[tuple[str, str]] = []
-        if self._sort_by is not None:
-            sorts.append((self._sort_by, self._sort_order))
+        if self._sort is not None:
+            # check for duplicate sort fields and raise an error if found
+            seen_fields = set()
+            for sort in self._sort:
+                field_name = sort[0]
+                if field_name in seen_fields:
+                    raise ValueError(f"Duplicate sort field '{field_name}' found in sort list")
+                seen_fields.add(field_name)
+            sorts.extend(self._sort)
 
         selections = [f["name"] for f in self._fields]
 

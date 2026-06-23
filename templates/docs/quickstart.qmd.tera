@@ -128,7 +128,7 @@ df = (
     .set_rank("species")
     .add_field("genome_size")
     .add_field("assembly_level")
-    .set_sort("genome_size", "desc")
+    .set_sort([{"by": "genome_size", "order": "desc"}])
     .set_size(20)
     .search_polars()
 )
@@ -146,7 +146,7 @@ df = (
     .set_taxa(["Mammalia"], filter_type="tree")
     .set_rank("species")
     .add_field("genome_size")
-    .set_sort("genome_size", "desc")
+    .set_sort([("genome_size", "desc")])
     .set_size(20)
     .search_df()
 )
@@ -163,7 +163,7 @@ df <- query_builder("taxon") |>
   set_rank("species") |>
   add_field("genome_size") |>
   add_field("assembly_level") |>
-  set_sort("genome_size", "desc") |>
+  set_sort(list(c("genome_size", "desc"))) |>
   set_size(20) |>
   search_df()
 
@@ -179,7 +179,7 @@ const records = await new QueryBuilder('taxon')
   .setTaxa(['Mammalia'], 'tree')
   .setRank('species')
   .addField('genome_size')
-  .setSort('genome_size', 'desc')
+  .setSort([['genome_size', 'desc']])
   .setSize(20)
   .search();
 

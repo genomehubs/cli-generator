@@ -84,8 +84,7 @@ class QueryBuilder:
         # QueryParams
         self._size: int = 10
         self._page: int = 1
-        self._sort_by: str | None = None
-        self._sort_order: str = "asc"
+        self._sort: list[tuple[str, str]] = []
         self._include_estimates: bool = False
         self._tidy: bool = False
         self._taxonomy: str = "ncbi"
@@ -434,10 +433,25 @@ class QueryBuilder:
         self._page = page
         return self
 
-    def set_sort(self, field: str, order: str = "asc") -> "QueryBuilder":
-        """Sort results by ``field`` in ``order`` direction."""
-        self._sort_by = field
-        self._sort_order = order
+    def set_sort(self, sorts: list[tuple[str, str]]) -> "QueryBuilder":
+        """Set the sort order for results.
+
+        Args:
+            sorts: List of (field, order) tuples.  Order is ``"asc"`` or ``"desc"``.
+        """
+        self._sort = sorts
+        return self
+
+    def add_sort(self, field: str, order: str = "asc") -> "QueryBuilder":
+        """Add a sort key to the results.
+
+        Args:
+            field: Field name to sort by.
+            order: Sort order, either ``"asc"`` or ``"desc"``.
+        """
+        # check for duplicates and remove existing sort for the same field
+        self._sort = [(f, o) for f, o in self._sort if f != field]
+        self._sort.append((field, order))
         return self
 
     def set_include_estimates(self, value: bool) -> "QueryBuilder":
@@ -547,9 +561,8 @@ class QueryBuilder:
             "tidy": self._tidy,
             "taxonomy": self._taxonomy,
         }
-        if self._sort_by:
-            doc["sort_by"] = self._sort_by
-            doc["sort_order"] = self._sort_order
+        if self._sort:
+            doc["sort"] = [{"by": f, "order": o} for f, o in self._sort]
         if self._id_set:
             doc["id_set"] = self._id_set
         if self._id_type:
@@ -610,9 +623,8 @@ class QueryBuilder:
             self._size = other._size
         if other._page != 1:
             self._page = other._page
-        if other._sort_by is not None:
-            self._sort_by = other._sort_by
-            self._sort_order = other._sort_order
+        if other._sort is not None:
+            self._sort = other._sort
         if not other._include_estimates:
             self._include_estimates = other._include_estimates
         if other._tidy:
@@ -695,8 +707,7 @@ class QueryBuilder:
             qb._exclude_missing = []
             qb._size = 10
             qb._page = 1
-            qb._sort_by = None
-            qb._sort_order = "asc"
+            qb._sort = []
             qb._include_estimates = False
             qb._tidy = False
             qb._taxonomy = "ncbi"
@@ -726,14 +737,16 @@ class QueryBuilder:
         qb._exclude_missing = []
         qb._size = 10
         qb._page = 1
-        qb._sort_by = None
-        qb._sort_order = "asc"
+        qb._sort = []
         qb._include_estimates = False
         qb._tidy = False
         qb._taxonomy = "ncbi"
         qb._query_yaml_override = query_yaml
         qb._params_yaml_override = params_yaml
         return qb
+
+    # `from_yaml` convenience constructor is intentionally kept out of the
+    # generated template to preserve canonical SDK parity across languages.
 
     def to_v2_url(self, endpoint: str = "search") -> str:
         """Build a fully-encoded {{ site_display_name }} v2 API URL.
@@ -768,34 +781,60 @@ class QueryBuilder:
         """
         return str(_ext.build_ui_url(self.to_query_yaml(), self.to_params_yaml(), endpoint))
 
-    def search(self, format: str = "json") -> Any:
-        """Execute a v3 search and return the response.
 
-        Args:
-            format: Output format — ``"json"`` (default) or ``"tsv"``.
+    def search(
+        self,
+        format: str = "json",
+        api_base: str = "https://goat.genomehubs.org/api",
+        api_version: str = "v3",
+        *,
+        query_yaml: str | None = None,
+        params_yaml: str | None = None,
+    ) -> Any:
+            """Fetch results for this query.
 
-        Returns:
-            Parsed JSON dict (v3 envelope) for ``"json"``; raw TSV text for ``"tsv"``.
-        """
-        import json
-        import urllib.request
+            Uses the v3 POST ``/search`` endpoint by default.  Pass
+            ``api_version="v2"`` to fall back to the legacy GET path.
 
-        if format != "json":
-            url = self.to_v2_url("search")
-            accept = {
-                "tsv": "text/tab-separated-values",
-            }.get(format, "application/json")
-            req = urllib.request.Request(url, headers={"Accept": accept})
-            with urllib.request.urlopen(req) as resp:
-                return resp.read().decode()
+            Args:
+                format: Response format — ``"json"`` (default) or ``"tsv"``.
+                api_base: Base URL of the API.
+                api_version: API version string (default: ``"v3"``).
 
-        data = self._post_json(
-            f"{API_BASE}/v3/search",
-            {"query_yaml": self.to_query_yaml(), "params_yaml": self.to_params_yaml()},
-        )
-        return data
+            Returns:
+                Parsed JSON (dict) for ``format="json"``; raw text for ``"tsv"``.
+            """
+            import json
+            import urllib.request
 
-    def search_df(self) -> pandas.DataFrame:
+            if api_version != "v3":
+                url = self.to_v2_url(api_base, api_version, "search")
+                accept = {
+                    "json": "application/json",
+                    "tsv": "text/tab-separated-values",
+                }.get(format, "application/json")
+                req = urllib.request.Request(url, headers={"Accept": accept})
+                with urllib.request.urlopen(req) as resp:
+                    raw = resp.read().decode()
+                return json.loads(raw) if format == "json" else raw
+
+            qyaml = query_yaml if query_yaml is not None else self.to_query_yaml()
+            pyaml = params_yaml if params_yaml is not None else self.to_params_yaml()
+
+            data = self._post_json(
+                f"{api_base}/{api_version}/search",
+                {"query_yaml": qyaml, "params_yaml": pyaml},
+            )
+            return data
+
+    def search_df(
+        self,
+        api_base: str = "https://goat.genomehubs.org/api",
+        api_version: str = "v3",
+        *,
+        query_yaml: str | None = None,
+        params_yaml: str | None = None,
+    ) -> pandas.DataFrame:
         """Execute a search and return results as a pandas DataFrame.
 
         Requires: ``pip install pandas``
@@ -817,10 +856,17 @@ class QueryBuilder:
                 "    pip install pandas\n"
             ) from e
 
-        tsv = self.search(format="tsv")
+        tsv = self.search(format="tsv", api_base=api_base, api_version=api_version, query_yaml=query_yaml, params_yaml=params_yaml)
         return pd.read_csv(io.StringIO(tsv), sep="\t")
 
-    def search_polars(self) -> polars.DataFrame:
+    def search_polars(
+        self,
+        api_base: str = "https://goat.genomehubs.org/api",
+        api_version: str = "v3",
+        *,
+        query_yaml: str | None = None,
+        params_yaml: str | None = None,
+    ) -> polars.DataFrame:
         """Execute a search and return results as a polars DataFrame.
 
         Requires: ``pip install polars``
@@ -842,7 +888,7 @@ class QueryBuilder:
                 "    pip install polars\n"
             ) from e
 
-        tsv = self.search(format="tsv")
+        tsv = self.search(format="tsv", api_base=api_base, api_version=api_version, query_yaml=query_yaml, params_yaml=params_yaml)
         return pl.read_csv(io.StringIO(tsv), separator="\t")
 
 
@@ -866,6 +912,11 @@ class QueryBuilder:
     def search_all(
         self,
         max_records: int | None = None,
+        api_base: str = "https://goat.genomehubs.org/api",
+        api_version: str = "v3",
+        *,
+        query_yaml: str | None = None,
+        params_yaml: str | None = None,
     ) -> list[dict[str, Any]]:
         """Fetch all matching records using v3 cursor-based pagination.
 
@@ -875,16 +926,46 @@ class QueryBuilder:
         Args:
             max_records: Maximum total records to return.  ``None`` means no
                 limit.
+            api_base: Base URL of the API.
+            api_version: API version string (default: ``"v3"``).
 
         Returns:
-            List of flat record dicts as produced by ``parse_search_json``.
+            List of flat record dicts in the same format as
+            :func:`~cli_generator.parse_search_json` output.
         """
         import json
+
+        from . import parse_paginated_json, parse_search_json
 
         CHUNK_SIZE = 1_000
         cap: float = float("inf") if max_records is None else float(max_records)
         all_records: list[dict[str, Any]] = []
-        search_after: Any = None
+
+        if api_version != "v3":
+            import urllib.parse
+            import urllib.request
+
+            search_after: list[Any] | None = None
+            while True:
+                base_url = self.to_v2_url(api_base, api_version, "searchPaginated")
+                sep = "&" if "?" in base_url else "?"
+                url = base_url + f"{sep}size={CHUNK_SIZE}"
+                if search_after is not None:
+                    url += "&searchAfter=" + urllib.parse.quote(json.dumps(search_after))
+                req = urllib.request.Request(url, headers={"Accept": "application/json"})
+                with urllib.request.urlopen(req) as resp:
+                    raw: str = resp.read().decode()
+                page: dict[str, Any] = json.loads(parse_paginated_json(raw))
+                records: list[dict[str, Any]] = page.get("records", [])
+                remaining = int(cap) - len(all_records)
+                all_records.extend(records[:remaining])
+                if not page.get("hasMore", False) or len(all_records) >= cap:
+                    break
+                search_after = page.get("searchAfter")
+            return all_records
+
+        # v3: cursor-based POST loop
+        search_after_v3: Any = None
         orig_size = self._size
         self.set_size(CHUNK_SIZE)
         try:
@@ -910,36 +991,81 @@ class QueryBuilder:
 
         return all_records[:max_records]
 
-    def count(self) -> int:
-        """Execute a v3 count query and return the hit count."""
+    def count(
+        self,
+        api_base: str = "https://goat.genomehubs.org/api",
+        api_version: str = "v3",
+        *,
+        query_yaml: str | None = None,
+        params_yaml: str | None = None,
+    ) -> int:
+        """Fetch the count of records matching this query.
+
+        Uses the v3 POST ``/count`` endpoint by default.  Pass
+        ``api_version="v2"`` to fall back to the legacy GET ``/search``
+        path (returns ``status.hits`` with ``size=0``).
+
+        Args:
+            api_base: Base URL of the API.
+            api_version: API version string (default: ``"v3"``).
+
+        Returns:
+            Number of matching records.
+        """
         import json
 
-        data = self._post_json(
-            f"{API_BASE}/v3/count",
-            {"query_yaml": self.to_query_yaml(), "params_yaml": self.to_params_yaml()},
-        )
-        status = json.loads(_ext.parse_response_status(json.dumps(data)))
-        hits = status.get("hits", 0)
-        try:
-            return int(hits)
-        except Exception:
-            return int(float(hits)) if hits else 0
+        from . import parse_response_status
 
-    def report(self, report: "ReportBuilder") -> Any:
+        if api_version != "v3":
+            import urllib.request
+
+            counter = QueryBuilder(self._index)
+            counter.merge(self)
+            counter.set_size(0)
+            url = counter.to_v2_url(api_base, api_version, "search")
+            with urllib.request.urlopen(url) as resp:
+                body_text = resp.read().decode("utf-8")
+            status = json.loads(parse_response_status(body_text))
+            return int(status.get("hits") or 0)
+
+        qyaml = query_yaml if query_yaml is not None else self.to_query_yaml()
+        pyaml = params_yaml if params_yaml is not None else self.to_params_yaml()
+
+        data = self._post_json(
+            f"{api_base}/{api_version}/count",
+            {"query_yaml": qyaml, "params_yaml": pyaml},
+        )
+        status = json.loads(parse_response_status(json.dumps(data)))
+        return int(status.get("hits") or 0)
+
+    def report(
+        self,
+        report: "ReportBuilder",
+        api_base: str = "https://goat.genomehubs.org/api",
+        api_version: str = "v3",
+        *,
+        query_yaml: str | None = None,
+        params_yaml: str | None = None,
+    ) -> Any:
         """Run a report query against the v3 ``/report`` endpoint.
 
         Args:
             report: A :class:`ReportBuilder` instance describing the report
                 configuration.
+            api_base: Base URL of the API.
+            api_version: API version string (default: ``"v3"``).
 
         Returns:
             Raw ``report`` dict from the response.
         """
+        qyaml = query_yaml if query_yaml is not None else self.to_query_yaml()
+        pyaml = params_yaml if params_yaml is not None else self.to_params_yaml()
+
         data = self._post_json(
-            f"{API_BASE}/v3/report",
+            f"{api_base}/{api_version}/report",
             {
-                "query_yaml": self.to_query_yaml(),
-                "params_yaml": self.to_params_yaml(),
+                "query_yaml": qyaml,
+                "params_yaml": pyaml,
                 "report_yaml": report.to_report_yaml(),
                 **({"display": report._display} if report._display is not None else {}),
                 **({"include_plot_spec": True} if report._include_plot_spec else {}),
@@ -957,7 +1083,7 @@ class QueryBuilder:
         """Run a batch of reports and return a list of results.
 
         Each entry in ``reports`` may be either a ``ReportBuilder`` (which
-        uses the calling builder's embedded query) or a ``(QueryBuilder,
+        uses the calling builder\'s embedded query) or a ``(QueryBuilder,
         ReportBuilder)`` tuple for per-item queries. The method posts a
         `POST /v3/report/batch` request and returns the parsed results.
         """
@@ -1771,8 +1897,15 @@ class QueryBuilder:
             filters.append((name, operator_str, value_str))
 
         sorts: list[tuple[str, str]] = []
-        if self._sort_by is not None:
-            sorts.append((self._sort_by, self._sort_order))
+        if self._sort is not None:
+            # check for duplicate sort fields and raise an error if found
+            seen_fields = set()
+            for sort in self._sort:
+                field_name = sort[0]
+                if field_name in seen_fields:
+                    raise ValueError(f"Duplicate sort field '{field_name}' found in sort list")
+                seen_fields.add(field_name)
+            sorts.extend(self._sort)
 
         selections = [f["name"] for f in self._fields]
 

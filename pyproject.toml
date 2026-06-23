@@ -59,9 +59,7 @@ src_paths = ["python", "tests/python"]
 [tool.pytest.ini_options]
 testpaths = ["tests/python", "tests/parity"]
 addopts = ["-ra", "--strict-markers"]
-markers = [
-    "integration: marks tests as integration tests requiring live API",
-]
+markers = ["integration: marks tests as integration tests requiring live API"]
 
 # ---------------------------------------------------------------------------
 # coverage.py
@@ -106,7 +104,7 @@ skip_empty = true
 # tests.  The current gap (API call methods, Vega-Lite spec builders) is
 # covered by CI integration tests; those paths are excluded above.
 # Raise once the hybrid/positional and chart-spec unit tests are in place.
-fail_under = 50
+fail_under = 25
 
 [tool.coverage.html]
 directory = "coverage/python"

@@ -1,9 +1,9 @@
 //! convert QueryParams/SearchQuery to SearchBodyInput
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 
 use cli_generator::core::query_builder::SearchBodyInput;
-use genomehubs_query::query::{Attribute, QueryParams, SearchQuery};
+use genomehubs_query::query::{Attribute, QueryParams, SearchQuery, SortConfig};
 
 // Convert a `SearchQuery` plus `QueryParams` to a `SearchBodyInput` for use in the API request body.
 
@@ -102,10 +102,10 @@ pub fn query_to_body_input(
     if sort.is_empty() {
         // use sort_by if sort is empty
         if let Some(sort_by) = &params.sort_by {
-            sort.push(HashMap::from([(
-                sort_by.clone(),
-                params.sort_order.clone(),
-            )]));
+            sort.push(SortConfig {
+                by: sort_by.clone(),
+                order: Some(params.sort_order.clone()),
+            });
         }
     }
 

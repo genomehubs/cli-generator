@@ -149,11 +149,11 @@ FIXTURE_TO_BUILDER = {
     "sorting_by_chromosome_count": lambda: QueryBuilder("taxon")
     .add_attribute("chromosome_count", "gt", "10")
     .add_field("chromosome_count")
-    .set_sort("chromosome_count", "asc"),
+    .set_sort([("chromosome_count", "asc")]),
     "sorting_descending_order": lambda: QueryBuilder("taxon")
     .add_attribute("c_value", "ge", "0.5")
     .add_field("c_value")
-    .set_sort("c_value", "desc"),
+    .set_sort([("c_value", "desc")]),
     "with_taxonomy_param": lambda: QueryBuilder("taxon")
     .add_attribute("assembly_level", "eq", "complete genome")
     .add_field("assembly_level")

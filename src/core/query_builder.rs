@@ -1,7 +1,7 @@
 use crate::core::attr_types::TypesMap;
 use crate::core::query::{Attribute, AttributeOperator, AttributeValue};
 use anyhow::Result;
-use genomehubs_query::query::SortOrder;
+use genomehubs_query::query::{SortConfig, SortOrder};
 use serde_json::{json, Value};
 use std::collections::{HashMap, HashSet};
 
@@ -75,13 +75,50 @@ pub struct SearchBodyInput {
     pub names: Option<Vec<String>>,
     pub ranks: Option<Vec<String>>,
     pub exclusions: Option<HashMap<String, Vec<String>>>,
-    pub sort: Option<Vec<HashMap<String, SortOrder>>>,
+    pub sort: Option<Vec<SortConfig>>,
     pub size: usize,
     pub offset: usize,
     pub types_map: Option<TypesMap>,
     pub ranks_set: Option<HashSet<String>>,
     pub names_set: Option<HashSet<String>>,
     pub group: Option<String>,
+}
+
+/// extract prefix, name and negation flag from a name string like "name", "scienticic_name:name", "!name", "!common_name:name"
+fn parse_name_string(name_str: &str) -> (Option<String>, String, String, bool) {
+    let mut negated = false;
+    let mut s = name_str.trim();
+    if s.starts_with('!') {
+        negated = true;
+        s = &s[1..];
+    }
+    // if * in name, use wildcard query on taxon_names.name instead of match
+    let match_type = if s.contains('*') || s.contains('?') {
+        "wildcard"
+    } else {
+        "match"
+    };
+    let parts: Vec<&str> = s.splitn(2, ':').collect();
+    if parts.len() == 2 {
+        let mut prefix = parts[0];
+        if prefix.starts_with('!') {
+            negated = true;
+            prefix = &prefix[1..];
+        }
+        (
+            Some(prefix.replace(" ", "_").to_lowercase()),
+            parts[1].to_lowercase(),
+            match_type.to_string(),
+            negated,
+        )
+    } else {
+        (
+            None,
+            parts[0].to_lowercase(),
+            match_type.to_string(),
+            negated,
+        )
+    }
 }
 
 /// Build a minimal ES search body for simple queries.
@@ -402,7 +439,6 @@ pub fn build_search_body(input: &SearchBodyInput) -> Result<Value> {
         }
     }
 
-    dbg!(&body);
     // If `names` parameter was provided (which restricts which classes of
     // taxon names to return), add a dedicated `taxon_names` nested wrapper
     // with an `inner_hits` block mirroring the fixture shape. Include a
@@ -907,73 +943,100 @@ pub fn build_search_body(input: &SearchBodyInput) -> Result<Value> {
     }
 
     if let Some(expr) = taxa_expr {
-        let tax_filter = match expr {
+        let mut should_items: Vec<Value> = Vec::new();
+        let mut must_not_items: Vec<Value> = Vec::new();
+        match expr {
             TaxaExpr::Name(name) => {
                 // For tax_name(X): match exact name or ID (supports comma-separated list)
                 // Split by comma and create OR clause for each value
                 let names: Vec<&str> = name.split(',').map(|s| s.trim()).collect();
-                let name_queries: Vec<serde_json::Value> = names
-                    .iter()
-                    .flat_map(|n| {
-                        let lower = n.to_lowercase();
-                        vec![
-                            json!({
-                                "nested": {
+                for name in names {
+                    let (maybe_type, lower, match_type, negated) = parse_name_string(name);
+                    let mut name_filter: Vec<serde_json::Value> =
+                        vec![json!({ "match": { "taxon_id": &lower } })];
+                    if let Some(filter_type) = maybe_type {
+                        if filter_type == "scientific_name" {
+                            name_filter =
+                                vec![json!({ &match_type: { "scientific_name": &lower } })];
+                        } else if filter_type != "taxon_id" {
+                            name_filter = vec![json!({ "nested": {
                                     "path": "taxon_names",
                                     "query": {
                                         "bool": {
-                                            "filter": [{ "match": { "taxon_names.name": &lower } }]
+                                            "must": [
+                                                { &match_type: { "taxon_names.name": &lower } },
+                                                { "match": { "taxon_names.class": filter_type } }
+                                            ]
                                         }
                                     }
                                 }
-                            }),
-                            json!({ "match": { "taxon_id": &lower } }),
-                        ]
-                    })
-                    .collect();
-
-                json!({
-                    "bool": {
-                        "should": name_queries
+                            })];
+                        }
+                    } else {
+                        name_filter.push(json!({ "nested": {
+                                "path": "taxon_names",
+                                "query": {
+                                    "bool": {
+                                        "filter": { &match_type: { "taxon_names.name": &lower } }
+                                    }
+                                }
+                            }
+                        }));
+                    };
+                    let items = json!({
+                        "bool": {
+                            "should": name_filter
+                        }
+                    });
+                    if negated {
+                        must_not_items.push(items);
+                    } else {
+                        should_items.push(items);
                     }
-                })
+                }
             }
             TaxaExpr::Tree(query_term) => {
                 // For tax_tree(X): match X and all descendants in lineage by taxon_id or scientific_name
                 // Supports comma-separated list
                 let terms: Vec<&str> = query_term.split(',').map(|s| s.trim()).collect();
-                let tree_queries: Vec<serde_json::Value> = terms
-                    .iter()
-                    .flat_map(|t| {
-                        let lower = t.to_lowercase();
-                        vec![
-                            json!({ "match": { "taxon_id": &lower } }),
-                            json!({
-                                "nested": {
-                                    "path": "lineage",
-                                    "query": {
-                                        "bool": {
-                                            "filter": [{
-                                                "bool": {
-                                                    "should": [
-                                                        { "match": { "lineage.taxon_id": &lower } },
-                                                        { "match": { "lineage.scientific_name": &lower } }
-                                                    ]
-                                                }
-                                            }]
-                                        }
+                for term in terms {
+                    let (_maybe_type, lower, match_type, negated) = parse_name_string(term);
+
+                    let clause = vec![
+                        json!({ "match": { "taxon_id": &lower } }),
+                        json!({ &match_type: { "scientific_name": &lower } }),
+                        json!({
+                            "nested": {
+                                "path": "lineage",
+                                "query": {
+                                    "bool": {
+                                        "filter": [{
+                                            "bool": {
+                                                "should": [
+                                                    { "match": { "lineage.taxon_id": &lower } },
+                                                    { &match_type: { "lineage.scientific_name": &lower } }
+                                                ]
+                                            }
+                                        }]
                                     }
                                 }
-                            }),
-                        ]
-                    })
-                    .collect();
-
-                json!({
-                    "bool": {
-                        "should": tree_queries
+                            }
+                        }),
+                    ];
+                    if negated {
+                        must_not_items.push(json!({
+                            "bool": {
+                                "should": clause
+                            }
+                        }));
+                    } else {
+                        should_items.push(json!({
+                            "bool": {
+                                "should": clause
+                            }
+                        }));
                     }
-                })
+                }
             }
             TaxaExpr::Lineage(query_term) => {
                 // For tax_lineage(X): return records that ARE X (the ancestors).
@@ -998,9 +1061,15 @@ pub fn build_search_body(input: &SearchBodyInput) -> Result<Value> {
                             }
                         ]
                     }
-                })
+                });
             }
         };
+        let tax_filter = json!({
+            "bool": {
+                "should": should_items,
+                "must_not": must_not_items
+            }
+        });
         body["query"]["bool"]["filter"]
             .as_array_mut()
             .unwrap()
@@ -1061,15 +1130,16 @@ pub fn build_search_body(input: &SearchBodyInput) -> Result<Value> {
     // metadata is unavailable fall back to a reasonable default.
     if let Some(sort) = input.sort.as_ref() {
         let mut sort_array: Vec<Value> = Vec::new();
-        for sort_map in sort.iter() {
-            let (sb_raw, so_raw) = sort_map.iter().next().unwrap();
+        for sort_cfg in sort.iter() {
+            let (sb_raw, so_raw) = (&sort_cfg.by, &sort_cfg.order);
             // Parse `field[:param]` form; default param is "value".
             let mut parts = sb_raw.splitn(2, ':');
             let by = parts.next().unwrap_or(sb_raw);
             let mut param = parts.next().unwrap_or("value").to_string();
             let order = match so_raw {
-                SortOrder::Asc => "asc",
-                SortOrder::Desc => "desc",
+                Some(SortOrder::Asc) => "asc",
+                Some(SortOrder::Desc) => "desc",
+                None => "asc", // default to ascending if order is not specified
             };
 
             // helper: source subset values (JS `subsets.source`)

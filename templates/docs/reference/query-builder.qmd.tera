@@ -275,9 +275,14 @@ qb.addExcludeAncestral('c_value');
 
 ### `set_page(n)` — page number, 1-based (default `1`)
 
-### `set_sort(field, order="asc")`
+### `set_sort(sorts)`
 
-Sort results.  `order` is `"asc"` or `"desc"`.
+Sort results. `sorts` is a list of `(field, order)` pairs. `order` is `"asc"` or `"desc"`.
+
+### `add_sort(field, order="asc")`
+
+Append a single sort key to the existing sort list. `field` is the field name to sort
+by and `order` is either `"asc"` or `"desc"` (default `"asc"`).
 
 ### `set_include_estimates(value)` — include estimated values (default `False`)
 

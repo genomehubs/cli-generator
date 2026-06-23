@@ -16,7 +16,7 @@ fn equality_operator() {
         "index: taxon\nattributes:\n  - name: assembly_level\n    operator: eq\n    value: chromosome\n"
     );
     let params = default_params();
-    let search_body_input = query_to_body_input("search", &q, &params, None);
+    let search_body_input = query_to_body_input("search", &q, &params, None, None, None);
     let body = match build_search_body(&search_body_input) {
         Ok(b) => b,
         Err(e) => panic!("failed to build body: {}", e),
@@ -33,7 +33,7 @@ fn inequality_not_equal() {
         "index: taxon\nattributes:\n  - name: assembly_level\n    operator: ne\n    value: contig\n"
     );
     let params = default_params();
-    let search_body_input = query_to_body_input("search", &q, &params, None);
+    let search_body_input = query_to_body_input("search", &q, &params, None, None, None);
     let body = match build_search_body(&search_body_input) {
         Ok(b) => b,
         Err(e) => panic!("failed to build body: {}", e),
@@ -48,7 +48,7 @@ fn range_gte() {
         "index: taxon\nattributes:\n  - name: genome_size\n    operator: gte\n    value: \"1000000000\"\n"
     );
     let params = default_params();
-    let search_body_input = query_to_body_input("search", &q, &params, None);
+    let search_body_input = query_to_body_input("search", &q, &params, None, None, None);
     let body = match build_search_body(&search_body_input) {
         Ok(b) => b,
         Err(e) => panic!("failed to build body: {}", e),
@@ -62,7 +62,7 @@ fn range_gte() {
 fn field_projection() {
     let q = make_query("index: taxon\nfields:\n  - name: genome_size\n");
     let params = default_params();
-    let search_body_input = query_to_body_input("search", &q, &params, None);
+    let search_body_input = query_to_body_input("search", &q, &params, None, None, None);
     let body = match build_search_body(&search_body_input) {
         Ok(b) => b,
         Err(e) => panic!("failed to build body: {}", e),
@@ -75,7 +75,7 @@ fn field_projection() {
 fn pagination_offset() {
     let params = QueryParams::from_yaml("size: 50\npage: 3\ntaxonomy: ncbi\n").unwrap();
     let q = make_query("index: taxon\n");
-    let search_body_input = query_to_body_input("search", &q, &params, None);
+    let search_body_input = query_to_body_input("search", &q, &params, None, None, None);
     let body = match cli_generator::core::query_builder::build_search_body(&search_body_input) {
         Ok(b) => b,
         Err(e) => panic!("failed to build body: {}", e),

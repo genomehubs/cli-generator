@@ -147,10 +147,16 @@ CANONICAL_METHODS = {
         "r_name": "set_page",
     },
     "set_sort": {
-        "params": ["sort_by", "direction"],
+        "params": ["sorts"],
         "python_name": "set_sort",
         "js_name": "setSort",
         "r_name": "set_sort",
+    },
+    "add_sort": {
+        "params": ["sort_by", "sort_order"],
+        "python_name": "add_sort",
+        "js_name": "addSort",
+        "r_name": "add_sort",
     },
     "set_include_estimates": {
         "params": ["value"],

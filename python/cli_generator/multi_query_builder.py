@@ -25,6 +25,7 @@ Typical usage::
 
 from __future__ import annotations
 
+from dataclasses import field
 from pathlib import Path
 from typing import Any
 
@@ -61,8 +62,7 @@ class MultiQueryBuilder:
         self._queries: list[QueryBuilder] = []
         # Shared execution params — mirror QueryBuilder defaults.
         self._size: int = 10
-        self._sort_by: str | None = None
-        self._sort_order: str = "asc"
+        self._sort: list[tuple[str, str]] = []
         self._include_estimates: bool = False
         self._taxonomy: str = "ncbi"
         self._fields: list[str | dict[str, Any]] = []
@@ -76,10 +76,18 @@ class MultiQueryBuilder:
         self._size = size
         return self
 
-    def set_sort(self, field: str, order: str = "asc") -> "MultiQueryBuilder":
+    def set_sort(self, sorts: list[tuple[str, str]]) -> "MultiQueryBuilder":
+        """Set the sort order for results (shared).
+
+        Args:
+            sorts: List of (field, order) tuples.  Order is ``"asc"`` or ``"desc"``.
+        """
+        self._sort = list(sorts)
+        return self
+
+    def add_sort(self, field: str, order: str = "asc") -> "MultiQueryBuilder":
         """Sort results by ``field`` in ``order`` (shared)."""
-        self._sort_by = field
-        self._sort_order = order
+        self._sort.append((field, order))
         return self
 
     def set_include_estimates(self, value: bool) -> "MultiQueryBuilder":
@@ -149,12 +157,11 @@ class MultiQueryBuilder:
                     f"Query {len(self._queries)}: size={qb._size} overrides " f"MultiQueryBuilder size={self._size}",
                     stacklevel=2,
                 )
-            if qb._sort_by is not None and qb._sort_by != self._sort_by:
+            if qb._sort is not None and qb._sort != self._sort:
                 import warnings
 
                 warnings.warn(
-                    f"Query {len(self._queries)}: sort={qb._sort_by}:{qb._sort_order} "
-                    f"overrides MultiQueryBuilder sort={self._sort_by}:{self._sort_order}",
+                    f"Query {len(self._queries)}: sort={qb._sort} overrides " f"MultiQueryBuilder sort={self._sort}",
                     stacklevel=2,
                 )
         self._queries.append(qb)
@@ -213,8 +220,7 @@ class MultiQueryBuilder:
         if "size" in shared:
             self.set_size(int(shared["size"]))
         if "sort" in shared:
-            field, _, order = str(shared["sort"]).partition(":")
-            self.set_sort(field, order or "asc")
+            self.set_sort([(str(s[0]), str(s[1])) for s in shared["sort"]])
         if "include_estimates" in shared:
             self.set_include_estimates(bool(shared["include_estimates"]))
         if "taxonomy" in shared:
@@ -326,9 +332,8 @@ class MultiQueryBuilder:
                     search_obj["names"] = names_str
                 if ranks_str:
                     search_obj["ranks"] = ranks_str
-                if self._sort_by:
-                    search_obj["sortBy"] = self._sort_by
-                    search_obj["sortOrder"] = self._sort_order
+                if self._sort:
+                    search_obj["sort"] = [{"by": f, "order": o} for f, o in self._sort]
                 searches.append(search_obj)
 
             body = json.dumps({"searches": searches}).encode()

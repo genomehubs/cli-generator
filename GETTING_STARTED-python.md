@@ -45,7 +45,7 @@ count = qb.count()
 | **Add field**           | `.add_field("genome_size")`                   |
 | **Filter by attribute** | `.add_attribute("genome_size", "ge", "1G")`   |
 | **Set result size**     | `.set_size(100)`                              |
-| **Sort results**        | `.set_sort("genome_size", "desc")`            |
+| **Sort results**        | `.set_sort([('genome_size', 'desc')])`        |
 
 ### Fetching & Parsing
 
@@ -135,7 +135,7 @@ qb = (
     .add_attribute("genome_size", "exists")
     .add_field("genome_size")
     .add_field("assembly_span")
-    .set_sort("genome_size", "desc")
+    .set_sort([('genome_size', 'desc')])
     .set_size(50)
 )
 

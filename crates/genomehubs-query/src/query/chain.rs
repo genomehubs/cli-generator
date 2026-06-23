@@ -103,6 +103,7 @@ impl NamedQuerySpec {
                     "assembly" => SearchIndex::Assembly,
                     "sample" => SearchIndex::Sample,
                     "taxon" => SearchIndex::Taxon,
+                    "feature" => SearchIndex::Feature,
                     _ => return None,
                 };
                 (Some(index), rest.trim().to_string())

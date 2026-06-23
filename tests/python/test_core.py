@@ -198,10 +198,9 @@ def test_query_builder_set_ranks() -> None:
 def test_query_builder_set_sort() -> None:
     import yaml
 
-    q = QueryBuilder("taxon").set_sort("genome_size", "desc")
+    q = QueryBuilder("taxon").set_sort([("genome_size", "desc")])
     params = yaml.safe_load(q.to_params_yaml())
-    assert params["sort_by"] == "genome_size"
-    assert params["sort_order"] == "desc"
+    assert params["sort"] == [{"by": "genome_size", "order": "desc"}]
 
 
 def test_query_builder_set_include_estimates() -> None:
@@ -511,7 +510,7 @@ def test_snippet_includes_multiple_filters() -> None:
 
 def test_snippet_includes_sort() -> None:
     """Snippet contains sort call when sort is set."""
-    q = QueryBuilder("taxon").set_sort("genome_size", "desc")
+    q = QueryBuilder("taxon").set_sort([("genome_size", "desc")])
     code = q.snippet()["python"]
     assert "genome_size" in code
     assert "sort" in code.lower() or "desc" in code
@@ -541,7 +540,7 @@ def test_snippet_is_valid_python_syntax() -> None:
         QueryBuilder("taxon")
         .add_attribute("genome_size", operator=">=", value="1000000000")
         .add_field("organism_name")
-        .set_sort("genome_size", "desc")
+        .set_sort([("genome_size", "desc")])
     )
     code = q.snippet(site_name="goat", sdk_name="goat_sdk")["python"]
     # Raises SyntaxError if the generated code is invalid Python.
@@ -591,7 +590,7 @@ def test_r_snippet_includes_multiple_filters() -> None:
 
 def test_r_snippet_includes_sort() -> None:
     """R snippet contains sort directive."""
-    q = QueryBuilder("taxon").set_sort("genome_size", "desc")
+    q = QueryBuilder("taxon").set_sort([("genome_size", "desc")])
     code = q.snippet(languages=["r"])["r"]
     assert "genome_size" in code
     assert "sort" in code.lower() or "desc" in code
@@ -618,7 +617,7 @@ def test_r_snippet_is_valid_r_code() -> None:
         QueryBuilder("taxon")
         .add_attribute("genome_size", operator=">=", value="1000000000")
         .add_field("organism_name")
-        .set_sort("genome_size", "desc")
+        .set_sort([("genome_size", "desc")])
     )
     code = q.snippet(languages=["r"], site_name="goat", sdk_name="goat_sdk")["r"]
 
@@ -673,7 +672,7 @@ def test_js_snippet_includes_multiple_filters() -> None:
 
 def test_js_snippet_includes_sort() -> None:
     """Sort directive appears in the JS snippet."""
-    q = QueryBuilder("taxon").set_sort("genome_size", "desc")
+    q = QueryBuilder("taxon").set_sort([("genome_size", "desc")])
     code = q.snippet(languages=["javascript"], site_name="goat", sdk_name="goat_sdk")["javascript"]
     assert "genome_size" in code
     assert "desc" in code
@@ -702,7 +701,7 @@ def test_js_snippet_is_valid_js() -> None:
         QueryBuilder("taxon")
         .add_attribute("genome_size", operator="ge", value="1000000000")
         .add_field("organism_name")
-        .set_sort("genome_size", "desc")
+        .set_sort([("genome_size", "desc")])
     )
     code = q.snippet(languages=["javascript"], site_name="goat", sdk_name="goat_sdk")["javascript"]
 
@@ -757,7 +756,7 @@ def test_cli_snippet_includes_filter() -> None:
 
 def test_cli_snippet_includes_sort() -> None:
     """Sort appears as --sort FIELD:DIRECTION."""
-    q = QueryBuilder("taxon").set_sort("genome_size", "desc")
+    q = QueryBuilder("taxon").set_sort([("genome_size", "desc")])
     code = q.snippet(languages=["cli"], site_name="goat", sdk_name="goat-cli")["cli"]
     assert "--sort" in code
     assert "genome_size" in code
@@ -798,7 +797,7 @@ def test_cli_snippet_no_trailing_backslash() -> None:
         .set_taxa(["Mammalia"], "tree")
         .add_attribute("genome_size", operator="ge", value="1000000000")
         .add_field("organism_name")
-        .set_sort("genome_size", "desc")
+        .set_sort([("genome_size", "desc")])
     )
     code = q.snippet(languages=["cli"], site_name="goat", sdk_name="goat-cli")["cli"]
     non_empty_lines = [ln for ln in code.splitlines() if ln.strip()]
@@ -1278,9 +1277,8 @@ def test_multi_query_builder_set_sort_stored() -> None:
     from cli_generator import MultiQueryBuilder
 
     mq = MultiQueryBuilder("taxon")
-    mq.set_sort("genome_size", "desc")
-    assert mq._sort_by == "genome_size"
-    assert mq._sort_order == "desc"
+    mq.set_sort([("genome_size", "desc")])
+    assert mq._sort == [("genome_size", "desc")]
 
 
 def test_multi_query_builder_set_fields_stored() -> None:

@@ -352,7 +352,7 @@ examples:
     summary: "Search Mammalia taxa with genome size, sorted descending"
     value:
       query_yaml: "index: taxon\nquery: tax_tree(Mammalia) AND genome_size\n"
-      params_yaml: "size: 10\nfields: genome_size,scientific_name\nsort_by: genome_size\nsort_order: desc\ninclude_estimates: true\ntaxonomy: ncbi\n"
+      params_yaml: "size: 10\nfields: genome_size,scientific_name\nsort:\n  - by: genome_size\n    order: desc\ninclude_estimates: true\ntaxonomy: ncbi\n"
 ```
 
 - `path` — API path exactly as it appears in the OpenAPI spec.

@@ -29,7 +29,7 @@
 #'   \item{\code{set_exclude_estimated(fields)}}{Exclude ancestral and missing (shorthand).}
 #'   \item{\code{set_size(size)}}{Set the maximum number of results per page.}
 #'   \item{\code{set_page(page)}}{Set the 1-based page number.}
-#'   \item{\code{set_sort(name, direction = "asc")}}{Sort results by a field.}
+#'   \item{\code{add_sort(name, direction = "asc")}}{Sort results by a field.}
 #'   \item{\code{set_include_estimates(value)}}{Control whether estimated values are included.}
 #'   \item{\code{set_taxonomy(taxonomy)}}{Set the taxonomy source (e.g. "ncbi").}
 #'   \item{\code{to_query_yaml()}}{Serialise query state to YAML.}
@@ -80,8 +80,7 @@ QueryBuilder <- R6::R6Class(
     exclude_missing = character(0),
     attributes = list(),
     fields_list = list(),
-    sort_key = NULL,
-    sort_order = "asc",
+    sorts = list(),
     size = 10L,
     page = 1L,
     include_estimates = FALSE,
@@ -120,8 +119,7 @@ QueryBuilder <- R6::R6Class(
       private$exclude_missing <- character(0)
       private$attributes <- list()
       private$fields_list <- list()
-      private$sort_key <- NULL
-      private$sort_order <- "asc"
+      private$sorts <- list()
       private$size <- 10L
       private$page <- 1L
       private$include_estimates <- FALSE
@@ -354,9 +352,34 @@ QueryBuilder <- R6::R6Class(
     #' @description Sort results by a field.
     #' @param name The field to sort by.
     #' @param direction "asc" or "desc".
-    set_sort = function(name, direction = "asc") {
-      private$sort_key <- name
-      private$sort_order <- direction
+    set_sort = function(sorts) {
+      if (is.null(sorts)) {
+        private$sorts <- list()
+        return(invisible(self))
+      }
+      normalise_one <- function(s) {
+        if (is.character(s) && length(s) == 2) {
+          list(by = as.character(s[1]), order = as.character(s[2]))
+        } else if (is.list(s) && !is.null(s$by)) {
+          ord <- if (!is.null(s$order)) as.character(s$order) else "asc"
+          list(by = as.character(s$by), order = ord)
+        } else {
+          stop("set_sort expects a list of (by, order) pairs or NULL")
+        }
+      }
+      if (is.list(sorts) && length(sorts) > 0 && (is.list(sorts[[1]]) || is.character(sorts[[1]]))) {
+        private$sorts <- lapply(sorts, normalise_one)
+      } else {
+        private$sorts <- list(normalise_one(sorts))
+      }
+      invisible(self)
+    },
+    add_sort = function(name, direction = "asc") {
+      current <- private$sorts
+      if (length(current) > 0) {
+        current <- Filter(function(s) s$by != name, current)
+      }
+      private$sorts <- c(current, list(list(by = name, order = direction)))
       invisible(self)
     },
 
@@ -484,12 +507,11 @@ QueryBuilder <- R6::R6Class(
         paste0("tidy: ", tidy_val),
         paste0("taxonomy: ", private$taxonomy)
       )
-      if (!is.null(private$sort_key)) {
-        lines <- c(
-          lines,
-          paste0("sort_by: ", private$sort_key),
-          paste0("sort_order: ", private$sort_order)
-        )
+      if (length(private$sorts) > 0) {
+        lines <- c(lines, "sort:")
+        for (s in private$sorts) {
+          lines <- c(lines, paste0("  - by: ", s$by), paste0("    order: ", s$order))
+        }
       }
       if (!is.null(private$id_set) && length(private$id_set) > 0) {
         lines <- c(lines, "id_set:")
@@ -773,11 +795,8 @@ QueryBuilder <- R6::R6Class(
         )
       })
 
-      sorts <- if (!is.null(private$sort_key)) {
-        list(list(
-          jsonlite::unbox(private$sort_key),
-          jsonlite::unbox(private$sort_order)
-        ))
+      sorts <- if (length(private$sorts) > 0) {
+        lapply(private$sorts, function(s) list(jsonlite::unbox(s$by), jsonlite::unbox(s$order)))
       } else {
         list()
       }
@@ -1442,8 +1461,7 @@ QueryBuilder <- R6::R6Class(
       private$ranks_list <- character(0)
       private$attributes <- list()
       private$fields_list <- list()
-      private$sort_key <- NULL
-      private$sort_order <- "asc"
+      private$sorts <- list()
       invisible(self)
     },
 
@@ -1476,9 +1494,8 @@ QueryBuilder <- R6::R6Class(
       if (length(other_p$fields) > 0) {
         private$fields_list <- other_p$fields_list
       }
-      if (!is.null(other_p$sort_key)) {
-        private$sort_key <- other_p$sort_key
-        private$sort_order <- other_p$sort_order
+      if (length(other_p$sorts) > 0) {
+        private$sorts <- other_p$sorts
       }
       invisible(self)
     },

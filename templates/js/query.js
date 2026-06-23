@@ -149,8 +149,7 @@ class QueryBuilder {
     // QueryParams
     this._size = 10;
     this._page = 1;
-    this._sortBy = null;
-    this._sortOrder = "asc";
+    this._sorts = [];
     this._includeEstimates = true;
     this._tidy = false;
     this._taxonomy = "ncbi";
@@ -503,9 +502,33 @@ class QueryBuilder {
    * @param {string} [order="asc"] - "asc" or "desc".
    * @returns {QueryBuilder}
    */
-  setSort(field, order = "asc") {
-    this._sortBy = field;
-    this._sortOrder = order;
+  setSort(fieldOrList, order = "asc") {
+    if (
+      Array.isArray(fieldOrList) &&
+      fieldOrList.length > 0 &&
+      (Array.isArray(fieldOrList[0]) || typeof fieldOrList[0] === "object")
+    ) {
+      this._sorts = fieldOrList.map((s) => {
+        if (Array.isArray(s)) return { by: s[0], order: s[1] || "asc" };
+        if (s && typeof s === "object" && s.by)
+          return { by: s.by, order: s.order || "asc" };
+        throw new Error("Invalid sort entry");
+      });
+    } else if (
+      Array.isArray(fieldOrList) &&
+      fieldOrList.length === 2 &&
+      typeof fieldOrList[0] === "string"
+    ) {
+      this._sorts = [{ by: fieldOrList[0], order: fieldOrList[1] || order }];
+    } else {
+      this._sorts = [{ by: fieldOrList, order: order }];
+    }
+    return this;
+  }
+
+  addSort(field, order = "asc") {
+    this._sorts = (this._sorts || []).filter((s) => s.by !== field);
+    this._sorts.push({ by: field, order: order });
     return this;
   }
 
@@ -715,9 +738,12 @@ class QueryBuilder {
     lines.push(`include_estimates: ${this._includeEstimates}`);
     if (this._tidy) lines.push("tidy: true");
     lines.push(`taxonomy: ${this._taxonomy}`);
-    if (this._sortBy) {
-      lines.push(`sort_by: "${this._sortBy}"`);
-      lines.push(`sort_order: ${this._sortOrder}`);
+    if (this._sorts && this._sorts.length > 0) {
+      lines.push("sort:");
+      for (const s of this._sorts) {
+        lines.push(`  - by: "${s.by}"`);
+        lines.push(`    order: ${s.order}`);
+      }
     }
     if (this._idSet && this._idSet.length > 0) {
       lines.push("id_set:");
@@ -789,6 +815,20 @@ class QueryBuilder {
       throw new Error(`fromV2Url: ${pair.error ?? raw}`);
     const [queryYaml, paramsYaml] = pair;
     const qb = new QueryBuilder("taxon");
+    qb._queryYamlOverride = queryYaml;
+    qb._paramsYamlOverride = paramsYaml;
+    return qb;
+  }
+
+  /**
+   * Create a QueryBuilder instance from raw YAML strings.
+   * @param {string} queryYaml
+   * @param {string} paramsYaml
+   * @param {string} [index="taxon"]
+   * @returns {QueryBuilder}
+   */
+  static fromYaml(queryYaml, paramsYaml, index = "taxon") {
+    const qb = new QueryBuilder(index);
     qb._queryYamlOverride = queryYaml;
     qb._paramsYamlOverride = paramsYaml;
     return qb;
@@ -897,10 +937,12 @@ class QueryBuilder {
    * @param {string} [apiBase]
    * @returns {Promise<number>}
    */
-  async count(apiBase = API_BASE) {
+  async count(apiBase = API_BASE, queryYaml = null, paramsYaml = null) {
+    const qyaml = queryYaml != null ? queryYaml : this.toQueryYaml();
+    const pyaml = paramsYaml != null ? paramsYaml : this.toParamsYaml();
     const data = await this._postJson(`${apiBase}/v3/count`, {
-      query_yaml: this.toQueryYaml(),
-      params_yaml: this.toParamsYaml(),
+      query_yaml: qyaml,
+      params_yaml: pyaml,
     });
     const statusJson = parse_response_status(JSON.stringify(data));
     return JSON.parse(statusJson).hits ?? 0;
@@ -912,7 +954,12 @@ class QueryBuilder {
    * @param {string} [apiBase]
    * @returns {Promise<object|string>}
    */
-  async search(format = "json", apiBase = API_BASE) {
+  async search(
+    format = "json",
+    apiBase = API_BASE,
+    queryYaml = null,
+    paramsYaml = null,
+  ) {
     if (format !== "json") {
       const url = this.toV2Url(apiBase);
       const mimeType =
@@ -924,9 +971,11 @@ class QueryBuilder {
         );
       return resp.text();
     }
+    const qyaml = queryYaml != null ? queryYaml : this.toQueryYaml();
+    const pyaml = paramsYaml != null ? paramsYaml : this.toParamsYaml();
     return this._postJson(`${apiBase}/v3/search`, {
-      query_yaml: this.toQueryYaml(),
-      params_yaml: this.toParamsYaml(),
+      query_yaml: qyaml,
+      params_yaml: pyaml,
     });
   }
 
@@ -940,7 +989,12 @@ class QueryBuilder {
    * @param {string} [apiBase]
    * @returns {Promise<object[]>}
    */
-  async searchAll(maxRecords = Infinity, apiBase = API_BASE) {
+  async searchAll(
+    maxRecords = Infinity,
+    apiBase = API_BASE,
+    queryYaml = null,
+    paramsYaml = null,
+  ) {
     const CHUNK_SIZE = 1000;
     const allRecords = [];
     let searchAfter = null;
@@ -949,8 +1003,8 @@ class QueryBuilder {
     try {
       while (true) {
         const payload = {
-          query_yaml: this.toQueryYaml(),
-          params_yaml: this.toParamsYaml(),
+          query_yaml: queryYaml != null ? queryYaml : this.toQueryYaml(),
+          params_yaml: paramsYaml != null ? paramsYaml : this.toParamsYaml(),
         };
         if (searchAfter !== null) payload.search_after = searchAfter;
         const data = await this._postJson(`${apiBase}/v3/search`, payload);
@@ -1009,10 +1063,15 @@ class QueryBuilder {
    * @param {string} [apiBase=API_BASE] - Base URL of the API
    * @returns {Promise<object>} - Raw report object from the response
    */
-  async report(report, apiBase = API_BASE) {
+  async report(
+    report,
+    apiBase = API_BASE,
+    queryYaml = null,
+    paramsYaml = null,
+  ) {
     const body = {
-      query_yaml: this.toQueryYaml(),
-      params_yaml: this.toParamsYaml(),
+      query_yaml: queryYaml != null ? queryYaml : this.toQueryYaml(),
+      params_yaml: paramsYaml != null ? paramsYaml : this.toParamsYaml(),
       report_yaml: report.toReportYaml(),
     };
     if (report._display !== null) body.display = report._display;
@@ -1640,9 +1699,8 @@ class QueryBuilder {
       this._taxonFilterType = other._taxonFilterType;
     if (other._size !== 10) this._size = other._size;
     if (other._page !== 1) this._page = other._page;
-    if (other._sortBy !== null) {
-      this._sortBy = other._sortBy;
-      this._sortOrder = other._sortOrder;
+    if (other._sorts && other._sorts.length > 0) {
+      this._sorts = other._sorts.slice();
     }
     if (!other._includeEstimates)
       this._includeEstimates = other._includeEstimates;
@@ -1715,9 +1773,10 @@ class QueryBuilder {
         attr.operator || "",
         attr.value || "",
       ]),
-      sorts: this._sortBy
-        ? [[this._sortBy, this._sortOrder === "desc" ? "desc" : "asc"]]
-        : [],
+      sorts:
+        this._sorts && this._sorts.length > 0
+          ? this._sorts.map((s) => [s.by, s.order === "desc" ? "desc" : "asc"])
+          : [],
       flags: this._flags,
       selections: this._fields.map((field) => field.name),
     };

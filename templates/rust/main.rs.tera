@@ -727,6 +727,7 @@ fn run(cli: Cli) -> anyhow::Result<()> {
                     exclude_missing,
                     sort_by: sort_by_opt,
                     sort_order: sort_order_str,
+                    sort: None,
                     page,
                     taxonomy,
                 };
@@ -956,6 +957,7 @@ fn run(cli: Cli) -> anyhow::Result<()> {
                     exclude_missing,
                     sort_by: sort_by_opt,
                     sort_order: sort_order_str,
+                    sort: None,
                     taxonomy,
                     ..Default::default()
                 };
