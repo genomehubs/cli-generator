@@ -7,7 +7,11 @@ use serde_json::{json, Value};
 use std::sync::Arc;
 
 use super::deserialize_helpers;
-use crate::{es_client, index_name, request_shape::query_to_body_input, AppState};
+use crate::{
+    es_client, index_name, process_query::process_query, request_shape::query_to_body_input,
+    AppState,
+};
+use genomehubs_query::query::{QueryParams, SearchQuery};
 
 #[derive(utoipa::ToSchema)]
 pub struct CountRequest {
@@ -83,7 +87,7 @@ pub async fn post_count(
     Json(req): Json<CountRequest>,
 ) -> Json<CountResponse> {
     // Parse YAML inputs
-    let query = match genomehubs_query::query::SearchQuery::from_yaml(&req.query_yaml) {
+    let query = match SearchQuery::from_yaml(&req.query_yaml) {
         Ok(q) => q,
         Err(e) => {
             return Json(CountResponse {
@@ -93,7 +97,7 @@ pub async fn post_count(
         }
     };
 
-    let params = match genomehubs_query::query::QueryParams::from_yaml(&req.params_yaml) {
+    let params = match QueryParams::from_yaml(&req.params_yaml) {
         Ok(p) => p,
         Err(e) => {
             return Json(CountResponse {
@@ -110,7 +114,17 @@ pub async fn post_count(
     let built_url =
         genomehubs_query::query::build_query_url(&query, &params, &state.es_base, "v3", "count");
 
+    let query = match process_query(&state, &idx, &query, &params).await {
+        Ok(q) => q,
+        Err(e) => {
+            return Json(CountResponse {
+                status: super::ApiStatus::error(format!("failed to process query: {}", e)),
+                url: built_url,
+            })
+        }
+    };
     let search_body_input = query_to_body_input("count", &query, &params, None, None, None);
+
     let mut body = match cli_generator::core::query_builder::build_search_body(&search_body_input) {
         Ok(b) => b,
         Err(e) => {

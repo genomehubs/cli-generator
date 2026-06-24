@@ -4,7 +4,7 @@ use serde::Serialize;
 ///
 /// Metadata-only endpoints (taxonomies, ranks, indices) omit `hits` and `took`.
 /// Query endpoints always populate all four fields.
-#[derive(Debug, Clone, Serialize, utoipa::ToSchema)]
+#[derive(Default, Debug, Clone, Serialize, utoipa::ToSchema)]
 pub struct ApiStatus {
     pub success: bool,
     #[serde(skip_serializing_if = "Option::is_none")]

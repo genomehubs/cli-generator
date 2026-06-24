@@ -8,7 +8,8 @@ use std::{collections::HashSet, sync::Arc};
 
 use super::deserialize_helpers;
 use crate::{
-    es_client, index_name, request_shape::query_to_body_input, routes::ApiStatus, AppState,
+    es_client, index_name, process_query::process_query, request_shape::query_to_body_input,
+    routes::ApiStatus, AppState,
 };
 
 /// Combine multiple ES query bodies using bool.should (OR) or bool.must (AND).
@@ -95,7 +96,7 @@ impl<'de> Deserialize<'de> for SearchRequest {
     }
 }
 
-#[derive(Serialize, utoipa::ToSchema)]
+#[derive(Default, Serialize, utoipa::ToSchema)]
 pub struct SearchResponse {
     pub status: ApiStatus,
     /// URL that was built for this query (for debugging/reproduction).
@@ -204,12 +205,29 @@ pub async fn post_search(
             bail!("all queries in multi-query mode must use the same index");
         }
 
+        // Get the index name for the first query (we validated they're all the same)
+        let idx = index_name::resolve_index(first_index, &state);
+
+        // For v3 API POST endpoints, return the endpoint path
+        // (actual query is in the JSON request body, not URL-reproducible)
+        let built_url = "/api/v3/search".to_string();
+
         // Build a body for each nested query
         let mut bodies: Vec<Value> = vec![];
         for nested_query in nested_queries {
+            let n_query = match process_query(&state, &idx, nested_query, &params).await {
+                Ok(q) => q,
+                Err(e) => {
+                    return Json(SearchResponse {
+                        status: ApiStatus::error(format!("failed to process query: {}", e)),
+                        url: built_url,
+                        ..Default::default()
+                    })
+                }
+            };
             let search_body_input = query_to_body_input(
                 "search",
-                nested_query,
+                &n_query,
                 &params,
                 types_map.clone(),
                 ranks_set.clone(),
@@ -225,13 +243,6 @@ pub async fn post_search(
 
         // Combine the bodies with bool.should or bool.must
         let combined_body = combine_es_bodies(bodies, &query.combine_with);
-
-        // Get the index name for the first query (we validated they're all the same)
-        let idx = index_name::resolve_index(first_index, &state);
-
-        // For v3 API POST endpoints, return the endpoint path
-        // (actual query is in the JSON request body, not URL-reproducible)
-        let built_url = "/api/v3/search".to_string();
 
         let raw =
             match es_client::execute_search(&state.client, &state.es_base, &idx, &combined_body)
@@ -301,6 +312,21 @@ pub async fn post_search(
     // Single-query mode (existing behavior)
     let idx = index_name::resolve_index(&query.index, &state);
 
+    // For v3 API POST endpoints, return the endpoint path
+    // (actual query is in the JSON request body, not URL-reproducible)
+    let built_url = "/api/v3/search".to_string();
+
+    let query = match process_query(&state, &idx, &query, &params).await {
+        Ok(q) => q,
+        Err(e) => {
+            return Json(SearchResponse {
+                status: ApiStatus::error(format!("failed to process query: {}", e)),
+                url: built_url,
+                ..Default::default()
+            })
+        }
+    };
+
     let search_body_input = query_to_body_input(
         "search",
         &query,
@@ -353,10 +379,6 @@ pub async fn post_search(
             }
         }
     }
-
-    // For v3 API POST endpoints, return the endpoint path
-    // (actual query is in the JSON request body, not URL-reproducible)
-    let built_url = "/api/v3/search".to_string();
 
     let raw = match es_client::execute_search(&state.client, &state.es_base, &idx, &body).await {
         Ok(v) => v,

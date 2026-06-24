@@ -4,7 +4,10 @@ use serde_json::{json, Value};
 use std::{collections::HashSet, sync::Arc};
 
 use super::deserialize_helpers;
-use crate::{index_name, request_shape::query_to_body_input, routes::ApiStatus, AppState};
+use crate::{
+    index_name, process_query::process_query, request_shape::query_to_body_input,
+    routes::ApiStatus, AppState,
+};
 
 #[derive(utoipa::ToSchema)]
 pub struct SearchBatchItem {
@@ -88,7 +91,7 @@ type BgTask = (
     Vec<Option<Vec<String>>>,
 );
 
-#[derive(Serialize, utoipa::ToSchema)]
+#[derive(Default, Serialize, utoipa::ToSchema)]
 pub struct SearchBatchResponse {
     pub status: ApiStatus,
     /// Per-query search results.
@@ -292,6 +295,8 @@ pub async fn post_search_batch(
             }
         };
 
+        let idx = index_name::resolve_index(&query.index, &state);
+
         // Check if this is multi-query mode (nested queries with OR/AND combining)
         let body = if let Some(nested_queries) = &query.queries {
             if nested_queries.is_empty() {
@@ -325,43 +330,18 @@ pub async fn post_search_batch(
             // Build bodies for each nested query (with size from params for documents)
             let mut bodies: Vec<serde_json::Value> = vec![];
             for nested_query in nested_queries {
-                // // Handle lineage filter: resolve ancestor taxa_ids first
-                // let mut resolved_taxa = nested_query.identifiers.taxa.clone();
-                // if let Some(taxa) = &resolved_taxa {
-                //     if matches!(
-                //         taxa.filter_type,
-                //         genomehubs_query::query::TaxonFilterType::Lineage
-                //     ) {
-                //         let idx = index_name::resolve_index(&nested_query.index, &state);
-                //         let lineage_ids = match resolve_lineage_taxon_ids(
-                //             &state.client,
-                //             &state.es_base,
-                //             &idx,
-                //             &taxa.names.join(","),
-                //         )
-                //         .await
-                //         {
-                //             Ok(ids) => ids,
-                //             Err(e) => {
-                //                 return Json(SearchBatchResponse {
-                //                     status: ApiStatus::error(format!(
-                //                         "lineage resolution failed: {e}"
-                //                     )),
-                //                     results: vec![],
-                //                 })
-                //             }
-                //         };
-                //         // Replace with resolved IDs, use Name filter to match direct taxon_id
-                //         resolved_taxa = Some(genomehubs_query::query::TaxaIdentifier {
-                //             filter_type: genomehubs_query::query::TaxonFilterType::Name,
-                //             names: lineage_ids.split(',').map(|s| s.to_string()).collect(),
-                //         });
-                //     }
-                // }
-
+                let n_query = match process_query(&state, &idx, nested_query, &params).await {
+                    Ok(q) => q,
+                    Err(e) => {
+                        return Json(SearchBatchResponse {
+                            status: ApiStatus::error(format!("failed to process query: {}", e)),
+                            ..Default::default()
+                        })
+                    }
+                };
                 let search_body_input = query_to_body_input(
                     "search",
-                    nested_query,
+                    &n_query,
                     &params,
                     types_map.clone(),
                     ranks_set.clone(),
@@ -386,6 +366,15 @@ pub async fn post_search_batch(
             // Combine the bodies with OR or AND
             combine_es_bodies(bodies, &query.combine_with)
         } else {
+            let query = match process_query(&state, &idx, &query, &params).await {
+                Ok(q) => q,
+                Err(e) => {
+                    return Json(SearchBatchResponse {
+                        status: ApiStatus::error(format!("failed to process query: {}", e)),
+                        ..Default::default()
+                    })
+                }
+            };
             let search_body_input = query_to_body_input(
                 "search",
                 &query,
@@ -404,8 +393,6 @@ pub async fn post_search_batch(
                 }
             }
         };
-
-        let idx = index_name::resolve_index(&query.index, &state);
 
         // Inject id_set terms filter when caller supplied a set of IDs.
         let mut body = body;

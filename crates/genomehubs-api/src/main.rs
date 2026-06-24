@@ -7,14 +7,15 @@ use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, Env
 use utoipa::OpenApi;
 use utoipa_swagger_ui::{SwaggerUi, Url};
 
-mod es_client;
+pub mod es_client;
 mod es_metadata;
 mod fetch_records;
-mod index_name;
+pub mod index_name;
 mod phylopic_client;
+pub mod process_query;
 mod report;
-mod request_shape;
-mod routes;
+pub mod request_shape;
+pub mod routes;
 mod swagger_customise;
 
 #[derive(Clone)]
