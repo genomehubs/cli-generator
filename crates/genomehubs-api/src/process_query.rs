@@ -41,14 +41,6 @@ pub async fn get_lineage_ids(
         Err(e) => return Err(format!("failed to build ES body: {}", e)),
     };
 
-    // // Extract only the query clause for the search endpoint (which expects {"query": {...}})
-    // let search_body = json!({
-    //     "query": body
-    //         .get("query")
-    //         .cloned()
-    //         .unwrap_or_else(|| json!({"match_all": {}}))
-    // });
-
     let raw = match es_client::execute_search(client, es_base, idx, &body).await {
         Ok(v) => v,
         Err(e) => return Err(format!("failed to execute ES search: {}", e)),

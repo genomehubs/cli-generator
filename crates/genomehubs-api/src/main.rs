@@ -1,4 +1,5 @@
 use axum::{routing::get, Extension, Router};
+use reqwest::StatusCode;
 use std::{fs, net::SocketAddr, path::PathBuf, sync::Arc, time::Duration};
 use tower_http::cors::{AllowHeaders, AllowMethods, CorsLayer};
 use tower_http::trace::TraceLayer;
@@ -425,16 +426,20 @@ async fn main() {
     let app = Router::<()>::new()
         .route(
             "/api/v3/count",
-            axum::routing::post(routes::count::post_count).get(routes::count::get_count),
+            axum::routing::post(routes::count::post_count)
+                .get(routes::count::get_count)
+                .options(|| async { StatusCode::NO_CONTENT }),
         )
         .route(
             "/api/v3/count/batch",
-            axum::routing::post(routes::count_batch::post_count_batch),
+            axum::routing::post(routes::count_batch::post_count_batch)
+                .options(|| async { StatusCode::NO_CONTENT }),
         )
         .route("/api/v3/lookup", get(routes::lookup::get_lookup))
         .route(
             "/api/v3/lookup/batch",
-            axum::routing::post(routes::lookup_batch::post_lookup_batch),
+            axum::routing::post(routes::lookup_batch::post_lookup_batch)
+                .options(|| async { StatusCode::NO_CONTENT }),
         )
         .route("/api/v3/metadata", get(routes::metadata::get_metadata))
         .route(
@@ -456,24 +461,29 @@ async fn main() {
         .route("/api/v3/phylopic", get(routes::phylopic::get_phylopic))
         .route(
             "/api/v3/phylopic/batch",
-            axum::routing::post(routes::phylopic::post_phylopic_batch),
+            axum::routing::post(routes::phylopic::post_phylopic_batch)
+                .options(|| async { StatusCode::NO_CONTENT }),
         )
         .route("/api/v3/record", get(routes::record::get_record))
         .route(
             "/api/v3/record/batch",
-            axum::routing::post(routes::record_batch::post_record_batch),
+            axum::routing::post(routes::record_batch::post_record_batch)
+                .options(|| async { StatusCode::NO_CONTENT }),
         )
         .route(
             "/api/v3/report",
-            axum::routing::post(routes::report::post_report),
+            axum::routing::post(routes::report::post_report)
+                .options(|| async { StatusCode::NO_CONTENT }),
         )
         .route(
             "/api/v3/report/batch",
-            axum::routing::post(routes::report_batch::post_report_batch),
+            axum::routing::post(routes::report_batch::post_report_batch)
+                .options(|| async { StatusCode::NO_CONTENT }),
         )
         .route(
             "/api/v3/positional",
-            axum::routing::post(routes::positional::post_positional),
+            axum::routing::post(routes::positional::post_positional)
+                .options(|| async { StatusCode::NO_CONTENT }),
         )
         .route(
             "/api/v3/search",
@@ -481,13 +491,15 @@ async fn main() {
         )
         .route(
             "/api/v3/search/batch",
-            axum::routing::post(routes::search_batch::post_search_batch),
+            axum::routing::post(routes::search_batch::post_search_batch)
+                .options(|| async { StatusCode::NO_CONTENT }),
         )
         .route("/api/v3/status", get(routes::status::get_status))
         .route("/api/v3/summary", get(routes::summary::get_summary))
         .route(
             "/api/v3/summary/batch",
-            axum::routing::post(routes::summary_batch::post_summary_batch),
+            axum::routing::post(routes::summary_batch::post_summary_batch)
+                .options(|| async { StatusCode::NO_CONTENT }),
         )
         .layer(Extension(state))
         .layer(cors_layer)
