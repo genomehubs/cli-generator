@@ -78,6 +78,7 @@ pub struct SearchBodyInput {
     pub sort: Option<Vec<SortConfig>>,
     pub size: usize,
     pub offset: usize,
+    pub search_after: Option<Vec<Value>>,
     pub types_map: Option<TypesMap>,
     pub ranks_set: Option<HashSet<String>>,
     pub names_set: Option<HashSet<String>>,
@@ -133,6 +134,16 @@ pub fn build_search_body(input: &SearchBodyInput) -> Result<Value> {
         "track_total_hits": true,
         "_source": { "include": ["taxon_id","scientific_name","taxon_rank","parent","taxon_names.*","lineage.*"], "exclude": [] }
     });
+
+    if let Some(search_after) = &input.search_after {
+        if search_after.is_empty() {
+            return Err(anyhow::anyhow!(
+                "search_after provided but empty; must be non-empty array of values"
+            ));
+        }
+        body["from"] = json!(0); // when using search_after, from must be 0
+        body["search_after"] = json!(search_after);
+    }
 
     // Ensure top-level `sort` and `aggs` keys are present to match fixture
     // shapes. `sort` is an array (possibly empty); `aggs` is a nested

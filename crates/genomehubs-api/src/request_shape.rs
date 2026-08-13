@@ -126,5 +126,6 @@ pub fn query_to_body_input(
         sort: if sort.is_empty() { None } else { Some(sort) },
         size,
         offset,
+        search_after: params.search_after.clone(),
     }
 }
