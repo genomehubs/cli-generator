@@ -264,8 +264,8 @@ fn validate_query_impl(
         if let Some(allowed_vals) = &meta.constraint_enum {
             for value in attr.value.as_ref().map(value_texts).unwrap_or_default() {
                 // Strip negation prefix if present
-                let check_val = value.trim_start_matches('!');
-                if !allowed_vals.iter().any(|av| av == check_val) {
+                let check_val = value.trim_start_matches('!').to_lowercase();
+                if !allowed_vals.iter().any(|av| av.to_lowercase() == check_val) {
                     errors.push(format!(
                         "value '{}' is not valid for attribute '{}'; allowed: {:?}",
                         check_val, attr.name, allowed_vals
@@ -769,6 +769,13 @@ attributes:
         let result = validate_query_json(query, field_meta, "{}", "{}");
         assert!(result.contains("value 'bogus' is not valid"), "{result}");
         assert!(!result.contains("'chromosome'"), "{result}");
+    }
+
+    #[test]
+    fn test_enum_check_is_case_insensitive() {
+        let query = "index: assembly\nattributes:\n  - name: assembly_level\n    value: [Chromosome, SCAFFOLD]\n";
+        let field_meta = r#"{"assembly_level": {"processed_type": "keyword", "traverse_direction": null, "summary": [], "constraint_enum": ["chromosome", "scaffold"]}}"#;
+        assert_eq!(validate_query_json(query, field_meta, "{}", "{}"), "[]");
     }
 
     #[test]
