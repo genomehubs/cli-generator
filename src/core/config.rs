@@ -562,6 +562,8 @@ pub struct FieldGroup {
 mod tests {
     use super::*;
 
+    static ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
     const MINIMAL_SITE_YAML: &str = r#"
 name: test
 display_name: Test Site
@@ -633,6 +635,7 @@ indexes:
 
     #[test]
     fn runtime_config_uses_preset_values_when_site_is_selected() {
+        let _guard = ENV_LOCK.lock().unwrap();
         let registry = SitePresetRegistry::parse_yaml(
             r#"
 sites:
@@ -657,8 +660,6 @@ sites:
 
     #[test]
     fn runtime_config_precedence_prefers_explicit_cli_values() {
-        static ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
-
         let _guard = ENV_LOCK.lock().unwrap();
         std::env::set_var("GENOMEHUBS_SITE", "boat");
         std::env::set_var("GENOMEHUBS_API_BASE", "https://env.example.com/api");

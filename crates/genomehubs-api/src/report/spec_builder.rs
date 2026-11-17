@@ -613,9 +613,7 @@ pub fn build_plot_spec(
                 });
             }
         }
-        PlotReportType::Arc => {
-            dbg!(&report_data);
-        }
+        PlotReportType::Arc => {}
         PlotReportType::Tree
         | PlotReportType::Map
         | PlotReportType::Oxford

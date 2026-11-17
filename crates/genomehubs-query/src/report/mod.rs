@@ -1321,7 +1321,6 @@ impl ArcDataEntry {
         segment: usize,
         initial_offset: f64,
     ) -> Option<Self> {
-        dbg!(&report_data, segment);
         let report_label = report_data.get("report_label")?.as_str()?.to_string();
         let arc = report_data.get("arc")?.as_f64()?;
         let arc2 = 1.0 - arc;

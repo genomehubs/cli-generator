@@ -63,11 +63,9 @@ pub async fn get_lineage_ids(
                 for lineage_item in lineage_array {
                     let lineage_id = lineage_item
                         .get("taxon_id")
-                        .unwrap()
-                        .as_str()
-                        .unwrap()
-                        .to_string();
-                    id_set.insert(lineage_id.clone());
+                        .and_then(|id| id.as_str())
+                        .ok_or_else(|| "lineage entry missing taxon_id".to_string())?;
+                    id_set.insert(lineage_id.to_string());
                 }
             }
         }

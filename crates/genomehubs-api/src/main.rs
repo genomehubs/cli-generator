@@ -526,9 +526,10 @@ async fn main() {
         .expect("failed to write openapi.json");
     tracing::info!(path = %out_path, "Wrote OpenAPI");
 
-    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
+    // Bind all interfaces: a container's published port cannot reach 127.0.0.1.
+    let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
     tracing::info!(addr = %addr, "Listening on");
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+    let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
     axum::serve(listener, app).await.unwrap();
 }
 
