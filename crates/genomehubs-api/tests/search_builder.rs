@@ -72,6 +72,27 @@ fn field_projection() {
 }
 
 #[test]
+fn mammalia_assembly_fields_and_range_filter() {
+    let q = make_query(
+        "index: assembly\ntaxa:\n  - Mammalia\ntaxon_filter_type: tree\nfields:\n  - name: assembly_span\n  - name: assembly_level\nattributes:\n  - name: assembly_span\n    operator: gte\n    value: \"1000000000\"\n"
+    );
+    let params = QueryParams::from_yaml("size: 10\ntaxonomy: ncbi\n").unwrap();
+    let search_body_input = query_to_body_input("search", &q, &params, None, None, None);
+    let body = match build_search_body(&search_body_input) {
+        Ok(b) => b,
+        Err(e) => panic!("failed to build body: {}", e),
+    };
+    let body_str = serde_json::to_string(&body).unwrap();
+    println!("mammalia assembly body: {}", body_str);
+    assert!(body_str.contains("assembly_span"));
+    assert!(body_str.contains("attributes.long_value"));
+    assert!(body_str.contains("\"gte\""));
+    assert!(body_str.contains("\"range\""));
+    assert!(!body_str.contains("\"aggregation_source\":\"direct\""));
+    assert!(!body_str.contains("\"aggregation_source\":\"descendant\""));
+}
+
+#[test]
 fn pagination_offset() {
     let params = QueryParams::from_yaml("size: 50\npage: 3\ntaxonomy: ncbi\n").unwrap();
     let q = make_query("index: taxon\n");

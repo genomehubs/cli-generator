@@ -4,6 +4,16 @@ use std::sync::Arc;
 
 use crate::{fetch_records, index_name, routes::ApiStatus, AppState};
 
+pub fn normalize_summary_fields(fields: &[String]) -> Vec<String> {
+    fields
+        .iter()
+        .flat_map(|field| field.split(','))
+        .map(str::trim)
+        .filter(|field| !field.is_empty())
+        .map(str::to_string)
+        .collect()
+}
+
 #[derive(Deserialize, utoipa::ToSchema)]
 pub struct SummaryQuery {
     #[serde(rename = "recordId")]

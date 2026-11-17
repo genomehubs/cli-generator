@@ -14,6 +14,7 @@ mod fetch_records;
 pub mod index_name;
 mod phylopic_client;
 pub mod process_query;
+mod query_validation;
 mod report;
 pub mod request_shape;
 pub mod routes;

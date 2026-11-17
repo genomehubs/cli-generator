@@ -12,7 +12,8 @@ pub struct FieldMeta {
     /// Keyword fields do not support </> operators.
     pub processed_type: String,
 
-    /// Direction of value inheritance in the tree: "up", "down", "both", or null.
+    /// Direction of value inheritance: "up", "down", "both", or null when the field is not inherited.
+    /// Inheritance modifiers (`ancestral`, `descendant`) need a matching direction on the taxon index.
     pub traverse_direction: Option<String>,
 
     /// Valid summary modifiers for this field.
@@ -90,10 +91,15 @@ fn default_taxon_filter_types() -> Vec<String> {
     ]
 }
 
+fn default_index() -> String {
+    "taxon".to_string()
+}
+
 /// Portable SearchQuery type for JSON deserialization.
 #[derive(Debug, Clone, Deserialize)]
 pub struct SearchQuery {
-    #[serde(default)]
+    /// Index to search; defaults to `taxon`, matching the core query parser.
+    #[serde(default = "default_index")]
     pub index: String,
 
     #[serde(default)]
@@ -124,22 +130,51 @@ pub struct SearchQuery {
     pub ranks: Option<Vec<String>>,
 }
 
+/// Attribute filter as written in query YAML.
+///
+/// `value` may be a scalar (string or number) or a list, matching the core parser.
 #[derive(Debug, Clone, Deserialize)]
 pub struct AttributeFilter {
     pub name: String,
     #[serde(default)]
     pub operator: Option<String>,
     #[serde(default)]
-    pub value: Option<String>,
-    #[serde(default)]
+    pub value: Option<serde_yaml::Value>,
+    #[serde(default, alias = "modifier")]
     pub modifiers: Option<Vec<String>>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+/// Field selection as written in query YAML: a bare name or an object with optional modifiers.
+#[derive(Debug, Clone)]
 pub struct FieldSelection {
     pub name: String,
-    #[serde(default)]
     pub modifiers: Option<Vec<String>>,
+}
+
+impl<'de> Deserialize<'de> for FieldSelection {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        #[serde(untagged)]
+        enum FieldSelectionInput {
+            Name(String),
+            Full {
+                name: String,
+                #[serde(default, alias = "modifier")]
+                modifiers: Option<Vec<String>>,
+            },
+        }
+
+        Ok(match FieldSelectionInput::deserialize(deserializer)? {
+            FieldSelectionInput::Name(name) => FieldSelection {
+                name,
+                modifiers: None,
+            },
+            FieldSelectionInput::Full { name, modifiers } => FieldSelection { name, modifiers },
+        })
+    }
 }
 
 /// Validate a query using JSON field metadata and config.
@@ -182,10 +217,8 @@ fn validate_query_impl(
 
     let mut errors = Vec::new();
 
-    // Validate index exists
-    if query.index.is_empty() {
-        errors.push("index not specified".to_string());
-    } else if !matches!(
+    // Validate index (defaults to taxon, matching the core query parser)
+    if !matches!(
         query.index.as_str(),
         "taxon" | "assembly" | "sample" | "feature"
     ) {
@@ -218,9 +251,9 @@ fn validate_query_impl(
         // Check operator validity for keyword fields
         if meta.processed_type == "keyword" {
             if let Some(op) = &attr.operator {
-                if !matches!(op.as_str(), "=" | "!=") {
+                if !KEYWORD_OPERATORS.contains(&op.as_str()) {
                     errors.push(format!(
-                        "operator '{}' is not valid for keyword attribute '{}' (only =, != are allowed)",
+                        "operator '{}' is not valid for keyword attribute '{}' (allowed: =, ==, eq, !=, ne, exists, missing)",
                         op, attr.name
                     ));
                 }
@@ -229,7 +262,7 @@ fn validate_query_impl(
 
         // Validate enum values
         if let Some(allowed_vals) = &meta.constraint_enum {
-            if let Some(value) = &attr.value {
+            for value in attr.value.as_ref().map(value_texts).unwrap_or_default() {
                 // Strip negation prefix if present
                 let check_val = value.trim_start_matches('!');
                 if !allowed_vals.iter().any(|av| av == check_val) {
@@ -244,35 +277,8 @@ fn validate_query_impl(
         // Validate modifiers
         if let Some(modifiers) = &attr.modifiers {
             for modifier in modifiers {
-                match modifier.as_str() {
-                    "ancestral" => {
-                        if meta.traverse_direction.as_deref() != Some("down")
-                            && meta.traverse_direction.as_deref() != Some("both")
-                        {
-                            errors.push(format!(
-                                "modifier 'ancestral' not valid for '{}': traverse_direction is {:?}, needs 'down' or 'both'",
-                                attr.name, meta.traverse_direction
-                            ));
-                        }
-                    }
-                    "descendant" => {
-                        if meta.traverse_direction.as_deref() != Some("up")
-                            && meta.traverse_direction.as_deref() != Some("both")
-                        {
-                            errors.push(format!(
-                                "modifier 'descendant' not valid for '{}': traverse_direction is {:?}, needs 'up' or 'both'",
-                                attr.name, meta.traverse_direction
-                            ));
-                        }
-                    }
-                    _ => {
-                        if !meta.summary.contains(modifier) {
-                            errors.push(format!(
-                                "modifier '{}' is not valid for attribute '{}'; allowed: {:?}",
-                                modifier, attr.name, meta.summary
-                            ));
-                        }
-                    }
+                if let Some(message) = modifier_error(modifier, &attr.name, &query.index, meta) {
+                    errors.push(message);
                 }
             }
         }
@@ -281,16 +287,7 @@ fn validate_query_impl(
     // Validate assembly accession prefixes
     for asm_id in &query.assembly_ids {
         let check_id = asm_id.trim_start_matches('!');
-        let prefix_lower = check_id
-            .split('_')
-            .next()
-            .unwrap_or(check_id)
-            .to_lowercase();
-        let found = config
-            .assembly_accession_prefixes
-            .iter()
-            .any(|p| p.to_lowercase() == prefix_lower);
-        if !found {
+        if !has_accession_prefix(check_id, &config.assembly_accession_prefixes) {
             errors.push(format!(
                 "invalid assembly accession prefix '{}'; expected one of {:?}",
                 check_id, config.assembly_accession_prefixes
@@ -301,12 +298,7 @@ fn validate_query_impl(
     // Validate sample accession prefixes
     for sample_id in &query.sample_ids {
         let check_id = sample_id.trim_start_matches('!');
-        let prefix = check_id.split('_').next().unwrap_or(check_id);
-        let found = config
-            .sample_accession_prefixes
-            .iter()
-            .any(|p| p.to_lowercase() == prefix.to_lowercase());
-        if !found {
+        if !has_accession_prefix(check_id, &config.sample_accession_prefixes) {
             errors.push(format!(
                 "invalid sample accession prefix '{}'; expected one of {:?}",
                 check_id, config.sample_accession_prefixes
@@ -341,7 +333,8 @@ fn validate_query_impl(
     // Validate fields — name checks are skipped when field_meta is empty
     if !field_meta.is_empty() {
         for field in &query.fields {
-            if !field_meta.contains_key(&field.name) {
+            let field_name = synonyms.get(&field.name).unwrap_or(&field.name);
+            if !field_meta.contains_key(field_name) {
                 errors.push(format!(
                     "unknown field '{}' for index '{}'",
                     field.name, query.index
@@ -351,6 +344,85 @@ fn validate_query_impl(
     }
 
     Ok(errors)
+}
+
+/// Operators valid for keyword attributes: equality, inequality, and presence checks.
+const KEYWORD_OPERATORS: [&str; 7] = ["=", "==", "eq", "!=", "ne", "exists", "missing"];
+
+/// Status modifiers that apply to any attribute and are never rejected.
+const STATUS_MODIFIERS: [&str; 3] = ["direct", "estimated", "missing"];
+
+/// Returns true when `accession` starts with one of `prefixes`, ignoring case.
+fn has_accession_prefix(accession: &str, prefixes: &[String]) -> bool {
+    let lower = accession.to_lowercase();
+    prefixes
+        .iter()
+        .any(|prefix| lower.starts_with(&prefix.to_lowercase()))
+}
+
+/// Text values of an attribute `value`, which may be a scalar or a list.
+fn value_texts(value: &serde_yaml::Value) -> Vec<String> {
+    match value {
+        serde_yaml::Value::Sequence(items) => items.iter().flat_map(value_texts).collect(),
+        serde_yaml::Value::String(text) => vec![text.clone()],
+        serde_yaml::Value::Number(number) => vec![number.to_string()],
+        serde_yaml::Value::Bool(flag) => vec![flag.to_string()],
+        _ => Vec::new(),
+    }
+}
+
+/// Returns an error message when `modifier` is not valid for the attribute.
+fn modifier_error(
+    modifier: &str,
+    attr_name: &str,
+    index: &str,
+    meta: &FieldMeta,
+) -> Option<String> {
+    if STATUS_MODIFIERS.contains(&modifier) {
+        return None;
+    }
+    match modifier {
+        "ancestral" => inheritance_error(modifier, attr_name, index, meta, "down"),
+        "descendant" => inheritance_error(modifier, attr_name, index, meta, "up"),
+        _ if meta.summary.iter().any(|allowed| allowed == modifier) => None,
+        _ => Some(format!(
+            "modifier '{}' is not valid for attribute '{}'; allowed: {:?}",
+            modifier, attr_name, meta.summary
+        )),
+    }
+}
+
+/// Returns an error when an inheritance modifier cannot apply to the attribute.
+///
+/// Inheritance applies only to the `taxon` index. Within taxon, the field needs a
+/// traverse direction that matches `required_direction`, or `both`. A missing direction
+/// means the field is not inherited, so only direct or missing values are available.
+fn inheritance_error(
+    modifier: &str,
+    attr_name: &str,
+    index: &str,
+    meta: &FieldMeta,
+    required_direction: &str,
+) -> Option<String> {
+    if index != "taxon" {
+        return Some(format!(
+            "modifier '{}' not valid for '{}' on index '{}': inheritance applies to taxon only",
+            modifier, attr_name, index
+        ));
+    }
+    let Some(direction) = meta.traverse_direction.as_deref() else {
+        return Some(format!(
+            "modifier '{}' not valid for '{}': field has no traverse_direction, so only direct or missing values are available",
+            modifier, attr_name
+        ));
+    };
+    if direction == required_direction || direction == "both" {
+        return None;
+    }
+    Some(format!(
+        "modifier '{}' not valid for '{}': traverse_direction is '{}', needs '{}' or 'both'",
+        modifier, attr_name, direction, required_direction
+    ))
 }
 
 /// Validate a report YAML string against known report type rules.
@@ -669,6 +741,156 @@ mod tests {
 
         let result = validate_query_json(query, field_meta, config, synonyms);
         assert!(result.contains("unknown attribute"));
+    }
+
+    #[test]
+    fn test_numeric_and_list_values_are_accepted() {
+        let query = r#"
+index: assembly
+attributes:
+  - name: assembly_span
+    operator: gte
+    value: 1000000000
+  - name: assembly_level
+    operator: "="
+    value: [chromosome, scaffold]
+"#;
+        let field_meta = r#"{
+            "assembly_span": {"processed_type": "long", "traverse_direction": null, "summary": [], "constraint_enum": null},
+            "assembly_level": {"processed_type": "keyword", "traverse_direction": null, "summary": [], "constraint_enum": ["chromosome", "scaffold", "contig"]}
+        }"#;
+        assert_eq!(validate_query_json(query, field_meta, "{}", "{}"), "[]");
+    }
+
+    #[test]
+    fn test_enum_check_flags_invalid_list_member() {
+        let query = "index: assembly\nattributes:\n  - name: assembly_level\n    value: [chromosome, bogus]\n";
+        let field_meta = r#"{"assembly_level": {"processed_type": "keyword", "traverse_direction": null, "summary": [], "constraint_enum": ["chromosome", "scaffold"]}}"#;
+        let result = validate_query_json(query, field_meta, "{}", "{}");
+        assert!(result.contains("value 'bogus' is not valid"), "{result}");
+        assert!(!result.contains("'chromosome'"), "{result}");
+    }
+
+    #[test]
+    fn test_missing_index_defaults_to_taxon() {
+        let query = "taxa:\n  - Mammalia\n";
+        assert_eq!(validate_query_json(query, "{}", "{}", "{}"), "[]");
+    }
+
+    #[test]
+    fn test_keyword_accepts_core_parser_operators() {
+        let query = "index: taxon\nattributes:\n  - name: assembly_level\n    operator: eq\n    value: scaffold\n  - name: assembly_level\n    operator: ne\n    value: contig\n  - name: assembly_level\n    operator: exists\n  - name: assembly_level\n    operator: missing\n";
+        let field_meta = r#"{"assembly_level": {"processed_type": "keyword", "traverse_direction": null, "summary": [], "constraint_enum": null}}"#;
+        assert_eq!(validate_query_json(query, field_meta, "{}", "{}"), "[]");
+    }
+
+    #[test]
+    fn test_keyword_rejects_range_operator() {
+        let query = "index: taxon\nattributes:\n  - name: assembly_level\n    operator: gt\n    value: scaffold\n";
+        let field_meta = r#"{"assembly_level": {"processed_type": "keyword", "traverse_direction": null, "summary": [], "constraint_enum": null}}"#;
+        let result = validate_query_json(query, field_meta, "{}", "{}");
+        assert!(result.contains("operator 'gt' is not valid"), "{result}");
+    }
+
+    #[test]
+    fn test_status_modifiers_are_always_valid() {
+        let query = "index: taxon\nattributes:\n  - name: genome_size\n    modifiers: [min, direct, estimated]\n";
+        let field_meta = r#"{"genome_size": {"processed_type": "long", "traverse_direction": null, "summary": ["min"], "constraint_enum": null}}"#;
+        assert_eq!(validate_query_json(query, field_meta, "{}", "{}"), "[]");
+    }
+
+    #[test]
+    fn test_modifier_alias_is_checked() {
+        let query = "index: taxon\nattributes:\n  - name: genome_size\n    modifier: [median]\n";
+        let field_meta = r#"{"genome_size": {"processed_type": "long", "traverse_direction": null, "summary": ["min"], "constraint_enum": null}}"#;
+        let result = validate_query_json(query, field_meta, "{}", "{}");
+        assert!(
+            result.contains("modifier 'median' is not valid"),
+            "{result}"
+        );
+    }
+
+    #[test]
+    fn test_direct_modifier_accepted_when_direction_unknown() {
+        let query = "index: taxon\nattributes:\n  - name: genome_size\n    modifiers: [direct]\n";
+        let field_meta = r#"{"genome_size": {"processed_type": "long", "traverse_direction": null, "summary": [], "constraint_enum": null}}"#;
+        assert_eq!(validate_query_json(query, field_meta, "{}", "{}"), "[]");
+    }
+
+    #[test]
+    fn test_assembly_accession_prefix_is_case_insensitive() {
+        let query = "index: assembly\nassembly_ids:\n  - GCA_000001405.29\n  - gcf_000001405.40\n  - ASM12345v1\n";
+        assert_eq!(validate_query_json(query, "{}", "{}", "{}"), "[]");
+    }
+
+    #[test]
+    fn test_sample_accession_prefix_accepts_long_form() {
+        let query = "index: sample\nsample_ids:\n  - SAMEA123\n  - ERS000001\n";
+        assert_eq!(validate_query_json(query, "{}", "{}", "{}"), "[]");
+    }
+
+    #[test]
+    fn test_unknown_assembly_accession_prefix_rejected() {
+        let query = "index: assembly\nassembly_ids:\n  - XYZ_000001\n";
+        let result = validate_query_json(query, "{}", "{}", "{}");
+        assert!(
+            result.contains("invalid assembly accession prefix"),
+            "{result}"
+        );
+    }
+
+    #[test]
+    fn test_inheritance_modifier_rejected_when_direction_unknown() {
+        let query =
+            "index: taxon\nattributes:\n  - name: genome_size\n    modifiers: [ancestral]\n";
+        let field_meta = r#"{"genome_size": {"processed_type": "long", "traverse_direction": null, "summary": [], "constraint_enum": null}}"#;
+        let result = validate_query_json(query, field_meta, "{}", "{}");
+        assert!(result.contains("no traverse_direction"), "{result}");
+    }
+
+    #[test]
+    fn test_inheritance_modifier_rejected_on_non_taxon_index() {
+        let query =
+            "index: assembly\nattributes:\n  - name: genome_size\n    modifiers: [descendant]\n";
+        let field_meta = r#"{"genome_size": {"processed_type": "long", "traverse_direction": "up", "summary": [], "constraint_enum": null}}"#;
+        let result = validate_query_json(query, field_meta, "{}", "{}");
+        assert!(result.contains("taxon only"), "{result}");
+    }
+
+    #[test]
+    fn test_inheritance_modifier_accepted_when_direction_matches() {
+        let query =
+            "index: taxon\nattributes:\n  - name: genome_size\n    modifiers: [descendant]\n";
+        let field_meta = r#"{"genome_size": {"processed_type": "long", "traverse_direction": "up", "summary": [], "constraint_enum": null}}"#;
+        assert_eq!(validate_query_json(query, field_meta, "{}", "{}"), "[]");
+    }
+
+    #[test]
+    fn test_inheritance_modifier_accepted_when_direction_both() {
+        let query =
+            "index: taxon\nattributes:\n  - name: genome_size\n    modifiers: [ancestral]\n";
+        let field_meta = r#"{"genome_size": {"processed_type": "long", "traverse_direction": "both", "summary": [], "constraint_enum": null}}"#;
+        assert_eq!(validate_query_json(query, field_meta, "{}", "{}"), "[]");
+    }
+
+    #[test]
+    fn test_inheritance_modifier_rejected_when_direction_conflicts() {
+        let query =
+            "index: taxon\nattributes:\n  - name: genome_size\n    modifiers: [ancestral]\n";
+        let field_meta = r#"{"genome_size": {"processed_type": "long", "traverse_direction": "up", "summary": [], "constraint_enum": null}}"#;
+        let result = validate_query_json(query, field_meta, "{}", "{}");
+        assert!(
+            result.contains("modifier 'ancestral' not valid"),
+            "{result}"
+        );
+    }
+
+    #[test]
+    fn test_field_synonym_is_resolved() {
+        let query = "index: taxon\nfields:\n  - name: genome_size_alias\n";
+        let field_meta = r#"{"genome_size": {"processed_type": "long", "traverse_direction": null, "summary": [], "constraint_enum": null}}"#;
+        let synonyms = r#"{"genome_size_alias": "genome_size"}"#;
+        assert_eq!(validate_query_json(query, field_meta, "{}", synonyms), "[]");
     }
 
     #[test]

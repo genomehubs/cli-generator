@@ -275,6 +275,16 @@ pub async fn post_count_batch(
                 })
             }
         };
+        if let Some(message) =
+            crate::query_validation::validate_names(&state, &query.index, &item.query_yaml).await
+        {
+            return Json(CountBatchResponse {
+                status: ApiStatus::error(format!("invalid query: {message}")),
+                total: 0,
+                unique: None,
+                results: vec![],
+            });
+        }
         let params = match genomehubs_query::query::QueryParams::from_yaml(&item.params_yaml) {
             Ok(p) => p,
             Err(e) => {

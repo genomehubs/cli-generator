@@ -124,6 +124,12 @@ pub async fn post_report(
         Err(e) => bail!(format!("invalid report_yaml: {e}")),
     };
 
+    if let Some(message) =
+        crate::query_validation::validate_report_query(&state, &search_query, &req.query_yaml).await
+    {
+        bail!(format!("invalid query: {message}"));
+    }
+
     // Resolve index name from search_query
     let idx = index_name::resolve_index(&search_query.index, &state);
 

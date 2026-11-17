@@ -1,5 +1,6 @@
 use reqwest::Client;
 use serde_json::{json, Map, Value as JsonValue};
+use std::collections::{BTreeSet, HashMap};
 use std::sync::Arc;
 use tokio::time::{sleep, Duration};
 
@@ -31,9 +32,19 @@ pub struct MetadataCache {
     pub last_updated: Option<String>,
     pub has_sayt_field: bool,
     pub has_trigram_field: bool,
+    /// Top-level `keyword` mapping fields per index group (`taxon`, `assembly`, `sample`, `feature`).
+    pub keyword_fields: HashMap<String, Vec<String>>,
 }
 
 impl MetadataCache {
+    /// Returns the top-level keyword field names of the index group `group`, or an empty slice.
+    pub fn keyword_fields_of(&self, group: &str) -> &[String] {
+        self.keyword_fields
+            .get(group)
+            .map(Vec::as_slice)
+            .unwrap_or(&[])
+    }
+
     /// Convert the cached `attr_types` JSON into a `TypesMap` for use with `build_search_body`.
     ///
     /// This is a pure deserialization — no network I/O. Call it per request when
@@ -303,6 +314,37 @@ pub async fn fetch_cat_indices_json(
     Ok((taxonomies, indices))
 }
 
+/// Attribute document fields copied into the startup cache.
+///
+/// `traverse_direction` and `constraint` drive the inheritance and enum checks in
+/// the query validator, so they must be listed here or the cache drops them.
+const ATTRIBUTE_CACHE_FIELDS: [&str; 9] = [
+    "group",
+    "name",
+    "type",
+    "summary",
+    "default_summary",
+    "return_type",
+    "synonyms",
+    "traverse_direction",
+    "constraint",
+];
+
+/// Builds the Elasticsearch search body for the attribute documents of `result`.
+///
+/// `"multi"` fetches every group. Any other value restricts the search to that group.
+pub fn attr_search_body(result: &str) -> JsonValue {
+    if result == "multi" {
+        json!({ "size": 10000, "_source": ATTRIBUTE_CACHE_FIELDS })
+    } else {
+        json!({
+            "size": 10000,
+            "query": { "match": { "group": { "query": result } } },
+            "_source": ATTRIBUTE_CACHE_FIELDS
+        })
+    }
+}
+
 /// Fetch attribute documents from the attributes index and build a grouped map like the JS code.
 pub async fn fetch_attr_types(
     client: &Client,
@@ -315,11 +357,7 @@ pub async fn fetch_attr_types(
         es_base.trim_end_matches('/'),
         attributes_index
     );
-    let body = if result == "multi" {
-        json!({ "size": 10000, "_source": ["group","name","type","summary","default_summary","return_type","synonyms"] })
-    } else {
-        json!({ "size": 10000, "query": { "match": { "group": { "query": result } } }, "_source": ["group","name","type","summary","default_summary","return_type","synonyms"] })
-    };
+    let body = attr_search_body(result);
 
     let resp = client
         .post(&url)
@@ -462,6 +500,70 @@ async fn check_trigram_field(client: &Client, es_base: &str, index: &str) -> Res
     Ok(false)
 }
 
+/// Fetches the top-level keyword field names of one index.
+///
+/// Returns an empty list when the index does not exist, so hubs without a sample or feature index still start.
+pub async fn fetch_keyword_fields(
+    client: &Client,
+    es_base: &str,
+    index: &str,
+) -> Result<Vec<String>, String> {
+    let url = format!("{}/{}/_mapping", es_base.trim_end_matches('/'), index);
+    let resp = client
+        .get(&url)
+        .send()
+        .await
+        .map_err(|e| format!("keyword mapping request failed: {}", e))?;
+    if resp.status() == reqwest::StatusCode::NOT_FOUND {
+        return Ok(Vec::new());
+    }
+    let mapping_json: JsonValue = resp
+        .error_for_status()
+        .map_err(|e| format!("keyword mapping status error: {}", e))?
+        .json()
+        .await
+        .map_err(|e| format!("json parse error: {}", e))?;
+    Ok(keyword_field_names(&mapping_json))
+}
+
+/// Returns the sorted, de-duplicated top-level `keyword` property names in a `_mapping` response.
+fn keyword_field_names(mapping_json: &JsonValue) -> Vec<String> {
+    let mut names: BTreeSet<String> = BTreeSet::new();
+    for index_mapping in mapping_json
+        .as_object()
+        .into_iter()
+        .flat_map(|o| o.values())
+    {
+        let properties = index_mapping
+            .pointer("/mappings/properties")
+            .and_then(JsonValue::as_object);
+        for (name, property) in properties.into_iter().flatten() {
+            if property.get("type").and_then(JsonValue::as_str) == Some("keyword") {
+                names.insert(name.clone());
+            }
+        }
+    }
+    names.into_iter().collect()
+}
+
+/// Fetches the top-level keyword fields of the `taxon`, `assembly`, `sample`, and `feature` indices.
+async fn fetch_all_keyword_fields(
+    client: &Client,
+    es_base: &str,
+    suffix: Option<&str>,
+) -> Result<HashMap<String, Vec<String>>, String> {
+    let mut fields = HashMap::new();
+    for group in ["taxon", "assembly", "sample", "feature"] {
+        let index = match suffix {
+            Some(suffix) => format!("{group}{suffix}"),
+            None => group.to_string(),
+        };
+        let names = fetch_keyword_fields(client, es_base, &index).await?;
+        fields.insert(group.to_string(), names);
+    }
+    Ok(fields)
+}
+
 pub async fn fetch_taxonomic_ranks(
     client: &Client,
     es_base: &str,
@@ -565,6 +667,8 @@ pub async fn populate_cache(state: Arc<AppState>, client: &Client) -> Result<(),
         feature_index_version
     );
 
+    let keyword_fields = fetch_all_keyword_fields(client, es_base, suffix_norm.as_deref()).await?;
+
     let now = chrono::Utc::now().to_rfc3339();
 
     let cache = MetadataCache {
@@ -577,6 +681,7 @@ pub async fn populate_cache(state: Arc<AppState>, client: &Client) -> Result<(),
         last_updated: Some(now),
         has_sayt_field,
         has_trigram_field,
+        keyword_fields,
     };
 
     // write into AppState cache (tokio RwLock inside AppState)
@@ -612,5 +717,73 @@ pub async fn populate_with_retry(
                 wait = std::cmp::min(wait * 2, Duration::from_secs(30));
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn keyword_field_names_keeps_only_top_level_keywords() {
+        let mapping = json!({
+            "taxon--ncbi--goat--2026.11.16": {
+                "mappings": {
+                    "properties": {
+                        "taxon_id": { "type": "keyword" },
+                        "scientific_name": { "type": "keyword" },
+                        "genome_size": { "type": "long" },
+                        "lineage": { "type": "nested" }
+                    }
+                }
+            }
+        });
+        assert_eq!(
+            keyword_field_names(&mapping),
+            vec!["scientific_name".to_string(), "taxon_id".to_string()]
+        );
+    }
+
+    #[test]
+    fn keyword_field_names_is_empty_without_mappings() {
+        assert!(keyword_field_names(&json!({})).is_empty());
+    }
+
+    #[test]
+    fn keyword_fields_of_returns_empty_for_unknown_group() {
+        let cache = MetadataCache::default();
+        assert!(cache.keyword_fields_of("sample").is_empty());
+    }
+
+    #[test]
+    fn keyword_fields_of_returns_fields_for_known_group() {
+        let cache = MetadataCache {
+            keyword_fields: HashMap::from([(
+                "assembly".to_string(),
+                vec!["assembly_id".to_string()],
+            )]),
+            ..Default::default()
+        };
+        assert_eq!(cache.keyword_fields_of("assembly"), ["assembly_id"]);
+    }
+
+    #[test]
+    fn attr_search_body_requests_traverse_and_constraint() {
+        let body = attr_search_body("multi");
+        let source: Vec<&str> = body["_source"]
+            .as_array()
+            .expect("_source is an array")
+            .iter()
+            .filter_map(JsonValue::as_str)
+            .collect();
+        assert!(source.contains(&"traverse_direction"));
+        assert!(source.contains(&"constraint"));
+        assert!(body.get("query").is_none());
+    }
+
+    #[test]
+    fn attr_search_body_restricts_single_group() {
+        let body = attr_search_body("taxon");
+        assert_eq!(body["query"]["match"]["group"]["query"], "taxon");
     }
 }

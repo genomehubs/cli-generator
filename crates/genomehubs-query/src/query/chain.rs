@@ -229,6 +229,14 @@ pub enum ChainError {
         /// Human-readable error message.
         message: String,
     },
+
+    /// A reference uses a summary other than `value`, which is not applied yet.
+    UnsupportedSummary {
+        /// The key whose reference uses the summary.
+        key: String,
+        /// The summary named in the reference, e.g. `mean`.
+        summary: String,
+    },
 }
 
 impl std::fmt::Display for ChainError {
@@ -245,6 +253,12 @@ impl std::fmt::Display for ChainError {
             }
             ChainError::SubQueryFailed { key, message } => {
                 write!(f, "sub-query {key:?} failed: {message}")
+            }
+            ChainError::UnsupportedSummary { key, summary } => {
+                write!(
+                    f,
+                    "chain reference summary {summary:?} on query {key:?} is not supported yet; use the key.field form"
+                )
             }
         }
     }
@@ -325,6 +339,38 @@ pub fn resolve_chain_refs(
         }
     }
     Ok(())
+}
+
+// ── chain_ref_errors ──────────────────────────────────────────────────────────
+
+/// Checks the chain references in `attributes` against the defined `specs`.
+///
+/// Reports an [`ChainError::UndefinedQuery`] for each key missing from `specs`,
+/// and a [`ChainError::UnsupportedSummary`] for each summary other than `value`.
+/// Each distinct error is returned once. Field names are not checked here.
+pub fn chain_ref_errors(
+    attributes: &[super::super::query::attributes::Attribute],
+    specs: &HashMap<String, NamedQuerySpec>,
+) -> Vec<ChainError> {
+    let mut errors: Vec<ChainError> = Vec::new();
+    for chain_ref in collect_chain_refs(attributes) {
+        let error = if !specs.contains_key(&chain_ref.key) {
+            ChainError::UndefinedQuery {
+                key: chain_ref.key.clone(),
+            }
+        } else if chain_ref.summary != "value" {
+            ChainError::UnsupportedSummary {
+                key: chain_ref.key.clone(),
+                summary: chain_ref.summary.clone(),
+            }
+        } else {
+            continue;
+        };
+        if !errors.contains(&error) {
+            errors.push(error);
+        }
+    }
+    errors
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
@@ -524,5 +570,74 @@ mod tests {
                 limit: 2
             }
         );
+    }
+
+    // ── chain_ref_errors ──────────────────────────────────────────────────────
+
+    fn chain_attribute(value: &str) -> crate::query::attributes::Attribute {
+        crate::query::attributes::Attribute {
+            name: "taxon_id".to_string(),
+            operator: None,
+            value: Some(AttributeValue::Single(value.to_string())),
+            modifier: vec![],
+        }
+    }
+
+    fn spec_with_defaults() -> NamedQuerySpec {
+        NamedQuerySpec {
+            index: None,
+            filter_expr: String::new(),
+            inherit_scope: None,
+            limit: None,
+        }
+    }
+
+    #[test]
+    fn chain_ref_errors_passes_defined_plain_key() {
+        let attrs = vec![chain_attribute("queryA.taxon_id")];
+        let mut specs = HashMap::new();
+        specs.insert("queryA".to_string(), spec_with_defaults());
+        assert!(chain_ref_errors(&attrs, &specs).is_empty());
+    }
+
+    #[test]
+    fn chain_ref_errors_reports_undefined_key() {
+        let attrs = vec![chain_attribute("queryZ.taxon_id")];
+        let errors = chain_ref_errors(&attrs, &HashMap::new());
+        assert_eq!(
+            errors,
+            vec![ChainError::UndefinedQuery {
+                key: "queryZ".to_string()
+            }]
+        );
+    }
+
+    #[test]
+    fn chain_ref_errors_reports_each_undefined_key_once() {
+        let attrs = vec![
+            chain_attribute("queryZ.taxon_id"),
+            chain_attribute("queryZ.genome_size"),
+        ];
+        assert_eq!(chain_ref_errors(&attrs, &HashMap::new()).len(), 1);
+    }
+
+    #[test]
+    fn chain_ref_errors_reports_unsupported_summary() {
+        let attrs = vec![chain_attribute("queryA.mean(genome_size)")];
+        let mut specs = HashMap::new();
+        specs.insert("queryA".to_string(), spec_with_defaults());
+        assert_eq!(
+            chain_ref_errors(&attrs, &specs),
+            vec![ChainError::UnsupportedSummary {
+                key: "queryA".to_string(),
+                summary: "mean".to_string()
+            }]
+        );
+    }
+
+    #[test]
+    fn chain_ref_errors_ignores_plain_values() {
+        let attrs = vec![chain_attribute("9606")];
+        assert!(chain_ref_errors(&attrs, &HashMap::new()).is_empty());
     }
 }

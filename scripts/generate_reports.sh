@@ -62,12 +62,12 @@ function vl_convert() {
 
 # test scatter with categories
 for x_axis in $AXES; do
-  y_axis=assembly_span
-  for cat_axis in axes; do
-    for threshold in $THRESHOLDS; do
+  for y_axis in $AXES; do
+    for cat_axis in $AXES; do
+      threshold=10000
       echo "Testing scatter with x=$x_axis, cat=$cat_axis, threshold=$threshold"
       shape=$(if [[ "$threshold" -le 10 ]]; then echo "rect"; else echo "point"; fi)
-      curl -s -X POST 'http://localhost:3000/api/v3/report' -H 'accept: application/json' -H 'Content-Type: application/json' -d "{\"query\":{\"index\":\"taxon\", \"taxa\": [\"canidae\"], \"taxon_filter_type\": \"tree\"},\"params\":{},\"report\":{\"report\":\"scatter\",\"x\":\"$x_axis\",\"y\":\"$y_axis\",\"cat\":\"$cat_axis\",\"scatter_threshold\":$threshold},\"include_plot_spec\":true,\"display\":{\"title\":\"scatter test\"}}" \
+      curl -s -X POST 'https://goat.genomehubs.org/api/v3/report' -H 'accept: application/json' -H 'Content-Type: application/json' -d "{\"query\":{\"index\":\"taxon\", \"taxa\": [\"canidae\"], \"taxon_filter_type\": \"tree\"},\"params\":{},\"report\":{\"report\":\"scatter\",\"x\":\"$x_axis\",\"y\":\"$y_axis\",\"cat\":\"$cat_axis\",\"scatter_threshold\":$threshold},\"include_plot_spec\":true,\"display\":{\"title\":\"scatter test\"}}" \
       | cargo run --quiet --bin plot_to_vl \
       | vl_convert "$FORMAT" "$OUTDIR/scatter_${shape}_${x_axis}_${y_axis}_by_${cat_axis}.$FORMAT"
     done

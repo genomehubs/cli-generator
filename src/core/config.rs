@@ -126,6 +126,123 @@ impl SiteConfig {
     }
 }
 
+/// A user-facing preset for a known public GenomeHubs instance.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SitePreset {
+    /// Base API URL for the site, e.g. `https://goat.genomehubs.org/api`.
+    pub api_base: String,
+    /// Optional UI URL for the site, e.g. `https://goat.genomehubs.org`.
+    #[serde(default)]
+    pub ui_base: Option<String>,
+    /// Optional default index to use when a query does not specify one.
+    #[serde(default)]
+    pub default_index: Option<String>,
+    /// Human-readable description for docs and telemetry.
+    #[serde(default)]
+    pub description: Option<String>,
+}
+
+/// A registry of named runtime presets loaded from YAML or a config file.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SitePresetRegistry {
+    #[serde(default)]
+    pub sites: HashMap<String, SitePreset>,
+}
+
+impl SitePresetRegistry {
+    /// Load a preset registry from a YAML file on disk.
+    pub fn from_file(path: &Path) -> Result<Self> {
+        let text = std::fs::read_to_string(path)
+            .with_context(|| format!("reading site preset registry: {}", path.display()))?;
+        Self::parse_yaml(&text)
+    }
+
+    /// Parse a preset registry from a YAML string.
+    pub fn parse_yaml(yaml: &str) -> Result<Self> {
+        serde_yaml::from_str(yaml).context("parsing site preset registry YAML")
+    }
+
+    /// Return the preset matching a site key, if present.
+    pub fn get(&self, site_name: &str) -> Option<&SitePreset> {
+        self.sites.get(site_name)
+    }
+}
+
+/// Runtime configuration resolved from CLI flags, environment variables, and
+/// tracked site presets.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct RuntimeConfig {
+    /// Selected site name, e.g. `goat` or `boat`.
+    pub site_name: String,
+    /// Resolved API base URL.
+    pub api_base: String,
+    /// Resolved UI base URL, if available.
+    pub ui_base: Option<String>,
+    /// Default index, if any.
+    pub default_index: Option<String>,
+    /// Optional human-readable description.
+    pub description: Option<String>,
+}
+
+impl RuntimeConfig {
+    /// Resolve a runtime configuration using CLI, env, and preset precedence.
+    ///
+    /// Precedence is: explicit CLI values, then environment variables, then site
+    /// presets, then a sensible fallback derived from the API base.
+    pub fn resolve(
+        site: Option<&str>,
+        api_base: Option<&str>,
+        ui_base: Option<&str>,
+        registry: Option<&SitePresetRegistry>,
+    ) -> Self {
+        let env_site = std::env::var("GENOMEHUBS_SITE").ok();
+        let env_api_base = std::env::var("GENOMEHUBS_API_BASE").ok();
+        let env_ui_base = std::env::var("GENOMEHUBS_UI_BASE").ok();
+
+        let selected_site = site
+            .map(str::to_owned)
+            .or_else(|| env_site.clone())
+            .unwrap_or_default();
+
+        let preset = if selected_site.is_empty() {
+            None
+        } else {
+            registry.and_then(|r| r.get(&selected_site))
+        };
+
+        let resolved_api_base = api_base
+            .map(str::to_owned)
+            .or_else(|| env_api_base.clone())
+            .or_else(|| preset.map(|p| p.api_base.clone()))
+            .unwrap_or_default();
+
+        let resolved_ui_base = ui_base
+            .map(str::to_owned)
+            .or_else(|| env_ui_base.clone())
+            .or_else(|| preset.and_then(|p| p.ui_base.clone()))
+            .or_else(|| {
+                if resolved_api_base.ends_with("/api") {
+                    Some(
+                        resolved_api_base
+                            .strip_suffix("/api")
+                            .unwrap_or(&resolved_api_base)
+                            .to_string(),
+                    )
+                } else {
+                    None
+                }
+            });
+
+        Self {
+            site_name: selected_site,
+            api_base: resolved_api_base,
+            ui_base: resolved_ui_base,
+            default_index: preset.and_then(|p| p.default_index.clone()),
+            description: preset.and_then(|p| p.description.clone()),
+        }
+    }
+}
+
 /// Definition of a single index within a site (e.g. `taxon`, `assembly`, `feature`).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct IndexDef {
@@ -512,5 +629,69 @@ indexes:
         assert_eq!(fg.flag, "genome-size");
         assert_eq!(fg.display_groups, ["genome_size"]);
         assert_eq!(fg.compat_aliases, ["gs"]);
+    }
+
+    #[test]
+    fn runtime_config_uses_preset_values_when_site_is_selected() {
+        let registry = SitePresetRegistry::parse_yaml(
+            r#"
+sites:
+  goat:
+    api_base: "https://goat.example.com/api"
+    ui_base: "https://goat.example.com"
+    default_index: "taxon"
+    description: "GoaT demo"
+"#,
+        )
+        .unwrap();
+
+        let resolved = RuntimeConfig::resolve(Some("goat"), None, None, Some(&registry));
+        assert_eq!(resolved.site_name, "goat");
+        assert_eq!(resolved.api_base, "https://goat.example.com/api");
+        assert_eq!(
+            resolved.ui_base.as_deref(),
+            Some("https://goat.example.com")
+        );
+        assert_eq!(resolved.default_index.as_deref(), Some("taxon"));
+    }
+
+    #[test]
+    fn runtime_config_precedence_prefers_explicit_cli_values() {
+        static ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+        let _guard = ENV_LOCK.lock().unwrap();
+        std::env::set_var("GENOMEHUBS_SITE", "boat");
+        std::env::set_var("GENOMEHUBS_API_BASE", "https://env.example.com/api");
+        std::env::set_var("GENOMEHUBS_UI_BASE", "https://env.example.com");
+
+        let registry = SitePresetRegistry::parse_yaml(
+            r#"
+sites:
+  goat:
+    api_base: "https://goat.example.com/api"
+    ui_base: "https://goat.example.com"
+    default_index: "taxon"
+  boat:
+    api_base: "https://boat.example.com/api"
+    ui_base: "https://boat.example.com"
+    default_index: "assembly"
+"#,
+        )
+        .unwrap();
+
+        let resolved = RuntimeConfig::resolve(
+            Some("goat"),
+            Some("https://cli.example.com/api"),
+            Some("https://cli.example.com"),
+            Some(&registry),
+        );
+
+        assert_eq!(resolved.site_name, "goat");
+        assert_eq!(resolved.api_base, "https://cli.example.com/api");
+        assert_eq!(resolved.ui_base.as_deref(), Some("https://cli.example.com"));
+
+        std::env::remove_var("GENOMEHUBS_SITE");
+        std::env::remove_var("GENOMEHUBS_API_BASE");
+        std::env::remove_var("GENOMEHUBS_UI_BASE");
     }
 }

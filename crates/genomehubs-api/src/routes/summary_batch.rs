@@ -1,15 +1,50 @@
 use axum::{extract::Json, Extension};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 use std::sync::Arc;
 
 use crate::{fetch_records, index_name, routes::ApiStatus, AppState};
+
+fn deserialize_summary_fields<'de, D>(deserializer: D) -> Result<Vec<String>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let value = serde_json::Value::deserialize(deserializer)?;
+
+    match value {
+        serde_json::Value::String(s) => Ok(s
+            .split(',')
+            .map(str::trim)
+            .filter(|field| !field.is_empty())
+            .map(str::to_string)
+            .collect()),
+        serde_json::Value::Array(items) => {
+            let mut fields = Vec::new();
+            for item in items {
+                let raw = item.as_str().ok_or_else(|| {
+                    serde::de::Error::custom("expected a field name or a list of field names")
+                })?;
+                fields.extend(
+                    raw.split(',')
+                        .map(str::trim)
+                        .filter(|field| !field.is_empty())
+                        .map(str::to_string),
+                );
+            }
+            Ok(fields)
+        }
+        _ => Err(serde::de::Error::custom(
+            "expected a field value as a string or array of strings",
+        )),
+    }
+}
 
 #[derive(Deserialize, utoipa::ToSchema)]
 pub struct SummaryBatchItem {
     #[serde(rename = "recordId")]
     pub record_id: String,
     pub result: Option<String>,
-    pub fields: String,
+    #[serde(default, deserialize_with = "deserialize_summary_fields")]
+    pub fields: Vec<String>,
     #[allow(dead_code)]
     pub summary: Option<String>,
 }
@@ -46,8 +81,8 @@ pub struct SummaryBatchResponse {
                 summary = "Fetch genome_size summary for two taxa",
                 value = json!({
                     "queries": [
-                        {"recordId": "9606", "result": "taxon", "fields": "genome_size"},
-                        {"recordId": "7227", "result": "taxon", "fields": "genome_size,c_value"}
+                        {"recordId": "9606", "result": "taxon", "fields": ["genome_size"]},
+                        {"recordId": "7227", "result": "taxon", "fields": ["genome_size", "c_value"]}
                     ]
                 })
             ))
@@ -107,7 +142,7 @@ pub async fn post_summary_batch(
             continue;
         }
 
-        let fields: Vec<&str> = item.fields.split(',').map(str::trim).collect();
+        let fields = super::summary::normalize_summary_fields(&item.fields);
         let summaries: Vec<super::summary::SummaryItem> = fields
             .iter()
             .map(|field| super::summary::SummaryItem {
@@ -130,4 +165,41 @@ pub async fn post_summary_batch(
         status: ApiStatus::query_ok(results.len() as u64, 0),
         results,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn summary_batch_accepts_list_fields() {
+        let req: SummaryBatchRequest = serde_json::from_value(serde_json::json!({
+            "queries": [
+                {
+                    "recordId": "9606",
+                    "result": "taxon",
+                    "fields": ["genome_size", "c_value"]
+                }
+            ]
+        }))
+        .unwrap();
+
+        assert_eq!(req.queries[0].fields, vec!["genome_size", "c_value"]);
+    }
+
+    #[test]
+    fn summary_batch_accepts_csv_fields_for_compatibility() {
+        let req: SummaryBatchRequest = serde_json::from_value(serde_json::json!({
+            "queries": [
+                {
+                    "recordId": "9606",
+                    "result": "taxon",
+                    "fields": "genome_size,c_value"
+                }
+            ]
+        }))
+        .unwrap();
+
+        assert_eq!(req.queries[0].fields, vec!["genome_size", "c_value"]);
+    }
 }

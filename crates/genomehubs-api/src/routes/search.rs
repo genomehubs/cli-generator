@@ -133,7 +133,7 @@ pub struct SearchResponse {
             )),
             ("Large mammal assemblies" = (
                 summary = "Search assemblies for mammals with genome >= 1 Gbp",
-                value = json!({"query_yaml": "index: assembly\ntaxa:\n  - Mammalia\ntaxon_filter_type: tree\nfields:\n  - name: assembly_span\n    modifiers: [min=1000000000]\n", "params_yaml": "size: 10\nfields: assembly_span,assembly_level\ntaxonomy: ncbi\n"})
+                value = json!({"query_yaml": "index: assembly\ntaxa:\n  - Mammalia\ntaxon_filter_type: tree\nfields:\n  - name: assembly_span\n  - name: assembly_level\nattributes:\n  - name: assembly_span\n    operator: gte\n    value: \"1000000000\"\n", "params_yaml": "size: 10\nfields: assembly_span,assembly_level\ntaxonomy: ncbi\n"})
             ))
         )
     ),
@@ -163,6 +163,12 @@ pub async fn post_search(
         Ok(q) => q,
         Err(e) => bail!(format!("failed to parse query_yaml: {e}")),
     };
+
+    if let Some(message) =
+        crate::query_validation::validate_names(&state, &query.index, &req.query_yaml).await
+    {
+        bail!(format!("invalid query: {message}"));
+    }
 
     let params = match genomehubs_query::query::QueryParams::from_yaml(&req.params_yaml) {
         Ok(p) => p,

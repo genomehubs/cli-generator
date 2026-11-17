@@ -107,6 +107,15 @@ pub async fn post_count(
         }
     };
 
+    if let Some(message) =
+        crate::query_validation::validate_names(&state, &query.index, &req.query_yaml).await
+    {
+        return Json(CountResponse {
+            status: super::ApiStatus::error(format!("invalid query: {message}")),
+            url: "".to_string(),
+        });
+    }
+
     // Resolve index name using shared helper
     let idx = index_name::resolve_index(&query.index, &state);
 

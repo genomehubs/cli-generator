@@ -175,21 +175,60 @@ pub struct Attribute {
     /// Summary modifiers (`min`, `max`, …) wrap the field name as
     /// `summary(field)` in the query string.  Status modifiers (`direct`,
     /// `ancestral`, …) are converted to `&excludeXxx[N]=field` URL params.
-    #[serde(default)]
+    #[serde(default, alias = "modifiers")]
     pub modifier: Vec<Modifier>,
 }
 
 // ── Field ─────────────────────────────────────────────────────────────────────
 
 /// A single column to return in search results.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
+///
+/// Accepts either a bare field name (`genome_size`) or the object form
+/// (`{name: genome_size, modifier: [min]}`). A bare name converts to a `Field`
+/// with no modifiers, so both forms reach the rest of the pipeline identically.
+#[derive(Debug, Clone, Serialize)]
 pub struct Field {
     /// Field name; may be a synonym, normalised during validation.
     pub name: String,
     /// Optional modifiers (e.g. `min`, `direct`) for this return column.
-    #[serde(default)]
     pub modifier: Vec<Modifier>,
+}
+
+impl<'de> Deserialize<'de> for Field {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        match FieldInput::deserialize(deserializer)? {
+            FieldInput::Name(name) => Ok(Field {
+                name,
+                modifier: Vec::new(),
+            }),
+            FieldInput::Full(object) => Ok(Field {
+                name: object.name,
+                modifier: object.modifier,
+            }),
+        }
+    }
+}
+
+/// Input shapes accepted for a [`Field`]: a bare name or the object form.
+#[derive(Deserialize)]
+#[serde(untagged)]
+enum FieldInput {
+    /// Short form: a bare field name.
+    Name(String),
+    /// Object form with optional modifiers.
+    Full(FieldObject),
+}
+
+/// Object form of a [`Field`]. Unknown keys are rejected.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct FieldObject {
+    name: String,
+    #[serde(default, alias = "modifiers")]
+    modifier: Vec<Modifier>,
 }
 
 // ── AttributeOperator ─────────────────────────────────────────────────────────
@@ -468,6 +507,45 @@ mod tests {
         let field: Field = serde_yaml::from_str(yaml).unwrap();
         assert_eq!(field.name, "gc_percentage");
         assert_eq!(field.modifier, vec![Modifier::Max, Modifier::Direct]);
+    }
+
+    #[test]
+    fn field_deserialises_from_yaml_with_legacy_modifiers_alias() {
+        let yaml = "name: gc_percentage\nmodifiers: [max, direct]";
+        let field: Field = serde_yaml::from_str(yaml).unwrap();
+        assert_eq!(field.name, "gc_percentage");
+        assert_eq!(field.modifier, vec![Modifier::Max, Modifier::Direct]);
+    }
+
+    #[test]
+    fn field_short_form_converts_to_object_without_modifiers() {
+        let field: Field = serde_yaml::from_str("genome_size").unwrap();
+        assert_eq!(field.name, "genome_size");
+        assert!(field.modifier.is_empty());
+    }
+
+    #[test]
+    fn field_short_form_and_object_form_are_equivalent_without_modifiers() {
+        let short: Field = serde_yaml::from_str("genome_size").unwrap();
+        let object: Field = serde_yaml::from_str("name: genome_size").unwrap();
+        assert_eq!(short.name, object.name);
+        assert_eq!(short.modifier, object.modifier);
+    }
+
+    #[test]
+    fn field_object_form_rejects_unknown_key() {
+        let result: Result<Field, _> = serde_yaml::from_str("name: genome_size\nmodifer: [min]");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn field_list_accepts_mixed_short_and_object_forms() {
+        let yaml = "- genome_size\n- name: assembly_span\n  modifier: [min]\n";
+        let fields: Vec<Field> = serde_yaml::from_str(yaml).unwrap();
+        assert_eq!(fields.len(), 2);
+        assert_eq!(fields[0].name, "genome_size");
+        assert!(fields[0].modifier.is_empty());
+        assert_eq!(fields[1].modifier, vec![Modifier::Min]);
     }
 
     #[test]

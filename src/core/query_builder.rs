@@ -297,11 +297,15 @@ pub fn build_search_body(input: &SearchBodyInput) -> Result<Value> {
 
                 // Build existence filter list; include aggregation-existence
                 // checks only for the `taxon` group to match JS behaviour.
+                // Assembly docs do not carry `aggregation_source`, so the
+                // direct/descendant estimate guard must not be applied there.
                 let mut exists_filters: Vec<Value> = vec![
                     json!({ "match": { "attributes.key": field } }),
                     json!({ "exists": { "field": exists_field } }),
                 ];
-                if !input.include_estimates {
+                if !input.include_estimates
+                    && matches!(input.group.as_ref(), Some(g) if g == "taxon")
+                {
                     exists_filters.push(json!({
                       "bool": {
                         "should": [
