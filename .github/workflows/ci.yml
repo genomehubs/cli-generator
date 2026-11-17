@@ -29,7 +29,8 @@ jobs:
       - name: Install Rust 1.92.0 with rustfmt + clippy
         uses: dtolnay/rust-toolchain@1.92.0
         with:
-          components: rustfmt, clippy
+          components: rustfmt, clippy, rust-analyzer
+          targets: wasm32-unknown-unknown
 
       - name: Cache Cargo registry and build artefacts
         uses: actions/cache@v4
@@ -106,6 +107,9 @@ jobs:
 
       - name: Install Rust 1.92.0
         uses: dtolnay/rust-toolchain@1.92.0
+        with:
+          components: rustfmt, clippy, rust-analyzer
+          targets: wasm32-unknown-unknown
 
       - name: Cache Cargo registry and build artefacts
         uses: actions/cache@v4
@@ -175,6 +179,9 @@ jobs:
 
       - name: Install Rust 1.92.0
         uses: dtolnay/rust-toolchain@1.92.0
+        with:
+          components: rustfmt, clippy, rust-analyzer
+          targets: wasm32-unknown-unknown
 
       - name: Cache Cargo registry and build artefacts
         uses: actions/cache@v4
@@ -340,6 +347,7 @@ jobs:
       - name: Install Rust 1.92.0 with wasm-pack targets
         uses: dtolnay/rust-toolchain@1.92.0
         with:
+          components: rustfmt, clippy, rust-analyzer
           targets: wasm32-unknown-unknown
 
       - name: Cache Cargo registry and build artefacts
@@ -467,6 +475,9 @@ jobs:
 
       - name: Install Rust 1.92.0
         uses: dtolnay/rust-toolchain@1.92.0
+        with:
+          components: rustfmt, clippy, rust-analyzer
+          targets: wasm32-unknown-unknown
 
       - name: Cache Cargo registry and build artefacts
         uses: actions/cache@v4
@@ -528,6 +539,9 @@ jobs:
 
       - name: Install Rust 1.92.0
         uses: dtolnay/rust-toolchain@1.92.0
+        with:
+          components: rustfmt, clippy, rust-analyzer
+          targets: wasm32-unknown-unknown
 
       - name: Cache Cargo registry and build artefacts
         uses: actions/cache@v4
