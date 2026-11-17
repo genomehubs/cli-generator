@@ -57,8 +57,11 @@ jobs:
           PROPTEST_CASES: 512
 
       # Measure Rust code coverage (tarpaulin)
+      # Tool installs use rustc 1.97 because cargo-generate's dependencies require it; the project stays on 1.92.0.
       - name: Install cargo-generate and cargo-tarpaulin
-        run: cargo install --locked cargo-generate cargo-tarpaulin
+        run: |
+          rustup toolchain install 1.97.0 --profile minimal
+          cargo +1.97.0 install --locked cargo-generate cargo-tarpaulin
 
       - name: Measure Rust code coverage
         run: cargo tarpaulin --lib --out Xml --output-dir ./coverage --timeout 300
@@ -195,7 +198,9 @@ jobs:
             ${{ runner.os }}-cargo-gen-
 
       - name: Install cargo-generate
-        run: cargo install --locked cargo-generate
+        run: |
+          rustup toolchain install 1.97.0 --profile minimal
+          cargo +1.97.0 install --locked cargo-generate
 
       # $GITHUB_PATH additions take effect for subsequent steps only, so this
       # must be a separate step from the install above.
@@ -239,7 +244,9 @@ jobs:
           retention-days: 14
 
       - name: Install wasm-pack (for JavaScript SDK)
-        run: cargo install --locked wasm-pack
+        run: |
+          rustup toolchain install 1.97.0 --profile minimal
+          cargo +1.97.0 install --locked wasm-pack
 
       - name: Add wasm32-unknown-unknown target
         run: rustup target add wasm32-unknown-unknown
@@ -362,7 +369,9 @@ jobs:
             ${{ runner.os }}-cargo-sdk-js-
 
       - name: Install wasm-pack and cargo-generate
-        run: cargo install --locked wasm-pack cargo-generate
+        run: |
+          rustup toolchain install 1.97.0 --profile minimal
+          cargo +1.97.0 install --locked wasm-pack cargo-generate
 
       - name: Add ~/.cargo/bin to PATH
         run: echo "$HOME/.cargo/bin" >> $GITHUB_PATH
@@ -491,7 +500,9 @@ jobs:
             ${{ runner.os }}-cargo-sdk-r-
 
       - name: Install cargo-generate
-        run: cargo install --locked cargo-generate
+        run: |
+          rustup toolchain install 1.97.0 --profile minimal
+          cargo +1.97.0 install --locked cargo-generate
 
       - name: Add ~/.cargo/bin to PATH
         run: echo "$HOME/.cargo/bin" >> $GITHUB_PATH
