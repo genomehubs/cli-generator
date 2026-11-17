@@ -173,11 +173,9 @@ pub fn report_yaml_from_url_params(url: &str) -> Result<(String, String, String)
     }
 
     // Boolean / numeric fields
-    for (key, yaml_key) in [("collapseMonotypic", "collapse_monotypic")] {
-        if let Some(val) = params.get(key).and_then(|v| v.first()) {
-            let b = matches!(val.to_lowercase().as_str(), "true" | "1" | "yes");
-            doc.insert(yaml_key.to_string(), serde_json::Value::Bool(b));
-        }
+    if let Some(val) = params.get("collapseMonotypic").and_then(|v| v.first()) {
+        let b = matches!(val.to_lowercase().as_str(), "true" | "1" | "yes");
+        doc.insert("collapse_monotypic".to_string(), serde_json::Value::Bool(b));
     }
     for (key, yaml_key) in [
         ("hexResolution", "hex_resolution"),
@@ -2382,7 +2380,7 @@ fn vl_scatter(spec: &serde_json::Value, mut base: serde_json::Value) -> serde_js
                         let count_opt = count_val
                             .as_u64()
                             .or_else(|| count_val.as_i64().map(|n| n as u64))
-                            .and_then(|n| if n == 0 { None } else { Some(n) });
+                            .filter(|&n| n != 0);
 
                         // Only emit rects for buckets with a non-zero count.
                         if let Some(count) = count_opt {

@@ -1877,11 +1877,7 @@ class QueryBuilder:
         import json
 
         from . import hybrid_positional as _hybrid_positional
-        from . import (
-            parse_busco_tsv,
-            parse_fai,
-            parse_lengths_tsv,
-        )
+        from . import parse_busco_tsv, parse_fai, parse_lengths_tsv
         from . import positional_from_features as _positional_from_features
 
         # Parse each local file entry into a LocalFeatureSet dict
