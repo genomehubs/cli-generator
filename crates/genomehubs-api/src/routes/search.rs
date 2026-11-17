@@ -129,11 +129,11 @@ pub struct SearchResponse {
         examples(
             ("Mammalia with genome size" = (
                 summary = "Search for Mammalia taxa with a genome size estimate",
-                value = json!({"query_yaml": "index: taxon\ntaxa:\n  - Mammalia\ntaxon_filter_type: tree\nfields:\n  - name: genome_size\n", "params_yaml": "size: 10\nfields: genome_size\ninclude_estimates: true\ntaxonomy: ncbi\n"})
+                value = json!({"query_yaml": "index: taxon\ntaxa:\n  - Mammalia\ntaxon_filter_type: tree\nfields:\n  - name: genome_size\n", "params_yaml": "size: 10\ninclude_estimates: true\ntaxonomy: ncbi\n"})
             )),
             ("Large mammal assemblies" = (
                 summary = "Search assemblies for mammals with genome >= 1 Gbp",
-                value = json!({"query_yaml": "index: assembly\ntaxa:\n  - Mammalia\ntaxon_filter_type: tree\nfields:\n  - name: assembly_span\n  - name: assembly_level\nattributes:\n  - name: assembly_span\n    operator: gte\n    value: \"1000000000\"\n", "params_yaml": "size: 10\nfields: assembly_span,assembly_level\ntaxonomy: ncbi\n"})
+                value = json!({"query_yaml": "index: assembly\ntaxa:\n  - Mammalia\ntaxon_filter_type: tree\nfields:\n  - name: assembly_span\n  - name: assembly_level\nattributes:\n  - name: assembly_span\n    operator: gte\n    value: \"1000000000\"\n", "params_yaml": "size: 10\ntaxonomy: ncbi\n"})
             ))
         )
     ),

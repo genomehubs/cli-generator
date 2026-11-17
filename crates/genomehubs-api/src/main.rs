@@ -19,6 +19,7 @@ mod report;
 pub mod request_shape;
 pub mod routes;
 mod swagger_customise;
+mod swagger_yaml_docs;
 
 #[derive(Clone)]
 pub struct AppState {
@@ -133,6 +134,15 @@ pub struct AppState {
     ))
 )]
 struct ApiDoc;
+
+/// Write the served OpenAPI document to `target/openapi.json` for inspection.
+fn write_patched_openapi(openapi_val: &serde_json::Value) {
+    let out_path = "./target/openapi.json";
+    std::fs::create_dir_all("./target").ok();
+    let body = serde_json::to_string_pretty(openapi_val).expect("OpenAPI serialisation failed");
+    std::fs::write(out_path, body).expect("failed to write openapi.json");
+    tracing::info!(path = %out_path, "Wrote OpenAPI");
+}
 
 #[tokio::main]
 async fn main() {
@@ -377,6 +387,7 @@ async fn main() {
     // Build the runtime-patched OpenAPI JSON value.
     // Apply site-specific customisations from the swagger_examples file (if set).
     let mut openapi_val = serde_json::to_value(&openapi).expect("OpenAPI serialisation failed");
+    swagger_yaml_docs::apply_to_json(&mut openapi_val);
     if let Some(ref path) = swagger_examples_path {
         match swagger_customise::load(path) {
             Ok(customisation) => {
@@ -388,6 +399,8 @@ async fn main() {
             }
         }
     }
+
+    write_patched_openapi(&openapi_val);
 
     // Populate cache on startup (blocking with retry). If this errors the app will not start.
     // Spawn the populate step now and await it so server only starts when cache populated.
@@ -518,13 +531,6 @@ async fn main() {
                 openapi_val,
             )
         });
-
-    // Write the patched OpenAPI JSON to target/ for inspection.
-    let out_path = "./target/openapi.json";
-    std::fs::create_dir_all("./target").ok();
-    std::fs::write(out_path, serde_json::to_string_pretty(&openapi).unwrap())
-        .expect("failed to write openapi.json");
-    tracing::info!(path = %out_path, "Wrote OpenAPI");
 
     // Bind all interfaces: a container's published port cannot reach 127.0.0.1.
     let addr = SocketAddr::from(([0, 0, 0, 0], 3000));

@@ -5,8 +5,8 @@ use serde_json::json;
 fn y_axis_uses_ybuckets_for_raw_points() {
     let spec = json!({
         "report_type": "scatter",
-        "x": {"field":"assembly_span", "label":"assembly_span", "scale":"linear"},
-        "y": {"field":"assembly_level","label":"assembly_level","scale":"linear"},
+        "x": {"field":"assembly_span", "label":"assembly_span", "scale":"linear", "value_type":"float"},
+        "y": {"field":"assembly_level","label":"assembly_level","scale":"linear", "value_type":"keyword"},
         "data": {
             "buckets": [{"id":"1","label":"B1"},{"id":"2","label":"B2"}],
             "yBuckets": ["Scaffold","Chromosome"],

@@ -239,7 +239,7 @@ async fn _resolve_lineage_taxon_ids(
         examples(
             ("Two searches" = (
                 summary = "Search Mammalia and Insecta in parallel",
-                value = json!({"queries": [{"query_yaml": "index: taxon\nquery: tax_tree(Mammalia)\n", "params_yaml": "size: 5\nfields: genome_size\ntaxonomy: ncbi\n"}, {"query_yaml": "index: taxon\nquery: tax_tree(Insecta)\n", "params_yaml": "size: 5\nfields: genome_size\ntaxonomy: ncbi\n"}]})
+                value = json!({"queries": [{"query_yaml": "index: taxon\ntaxa:\n  - Mammalia\ntaxon_filter_type: tree\nfields:\n  - name: genome_size\n", "params_yaml": "size: 5\ntaxonomy: ncbi\n"}, {"query_yaml": "index: taxon\ntaxa:\n  - Insecta\ntaxon_filter_type: tree\nfields:\n  - name: genome_size\n", "params_yaml": "size: 5\ntaxonomy: ncbi\n"}]})
             ))
         )
     ),

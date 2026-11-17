@@ -240,7 +240,7 @@ async fn _resolve_lineage_taxon_ids(
         examples(
             ("Two counts" = (
                 summary = "Count Mammalia and Insecta taxa in parallel",
-                value = json!({"queries": [{"query_yaml": "index: taxon\nquery: tax_tree(Mammalia)\n", "params_yaml": "taxonomy: ncbi\n"}, {"query_yaml": "index: taxon\nquery: tax_tree(Insecta)\n", "params_yaml": "taxonomy: ncbi\n"}]})
+                value = json!({"queries": [{"query_yaml": "index: taxon\ntaxa:\n  - Mammalia\ntaxon_filter_type: tree\n", "params_yaml": "taxonomy: ncbi\n"}, {"query_yaml": "index: taxon\ntaxa:\n  - Insecta\ntaxon_filter_type: tree\n", "params_yaml": "taxonomy: ncbi\n"}]})
             ))
         )
     ),
