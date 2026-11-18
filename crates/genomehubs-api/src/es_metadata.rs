@@ -49,7 +49,7 @@ impl MetadataCache {
     ///
     /// This is a pure deserialization — no network I/O. Call it per request when
     /// a `TypesMap` is needed to select the correct typed value docvalue field.
-    pub fn as_types_map(&self) -> cli_generator::core::attr_types::TypesMap {
+    pub fn as_types_map(&self) -> genomehubs_query::attr_types::TypesMap {
         serde_json::from_value(self.attr_types.clone()).unwrap_or_default()
     }
 }

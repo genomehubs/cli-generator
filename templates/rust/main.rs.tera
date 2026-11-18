@@ -1568,51 +1568,33 @@ fn describe_query(
     verbose: bool,
 ) -> anyhow::Result<String> {
     use std::collections::HashMap;
-    use {{ sdk_name }}::embedded::core;
+    use {{ sdk_name }}::embedded::core::describe::describe_yaml;
+    use {{ sdk_name }}::embedded::core::fetch::FieldDef;
+    use {{ sdk_name }}::embedded::core::query::SearchQuery;
 
-    // Try to parse as a YAML SearchQuery; if that fails, treat as a raw query string
-    let query: core::query::SearchQuery = {
-        // Try full YAML parsing first
-        core::query::SearchQuery::from_yaml(query_str).or_else(|_| {
-            // Fall back: wrap the query string in a minimal valid YAML structure
-            // Treat it as a taxon name in the attributes
-            let yaml = format!(
-                "index: taxon\nattributes:\n  - name: scientific_name\n    operator: eq\n    value: \"{}\"",
-                query_str
-            );
-            core::query::SearchQuery::from_yaml(&yaml)
-        })?
+    // Accept a full v3 query_yaml; otherwise treat the input as a scientific name
+    let query_yaml = if SearchQuery::from_yaml(query_str).is_ok() {
+        query_str.to_string()
+    } else {
+        format!(
+            "index: taxon\nattributes:\n  - name: scientific_name\n    operator: eq\n    value: \"{}\"",
+            query_str
+        )
     };
 
-    // Convert phf::Map to HashMap for QueryDescriber
-    // (QueryDescriber only needs display_name, so we create minimal FieldDef objects)
-    let mut field_metadata: HashMap<String, core::fetch::FieldDef> = HashMap::new();
-    for (name, _meta) in field_meta_map.entries() {
-        field_metadata.insert(
-            name.to_string(),
-            core::fetch::FieldDef {
+    // Only field names are needed here; display names fall back to the canonical name.
+    let field_metadata: HashMap<String, FieldDef> = field_meta_map
+        .entries()
+        .map(|(name, _meta)| {
+            let field = FieldDef {
                 name: name.to_string(),
-                display_group: None,
-                display_name: None, // Could be populated from API in the future
-                description: None,
-                field_type: None,
-                constraint: None,
-                display_level: None,
-                synonyms: vec![],
-                processed_type: None,
-                traverse_direction: None,
-                summary: vec![],
-            },
-        );
-    }
+                ..Default::default()
+            };
+            (name.to_string(), field)
+        })
+        .collect();
 
-    // Create describer and generate description
-    let describer = core::describe::QueryDescriber::new(field_metadata);
-    Ok(if verbose {
-        describer.describe_verbose(&query)
-    } else {
-        describer.describe_concise(&query)
-    })
+    Ok(describe_yaml(&query_yaml, field_metadata, verbose)?)
 }
 
 /// Build a [`QuerySnapshot`] from individual CLI argument values and render

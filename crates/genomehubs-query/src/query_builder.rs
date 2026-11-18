@@ -1,7 +1,6 @@
-use crate::core::attr_types::TypesMap;
-use crate::core::query::{Attribute, AttributeOperator, AttributeValue};
+use crate::attr_types::TypesMap;
+use crate::query::{Attribute, AttributeOperator, AttributeValue, SortConfig, SortOrder};
 use anyhow::Result;
-use genomehubs_query::query::{SortConfig, SortOrder};
 use serde_json::{json, Value};
 use std::collections::{HashMap, HashSet};
 

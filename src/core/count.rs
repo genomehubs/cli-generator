@@ -5,13 +5,13 @@
 //! minimal so it can be used as a building block for higher-level API functions
 //! (reports, aggregations) implemented later.
 
-use crate::core::query::adapter::parse_url_params;
+use crate::core::query::SearchQuery;
 use crate::core::query_builder::build_count_body;
+use crate::core::runtime_query::{search_query_from_request, QueryRequest};
 use anyhow::{Context, Result};
 use reqwest::blocking::Client;
 use serde_json::json;
 use serde_json::Value;
-use std::collections::HashMap;
 
 /// Post `query` to `base_url/{index}/_count` and return the resulting count.
 ///
@@ -64,48 +64,38 @@ pub fn count_docs_from_query_str(
     count_docs(base_url, index, &body)
 }
 
-/// Parse common URL-style params (flat map) into `SearchQuery`/`QueryParams`
-/// and build a simple count body. This is intentionally minimal: it prefers
-/// an explicit `q`/`query` parameter when present, otherwise it converts a
-/// few `SearchQuery` fields into match filters for a best-effort count.
-pub fn count_docs_from_url_params(
-    base_url: &str,
-    index: &str,
-    params: &HashMap<String, String>,
-) -> Result<u64> {
-    // If the caller supplied a raw query string, honour it.
-    if let Some(qs) = params.get("q").or_else(|| params.get("query")) {
-        let body = build_count_body(Some(qs.as_str()), false).context("building count body")?;
-        return count_docs(base_url, index, &body);
-    }
+/// Count documents matching a v2 request, converted by the canonical URL converter.
+///
+/// Taxa and fields become `match_phrase` filters on `_all`, so the count is best-effort.
+pub fn count_docs_from_request(base_url: &str, index: &str, request: &QueryRequest) -> Result<u64> {
+    let query = search_query_from_request(request).context("converting request to SearchQuery")?;
+    count_docs(base_url, index, &match_body(&query))
+}
 
-    // Otherwise parse structured params via the adapter and build a minimal
-    // ES body: match_all when nothing is present, or a bool.filter with
-    // match_phrase clauses for taxa/fields provided by the SDK representation.
-    let (search_query, _qp) = parse_url_params(params).context("parsing URL params")?;
-
+/// Build an ES body from a `SearchQuery`'s taxa and fields.
+///
+/// Returns `match_all` when neither taxa nor fields are present.
+fn match_body(query: &SearchQuery) -> Value {
     let mut filters: Vec<Value> = Vec::new();
 
-    if let Some(taxa_ident) = &search_query.identifiers.taxa {
+    if let Some(taxa_ident) = &query.identifiers.taxa {
         let joined = taxa_ident.names.join(" ");
         if !joined.is_empty() {
             filters.push(json!({ "match_phrase": { "_all": joined } }));
         }
     }
 
-    for f in &search_query.attributes.fields {
-        if !f.name.is_empty() {
-            filters.push(json!({ "match_phrase": { "_all": f.name } }));
+    for field in &query.attributes.fields {
+        if !field.name.is_empty() {
+            filters.push(json!({ "match_phrase": { "_all": field.name } }));
         }
     }
 
-    let body = if filters.is_empty() {
+    if filters.is_empty() {
         json!({ "query": { "match_all": {} } })
     } else {
         json!({ "query": { "bool": { "filter": filters } } })
-    };
-
-    count_docs(base_url, index, &body)
+    }
 }
 
 #[cfg(test)]
@@ -162,7 +152,7 @@ mod tests {
     }
 
     #[test]
-    fn count_docs_from_url_params_uses_adapter() {
+    fn count_docs_from_request_posts_match_filters() {
         let mut server = Server::new();
         let mock = server
             .mock("POST", "/taxon/_count")
@@ -171,12 +161,21 @@ mod tests {
             .create();
 
         let base = server.url();
-        let mut params = HashMap::new();
-        params.insert("taxa".to_string(), "Mammalia".to_string());
-        params.insert("fields".to_string(), "genome_size".to_string());
+        let request = QueryRequest {
+            result: "taxon".to_string(),
+            query: Some("tax_name(Mammalia)".to_string()),
+            fields: vec!["genome_size".to_string()],
+            size: None,
+        };
 
-        let result = count_docs_from_url_params(&base, "taxon", &params).unwrap();
+        let result = count_docs_from_request(&base, "taxon", &request).unwrap();
         assert_eq!(result, 7);
         mock.assert();
+    }
+
+    #[test]
+    fn match_body_is_match_all_without_taxa_or_fields() {
+        let body = match_body(&SearchQuery::default());
+        assert_eq!(body, json!({ "query": { "match_all": {} } }));
     }
 }

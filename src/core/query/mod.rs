@@ -13,5 +13,4 @@ pub use genomehubs_query::query::{
     SearchIndex, SearchQuery, SortOrder, TaxaIdentifier, TaxonFilterType,
 };
 
-pub mod adapter;
 pub mod validation;

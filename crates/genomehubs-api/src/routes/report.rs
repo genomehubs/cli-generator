@@ -170,7 +170,7 @@ pub async fn post_report(
     // the single correct typed-value docvalue field per attribute.
     let mut ranks_set: Option<HashSet<String>> = None;
     let names_set: Option<HashSet<String>> = None;
-    let types_map: Option<cli_generator::core::attr_types::TypesMap> =
+    let types_map: Option<genomehubs_query::attr_types::TypesMap> =
         if let Some(ref arc) = state.cache {
             let guard = arc.read().await;
             ranks_set = Some(HashSet::from_iter(guard.taxonomic_ranks.clone()));
@@ -274,7 +274,7 @@ fn build_report_query(
     query: &SearchQuery,
     params: &QueryParams,
     _default_taxonomy: &str,
-    types_map: Option<cli_generator::core::attr_types::TypesMap>,
+    types_map: Option<genomehubs_query::attr_types::TypesMap>,
     ranks_set: Option<HashSet<String>>,
     names_set: Option<HashSet<String>>,
 ) -> Result<Value, String> {
@@ -282,7 +282,7 @@ fn build_report_query(
         query_to_body_input("report", query, params, types_map, ranks_set, names_set);
 
     // Build full search body using query builder
-    let body = cli_generator::core::query_builder::build_search_body(&search_body_input)
+    let body = genomehubs_query::query_builder::build_search_body(&search_body_input)
         .map_err(|e| format!("query builder error: {e}"))?;
 
     // Extract just the query part from the full search body

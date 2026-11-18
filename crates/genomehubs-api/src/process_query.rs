@@ -1,10 +1,10 @@
 //! functions to modify a query before sending it to the API, e.g. to add lineage IDs for a given taxon name
 
 use crate::{es_client, request_shape::query_to_body_input, AppState};
-use cli_generator::core::query_builder::build_search_body;
 use genomehubs_query::query::{
     AttributeSet, Identifiers, QueryParams, SearchQuery, TaxaIdentifier, TaxonFilterType,
 };
+use genomehubs_query::query_builder::build_search_body;
 
 pub async fn get_lineage_ids(
     client: &reqwest::Client,

@@ -30,7 +30,4 @@ tracing = "0.1"
 chrono = { version = "0.4", features = ["serde"] }
 # hyper = { version = "1", features = ["server", "http1"] }
 
-# Use the existing crate in workspace if present
-# query_builder crate is in src/core as part of main crate; we'll call it via path when ready
-cli_generator = { package = "cli-generator", path = "../../" }
 genomehubs-query = { path = "../genomehubs-query" }

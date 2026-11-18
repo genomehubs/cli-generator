@@ -180,7 +180,7 @@ fn tera_dep_injected_in_cargo_toml() {
 
 // ── cli-generator preview command ─────────────────────────────────────────────
 
-/// Test that `cli-generator preview --site` produces valid output.
+/// Test that `cli-generator preview --scaffold` produces valid output.
 #[test]
 fn preview_new_site_produces_output() {
     let config_dir = workspace_root().join("sites");
@@ -188,7 +188,7 @@ fn preview_new_site_produces_output() {
     let output = Command::new(cli_generator_bin())
         .args([
             "preview",
-            "--site",
+            "--scaffold",
             "goat",
             "--config",
             config_dir.to_str().unwrap(),
@@ -198,7 +198,7 @@ fn preview_new_site_produces_output() {
 
     assert!(
         output.status.success(),
-        "cli-generator preview --site goat failed: {}",
+        "cli-generator preview --scaffold goat failed: {}",
         String::from_utf8_lossy(&output.stderr)
     );
 
@@ -320,15 +320,15 @@ fn update_command_preserves_hand_written_files() {
     );
 }
 
-// ── cli-generator validate command ────────────────────────────────────────────
+// ── cli-generator check command ───────────────────────────────────────────────
 
-/// Test that `cli-generator validate` unit logic works with matching hashes.
+/// Test that `cli-generator check` unit logic works with matching hashes.
 ///
 /// We test the core `run` function directly via Rust rather than via CLI
 /// since the CLI invocation requires a properly-set repo which is complex to
 /// construct in a test.
 #[test]
-fn validate_succeeds_with_matching_config_hash() {
+fn check_succeeds_with_matching_config_hash() {
     let tmp = TempDir::new().unwrap();
     let config_path = tmp.path().join("config").join("site.yaml");
     let cargo_toml_path = tmp.path().join("Cargo.toml");
@@ -350,13 +350,13 @@ fn validate_succeeds_with_matching_config_hash() {
     std::fs::write(&cargo_toml_path, cargo_toml_content).unwrap();
 
     // This should succeed
-    let result = cli_generator::commands::validate::run(tmp.path());
-    assert!(result.is_ok(), "validate should succeed with matching hash");
+    let result = cli_generator::commands::check::run(tmp.path());
+    assert!(result.is_ok(), "check should succeed with matching hash");
 }
 
-/// Test that `cli-generator validate` detects mismatched hashes.
+/// Test that `cli-generator check` detects mismatched hashes.
 #[test]
-fn validate_fails_with_mismatched_config_hash() {
+fn check_fails_with_mismatched_config_hash() {
     let tmp = TempDir::new().unwrap();
     let config_path = tmp.path().join("config").join("site.yaml");
     let cargo_toml_path = tmp.path().join("Cargo.toml");
@@ -370,13 +370,13 @@ fn validate_fails_with_mismatched_config_hash() {
     std::fs::write(&cargo_toml_path, cargo_toml_content).unwrap();
 
     // This should fail
-    let result = cli_generator::commands::validate::run(tmp.path());
-    assert!(result.is_err(), "validate should fail with mismatched hash");
+    let result = cli_generator::commands::check::run(tmp.path());
+    assert!(result.is_err(), "check should fail with mismatched hash");
 }
 
-/// Test that `cli-generator validate` errors when config-hash is missing.
+/// Test that `cli-generator check` errors when config-hash is missing.
 #[test]
-fn validate_fails_when_hash_missing() {
+fn check_fails_when_hash_missing() {
     let tmp = TempDir::new().unwrap();
     let config_path = tmp.path().join("config").join("site.yaml");
     let cargo_toml_path = tmp.path().join("Cargo.toml");
@@ -390,9 +390,9 @@ fn validate_fails_when_hash_missing() {
     std::fs::write(&cargo_toml_path, cargo_toml_content).unwrap();
 
     // This should fail
-    let result = cli_generator::commands::validate::run(tmp.path());
+    let result = cli_generator::commands::check::run(tmp.path());
     assert!(
         result.is_err(),
-        "validate should fail when config-hash is missing"
+        "check should fail when config-hash is missing"
     );
 }

@@ -57,7 +57,7 @@ cli-generator update .
 Or check whether generated files are in sync with the config:
 
 ```bash
-cli-generator validate .
+cli-generator check .
 ```
 
 ---

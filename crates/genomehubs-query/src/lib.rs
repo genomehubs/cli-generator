@@ -16,12 +16,14 @@
 //! use genomehubs_query::query::{SearchQuery, QueryParams, build_query_url};
 //! ```
 
+pub mod attr_types;
 pub mod describe;
 pub mod lineage_summary;
 pub mod local_report;
 pub mod parse;
 pub mod parse_local;
 pub mod query;
+pub mod query_builder;
 pub mod report;
 pub mod snippet;
 pub mod types;
@@ -438,22 +440,15 @@ pub fn describe_query(
 ) -> String {
     use std::collections::HashMap;
 
-    let query = match query::SearchQuery::from_yaml(query_yaml) {
-        Ok(q) => q,
-        Err(e) => return format!(r#"{{"error":"Invalid query YAML: {}"}}"#, e),
-    };
-
     let field_metadata: HashMap<String, types::FieldDef> =
         match serde_json::from_str(field_metadata_json) {
             Ok(meta) => meta,
             Err(e) => return format!(r#"{{"error":"Invalid field metadata JSON: {}"}}"#, e),
         };
 
-    let describer = describe::QueryDescriber::new(field_metadata);
-
-    let result = match mode {
-        "verbose" => describer.describe_verbose(&query),
-        _ => describer.describe_concise(&query),
+    let result = match describe::describe_yaml(query_yaml, field_metadata, mode == "verbose") {
+        Ok(text) => text,
+        Err(e) => return format!(r#"{{"error":"Invalid query YAML: {}"}}"#, e),
     };
 
     // Return as JSON string (for consistency with other WASM exports)

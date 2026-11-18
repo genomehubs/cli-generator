@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 use crate::report::ReportType;
+use crate::types::FieldDef;
 
 /// Field metadata for validation (portable version without static lifetime constraints).
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -42,6 +43,18 @@ pub struct ValidationConfig {
     /// Valid taxon filter types.
     #[serde(default = "default_taxon_filter_types")]
     pub taxon_filter_types: Vec<String>,
+}
+
+impl Default for ValidationConfig {
+    /// Default prefixes, name classes, and filter types, matching the serde defaults.
+    fn default() -> Self {
+        Self {
+            assembly_accession_prefixes: default_assembly_prefixes(),
+            sample_accession_prefixes: default_sample_prefixes(),
+            taxon_name_classes: default_name_classes(),
+            taxon_filter_types: default_taxon_filter_types(),
+        }
+    }
 }
 
 fn default_assembly_prefixes() -> Vec<String> {
@@ -194,6 +207,65 @@ pub fn validate_query_json(
     serde_json::to_string(&errors).unwrap_or_else(|_| r#"["serialization error"]"#.to_string())
 }
 
+/// Validate a query YAML against field definitions, using the default validation config.
+///
+/// Returns error messages; an empty list means valid. An empty `fields` slice skips name checks.
+pub fn validate_query_for_fields(query_yaml: &str, fields: &[FieldDef]) -> Vec<String> {
+    let query: SearchQuery = match serde_yaml::from_str(query_yaml) {
+        Ok(query) => query,
+        Err(error) => return vec![format!("failed to parse query YAML: {error}")],
+    };
+    check_query(
+        &query,
+        &field_meta_map(fields),
+        &ValidationConfig::default(),
+        &synonym_map(fields),
+    )
+}
+
+/// Build validator field metadata keyed by canonical field name.
+///
+/// Produces the same shape as the `field_meta.json` consumed by the SDK validators.
+pub fn field_meta_map(fields: &[FieldDef]) -> HashMap<String, FieldMeta> {
+    fields
+        .iter()
+        .map(|field| (field.name.clone(), field_meta_of(field)))
+        .collect()
+}
+
+/// Convert one field definition into validator metadata.
+fn field_meta_of(field: &FieldDef) -> FieldMeta {
+    let processed_type = field
+        .processed_type
+        .clone()
+        .or_else(|| field.field_type.clone())
+        .unwrap_or_else(|| "keyword".to_string());
+    let constraint_enum = field
+        .constraint
+        .as_ref()
+        .map(|constraint| constraint.enum_values.clone())
+        .filter(|values| !values.is_empty());
+    FieldMeta {
+        processed_type,
+        traverse_direction: field.traverse_direction.clone(),
+        summary: field.summary.clone(),
+        constraint_enum,
+    }
+}
+
+/// Map each field synonym to its canonical field name.
+pub fn synonym_map(fields: &[FieldDef]) -> HashMap<String, String> {
+    fields
+        .iter()
+        .flat_map(|field| {
+            field
+                .synonyms
+                .iter()
+                .map(move |synonym| (synonym.clone(), field.name.clone()))
+        })
+        .collect()
+}
+
 fn validate_query_impl(
     query_yaml: &str,
     field_meta_json: &str,
@@ -215,6 +287,16 @@ fn validate_query_impl(
     // Parse synonyms from JSON
     let synonyms: HashMap<String, String> = serde_json::from_str(synonyms_str).unwrap_or_default();
 
+    Ok(check_query(&query, &field_meta, &config, &synonyms))
+}
+
+/// Run the structural and name checks on a parsed query.
+fn check_query(
+    query: &SearchQuery,
+    field_meta: &HashMap<String, FieldMeta>,
+    config: &ValidationConfig,
+    synonyms: &HashMap<String, String>,
+) -> Vec<String> {
     let mut errors = Vec::new();
 
     // Validate index (defaults to taxon, matching the core query parser)
@@ -343,7 +425,7 @@ fn validate_query_impl(
         }
     }
 
-    Ok(errors)
+    errors
 }
 
 /// Operators valid for keyword attributes: equality, inequality, and presence checks.
@@ -702,6 +784,77 @@ mod tests {
 
         let result = validate_query_json(query, field_meta, config, synonyms);
         assert_eq!(result, "[]");
+    }
+
+    use crate::types::FieldConstraint;
+
+    fn genome_size_field() -> FieldDef {
+        FieldDef {
+            name: "genome_size".to_string(),
+            processed_type: Some("long".to_string()),
+            summary: vec!["min".to_string()],
+            synonyms: vec!["gsize".to_string()],
+            ..FieldDef::default()
+        }
+    }
+
+    #[test]
+    fn validate_query_for_fields_accepts_known_field() {
+        let query = "index: taxon\ntaxa:\n  - Mammalia\nfields:\n  - genome_size\n";
+        assert!(validate_query_for_fields(query, &[genome_size_field()]).is_empty());
+    }
+
+    #[test]
+    fn validate_query_for_fields_reports_unknown_field() {
+        let query = "index: taxon\nfields:\n  - genome_sise\n";
+        let errors = validate_query_for_fields(query, &[genome_size_field()]);
+        assert_eq!(
+            errors,
+            vec!["unknown field 'genome_sise' for index 'taxon'"]
+        );
+    }
+
+    #[test]
+    fn validate_query_for_fields_resolves_synonyms() {
+        let query = "index: taxon\nfields:\n  - gsize\n";
+        assert!(validate_query_for_fields(query, &[genome_size_field()]).is_empty());
+    }
+
+    #[test]
+    fn validate_query_for_fields_skips_name_checks_without_fields() {
+        let query = "index: taxon\nfields:\n  - anything\n";
+        assert!(validate_query_for_fields(query, &[]).is_empty());
+    }
+
+    #[test]
+    fn validate_query_for_fields_reports_unparseable_yaml() {
+        let errors = validate_query_for_fields("index: [unclosed", &[]);
+        assert_eq!(errors.len(), 1);
+        assert!(errors[0].starts_with("failed to parse query YAML"));
+    }
+
+    #[test]
+    fn field_meta_map_defaults_type_and_drops_empty_enums() {
+        let field = FieldDef {
+            name: "assembly_level".to_string(),
+            constraint: Some(FieldConstraint {
+                enum_values: Vec::new(),
+            }),
+            ..FieldDef::default()
+        };
+        let meta_map = field_meta_map(&[field]);
+        let meta = &meta_map["assembly_level"];
+        assert_eq!(meta.processed_type, "keyword");
+        assert!(meta.constraint_enum.is_none());
+    }
+
+    #[test]
+    fn synonym_map_maps_synonym_to_canonical_name() {
+        let synonyms = synonym_map(&[genome_size_field()]);
+        assert_eq!(
+            synonyms.get("gsize").map(String::as_str),
+            Some("genome_size")
+        );
     }
 
     #[test]

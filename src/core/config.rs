@@ -166,6 +166,18 @@ impl SitePresetRegistry {
     pub fn get(&self, site_name: &str) -> Option<&SitePreset> {
         self.sites.get(site_name)
     }
+
+    /// Load the presets bundled with the binary from `config/site-presets.yaml`.
+    pub fn builtin() -> Result<Self> {
+        Self::parse_yaml(include_str!("../../config/site-presets.yaml"))
+    }
+
+    /// Return the sorted names of all registered sites.
+    pub fn site_names(&self) -> Vec<&str> {
+        let mut names: Vec<&str> = self.sites.keys().map(String::as_str).collect();
+        names.sort_unstable();
+        names
+    }
 }
 
 /// Runtime configuration resolved from CLI flags, environment variables, and
@@ -240,6 +252,17 @@ impl RuntimeConfig {
             default_index: preset.and_then(|p| p.default_index.clone()),
             description: preset.and_then(|p| p.description.clone()),
         }
+    }
+
+    /// Return the API base URL, or an error listing the known sites when unset.
+    pub fn require_api_base(&self, registry: &SitePresetRegistry) -> Result<&str> {
+        if self.api_base.is_empty() {
+            anyhow::bail!(
+                "no API base configured: pass --site or --api-base, or set GENOMEHUBS_SITE or GENOMEHUBS_API_BASE (known sites: {})",
+                registry.site_names().join(", ")
+            );
+        }
+        Ok(&self.api_base)
     }
 }
 
@@ -694,5 +717,38 @@ sites:
         std::env::remove_var("GENOMEHUBS_SITE");
         std::env::remove_var("GENOMEHUBS_API_BASE");
         std::env::remove_var("GENOMEHUBS_UI_BASE");
+    }
+
+    #[test]
+    fn builtin_registry_contains_goat_and_boat() {
+        let registry = SitePresetRegistry::builtin().unwrap();
+        assert_eq!(registry.site_names(), vec!["boat", "goat"]);
+        let goat = registry.get("goat").unwrap();
+        assert_eq!(goat.api_base, "https://goat.genomehubs.org/api");
+        assert_eq!(goat.default_index.as_deref(), Some("taxon"));
+    }
+
+    #[test]
+    fn require_api_base_errors_and_lists_known_sites_when_unset() {
+        let registry = SitePresetRegistry::builtin().unwrap();
+        let err = RuntimeConfig::default()
+            .require_api_base(&registry)
+            .unwrap_err()
+            .to_string();
+        assert!(err.contains("no API base configured"));
+        assert!(err.contains("boat, goat"));
+    }
+
+    #[test]
+    fn require_api_base_returns_configured_url() {
+        let registry = SitePresetRegistry::builtin().unwrap();
+        let runtime = RuntimeConfig {
+            api_base: "https://example.com/api".to_string(),
+            ..RuntimeConfig::default()
+        };
+        assert_eq!(
+            runtime.require_api_base(&registry).unwrap(),
+            "https://example.com/api"
+        );
     }
 }

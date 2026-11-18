@@ -703,7 +703,6 @@ dependencies = [
  "anyhow",
  "axum",
  "chrono",
- "cli-generator",
  "genomehubs-query",
  "reqwest",
  "serde",

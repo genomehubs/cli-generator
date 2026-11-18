@@ -1,6 +1,6 @@
-use cli_generator::core::query_builder::build_search_body;
 use genomehubs_api::request_shape::query_to_body_input;
 use genomehubs_query::query::{QueryParams, SearchQuery};
+use genomehubs_query::query_builder::build_search_body;
 
 fn make_query(yaml: &str) -> SearchQuery {
     SearchQuery::from_yaml(yaml).expect("parse failed")
@@ -97,7 +97,7 @@ fn pagination_offset() {
     let params = QueryParams::from_yaml("size: 50\npage: 3\ntaxonomy: ncbi\n").unwrap();
     let q = make_query("index: taxon\n");
     let search_body_input = query_to_body_input("search", &q, &params, None, None, None);
-    let body = match cli_generator::core::query_builder::build_search_body(&search_body_input) {
+    let body = match genomehubs_query::query_builder::build_search_body(&search_body_input) {
         Ok(b) => b,
         Err(e) => panic!("failed to build body: {}", e),
     };

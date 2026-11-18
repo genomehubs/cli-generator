@@ -1,9 +1,11 @@
 //! Human-readable descriptions of genomehubs queries.
 //!
-//! Generates concise and verbose descriptions of [`SearchQuery`] objects,
-//! using field metadata from the API to produce user-friendly output.
+//! This is the single describer for the workspace. The CLI, the PyO3 and WASM
+//! bindings, and the copy embedded in generated SDKs all use it. It turns a
+//! [`SearchQuery`] into concise or verbose English, naming fields from the
+//! API field metadata.
 
-use crate::query::{SearchIndex, SearchQuery};
+use crate::query::{AttributeOperator, AttributeValue, SearchIndex, SearchQuery, TaxonFilterType};
 use crate::types::FieldDef;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -31,74 +33,44 @@ impl QueryDescriber {
     /// Describe a query as structured components.
     pub fn describe_parts(&self, query: &SearchQuery) -> DescribedQuery {
         DescribedQuery {
-            index: self.describe_index(query),
-            taxa_filter: self.describe_taxa_filter(query),
+            index: index_noun(&query.index).to_string(),
+            taxa_filter: describe_taxa_filter(query),
             filters: self.describe_filters(query),
-            sorts: vec![],
             selections: self.describe_selections(query),
         }
     }
 
     /// Describe a query in concise prose form.
+    ///
+    /// Example: `Search for taxa in Mammalia (including all descendants), filtered to Genome size >= 1G, returning Organism name.`
     pub fn describe_concise(&self, query: &SearchQuery) -> String {
-        let parts = self.describe_parts(query);
-        self.assemble_prose(&parts, false)
+        assemble_concise(&self.describe_parts(query))
     }
 
-    /// Describe a query in verbose prose form.
+    /// Describe a query in verbose prose form, with one bullet per filter and field.
     pub fn describe_verbose(&self, query: &SearchQuery) -> String {
-        let parts = self.describe_parts(query);
-        self.assemble_prose(&parts, true)
+        assemble_verbose(&self.describe_parts(query))
     }
 
-    fn describe_index(&self, query: &SearchQuery) -> String {
-        match &query.index {
-            SearchIndex::Taxon => "taxa".to_string(),
-            SearchIndex::Assembly => "assemblies".to_string(),
-            SearchIndex::Sample => "samples".to_string(),
-            SearchIndex::Feature => "features".to_string(),
-        }
-    }
-
-    fn describe_taxa_filter(&self, query: &SearchQuery) -> Option<String> {
-        query.identifiers.taxa.as_ref().map(|taxa_filter| {
-            let names = taxa_filter.names.join(", ");
-            let mode = match taxa_filter.filter_type {
-                crate::query::TaxonFilterType::Name => "direct matches only",
-                crate::query::TaxonFilterType::Tree => "including all descendants",
-                crate::query::TaxonFilterType::Lineage => "including all ancestors",
-            };
-            format!("{} ({})", names, mode)
-        })
-    }
-
+    /// Describe each attribute filter as a field, operator, and value.
     fn describe_filters(&self, query: &SearchQuery) -> Vec<FilterDescription> {
         query
             .attributes
             .attributes
             .iter()
-            .filter_map(|attr| {
-                let field_display = self.display_name(&attr.name);
-                match (&attr.operator, &attr.value) {
-                    (Some(op), Some(value)) => {
-                        let op_symbol = format!("{:?}", op).to_lowercase();
-                        let values_str = match value {
-                            crate::query::AttributeValue::Single(s) => s.clone(),
-                            crate::query::AttributeValue::List(list) => list.join(", "),
-                        };
-                        Some(FilterDescription {
-                            field: field_display.clone(),
-                            operator: op_symbol.clone(),
-                            value: values_str.clone(),
-                            concise: format!("{} {} {}", field_display, op_symbol, values_str),
-                        })
-                    }
-                    _ => None,
-                }
+            .filter_map(|attribute| {
+                let (operator, value) =
+                    filter_condition(attribute.operator.as_ref(), attribute.value.as_ref())?;
+                Some(FilterDescription::new(
+                    self.display_name(&attribute.name),
+                    operator,
+                    value,
+                ))
             })
             .collect()
     }
 
+    /// Display names for the fields requested as result columns.
     fn describe_selections(&self, query: &SearchQuery) -> Vec<String> {
         query
             .attributes
@@ -107,87 +79,150 @@ impl QueryDescriber {
             .map(|field| self.display_name(&field.name))
             .collect()
     }
+}
 
-    fn assemble_prose(&self, parts: &DescribedQuery, verbose: bool) -> String {
-        if verbose {
-            self.assemble_verbose(parts)
-        } else {
-            self.assemble_concise(parts)
-        }
+/// Plural noun for a search index, used as the subject of the prose.
+fn index_noun(index: &SearchIndex) -> &'static str {
+    match index {
+        SearchIndex::Taxon => "taxa",
+        SearchIndex::Assembly => "assemblies",
+        SearchIndex::Sample => "samples",
+        SearchIndex::Feature => "features",
     }
+}
 
-    fn assemble_concise(&self, parts: &DescribedQuery) -> String {
-        let mut prose = format!("Search for {} in the database", parts.index);
+/// Describe the taxa filter, e.g. `Mammalia (including all descendants)`.
+fn describe_taxa_filter(query: &SearchQuery) -> Option<String> {
+    let taxa = query.identifiers.taxa.as_ref()?;
+    let mode = match taxa.filter_type {
+        TaxonFilterType::Name => "direct matches only",
+        TaxonFilterType::Tree => "including all descendants",
+        TaxonFilterType::Lineage => "including all ancestors",
+    };
+    Some(format!("{} ({})", taxa.names.join(", "), mode))
+}
 
-        if let Some(ref taxa) = parts.taxa_filter {
-            prose.push_str(&format!(" in {} ({})", parts.index, taxa));
-        }
-
-        if !parts.filters.is_empty() {
-            let filter_strs: Vec<_> = parts.filters.iter().map(|f| f.concise.clone()).collect();
-            prose.push_str(&format!(", filtered to {}", filter_strs.join(" and ")));
-        }
-
-        if !parts.selections.is_empty() {
-            prose.push_str(&format!(", returning {}", parts.selections.join(", ")));
-        }
-
-        prose.push('.');
-        prose
-    }
-
-    fn assemble_verbose(&self, parts: &DescribedQuery) -> String {
-        let mut prose = format!("Search for {}", parts.index);
-
-        if let Some(ref taxa) = parts.taxa_filter {
-            prose.push_str(&format!(" in {} ({})", parts.index, taxa));
-        }
-        prose.push('.');
-
-        if !parts.filters.is_empty() {
-            prose.push_str("\n\nFilters applied:\n");
-            for filter in &parts.filters {
-                prose.push_str(&format!(
-                    "  • {} {} {}\n",
-                    filter.field, filter.operator, filter.value
-                ));
-            }
-        }
-
-        if !parts.selections.is_empty() {
-            prose.push_str("\nReturning fields:\n");
-            for field in &parts.selections {
-                prose.push_str(&format!("  • {}\n", field));
-            }
-        }
-
-        prose
+/// Map an attribute's operator and value to display text.
+///
+/// A missing operator is an existence test, matching the v3 YAML semantics.
+/// A comparison without a value has no condition to describe, so it yields `None`.
+fn filter_condition(
+    operator: Option<&AttributeOperator>,
+    value: Option<&AttributeValue>,
+) -> Option<(String, String)> {
+    match operator {
+        None | Some(AttributeOperator::Exists) => Some(("exists".to_string(), String::new())),
+        Some(AttributeOperator::Missing) => Some(("is missing".to_string(), String::new())),
+        Some(comparison) => value.map(|attribute_value| {
+            (
+                comparison.as_str().to_string(),
+                attribute_value.as_strs().join(", "),
+            )
+        }),
     }
 }
 
 /// Structured description of a query (can be formatted multiple ways).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DescribedQuery {
+    /// Plural noun for the searched index, e.g. `taxa`.
     pub index: String,
+    /// Taxa named by the query with their match mode, if any.
     pub taxa_filter: Option<String>,
+    /// One entry per attribute condition.
     pub filters: Vec<FilterDescription>,
-    pub sorts: Vec<SortDescription>,
+    /// Display names of the returned fields.
     pub selections: Vec<String>,
 }
 
+/// One attribute condition, e.g. `Genome size >= 1G`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FilterDescription {
+    /// Display name of the filtered field.
     pub field: String,
+    /// Operator text, e.g. `>=`, `exists`, or `is missing`.
     pub operator: String,
+    /// Compared value; empty for existence tests.
     pub value: String,
+    /// Complete phrase, e.g. `Genome size >= 1G`.
     pub concise: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SortDescription {
-    pub field: String,
-    pub direction: String,
-    pub concise: String,
+impl FilterDescription {
+    /// Build a filter description and its concise phrase.
+    fn new(field: String, operator: String, value: String) -> Self {
+        let concise = if value.is_empty() {
+            format!("{field} {operator}")
+        } else {
+            format!("{field} {operator} {value}")
+        };
+        Self {
+            field,
+            operator,
+            value,
+            concise,
+        }
+    }
+}
+
+/// Assemble the single-sentence concise form.
+fn assemble_concise(parts: &DescribedQuery) -> String {
+    let mut prose = format!("Search for {}", parts.index);
+    if let Some(taxa) = &parts.taxa_filter {
+        prose.push_str(&format!(" in {taxa}"));
+    }
+    if !parts.filters.is_empty() {
+        let conditions: Vec<&str> = parts.filters.iter().map(|f| f.concise.as_str()).collect();
+        prose.push_str(&format!(", filtered to {}", conditions.join(" and ")));
+    }
+    if !parts.selections.is_empty() {
+        prose.push_str(&format!(", returning {}", parts.selections.join(", ")));
+    }
+    prose.push('.');
+    prose
+}
+
+/// Assemble the multi-line verbose form with bulleted filters and fields.
+fn assemble_verbose(parts: &DescribedQuery) -> String {
+    let mut prose = format!("Search for {}", parts.index);
+    if let Some(taxa) = &parts.taxa_filter {
+        prose.push_str(&format!(" in {taxa}"));
+    }
+    prose.push('.');
+    if !parts.filters.is_empty() {
+        prose.push_str("\n\nFilters applied:\n");
+        for filter in &parts.filters {
+            prose.push_str(&format!("  • {}\n", filter.concise));
+        }
+    }
+    if !parts.selections.is_empty() {
+        prose.push_str("\nReturning fields:\n");
+        for field in &parts.selections {
+            prose.push_str(&format!("  • {field}\n"));
+        }
+    }
+    prose
+}
+
+/// Parse a v3 `query_yaml` body and describe it with the given field metadata.
+///
+/// `verbose` selects the detailed form. Shared by the CLI and the PyO3 and WASM bindings.
+///
+/// # Errors
+///
+/// Returns the YAML error when `query_yaml` is not a valid `SearchQuery`.
+pub fn describe_yaml(
+    query_yaml: &str,
+    field_metadata: HashMap<String, FieldDef>,
+    verbose: bool,
+) -> Result<String, serde_yaml::Error> {
+    let query = SearchQuery::from_yaml(query_yaml)?;
+    let describer = QueryDescriber::new(field_metadata);
+    Ok(if verbose {
+        describer.describe_verbose(&query)
+    } else {
+        describer.describe_concise(&query)
+    })
 }
 
 /// Describe a report configuration as a short English phrase.
@@ -296,19 +331,84 @@ pub fn describe_report_yaml(report_yaml: &str) -> String {
 mod tests {
     use super::*;
 
+    fn metadata_with_display_names(entries: &[(&str, &str)]) -> HashMap<String, FieldDef> {
+        entries
+            .iter()
+            .map(|(name, display)| {
+                let field = FieldDef {
+                    name: name.to_string(),
+                    display_name: Some(display.to_string()),
+                    ..Default::default()
+                };
+                (name.to_string(), field)
+            })
+            .collect()
+    }
+
+    fn sample_metadata() -> HashMap<String, FieldDef> {
+        metadata_with_display_names(&[
+            ("genome_size", "Genome size"),
+            ("organism_name", "Organism name"),
+            ("assembly_level", "Assembly level"),
+        ])
+    }
+
     #[test]
     fn test_display_name() {
-        let mut metadata = HashMap::new();
-        metadata.insert(
-            "genome_size".to_string(),
-            FieldDef {
-                name: "genome_size".to_string(),
-                display_name: Some("Genome size".to_string()),
-                ..Default::default()
-            },
-        );
-        let describer = QueryDescriber::new(metadata);
+        let describer = QueryDescriber::new(sample_metadata());
         assert_eq!(describer.display_name("genome_size"), "Genome size");
         assert_eq!(describer.display_name("unknown_field"), "unknown field");
+    }
+
+    #[test]
+    fn concise_describes_taxa_comparison_and_fields() {
+        let yaml = "index: taxon\n\
+            taxa: [Mammalia]\n\
+            taxon_filter_type: tree\n\
+            attributes:\n  - name: genome_size\n    operator: ge\n    value: 1G\n\
+            fields:\n  - organism_name\n";
+        let prose = describe_yaml(yaml, sample_metadata(), false).unwrap();
+        assert_eq!(
+            prose,
+            "Search for taxa in Mammalia (including all descendants), filtered to Genome size >= 1000000000, returning Organism name."
+        );
+    }
+
+    #[test]
+    fn exists_and_missing_have_no_value_text() {
+        let yaml = "index: taxon\n\
+            attributes:\n  - name: assembly_level\n    operator: exists\n  - name: genome_size\n    operator: missing\n";
+        let prose = describe_yaml(yaml, sample_metadata(), false).unwrap();
+        assert_eq!(
+            prose,
+            "Search for taxa, filtered to Assembly level exists and Genome size is missing."
+        );
+    }
+
+    #[test]
+    fn taxa_filter_modes_are_named() {
+        let lineage = "index: taxon\ntaxa: [Mammalia]\ntaxon_filter_type: lineage\n";
+        let direct = "index: taxon\ntaxa: [Mammalia]\n";
+        let lineage_prose = describe_yaml(lineage, HashMap::new(), false).unwrap();
+        let direct_prose = describe_yaml(direct, HashMap::new(), false).unwrap();
+        assert!(lineage_prose.contains("(including all ancestors)"));
+        assert!(direct_prose.contains("(direct matches only)"));
+    }
+
+    #[test]
+    fn verbose_lists_filters_and_fields_as_bullets() {
+        let yaml = "index: assembly\n\
+            attributes:\n  - name: genome_size\n    operator: lt\n    value: 2G\n\
+            fields:\n  - assembly_level\n";
+        let prose = describe_yaml(yaml, sample_metadata(), true).unwrap();
+        assert_eq!(
+            prose,
+            "Search for assemblies.\n\nFilters applied:\n  • Genome size < 2000000000\n\nReturning fields:\n  • Assembly level\n"
+        );
+    }
+
+    #[test]
+    fn invalid_yaml_is_an_error() {
+        assert!(describe_yaml("index: [", HashMap::new(), false).is_err());
     }
 }

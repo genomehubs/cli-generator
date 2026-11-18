@@ -1,0 +1,15 @@
+# Built-in runtime presets for public GenomeHubs instances.
+#
+# Loaded into the binary at build time (see `SitePresetRegistry::builtin`).
+# Select a preset with `--site <name>` or `GENOMEHUBS_SITE=<name>`.
+sites:
+  goat:
+    api_base: https://goat.genomehubs.org/api
+    ui_base: https://goat.genomehubs.org
+    default_index: taxon
+    description: GoaT (Genomes on a Tree)
+  boat:
+    api_base: https://boat.genomehubs.org/api
+    ui_base: https://boat.genomehubs.org
+    default_index: taxon
+    description: BoaT

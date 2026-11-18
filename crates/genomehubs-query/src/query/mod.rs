@@ -148,6 +148,18 @@ pub enum SearchIndex {
     Feature,
 }
 
+impl SearchIndex {
+    /// Index name as used in API metadata requests, e.g. `"taxon"`.
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            SearchIndex::Taxon => "taxon",
+            SearchIndex::Assembly => "assembly",
+            SearchIndex::Sample => "sample",
+            SearchIndex::Feature => "feature",
+        }
+    }
+}
+
 // ── SortEntry ───────────────────────────────────────────────────────────────
 
 /// Sort configuration entry for search results.

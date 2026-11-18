@@ -85,7 +85,7 @@ def run_rust_example_for_query(query_dict):
         args += ["--exclude_missing", ",".join(query_dict.get("exclude_missing"))]
 
     # If attributes are present, prefer passing a full `query_yaml` so the
-    # example's `adapter::parse_url_params` will populate `attributes` fully.
+    # example's URL converter will populate `attributes` fully.
     if query_dict.get("attributes"):
         # Build the minimal SearchQuery YAML structure (JSON is acceptable to serde_yaml)
         query_yaml_dict = {

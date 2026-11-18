@@ -19,73 +19,15 @@ use anyhow::{Context, Result};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-use crate::core::config::{IndexDef, SiteConfig};
+use crate::core::config::SiteConfig;
 
 /// How long a cached field list is considered fresh.
 const CACHE_TTL: Duration = Duration::from_secs(24 * 60 * 60);
 
 // ── FieldDef ──────────────────────────────────────────────────────────────────
 
-/// Metadata for a single API field, parsed from the `resultFields` endpoint.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct FieldDef {
-    /// Internal field name used in API queries, e.g. `"genome_size"`.
-    ///
-    /// Not present in the inner JSON object (the name is the map key), so we
-    /// default to an empty string and set it manually in [`parse_single_field`].
-    #[serde(default)]
-    pub name: String,
-    /// Display group for grouping related fields, e.g. `"genome_size"`.
-    #[serde(default)]
-    pub display_group: Option<String>,
-    /// Human-readable label, e.g. `"Genome size"`.
-    #[serde(default)]
-    pub display_name: Option<String>,
-    /// Short description of the field.
-    #[serde(default)]
-    pub description: Option<String>,
-    /// Field data type as reported by the API, e.g. `"long"`, `"keyword"`.
-    #[serde(rename = "type", default)]
-    pub field_type: Option<String>,
-    /// For keyword fields: the set of allowed enum values.
-    #[serde(default)]
-    pub constraint: Option<FieldConstraint>,
-    /// Display priority level (1 = primary, 2 = secondary).
-    #[serde(default)]
-    pub display_level: Option<u8>,
-    /// Alternative names by which this field is also known, e.g. `["ebp_metric_date"]`.
-    ///
-    /// When a flag's `fields` list or `patterns` references a synonym, the
-    /// canonical field name is included in the resolved field set.
-    #[serde(default)]
-    pub synonyms: Vec<String>,
-    /// Processed type used for validation, e.g. `"long"`, `"keyword"`, `"date"`.
-    ///
-    /// Distinct from `field_type` (the raw storage type); used to decide which
-    /// operators are legal (no `<`/`>` for keyword fields).
-    #[serde(default)]
-    pub processed_type: Option<String>,
-    /// Direction of value inheritance across the taxonomy tree.
-    ///
-    /// `"up"` means values propagate toward the root (ancestors), `"down"`
-    /// toward leaves (descendants), `"both"` for bidirectional propagation.
-    /// `None` means the field is not inherited.
-    #[serde(default)]
-    pub traverse_direction: Option<String>,
-    /// Valid summary modifiers for this field, e.g. `["min", "max", "median"]`.
-    ///
-    /// Only aggregate/traversal fields have a non-empty list.
-    #[serde(default)]
-    pub summary: Vec<String>,
-}
-
-/// Constraint metadata for a field, used to enumerate keyword values.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct FieldConstraint {
-    /// Allowed values for keyword-type fields.
-    #[serde(rename = "enum", default)]
-    pub enum_values: Vec<String>,
-}
+/// Field metadata types are shared with the subcrate; re-exported here for callers.
+pub use genomehubs_query::types::{FieldConstraint, FieldDef};
 
 // ── Cache envelope ────────────────────────────────────────────────────────────
 
@@ -143,15 +85,22 @@ impl FieldFetcher {
             .iter()
             .map(|index| {
                 let url = site_config.result_fields_url(index);
-                let fields = self.fetch_index(&site_config.name, index, &url)?;
+                let fields = self.fetch_index(&site_config.name, &index.name, &url)?;
                 Ok((index.name.clone(), fields))
             })
             .collect()
     }
 
     /// Fetch field definitions for a single index, using the cache when valid.
-    fn fetch_index(&self, site_name: &str, index: &IndexDef, url: &str) -> Result<Vec<FieldDef>> {
-        let cache_path = self.cache_path(site_name, &index.name);
+    ///
+    /// The cache lives at `{cache_dir}/{site_name}/fields-{index_name}.json`.
+    pub(crate) fn fetch_index(
+        &self,
+        site_name: &str,
+        index_name: &str,
+        url: &str,
+    ) -> Result<Vec<FieldDef>> {
+        let cache_path = self.cache_path(site_name, index_name);
 
         if !self.force_fresh {
             if let Some(cached) = self.load_cache(&cache_path)? {
@@ -160,8 +109,8 @@ impl FieldFetcher {
         }
 
         let fields = self
-            .fetch_from_api(url, &index.name)
-            .with_context(|| format!("fetching fields for index '{}' from {url}", index.name))?;
+            .fetch_from_api(url, index_name)
+            .with_context(|| format!("fetching fields for index '{index_name}' from {url}"))?;
 
         self.write_cache(&cache_path, &fields)
             .with_context(|| format!("writing cache to {}", cache_path.display()))?;

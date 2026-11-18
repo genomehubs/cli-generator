@@ -354,21 +354,20 @@ pub async fn post_count_batch(
 
                 let search_body_input =
                     query_to_body_input("count", &n_query, &params, None, None, None);
-                let b =
-                    match cli_generator::core::query_builder::build_search_body(&search_body_input)
-                    {
-                        Ok(b) => b,
-                        Err(e) => {
-                            return Json(CountBatchResponse {
-                                status: ApiStatus::error(format!(
-                                    "failed to build ES body for nested query: {e}"
-                                )),
-                                total: 0,
-                                unique: None,
-                                results: vec![],
-                            })
-                        }
-                    };
+                let b = match genomehubs_query::query_builder::build_search_body(&search_body_input)
+                {
+                    Ok(b) => b,
+                    Err(e) => {
+                        return Json(CountBatchResponse {
+                            status: ApiStatus::error(format!(
+                                "failed to build ES body for nested query: {e}"
+                            )),
+                            total: 0,
+                            unique: None,
+                            results: vec![],
+                        })
+                    }
+                };
                 bodies.push(b);
             }
 
@@ -388,7 +387,7 @@ pub async fn post_count_batch(
             };
 
             let search_body_input = query_to_body_input("count", &query, &params, None, None, None);
-            match cli_generator::core::query_builder::build_search_body(&search_body_input) {
+            match genomehubs_query::query_builder::build_search_body(&search_body_input) {
                 Ok(b) => b,
                 Err(e) => {
                     return Json(CountBatchResponse {

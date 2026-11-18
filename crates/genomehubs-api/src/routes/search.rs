@@ -179,7 +179,7 @@ pub async fn post_search(
     // the single correct typed-value docvalue field per attribute.
     let mut ranks_set: Option<HashSet<String>> = None;
     let names_set: Option<HashSet<String>> = None;
-    let types_map: Option<cli_generator::core::attr_types::TypesMap> =
+    let types_map: Option<genomehubs_query::attr_types::TypesMap> =
         if let Some(ref arc) = state.cache {
             let guard = arc.read().await;
             ranks_set = Some(HashSet::from_iter(guard.taxonomic_ranks.clone()));
@@ -239,11 +239,11 @@ pub async fn post_search(
                 ranks_set.clone(),
                 names_set.clone(),
             );
-            let body =
-                match cli_generator::core::query_builder::build_search_body(&search_body_input) {
-                    Ok(b) => b,
-                    Err(e) => bail!(format!("failed to build ES body for nested query: {}", e)),
-                };
+            let body = match genomehubs_query::query_builder::build_search_body(&search_body_input)
+            {
+                Ok(b) => b,
+                Err(e) => bail!(format!("failed to build ES body for nested query: {}", e)),
+            };
             bodies.push(body);
         }
 
@@ -342,7 +342,7 @@ pub async fn post_search(
         names_set.clone(),
     );
 
-    let mut body = match cli_generator::core::query_builder::build_search_body(&search_body_input) {
+    let mut body = match genomehubs_query::query_builder::build_search_body(&search_body_input) {
         Ok(b) => b,
         Err(e) => bail!(format!("failed to build ES body: {}", e)),
     };

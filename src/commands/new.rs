@@ -357,6 +357,35 @@ fn copy_config_files(site_name: &str, sites_dir: &Path, repo_dir: &Path) -> Resu
     Ok(())
 }
 
+/// Copy the describer, field types, and fetch module into `{embedded_dir}/core/`.
+///
+/// `describe.rs` and `types.rs` come from the genomehubs-query subcrate, so generated
+/// projects use the same describer as the CLI and bindings. `fetch.rs` re-exports
+/// `FieldDef` from `types`. All `crate::` paths are rewritten to the embedded tree.
+fn copy_shared_core_modules(embedded_dir: &Path) -> Result<()> {
+    let core_dir = embedded_dir.join("core");
+    std::fs::create_dir_all(&core_dir)?;
+    let subcrate_src =
+        std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("crates/genomehubs-query/src");
+    for module in ["describe.rs", "types.rs"] {
+        let content = std::fs::read_to_string(subcrate_src.join(module))
+            .with_context(|| format!("reading subcrate {module}"))?
+            .replace("crate::", "crate::embedded::core::");
+        std::fs::write(core_dir.join(module), content)
+            .with_context(|| format!("writing core/{module}"))?;
+    }
+    let root_fetch = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src/core/fetch.rs");
+    let fetch_content = std::fs::read_to_string(&root_fetch)
+        .context("reading core/fetch.rs")?
+        .replace("crate::core::", "crate::embedded::core::")
+        .replace(
+            "genomehubs_query::types::",
+            "crate::embedded::core::types::",
+        );
+    std::fs::write(core_dir.join("fetch.rs"), fetch_content).context("writing core/fetch.rs")?;
+    Ok(())
+}
+
 /// Copy embedded cli_generator modules into `{repo_dir}/src/embedded/` so the
 /// generated code doesn't depend on an external cli-generator crate.
 ///
@@ -364,6 +393,7 @@ fn copy_config_files(site_name: &str, sites_dir: &Path, repo_dir: &Path) -> Resu
 fn copy_embedded_modules(repo_dir: &Path) -> Result<()> {
     let embedded_dir = repo_dir.join("src/embedded");
     std::fs::create_dir_all(&embedded_dir)?;
+    copy_shared_core_modules(&embedded_dir)?;
 
     let cli_gen_src = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src");
     // Pure query types moved to the genomehubs-query subcrate.
@@ -373,8 +403,6 @@ fn copy_embedded_modules(repo_dir: &Path) -> Result<()> {
     // Modules from the main src/ tree — need crate::core:: → crate::embedded::core:: rewriting.
     let main_modules = [
         "core/config.rs",
-        "core/describe.rs",
-        "core/fetch.rs",
         "core/snippet.rs",
         "core/query/validation.rs",
     ];
@@ -599,6 +627,7 @@ pub mod parse_local;
 pub mod query;
 pub mod report;
 pub mod snippet;
+pub mod types;
 pub mod validation;
 "#;
 
@@ -874,6 +903,7 @@ pub const UI_BASE_URL: &str = "{ui_base}";
 fn copy_r_embedded_modules(rust_src_dir: &Path) -> Result<()> {
     let embedded_dir = rust_src_dir.join("embedded");
     std::fs::create_dir_all(&embedded_dir)?;
+    copy_shared_core_modules(&embedded_dir)?;
 
     let cli_gen_src = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src");
     let subcrate_query_src = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -881,8 +911,6 @@ fn copy_r_embedded_modules(rust_src_dir: &Path) -> Result<()> {
 
     let main_modules = [
         "core/config.rs",
-        "core/describe.rs",
-        "core/fetch.rs",
         "core/snippet.rs",
         "core/query/validation.rs",
     ];
@@ -1065,7 +1093,7 @@ fn copy_r_embedded_modules(rust_src_dir: &Path) -> Result<()> {
 
     std::fs::write(
         embedded_dir.join("core/mod.rs"),
-        "//! Core cli_generator modules.\n\npub mod config;\npub mod describe;\npub mod fetch;\npub mod lineage_summary;\npub mod local_report;\npub mod parse;\npub mod parse_local;\npub mod query;\npub mod report;\npub mod snippet;\npub mod validation;\n",
+        "//! Core cli_generator modules.\n\npub mod config;\npub mod describe;\npub mod fetch;\npub mod lineage_summary;\npub mod local_report;\npub mod parse;\npub mod parse_local;\npub mod query;\npub mod report;\npub mod snippet;\npub mod types;\npub mod validation;\n",
     )
     .context("writing embedded/core/mod.rs")?;
 

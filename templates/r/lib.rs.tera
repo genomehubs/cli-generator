@@ -21,17 +21,11 @@ fn describe_query(
     field_metadata_json: &str,
     mode: &str,
 ) -> String {
-    use crate::embedded::core::describe::QueryDescriber;
+    use crate::embedded::core::describe::describe_yaml;
     use crate::embedded::core::fetch::FieldDef;
-    use crate::embedded::core::query::SearchQuery;
     use std::collections::HashMap;
 
     let _ = params_yaml; // reserved for future use
-
-    let query = match serde_yaml::from_str::<SearchQuery>(query_yaml) {
-        Ok(q) => q,
-        Err(e) => return format!("ERROR: Invalid query YAML: {}", e),
-    };
 
     let field_metadata: HashMap<String, FieldDef> = match serde_json::from_str(field_metadata_json)
     {
@@ -39,10 +33,9 @@ fn describe_query(
         Err(e) => return format!("ERROR: Invalid field metadata JSON: {}", e),
     };
 
-    let describer = QueryDescriber::new(field_metadata);
-    match mode {
-        "verbose" => describer.describe_verbose(&query),
-        _ => describer.describe_concise(&query),
+    match describe_yaml(query_yaml, field_metadata, mode == "verbose") {
+        Ok(text) => text,
+        Err(e) => format!("ERROR: Invalid query YAML: {}", e),
     }
 }
 

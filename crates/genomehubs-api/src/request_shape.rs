@@ -2,8 +2,8 @@
 
 use std::collections::HashSet;
 
-use cli_generator::core::query_builder::SearchBodyInput;
 use genomehubs_query::query::{Attribute, QueryParams, SearchQuery, SortConfig};
+use genomehubs_query::query_builder::SearchBodyInput;
 
 // Convert a `SearchQuery` plus `QueryParams` to a `SearchBodyInput` for use in the API request body.
 
@@ -11,7 +11,7 @@ pub fn query_to_body_input(
     endpoint: &str,
     query: &SearchQuery,
     params: &QueryParams,
-    types_map: Option<cli_generator::core::attr_types::TypesMap>,
+    types_map: Option<genomehubs_query::attr_types::TypesMap>,
     ranks_set: Option<HashSet<String>>,
     names_set: Option<HashSet<String>>,
 ) -> SearchBodyInput {

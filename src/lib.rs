@@ -105,25 +105,15 @@ fn describe_query(
     field_metadata_json: &str,
     mode: &str,
 ) -> PyResult<String> {
-    use crate::core::describe::QueryDescriber;
     use crate::core::fetch::FieldDef;
-    use crate::core::query::SearchQuery;
-
-    let query: SearchQuery = serde_yaml::from_str(query_yaml)
-        .map_err(|e| PyValueError::new_err(format!("Invalid query YAML: {}", e)))?;
+    use genomehubs_query::describe::describe_yaml;
 
     // Parse field metadata from JSON (populated from API's resultFields endpoint)
     let field_metadata: HashMap<String, FieldDef> = serde_json::from_str(field_metadata_json)
         .map_err(|e| PyValueError::new_err(format!("Invalid field metadata JSON: {}", e)))?;
 
-    let describer = QueryDescriber::new(field_metadata);
-
-    let result = match mode {
-        "verbose" => describer.describe_verbose(&query),
-        _ => describer.describe_concise(&query),
-    };
-
-    Ok(result)
+    describe_yaml(query_yaml, field_metadata, mode == "verbose")
+        .map_err(|e| PyValueError::new_err(format!("Invalid query YAML: {}", e)))
 }
 
 /// Describe a report configuration as a short English phrase.

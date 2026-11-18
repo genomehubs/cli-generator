@@ -668,7 +668,7 @@ Hand-written code (`src/core/`, `src/main.rs`, etc.) is never touched.
 against the currently-generated version — nothing is written to disk:
 
 ```bash
-cargo run -- preview --site my-site --config sites/
+cargo run -- preview --scaffold my-site --config sites/
 # or, for an existing repo:
 cargo run -- preview --repo /path/to/my-site-cli
 ```

@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 
@@ -30,17 +29,17 @@ fn live_elasticsearch_count_integration() {
     let raw = fs::read_to_string(&cfg_path).expect("reading es_integration.toml");
     let cfg: EsConfig = toml::from_str(&raw).expect("parsing es_integration.toml");
 
-    let mut params = HashMap::new();
-    // Use result param so the adapter determines the base index
-    let result = cfg.default_result.unwrap_or_else(|| "taxon".to_string());
-    params.insert("result".to_string(), result.clone());
-    // Basic smoke query — rely on adapter to convert taxa/fields into a minimal body
-    params.insert("taxa".to_string(), "Mammalia".to_string());
+    // Basic smoke query converted by the canonical v2 URL converter.
+    let request = cli_generator::core::runtime_query::QueryRequest {
+        result: cfg.default_result.unwrap_or_else(|| "taxon".to_string()),
+        query: Some("tax_name(Mammalia)".to_string()),
+        ..Default::default()
+    };
 
-    // Parse params to obtain the SearchQuery index and then build the final
+    // Parse the request to obtain the SearchQuery index and then build the final
     // index name applying `index_suffix` from config when provided.
-    let (search_query, _qp) = crate::core::query::adapter::parse_url_params(&params)
-        .expect("parsing URL params");
+    let search_query = cli_generator::core::runtime_query::search_query_from_request(&request)
+        .expect("converting request to SearchQuery");
 
     let base_index = match search_query.index {
         crate::core::query::SearchIndex::Taxon => "taxon",
@@ -53,8 +52,8 @@ fn live_elasticsearch_count_integration() {
     let full_index = format!("{}{}", base_index, suffix);
 
     // Call the library function under test
-    let count = cli_generator::core::count::count_docs_from_url_params(&cfg.base_url, &full_index, &params)
-        .expect("count_docs_from_url_params against live ES");
+    let count = cli_generator::core::count::count_docs_from_request(&cfg.base_url, &full_index, &request)
+        .expect("count_docs_from_request against live ES");
 
     eprintln!("live ES count for {:?}: {}", cfg.index, count);
     // We can't assert an exact value; assert it returns a non-negative number.

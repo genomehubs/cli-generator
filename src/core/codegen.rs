@@ -292,29 +292,10 @@ impl CodeGenerator {
             // This allows validate() in all SDKs to extract the correct subset by index.
             let mut field_meta_by_index = serde_json::Map::new();
             for (index, fields) in fields_by_index {
-                let mut index_meta = serde_json::Map::new();
-                for field in fields {
-                    let processed_type = field
-                        .processed_type
-                        .clone()
-                        .or_else(|| field.field_type.clone())
-                        .unwrap_or_else(|| "keyword".to_string());
-                    let constraint_enum = field
-                        .constraint
-                        .as_ref()
-                        .map(|c| c.enum_values.clone())
-                        .filter(|v| !v.is_empty());
-
-                    let meta = serde_json::json!({
-                        "processed_type": processed_type,
-                        "traverse_direction": field.traverse_direction,
-                        "summary": field.summary.clone(),
-                        "constraint_enum": constraint_enum
-                    });
-
-                    index_meta.insert(field.name.clone(), meta);
-                }
-                field_meta_by_index.insert(index.clone(), serde_json::Value::Object(index_meta));
+                let index_meta =
+                    serde_json::to_value(genomehubs_query::validation::field_meta_map(fields))
+                        .unwrap_or_else(|_| serde_json::Value::Object(serde_json::Map::new()));
+                field_meta_by_index.insert(index.clone(), index_meta);
             }
             let field_meta_content = serde_json::to_string_pretty(&field_meta_by_index)
                 .unwrap_or_else(|_| "{}".to_string());

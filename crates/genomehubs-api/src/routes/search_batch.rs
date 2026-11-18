@@ -262,7 +262,7 @@ pub async fn post_search_batch(
     // the single correct typed-value docvalue field per attribute.
     let mut ranks_set: Option<HashSet<String>> = None;
     let names_set: Option<HashSet<String>> = None;
-    let types_map: Option<cli_generator::core::attr_types::TypesMap> =
+    let types_map: Option<genomehubs_query::attr_types::TypesMap> =
         if let Some(ref arc) = state.cache {
             let guard = arc.read().await;
             ranks_set = Some(HashSet::from_iter(guard.taxonomic_ranks.clone()));
@@ -355,19 +355,18 @@ pub async fn post_search_batch(
                     ranks_set.clone(),
                     names_set.clone(),
                 );
-                let b =
-                    match cli_generator::core::query_builder::build_search_body(&search_body_input)
-                    {
-                        Ok(b) => b,
-                        Err(e) => {
-                            return Json(SearchBatchResponse {
-                                status: ApiStatus::error(format!(
-                                    "failed to build ES body for nested query: {e}"
-                                )),
-                                results: vec![],
-                            })
-                        }
-                    };
+                let b = match genomehubs_query::query_builder::build_search_body(&search_body_input)
+                {
+                    Ok(b) => b,
+                    Err(e) => {
+                        return Json(SearchBatchResponse {
+                            status: ApiStatus::error(format!(
+                                "failed to build ES body for nested query: {e}"
+                            )),
+                            results: vec![],
+                        })
+                    }
+                };
                 bodies.push(b);
             }
 
@@ -391,7 +390,7 @@ pub async fn post_search_batch(
                 ranks_set.clone(),
                 names_set.clone(),
             );
-            match cli_generator::core::query_builder::build_search_body(&search_body_input) {
+            match genomehubs_query::query_builder::build_search_body(&search_body_input) {
                 Ok(b) => b,
                 Err(e) => {
                     return Json(SearchBatchResponse {
