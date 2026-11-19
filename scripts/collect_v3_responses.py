@@ -8,7 +8,8 @@ this script creates simple, valid V3 requests per report type and collects respo
 import json
 import sys
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
+
 import httpx
 
 
@@ -35,7 +36,7 @@ def create_v3_request(report_type: str) -> Dict[str, str]:
         # V3 arc: bare feature field (has any value), reference omitted (all taxa), ranks for arcPerRank
         base["report_yaml"] = "report: arc\nfeature: assembly_span\nranks: [phylum, class, order, family]\n"
     elif report_type == "tree":
-        base["report_yaml"] = "report: tree\nx: assembly_date\ny: genome_size\n"
+        base["report_yaml"] = "report: tree\nx: assembly_date\naxes:\n  - {position: y, field: genome_size}\n"
     elif report_type == "countPerRank":
         base["report_yaml"] = "report: countPerRank\nquery: genome_size\n"
     else:

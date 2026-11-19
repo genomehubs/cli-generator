@@ -36,7 +36,11 @@ const rb = new ReportBuilder("{{ report_type | default(value="histogram") }}");
 rb.setX("{{ report_x }}");
 {% endif -%}
 {% if report_y -%}
+{% if report_type == "tree" -%}
+rb.addAxis("y", "{{ report_y }}");
+{% else -%}
 rb.setY("{{ report_y }}");
+{% endif -%}
 {% endif -%}
 {% if report_cat -%}
 rb.setCat("{{ report_cat }}");

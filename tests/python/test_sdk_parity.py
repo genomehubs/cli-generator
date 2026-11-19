@@ -437,6 +437,7 @@ CONSTRUCTOR_PARAMS: dict[str, dict[str, str]] = {}
 CANONICAL_REPORT_BUILDER_METHODS = {
     "set_x": {"python_name": "set_x", "js_name": "setX", "r_name": "set_x"},
     "set_y": {"python_name": "set_y", "js_name": "setY", "r_name": "set_y"},
+    "add_axis": {"python_name": "add_axis", "js_name": "addAxis", "r_name": "add_axis"},
     "set_cat": {"python_name": "set_cat", "js_name": "setCat", "r_name": "set_cat"},
     "set_query": {"python_name": "set_query", "js_name": "setQuery", "r_name": "set_query"},
     "set_rank": {"python_name": "set_rank", "js_name": "setRank", "r_name": "set_rank"},

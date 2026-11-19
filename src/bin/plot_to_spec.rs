@@ -7,6 +7,6 @@ fn main() {
         std::process::exit(2);
     }
 
-    let out = genomehubs_query::plot_spec_to_vega_lite_json(&input);
+    let out = genomehubs_query::plot_spec_to_render_json(&input);
     println!("{}", out);
 }

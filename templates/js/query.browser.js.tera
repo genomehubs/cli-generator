@@ -1542,6 +1542,14 @@ class ReportBuilder {
     return this;
   }
 
+  /** @param {string} position @param {string} field @param {string} [summary] @returns {ReportBuilder} */
+  addAxis(position, field, summary = null) {
+    const entry = { position, field };
+    if (summary) entry.summary = summary;
+    this._doc.axes = [...(this._doc.axes ?? []), entry];
+    return this;
+  }
+
   /** @param {string} field @param {string} [opts] @returns {ReportBuilder} */
   setCat(field, opts = "") {
     this._doc.cat = field;

@@ -1565,6 +1565,17 @@ ReportBuilder <- R6::R6Class("ReportBuilder",
       invisible(self)
     },
 
+    #' @description Append a structured axis entry (tree reports take their y fields this way).
+    #' @param position Axis position: "x", "y", "z", or "cat".
+    #' @param field Field name.
+    #' @param summary Optional summary statistic, e.g. "max".
+    add_axis = function(position, field, summary = NULL) {
+      entry <- list(position = position, field = field)
+      if (!is.null(summary)) entry$summary <- summary
+      private$.doc$axes <- c(private$.doc$axes, list(entry))
+      invisible(self)
+    },
+
     #' @description Set the category breakdown field.
     #' @param field Field name.
     #' @param opts Optional axis options string.

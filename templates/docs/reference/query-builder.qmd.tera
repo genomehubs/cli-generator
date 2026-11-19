@@ -2120,6 +2120,7 @@ Supported report types: `"histogram"`, `"scatter"`, `"map"`, `"tree"`,
 
 - `set_x(field, opts="")` — X-axis field (histogram, scatter, arc)
 - `set_y(field, opts="")` — Y-axis field or fields (scatter)
+- `add_axis(position, field, summary=None)` — Structured axis entry; tree reports take their y fields this way
 - `set_cat(field, opts="")` — Category breakdown field
 - `set_query(field)` — Query field (countPerRank)
 

@@ -518,12 +518,42 @@ fn inheritance_error(
 ///    `field_meta_json` is non-empty.
 /// 4. Numeric range constraints: `hex_resolution` 1–12, `map_threshold` > 0,
 ///    `scatter_threshold` > 0.
+/// 5. `axes` entries have a known position and a field (known when metadata is given).
+/// 6. Tree reports reject a flat `y` and `fields`; metrics use `axes` entries with `position: y`.
 pub fn validate_report_yaml(report_yaml: &str, field_meta_json: &str) -> String {
     let errors = match validate_report_impl(report_yaml, field_meta_json) {
         Ok(errs) => errs,
         Err(e) => vec![format!("validation failed: {}", e)],
     };
     serde_json::to_string(&errors).unwrap_or_else(|_| r#"["serialization error"]"#.to_string())
+}
+
+/// Errors for each `axes` entry: a known position, a field name, and a known field when metadata is loaded.
+fn validate_axes_entries(
+    doc: &serde_yaml::Value,
+    field_meta: &HashMap<String, FieldMeta>,
+) -> Vec<String> {
+    let Some(entries) = doc.get("axes").and_then(|a| a.as_sequence()) else {
+        return vec![];
+    };
+    let mut errors = Vec::new();
+    for entry in entries {
+        let position = entry.get("position").and_then(|p| p.as_str()).unwrap_or("");
+        if !(["x", "y", "z", "cat"].contains(&position)) {
+            errors.push(format!(
+                "invalid position '{}' in 'axes' entry; expected one of: x, y, z, cat",
+                position
+            ));
+        }
+        match entry.get("field").and_then(|f| f.as_str()) {
+            None => errors.push("'axes' entry missing 'field'".to_string()),
+            Some(field) if !field_meta.is_empty() && !field_meta.contains_key(field) => {
+                errors.push(format!("unknown field '{}' in 'axes' entry", field));
+            }
+            Some(_) => {}
+        }
+    }
+    errors
 }
 
 fn validate_report_impl(report_yaml: &str, field_meta_json: &str) -> Result<Vec<String>, String> {
@@ -567,6 +597,17 @@ fn validate_report_impl(report_yaml: &str, field_meta_json: &str) -> Result<Vec<
             ));
         }
     }
+
+    if matches!(report_type, ReportType::Tree) {
+        for legacy_key in ["y", "fields"] {
+            if doc.get(legacy_key).is_some() {
+                errors.push(format!(
+                    "report type 'tree' does not accept '{legacy_key}'; use an 'axes' entry with position 'y'"
+                ));
+            }
+        }
+    }
+    errors.extend(validate_axes_entries(&doc, &field_meta));
 
     if !field_meta.is_empty() {
         for axis in &["x", "y", "cat", "query"] {
@@ -1096,6 +1137,43 @@ attributes:
     fn test_validate_report_yaml_unknown_type() {
         let result = validate_report_yaml("report: xPerRank\nx: genome_size\n", "{}");
         assert!(result.contains("unknown report type"));
+    }
+
+    #[test]
+    fn test_validate_report_yaml_tree_rejects_flat_y() {
+        let result = validate_report_yaml("report: tree\nrank: genus\ny: genome_size\n", "{}");
+        assert!(result.contains("does not accept 'y'"));
+    }
+
+    #[test]
+    fn test_validate_report_yaml_tree_rejects_fields() {
+        let result =
+            validate_report_yaml("report: tree\nrank: genus\nfields: [genome_size]\n", "{}");
+        assert!(result.contains("does not accept 'fields'"));
+    }
+
+    #[test]
+    fn test_validate_report_yaml_tree_axes_y_valid() {
+        let report_yaml =
+            "report: tree\nrank: genus\naxes:\n  - position: y\n    field: genome_size\n";
+        assert_eq!(validate_report_yaml(report_yaml, "{}"), "[]");
+    }
+
+    #[test]
+    fn test_validate_report_yaml_axes_invalid_position() {
+        let report_yaml =
+            "report: histogram\nx: genome_size\naxes:\n  - position: w\n    field: genome_size\n";
+        let result = validate_report_yaml(report_yaml, "{}");
+        assert!(result.contains("invalid position 'w'"));
+    }
+
+    #[test]
+    fn test_validate_report_yaml_axes_unknown_field() {
+        let field_meta = r#"{"genome_size": {"processed_type": "double", "traverse_direction": null, "summary": ["min"], "constraint_enum": null}}"#;
+        let report_yaml =
+            "report: tree\nrank: genus\naxes:\n  - position: y\n    field: gc_percent\n";
+        let result = validate_report_yaml(report_yaml, field_meta);
+        assert!(result.contains("unknown field 'gc_percent' in 'axes' entry"));
     }
 
     #[test]

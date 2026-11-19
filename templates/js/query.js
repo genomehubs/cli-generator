@@ -1995,6 +1995,14 @@ class ReportBuilder {
     return this;
   }
 
+  /** Append a structured axis entry (tree reports take their y fields this way). @param {string} position @param {string} field @param {string|null} [summary=null] @returns {this} */
+  addAxis(position, field, summary = null) {
+    const entry = { position, field };
+    if (summary) entry.summary = summary;
+    this._doc.axes = [...(this._doc.axes ?? []), entry];
+    return this;
+  }
+
   /** Set the category breakdown field. @param {string} field @param {string} [opts=""] @returns {this} */
   setCat(field, opts = "") {
     this._doc.cat = field;
@@ -2199,7 +2207,15 @@ class ReportBuilder {
     for (const [key, val] of Object.entries(this._doc)) {
       if (Array.isArray(val)) {
         lines.push(`${key}:`);
-        for (const item of val) lines.push(`- ${item}`);
+        for (const item of val) {
+          lines.push(
+            typeof item === "object"
+              ? `- {${Object.entries(item)
+                  .map(([k, v]) => `${k}: ${v}`)
+                  .join(", ")}}`
+              : `- ${item}`,
+          );
+        }
       } else if (typeof val === "boolean") {
         lines.push(`${key}: ${val}`);
       } else if (typeof val === "number") {

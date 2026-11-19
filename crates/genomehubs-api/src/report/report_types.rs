@@ -797,33 +797,8 @@ pub async fn run_tree_report(
     const MAX_TREE_NODES: usize = 100_000;
     const PAGE_SIZE: usize = 500;
 
-    // --- Collect y-axis field specs (field + summary + opts) ---
-    // Prefer structured `axes` array; fall back to flat `y:` / `y_opts:` or legacy
-    // `fields:` sequence (AxisSummary::Value for all).
-    let tree_field_specs: Vec<(String, AxisSummary)> = {
-        let from_axes = resolve_y_specs(report_config, state).await;
-        if !from_axes.is_empty() {
-            from_axes
-                .into_iter()
-                .map(|s| (s.field, s.summary))
-                .collect()
-        } else {
-            // Legacy `fields:` sequence — no per-field summary control
-            let from_seq: Vec<String> = report_config
-                .get("fields")
-                .and_then(|v| v.as_sequence())
-                .map(|seq| {
-                    seq.iter()
-                        .filter_map(|v| v.as_str().map(str::to_string))
-                        .collect()
-                })
-                .unwrap_or_default();
-            from_seq
-                .into_iter()
-                .map(|f| (f, AxisSummary::default()))
-                .collect()
-        }
-    };
+    // --- Collect metric field specs from `axes` entries with position: y ---
+    let tree_field_specs = parse_tree_y_axes(report_config)?;
 
     // --- Cat axis: resolve full AxisSpec + bounds (same pipeline as histogram) ---
     let cat_spec_opt = resolve_axis_spec(AxisRole::Cat, report_config, state).await;
@@ -1444,49 +1419,24 @@ async fn resolve_axis_spec(
 // Tree helpers
 // ============================================================================
 
-/// Collect all `y`-role axis specs from `report_config`.
+/// Parse the metric fields for a tree report from `axes` entries with `position: y`.
 ///
-/// Prefers the structured `axes` array (multiple entries, per-field `summary` and
-/// opts).  Falls back to the flat `y:` + `y_opts:` shorthand for a single field
-/// with `AxisSummary::Value`.  Returns an empty vec when neither is present.
-async fn resolve_y_specs(
+/// Returns an empty vec when no `axes` list is present. Malformed entries are errors.
+fn parse_tree_y_axes(
     report_config: &serde_yaml::Value,
-    state: &Arc<AppState>,
-) -> Vec<AxisSpec> {
-    // Structured form: collect every entry with position == "y"
-    if let Some(axes) = report_config.get("axes").and_then(|a| a.as_sequence()) {
-        let inputs: Vec<AxisInput> = axes
-            .iter()
-            .filter(|e| e.get("position").and_then(|p| p.as_str()) == Some("y"))
-            .filter_map(|e| serde_yaml::from_value::<AxisInput>(e.clone()).ok())
-            .collect();
-        if !inputs.is_empty() {
-            let mut out = Vec::with_capacity(inputs.len());
-            for input in inputs {
-                let inferred = infer_value_type_async(&input.field, &state.cache).await;
-                out.push(input.into_spec(inferred));
-            }
-            return out;
+) -> Result<Vec<(String, AxisSummary)>, String> {
+    let Some(entries) = report_config.get("axes").and_then(|a| a.as_sequence()) else {
+        return Ok(vec![]);
+    };
+    let mut specs = Vec::new();
+    for entry in entries {
+        let input: AxisInput = serde_yaml::from_value(entry.clone())
+            .map_err(|e| format!("invalid 'axes' entry: {e}"))?;
+        if matches!(input.position, AxisRole::Y) {
+            specs.push((input.field, input.summary.unwrap_or_default()));
         }
     }
-
-    // Flat shorthand fallback: `y:` + optional `y_opts:`
-    let field = match report_config.get("y").and_then(|v| v.as_str()) {
-        Some(f) => f,
-        None => return vec![],
-    };
-    let opts_str = report_config
-        .get("y_opts")
-        .and_then(|v| v.as_str())
-        .unwrap_or("");
-    let value_type = infer_value_type_async(field, &state.cache).await;
-    vec![AxisSpec {
-        field: field.to_string(),
-        role: AxisRole::Y,
-        summary: AxisSummary::default(),
-        value_type,
-        opts: opts_str.parse().unwrap_or_default(),
-    }]
+    Ok(specs)
 }
 
 /// Find the LCA (lowest common ancestor) of the query result set.
@@ -3441,4 +3391,38 @@ pub async fn run_scatter_report(
     }
 
     Ok((total_hits, took, report_data))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn config(yaml: &str) -> serde_yaml::Value {
+        serde_yaml::from_str(yaml).expect("valid YAML")
+    }
+
+    #[test]
+    fn parse_tree_y_axes_keeps_every_y_entry_with_summary() {
+        let report = config(
+            "axes:\n  - {position: y, field: genome_size}\n  - {position: y, field: gc_percent, summary: max}\n  - {position: cat, field: assembly_level}\n",
+        );
+        let specs = parse_tree_y_axes(&report).expect("parses");
+        assert_eq!(specs.len(), 2);
+        assert_eq!(specs[0].0, "genome_size");
+        assert!(matches!(specs[0].1, AxisSummary::Value));
+        assert_eq!(specs[1].0, "gc_percent");
+        assert!(matches!(specs[1].1, AxisSummary::Max));
+    }
+
+    #[test]
+    fn parse_tree_y_axes_is_empty_without_axes() {
+        let specs = parse_tree_y_axes(&config("report: tree\nrank: genus\n")).expect("parses");
+        assert!(specs.is_empty());
+    }
+
+    #[test]
+    fn parse_tree_y_axes_rejects_entry_missing_field() {
+        let report = config("axes:\n  - {position: y}\n");
+        assert!(parse_tree_y_axes(&report).is_err());
+    }
 }

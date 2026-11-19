@@ -37,7 +37,11 @@ rb <- ReportBuilder$new("{{ report_type | default(value="histogram") }}")
 rb$set_x("{{ report_x }}")
 {% endif -%}
 {% if report_y -%}
+{% if report_type == "tree" -%}
+rb$add_axis("y", "{{ report_y }}")
+{% else -%}
 rb$set_y("{{ report_y }}")
+{% endif -%}
 {% endif -%}
 {% if report_cat -%}
 rb$set_cat("{{ report_cat }}")

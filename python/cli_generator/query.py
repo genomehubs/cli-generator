@@ -2635,6 +2635,14 @@ class ReportBuilder:
             self._doc["y_opts"] = opts
         return self
 
+    def add_axis(self, position: str, field: str, summary: str | None = None) -> "ReportBuilder":
+        """Append a structured axis entry to ``axes``; tree reports take their y fields this way."""
+        entry: dict[str, str] = {"position": position, "field": field}
+        if summary is not None:
+            entry["summary"] = summary
+        self._doc.setdefault("axes", []).append(entry)
+        return self
+
     def set_cat(self, field: str, opts: str = "") -> "ReportBuilder":
         """Set the category breakdown field."""
         self._doc["cat"] = field

@@ -12,6 +12,7 @@ pub mod layout;
 pub mod plot_spec;
 pub mod positional;
 pub mod spec_builder;
+pub mod tree_layout;
 
 pub use axis::{
     AxisOpts, AxisRole, AxisSpec, AxisSummary, DateInterval, Scale, SortMode, ValueType,
@@ -78,55 +79,6 @@ impl ReportType {
             Self::CountPerRank => &["query"],
             Self::Sources => &[],
             Self::Arc => &["x"],
-        }
-    }
-
-    /// Fields that may be present for this type (used by validator to warn on unknowns).
-    pub fn valid_axes(&self) -> &'static [&'static str] {
-        match self {
-            Self::Histogram => &[
-                "x",
-                "y",
-                "cat",
-                "rank",
-                "fields",
-                "status_filter",
-                "cat_rank",
-                "cat_opts",
-                "x_opts",
-                "y_opts",
-            ],
-            Self::Scatter => &[
-                "x",
-                "y",
-                "cat",
-                "rank",
-                "fields",
-                "status_filter",
-                "scatter_threshold",
-                "cat_opts",
-                "x_opts",
-                "y_opts",
-            ],
-            Self::Map => &[
-                "location_field",
-                "hex_resolution",
-                "map_threshold",
-                "rank",
-                "status_filter",
-            ],
-            Self::Tree => &[
-                "rank",
-                "collapse_monotypic",
-                "preserve_rank",
-                "count_rank",
-                "status_filter",
-                "cat",
-                "cat_rank",
-            ],
-            Self::CountPerRank => &["query", "ranks", "cat", "cat_opts"],
-            Self::Sources => &["rank", "fields", "status_filter"],
-            Self::Arc => &["x", "y", "cat", "x_opts", "y_opts", "cat_opts"],
         }
     }
 }
@@ -206,7 +158,63 @@ pub fn report_yaml_from_url_params(url: &str) -> Result<(String, String, String)
 
 // ── Vega-Lite conversion ──────────────────────────────────────────────────────
 
-/// Convert a `PlotSpec` JSON string into a Vega-Lite v6 specification JSON string.
+/// Convert a `PlotSpec` JSON string into a render specification.
+///
+/// Tree reports produce Vega v5 via [`plot_spec_to_vega_json`]; all other reports
+/// produce Vega-Lite v6 via [`plot_spec_to_vega_lite_json`].
+pub fn plot_spec_to_render_json(input: &str) -> String {
+    match report_type_of(input).as_deref() {
+        Some("tree") => plot_spec_to_vega_json(input),
+        _ => plot_spec_to_vega_lite_json(input),
+    }
+}
+
+/// Convert a tree `PlotSpec` JSON string into a Vega v5 specification JSON string.
+///
+/// Phase 0 emits an empty placeholder sized from `display`; tree marks follow in later phases.
+/// Returns an error JSON on failure.
+pub fn plot_spec_to_vega_json(input: &str) -> String {
+    let parsed: serde_json::Value = match serde_json::from_str(input) {
+        Ok(v) => v,
+        Err(e) => return format!("{{\"error\":\"invalid JSON: {e}\"}}"),
+    };
+    let Some(spec_val) = plot_spec_value(&parsed) else {
+        return "{\"error\":\"no plot_spec found in input\"}".to_string();
+    };
+
+    let display = spec_val.get("display").unwrap_or(&serde_json::Value::Null);
+    let mut spec = serde_json::json!({
+        "$schema": "https://vega.github.io/schema/vega/v5.json",
+        "width": display.get("width").and_then(|v| v.as_u64()).unwrap_or(600),
+        "height": display.get("height").and_then(|v| v.as_u64()).unwrap_or(400),
+        "data": [{"name": "tree", "values": []}],
+        "marks": []
+    });
+    if let Some(title) = display.get("title").and_then(|v| v.as_str()) {
+        spec["title"] = serde_json::json!({"text": title});
+    }
+    spec.to_string()
+}
+
+/// Return the `PlotSpec` object from a bare spec or a full `/report` response.
+fn plot_spec_value(parsed: &serde_json::Value) -> Option<&serde_json::Value> {
+    if parsed.get("report_type").is_some() {
+        Some(parsed)
+    } else {
+        parsed.get("plot_spec")
+    }
+}
+
+/// Read `report_type` from a spec or report envelope, or `None` if absent or invalid.
+fn report_type_of(input: &str) -> Option<String> {
+    let parsed: serde_json::Value = serde_json::from_str(input).ok()?;
+    plot_spec_value(&parsed)?
+        .get("report_type")?
+        .as_str()
+        .map(str::to_string)
+}
+
+/// Convert a `PlotSpec` JSON string (or a full `/report` response) to a Vega-Lite v6 specification JSON string.
 ///
 /// Accepts the full `/report` response envelope (extracts `plot_spec` automatically)
 /// or a bare `PlotSpec` object.  Returns an error JSON on failure.
@@ -216,12 +224,7 @@ pub fn plot_spec_to_vega_lite_json(input: &str) -> String {
         Err(e) => return format!("{{\"error\":\"invalid JSON: {e}\"}}"),
     };
 
-    // Accept either a full report response or a bare PlotSpec.
-    let spec_val = if parsed.get("report_type").is_some() {
-        &parsed
-    } else if let Some(ps) = parsed.get("plot_spec") {
-        ps
-    } else {
+    let Some(spec_val) = plot_spec_value(&parsed) else {
         return "{\"error\":\"no plot_spec found in input\"}".to_string();
     };
 
@@ -261,11 +264,6 @@ pub fn plot_spec_to_vega_lite_json(input: &str) -> String {
         "oxford" | "ribbon" => vl_scatter(spec_val, base),
         "count_per_rank" | "countPerRank" | "sources" => vl_bar(spec_val, base),
         "painting" => vl_painting(spec_val, base),
-        "tree" => {
-            base["mark"] = serde_json::Value::String("point".to_string());
-            base["data"] = serde_json::json!({"values": []});
-            base
-        }
         "map" => {
             let projection = display
                 .get("map")
@@ -3132,6 +3130,44 @@ fn vl_painting(spec: &serde_json::Value, mut base: serde_json::Value) -> serde_j
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn render_dispatch_sends_tree_to_vega_v5() {
+        let spec = serde_json::json!({
+            "report_type": "tree",
+            "display": {"title": "Tree", "width": 800}
+        });
+
+        let out: serde_json::Value =
+            serde_json::from_str(&plot_spec_to_render_json(&spec.to_string())).unwrap();
+
+        assert_eq!(out["$schema"], "https://vega.github.io/schema/vega/v5.json");
+        assert_eq!(out["width"], 800);
+        assert_eq!(out["title"]["text"], "Tree");
+    }
+
+    #[test]
+    fn render_dispatch_unwraps_report_envelope_for_tree() {
+        let envelope = serde_json::json!({"plot_spec": {"report_type": "tree"}});
+
+        let out: serde_json::Value =
+            serde_json::from_str(&plot_spec_to_render_json(&envelope.to_string())).unwrap();
+
+        assert_eq!(out["$schema"], "https://vega.github.io/schema/vega/v5.json");
+    }
+
+    #[test]
+    fn render_dispatch_keeps_other_reports_on_vega_lite() {
+        let spec = serde_json::json!({"report_type": "map"});
+
+        let out: serde_json::Value =
+            serde_json::from_str(&plot_spec_to_render_json(&spec.to_string())).unwrap();
+
+        assert_eq!(
+            out["$schema"],
+            "https://vega.github.io/schema/vega-lite/v6.json"
+        );
+    }
 
     #[test]
     fn arc_vega_lite_donut_has_two_segments_and_centre_labels() {

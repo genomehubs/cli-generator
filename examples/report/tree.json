@@ -10,6 +10,6 @@
   "report": {
     "report": "tree",
     "rank": "genus",
-    "y": "genome_size"
+    "axes": [{ "position": "y", "field": "genome_size" }]
   }
 }
