@@ -1,15 +1,5 @@
 {
-  "query": {
-    "index": "taxon",
-    "taxa": ["Canidae"],
-    "taxon_filter_type": "tree"
-  },
-  "params": {
-    "taxonomy": "ncbi"
-  },
-  "report": {
-    "report": "tree",
-    "rank": "genus",
-    "axes": [{ "position": "y", "field": "genome_size" }]
-  }
+  "report": "tree",
+  "rank": "genus",
+  "axes": [{ "position": "y", "field": "genome_size" }]
 }

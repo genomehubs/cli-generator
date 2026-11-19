@@ -1,0 +1,10 @@
+{
+  "query": {
+    "index": "taxon",
+    "taxa": ["Canidae"],
+    "taxon_filter_type": "tree"
+  },
+  "params": {
+    "taxonomy": "ncbi"
+  }
+}

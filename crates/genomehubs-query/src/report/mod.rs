@@ -13,6 +13,7 @@ pub mod plot_spec;
 pub mod positional;
 pub mod spec_builder;
 pub mod tree_layout;
+pub mod tree_rect;
 
 pub use axis::{
     AxisOpts, AxisRole, AxisSpec, AxisSummary, DateInterval, Scale, SortMode, ValueType,
@@ -171,7 +172,8 @@ pub fn plot_spec_to_render_json(input: &str) -> String {
 
 /// Convert a tree `PlotSpec` JSON string into a Vega v5 specification JSON string.
 ///
-/// Phase 0 emits an empty placeholder sized from `display`; tree marks follow in later phases.
+/// Lays out `data.treeNodes` as a rectangular cladogram via [`tree_rect::rect_tree_vega`].
+/// A spec without `treeNodes` yields an empty tree sized from `display`.
 /// Returns an error JSON on failure.
 pub fn plot_spec_to_vega_json(input: &str) -> String {
     let parsed: serde_json::Value = match serde_json::from_str(input) {
@@ -183,17 +185,21 @@ pub fn plot_spec_to_vega_json(input: &str) -> String {
     };
 
     let display = spec_val.get("display").unwrap_or(&serde_json::Value::Null);
-    let mut spec = serde_json::json!({
-        "$schema": "https://vega.github.io/schema/vega/v5.json",
-        "width": display.get("width").and_then(|v| v.as_u64()).unwrap_or(600),
-        "height": display.get("height").and_then(|v| v.as_u64()).unwrap_or(400),
-        "data": [{"name": "tree", "values": []}],
-        "marks": []
-    });
-    if let Some(title) = display.get("title").and_then(|v| v.as_str()) {
-        spec["title"] = serde_json::json!({"text": title});
+    let width = display.get("width").and_then(|v| v.as_u64()).unwrap_or(600);
+    let height = display
+        .get("height")
+        .and_then(|v| v.as_u64())
+        .unwrap_or(400);
+    let title = display.get("title").and_then(|v| v.as_str());
+    let tree_nodes = spec_val
+        .pointer("/data/treeNodes")
+        .and_then(|v| v.as_object())
+        .cloned()
+        .unwrap_or_default();
+    match tree_rect::rect_tree_vega(&tree_nodes, width, height, title) {
+        Ok(spec) => spec.to_string(),
+        Err(e) => serde_json::json!({"error": e}).to_string(),
     }
-    spec.to_string()
 }
 
 /// Return the `PlotSpec` object from a bare spec or a full `/report` response.

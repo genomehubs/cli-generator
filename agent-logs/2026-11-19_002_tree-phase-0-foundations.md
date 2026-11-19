@@ -30,12 +30,14 @@ reports to a Vega v5 output instead of the Vega-Lite placeholder, add the
 
 ## Interaction log
 
-| Turn | Role  | Summary                                                             |
-| ---- | ----- | ------------------------------------------------------------------- |
-| 1    | User  | Restarted API; asked to check the scatter matrix and start Phase 0  |
-| 2    | Agent | Ran focused scatter e2e test (passed, 84.8s and 166.9s runs)        |
-| 3    | Agent | Renamed bin, added Vega v5 dispatch and TreeLayoutNode, added tests |
-| 4    | Agent | Deferred the `--vega` spike, pending approval of the new dependency |
+| Turn | Role  | Summary                                                                                                            |
+| ---- | ----- | ------------------------------------------------------------------------------------------------------------------ |
+| 1    | User  | Restarted API; asked to check the scatter matrix and start Phase 0                                                 |
+| 2    | Agent | Ran focused scatter e2e test (passed, 84.8s and 166.9s runs)                                                       |
+| 3    | Agent | Renamed bin, added Vega v5 dispatch and TreeLayoutNode, added tests                                                |
+| 4    | Agent | Deferred the `--vega` spike, pending approval of the new dependency                                                |
+| 5    | User  | Approved adding a dependency for the `--vega` spike                                                                |
+| 6    | Agent | Added `vl-convert-rs = "1.9.0"` to the root `Cargo.toml`; build failed (see Notes) and the dependency was reverted |
 
 ## Changes made
 
@@ -51,4 +53,5 @@ Verification: `cargo test -p genomehubs-query tree_layout` (7 passed), `render_d
 
 - The API does not call `validate_report_yaml`. Flat `y:` and `fields:` on tree requests are accepted by the API. The validator only runs from the `genomehubs-query` wrapper and its tests. Wiring it into the API route is a follow-up that needs a decision.
 - `TreeLayoutNode` is not yet used by the API. The `branch_length` source is deferred to a later phase.
-- The `--vega` spike is deferred. Record the decision before Phase 1 starts.
+- The `--vega` spike is dropped. No renderer is in scope for Phase 0.
+- `--vega` spike result: `vl-convert-rs = "1.9.0"` (matches the installed `vl-convert-python` 1.9.0.post1; 2.0.0-rc7 not used) failed to build after about 5m21s. The errors were in `swc_common` (`serde::__private` unresolved) and `tokio-util` (11 errors). The cause is a transitive serde version mismatch in the fresh resolution. The dependency was removed from `Cargo.toml`, and `Cargo.lock` was restored from HEAD at the user's request.
