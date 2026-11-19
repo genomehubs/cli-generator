@@ -19,7 +19,6 @@
 
 use std::collections::HashMap;
 
-use reqwest::Client;
 use serde_json::{json, Value};
 
 use genomehubs_query::query::chain::{ChainError, ChainRef, NamedQuerySpec};
@@ -70,8 +69,7 @@ pub async fn execute_named_queries(
 
     for (target_index, keys) in &by_index {
         let batch_results = execute_batch(
-            &state.client,
-            &state.es_base,
+            state,
             target_index,
             parent_index,
             base_query,
@@ -122,8 +120,7 @@ fn index_for_search_index(idx: &SearchIndex, parent_index: &str, state: &AppStat
 ///
 /// Returns a map from query key → list of extracted field values.
 async fn execute_batch(
-    client: &Client,
-    es_base: &str,
+    state: &AppState,
     target_index: &str,
     parent_index: &str,
     base_query: &Value,
@@ -161,7 +158,7 @@ async fn execute_batch(
             } else {
                 &json!({ "match_all": {} })
             };
-            filter_expr_to_es_query(&spec.filter_expr, scope).map_err(|e| {
+            filter_expr_to_es_query(&spec.filter_expr, scope, &state.cache).map_err(|e| {
                 ChainError::SubQueryFailed {
                     key: key.to_string(),
                     message: e,
@@ -184,8 +181,12 @@ async fn execute_batch(
         key_field_pairs.push((key, field));
     }
 
-    let url = format!("{}/{target_index}/_msearch", es_base.trim_end_matches('/'));
-    let resp = client
+    let url = format!(
+        "{}/{target_index}/_msearch",
+        state.es_base.trim_end_matches('/')
+    );
+    let resp = state
+        .client
         .post(&url)
         .header("Content-Type", "application/x-ndjson")
         .body(ndjson)

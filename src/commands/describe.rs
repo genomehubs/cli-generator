@@ -4,17 +4,18 @@ use anyhow::Result;
 
 use crate::core::config::{RuntimeConfig, SitePresetRegistry};
 use crate::core::metadata::MetadataOptions;
-use crate::core::runtime_query::{describe_input, QueryInput};
+use crate::core::runtime_query::describe_input;
+use genomehubs_query::query::SplitQueryDocument;
 
-/// Describe a query (v2 or v3 input) and print the text to stdout.
+/// Describe a v3 query and print the text to stdout.
 pub fn run(
     runtime: &RuntimeConfig,
     registry: &SitePresetRegistry,
-    input: &QueryInput,
+    documents: &SplitQueryDocument,
     metadata: &MetadataOptions,
     verbose: bool,
 ) -> Result<()> {
-    let text = describe_input(runtime, registry, input, metadata, verbose)?;
+    let text = describe_input(runtime, registry, documents, metadata, verbose)?;
     println!("{text}");
     Ok(())
 }

@@ -6,18 +6,6 @@ use tokio::time::{sleep, Duration};
 
 use crate::AppState;
 
-/// Whether the feature index uses the v1 nested-attributes-only structure
-/// or the v2 flat-field structure expected by `/api/v3/positional`.
-#[derive(
-    Default, Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize, utoipa::ToSchema,
-)]
-#[serde(rename_all = "lowercase")]
-pub enum FeatureIndexVersion {
-    #[default]
-    V1,
-    V2,
-}
-
 #[derive(Default, Debug, serde::Serialize, serde::Deserialize, Clone)]
 pub struct MetadataCache {
     pub taxonomies: Vec<String>,
@@ -27,13 +15,22 @@ pub struct MetadataCache {
     /// All distinct `feature_type` attribute values found in the feature index.
     /// Populated at startup; used for user-supplied feature-type normalisation.
     pub feature_types: Vec<String>,
-    /// Whether the feature index has the v2 promoted top-level fields.
-    pub feature_index_version: FeatureIndexVersion,
     pub last_updated: Option<String>,
     pub has_sayt_field: bool,
     pub has_trigram_field: bool,
     /// Top-level `keyword` mapping fields per index group (`taxon`, `assembly`, `sample`, `feature`).
     pub keyword_fields: HashMap<String, Vec<String>>,
+    /// Top-most taxonomic ancestor of the taxonomy, read from the lineage of a taxon document.
+    /// Scopes queries that carry no taxon filter.
+    pub root_taxon_id: Option<String>,
+}
+
+impl AppState {
+    /// Returns the root taxon ID discovered at startup, or `None` if the cache is not populated.
+    pub async fn root_taxon_id(&self) -> Option<String> {
+        let lock = self.cache.as_ref()?;
+        lock.read().await.root_taxon_id.clone()
+    }
 }
 
 impl MetadataCache {
@@ -186,53 +183,6 @@ pub async fn fetch_feature_types(
         .collect();
 
     Ok(types)
-}
-
-/// Probe the feature index mapping to determine whether it uses the v2
-/// flat-field structure.
-///
-/// V2 is detected by the presence of both `start` and `sequence_length`
-/// as top-level `long` fields in the mapping — these are never present
-/// in a v1 index (where all such data lives in the nested `attributes` array).
-pub async fn detect_feature_index_version(
-    client: &Client,
-    es_base: &str,
-    feature_index: &str,
-) -> FeatureIndexVersion {
-    let url = format!(
-        "{}/{}/_mapping",
-        es_base.trim_end_matches('/'),
-        feature_index
-    );
-    let resp = match client.get(&url).send().await {
-        Ok(r) if r.status().is_success() => r,
-        _ => return FeatureIndexVersion::V1,
-    };
-    let body: JsonValue = match resp.json().await {
-        Ok(j) => j,
-        Err(_) => return FeatureIndexVersion::V1,
-    };
-    // The mapping response has the index name as the top-level key.
-    // We look inside whichever key is present.
-    let has_start = body
-        .as_object()
-        .and_then(|obj| obj.values().next())
-        .and_then(|idx| idx.pointer("/mappings/properties/start/type"))
-        .and_then(|v| v.as_str())
-        .map(|t| t == "long")
-        .unwrap_or(false);
-    let has_seq_len = body
-        .as_object()
-        .and_then(|obj| obj.values().next())
-        .and_then(|idx| idx.pointer("/mappings/properties/sequence_length/type"))
-        .and_then(|v| v.as_str())
-        .map(|t| t == "long")
-        .unwrap_or(false);
-    if has_start && has_seq_len {
-        FeatureIndexVersion::V2
-    } else {
-        FeatureIndexVersion::V1
-    }
 }
 
 /// Fetch `_cat/indices?format=json` and derive taxonomies + indices similar to the JS logic.
@@ -608,6 +558,46 @@ pub async fn fetch_taxonomic_ranks(
     Ok(Vec::new())
 }
 
+/// Returns the root taxon ID of the taxonomy, read from the lineage of one taxon document.
+///
+/// Lineage is ordered self first and top-most ancestor last, so the root is the final entry.
+pub async fn fetch_root_taxon_id(
+    client: &Client,
+    es_base: &str,
+    index: &str,
+) -> Result<String, String> {
+    let url = format!("{}/{}/_search", es_base.trim_end_matches('/'), index);
+    let body = json!({
+        "size": 1,
+        "_source": ["lineage.taxon_id"],
+        "query": { "match_all": {} }
+    });
+    let body_json: JsonValue = client
+        .post(&url)
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| format!("root taxon request failed: {}", e))?
+        .error_for_status()
+        .map_err(|e| format!("root taxon status error: {}", e))?
+        .json()
+        .await
+        .map_err(|e| format!("json parse error: {}", e))?;
+    root_taxon_from_search_response(&body_json)
+        .ok_or_else(|| format!("no lineage root found in index '{}'", index))
+}
+
+/// Extracts the root taxon ID from the first hit of a `_search` response with `lineage.taxon_id` in `_source`.
+fn root_taxon_from_search_response(body_json: &JsonValue) -> Option<String> {
+    body_json
+        .pointer("/hits/hits/0/_source/lineage")
+        .and_then(JsonValue::as_array)
+        .and_then(|lineage| lineage.last())
+        .and_then(|entry| entry.get("taxon_id"))
+        .and_then(JsonValue::as_str)
+        .map(str::to_string)
+}
+
 /// Populate the shared cache by calling the above helpers. Returns Ok(()) on success.
 pub async fn populate_cache(state: Arc<AppState>, client: &Client) -> Result<(), String> {
     let es_base = &state.es_base;
@@ -643,6 +633,8 @@ pub async fn populate_cache(state: Arc<AppState>, client: &Client) -> Result<(),
         .await
         .unwrap_or_default();
 
+    let root_taxon_id = fetch_root_taxon_id(client, es_base, &taxon_index).await?;
+
     let has_sayt_field = check_sayt_field(client, es_base, &taxon_index)
         .await
         .unwrap_or(false);
@@ -660,13 +652,6 @@ pub async fn populate_cache(state: Arc<AppState>, client: &Client) -> Result<(),
         .await
         .unwrap_or_default();
 
-    let feature_index_version = detect_feature_index_version(client, es_base, &feature_index).await;
-    tracing::info!(
-        "feature index '{}' detected as {:?}",
-        feature_index,
-        feature_index_version
-    );
-
     let keyword_fields = fetch_all_keyword_fields(client, es_base, suffix_norm.as_deref()).await?;
 
     let now = chrono::Utc::now().to_rfc3339();
@@ -677,12 +662,13 @@ pub async fn populate_cache(state: Arc<AppState>, client: &Client) -> Result<(),
         attr_types,
         taxonomic_ranks: ranks,
         feature_types,
-        feature_index_version,
         last_updated: Some(now),
         has_sayt_field,
         has_trigram_field,
         keyword_fields,
+        root_taxon_id: Some(root_taxon_id.clone()),
     };
+    tracing::info!(root_taxon_id = %root_taxon_id, "discovered root taxon");
 
     // write into AppState cache (tokio RwLock inside AppState)
     if let Some(lock) = &state.cache {
@@ -723,6 +709,26 @@ pub async fn populate_with_retry(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn root_taxon_is_last_lineage_entry_of_first_hit() {
+        let response = json!({
+            "hits": { "hits": [ { "_source": { "lineage": [
+                { "taxon_id": "131567" },
+                { "taxon_id": "1" }
+            ] } } ] }
+        });
+        assert_eq!(
+            root_taxon_from_search_response(&response),
+            Some("1".to_string())
+        );
+    }
+
+    #[test]
+    fn root_taxon_is_none_without_hits() {
+        let response = json!({ "hits": { "hits": [] } });
+        assert_eq!(root_taxon_from_search_response(&response), None);
+    }
 
     #[test]
     fn keyword_field_names_keeps_only_top_level_keywords() {

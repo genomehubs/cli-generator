@@ -13,8 +13,11 @@ use cli_generator::commands;
 use cli_generator::core::config::{RuntimeConfig, SitePresetRegistry};
 use cli_generator::core::metadata::MetadataOptions;
 use cli_generator::core::runtime_query::{
-    resolve_result_index, LookupRequest, QueryInput, QueryRequest,
+    apply_overrides, parse_taxon_filter, phylopic_request, resolve_result_index, v3_query_input,
+    v3_query_input_from_v2, LookupRequest, MetadataRequest, PhylopicFilter, PlotOptions,
+    QueryOverrides, QueryRequest, RecordRequest,
 };
+use genomehubs_query::query::SplitQueryDocument;
 
 #[derive(Parser)]
 #[command(name = cli_meta::NAME, about = cli_meta::ABOUT, version)]
@@ -26,38 +29,133 @@ struct Cli {
     runtime: RuntimeArgs,
 }
 
-/// Query input options shared by `describe` and `validate`.
+/// Query input options shared by `search`, `count`, `describe`, and `validate`.
 #[derive(Args)]
 struct QueryArgs {
     /// Result index to use (defaults to the preset's index, then `taxon`).
     #[arg(long)]
     result: Option<String>,
 
-    /// Legacy v2 query expression, e.g. `tax_tree(Mammalia)`.
+    /// Legacy v2 query expression, translated to v3, e.g. `tax_tree(Mammalia)`.
     #[arg(long)]
     query: Option<String>,
 
-    /// v3 `SearchQuery` YAML body, e.g. `index: taxon` with `taxa` and `attributes`.
-    #[arg(long = "query-yaml", value_name = "YAML", conflicts_with_all = ["query", "result", "fields"])]
+    /// v3 query YAML, or a combined query and params YAML (flat or nested under `query:`/`params:`). File path or inline YAML.
+    #[arg(long = "query-yaml", value_name = "YAML", conflicts_with_all = ["query", "result"])]
     query_yaml: Option<String>,
 
-    /// Fields to use (v2 only); repeat the flag or separate with commas.
+    /// v3 params YAML, e.g. `size: 10`. File path or inline YAML.
+    #[arg(long = "params-yaml", value_name = "YAML", conflicts_with_all = ["query"])]
+    params_yaml: Option<String>,
+
+    /// Return fields; repeat the flag or separate with commas. Replaces `fields` in the query YAML.
     #[arg(long = "field", value_name = "FIELD", value_delimiter = ',')]
     fields: Vec<String>,
+
+    /// Hit count: overrides `size` from the query or params YAML.
+    #[arg(long, value_name = "N")]
+    size: Option<usize>,
+
+    /// Override `page` in the params YAML.
+    #[arg(long, value_name = "N")]
+    page: Option<usize>,
+
+    /// Override `sort_by` in the params YAML.
+    #[arg(long = "sort-by", value_name = "FIELD")]
+    sort_by: Option<String>,
+
+    /// Override `sort_order` in the params YAML: `asc` or `desc`.
+    #[arg(long = "sort-order", value_name = "ORDER")]
+    sort_order: Option<String>,
+
+    /// Override `tidy` in the params YAML. A bare flag means true.
+    #[arg(long, value_name = "BOOL", num_args = 0..=1, default_missing_value = "true")]
+    tidy: Option<bool>,
+
+    /// Override `include_estimates` in the params YAML. A bare flag means true.
+    #[arg(long = "include-estimates", value_name = "BOOL", num_args = 0..=1, default_missing_value = "true")]
+    include_estimates: Option<bool>,
+
+    /// Taxon name to filter on; repeat the flag or separate with commas. Replaces `taxa` in the query YAML.
+    #[arg(long = "taxon", value_name = "NAME", value_delimiter = ',')]
+    taxa: Vec<String>,
+
+    /// Taxonomic rank to filter on, e.g. `species`. Replaces `rank` in the query YAML.
+    #[arg(long = "taxon-rank", value_name = "RANK")]
+    taxon_rank: Option<String>,
+
+    /// Taxon filter type: `name`, `tree`, or `lineage`. Replaces `taxon_filter_type` in the query YAML.
+    #[arg(long = "taxon-filter", value_name = "TYPE", value_parser = ["name", "tree", "lineage"])]
+    taxon_filter: Option<String>,
+
+    /// Assembly accession to filter on; repeat the flag or separate with commas. Replaces `assemblies` in the query YAML.
+    #[arg(long = "assembly", value_name = "ACCESSION", value_delimiter = ',')]
+    assemblies: Vec<String>,
+
+    /// Sample accession to filter on; repeat the flag or separate with commas. Replaces `samples` in the query YAML.
+    #[arg(long = "sample", value_name = "ACCESSION", value_delimiter = ',')]
+    samples: Vec<String>,
+
+    /// Rank columns to return, e.g. `phylum`; repeat the flag or separate with commas. Replaces `ranks` in the query YAML.
+    #[arg(long = "rank", value_name = "RANK", value_delimiter = ',')]
+    ranks: Vec<String>,
+
+    /// Name classes to return, e.g. `scientific_name`; repeat the flag or separate with commas. Replaces `names` in the query YAML.
+    #[arg(long = "name", value_name = "CLASS", value_delimiter = ',')]
+    names: Vec<String>,
+
+    /// Attribute filter, e.g. `genome_size<3G`; repeat the flag for several. Replaces `attributes` in the query YAML.
+    #[arg(long = "filter", value_name = "EXPRESSION")]
+    filters: Vec<String>,
+
+    /// Taxonomy backbone, e.g. `ncbi`. Overrides `taxonomy` in the params YAML.
+    #[arg(long, value_name = "NAME")]
+    taxonomy: Option<String>,
 }
 
 impl QueryArgs {
-    /// Convert the parsed flags into a query input for the runtime layer.
-    fn into_input(self, runtime: &RuntimeConfig) -> QueryInput {
-        match self.query_yaml {
-            Some(yaml) => QueryInput::V3Yaml(yaml),
-            None => QueryInput::V2(QueryRequest {
+    /// Build the v3 query documents from the parsed flags, then apply flag overrides.
+    fn into_input(self, runtime: &RuntimeConfig) -> anyhow::Result<SplitQueryDocument> {
+        let taxon_filter = self
+            .taxon_filter
+            .as_deref()
+            .map(parse_taxon_filter)
+            .transpose()?;
+        let overrides = QueryOverrides {
+            size: self.size,
+            page: self.page,
+            sort_by: self.sort_by,
+            sort_order: self.sort_order,
+            tidy: self.tidy,
+            include_estimates: self.include_estimates,
+            taxonomy: self.taxonomy,
+            taxa: self.taxa,
+            taxon_rank: self.taxon_rank,
+            taxon_filter,
+            assemblies: self.assemblies,
+            samples: self.samples,
+            fields: self.fields.clone(),
+            ranks: self.ranks,
+            names: self.names,
+            filters: self.filters,
+        };
+        let documents = match self.query {
+            Some(expression) => v3_query_input_from_v2(&QueryRequest {
                 result: resolve_result_index(self.result.as_deref(), runtime),
-                query: self.query,
+                query: Some(expression),
                 fields: self.fields,
                 size: None,
-            }),
-        }
+            })?,
+            None => {
+                let default_index = resolve_result_index(self.result.as_deref(), runtime);
+                v3_query_input(
+                    self.query_yaml.as_deref(),
+                    self.params_yaml.as_deref(),
+                    &default_index,
+                )?
+            }
+        };
+        apply_overrides(documents, &overrides)
     }
 }
 
@@ -83,6 +181,26 @@ struct RuntimeArgs {
     /// Directory for cached metadata (defaults to the OS cache directory).
     #[arg(long, global = true, value_name = "DIR")]
     metadata_cache_dir: Option<PathBuf>,
+}
+
+/// Subcommands of `metadata`; with none, the aggregated hub metadata is printed.
+#[derive(Subcommand)]
+enum MetadataCommand {
+    /// List the available indices.
+    Indices,
+
+    /// List the available taxonomies.
+    Taxonomies,
+
+    /// List the taxonomic ranks.
+    Ranks,
+
+    /// List field definitions for one result index.
+    Fields {
+        /// Result index to describe (defaults to the preset's index, then `taxon`).
+        #[arg(long)]
+        index: Option<String>,
+    },
 }
 
 #[derive(Subcommand)]
@@ -151,36 +269,14 @@ enum Commands {
 
     /// Search a GenomeHubs instance and print the JSON response.
     Search {
-        /// Result index to search (defaults to the preset's index, then `taxon`).
-        #[arg(long)]
-        result: Option<String>,
-
-        /// Query expression, e.g. `tax_tree(Mammalia)`.
-        #[arg(long)]
-        query: Option<String>,
-
-        /// Fields to return; repeat the flag or separate with commas.
-        #[arg(long = "field", value_name = "FIELD", value_delimiter = ',')]
-        fields: Vec<String>,
-
-        /// Number of hits to return.
-        #[arg(long)]
-        size: Option<usize>,
+        #[command(flatten)]
+        query: QueryArgs,
     },
 
     /// Count matching records on a GenomeHubs instance and print the JSON response.
     Count {
-        /// Result index to count (defaults to the preset's index, then `taxon`).
-        #[arg(long)]
-        result: Option<String>,
-
-        /// Query expression, e.g. `tax_tree(Mammalia)`.
-        #[arg(long)]
-        query: Option<String>,
-
-        /// Fields to validate against the index; repeat the flag or separate with commas.
-        #[arg(long = "field", value_name = "FIELD", value_delimiter = ',')]
-        fields: Vec<String>,
+        #[command(flatten)]
+        query: QueryArgs,
     },
 
     /// Resolve a search term to matching taxa and print the JSON response.
@@ -197,6 +293,60 @@ enum Commands {
         size: Option<usize>,
     },
 
+    /// Fetch records by ID and print the JSON response.
+    Record {
+        /// Record ID to fetch; repeat the flag or separate with commas, e.g. `9606,9605`.
+        #[arg(
+            long = "record-id",
+            value_name = "ID",
+            value_delimiter = ',',
+            required = true
+        )]
+        record_ids: Vec<String>,
+
+        /// Result index of the records (defaults to the preset's index, then `taxon`).
+        #[arg(long)]
+        result: Option<String>,
+    },
+
+    /// Resolve PhyloPic silhouettes for one or more taxa, or for a batch file of taxon IDs.
+    Phylopic {
+        /// NCBI taxon ID(s) to resolve, e.g. `9606` or `9606,10090`; several IDs use the batch route (omit when using `--batch`).
+        #[arg(
+            long = "taxon-id",
+            value_name = "ID",
+            value_delimiter = ',',
+            required_unless_present = "batch",
+            conflicts_with = "batch"
+        )]
+        taxon_id: Vec<String>,
+
+        /// File of taxon IDs (a JSON array, or one numeric ID per line), resolved in one request (max 200).
+        #[arg(long, value_name = "FILE", conflicts_with = "taxon_id")]
+        batch: Option<PathBuf>,
+
+        /// Taxonomy the taxon IDs belong to.
+        #[arg(long, default_value = "ncbi")]
+        taxonomy: String,
+
+        /// Accept only images with these SPDX licence IDs; repeat or separate with commas.
+        #[arg(long, value_name = "SPDX", value_delimiter = ',')]
+        license: Vec<String>,
+
+        /// Accept only public-domain images.
+        #[arg(long)]
+        public_domain: bool,
+    },
+
+    /// Print hub metadata; without a subcommand, print the aggregated metadata.
+    Metadata {
+        #[command(subcommand)]
+        command: Option<MetadataCommand>,
+    },
+
+    /// Print API health and readiness as JSON.
+    Status,
+
     /// Describe a query in plain English, naming fields from the index metadata.
     Describe {
         #[command(flatten)]
@@ -211,6 +361,32 @@ enum Commands {
     Validate {
         #[command(flatten)]
         query: QueryArgs,
+    },
+
+    /// Build a report from a GenomeHubs instance and print the JSON response.
+    Report {
+        #[command(flatten)]
+        query: QueryArgs,
+
+        /// Report config YAML, e.g. `report: histogram`. File path or inline YAML.
+        #[arg(long = "report-yaml", value_name = "YAML")]
+        report_yaml: String,
+
+        #[command(flatten)]
+        plot: PlotArgs,
+    },
+
+    /// Build a positional report (oxford, ribbon, painting) and print the JSON response.
+    Positional {
+        #[command(flatten)]
+        query: QueryArgs,
+
+        /// Positional config YAML, e.g. `report: oxford`. File path or inline YAML.
+        #[arg(long = "positional-yaml", value_name = "YAML")]
+        positional_yaml: String,
+
+        #[command(flatten)]
+        plot: PlotArgs,
     },
 
     /// Check whether a generated repo is in sync with its config.
@@ -263,6 +439,18 @@ fn main() {
         tracing::error!(error = ?e, "application error");
         std::process::exit(1);
     }
+}
+
+/// Plot options shared by `report` and `positional`.
+#[derive(Args)]
+struct PlotArgs {
+    /// Include the PlotSpec in the response.
+    #[arg(long)]
+    include_plot_spec: bool,
+
+    /// Display options as a JSON string applied to the PlotSpec, e.g. `'{"title":"My plot"}'`.
+    #[arg(long, value_name = "JSON")]
+    display: Option<String>,
 }
 
 /// Runtime, preset, and metadata settings shared by the query commands.
@@ -341,45 +529,16 @@ fn run(cli: Cli) -> anyhow::Result<()> {
             }
         }
 
-        Commands::Search {
-            result,
-            query,
-            fields,
-            size,
-        } => {
+        Commands::Search { query } => {
             let context = QueryContext::from_args(&cli.runtime)?;
-            let request = QueryRequest {
-                result: resolve_result_index(result.as_deref(), &context.runtime),
-                query,
-                fields,
-                size,
-            };
-            commands::search::run(
-                &context.runtime,
-                &context.registry,
-                &request,
-                &context.metadata,
-            )
+            let input = query.into_input(&context.runtime)?;
+            commands::search::run(&context.runtime, &context.registry, &input)
         }
 
-        Commands::Count {
-            result,
-            query,
-            fields,
-        } => {
+        Commands::Count { query } => {
             let context = QueryContext::from_args(&cli.runtime)?;
-            let request = QueryRequest {
-                result: resolve_result_index(result.as_deref(), &context.runtime),
-                query,
-                fields,
-                size: None,
-            };
-            commands::count::run(
-                &context.runtime,
-                &context.registry,
-                &request,
-                &context.metadata,
-            )
+            let input = query.into_input(&context.runtime)?;
+            commands::count::run(&context.runtime, &context.registry, &input)
         }
 
         Commands::Lookup { term, result, size } => {
@@ -392,9 +551,53 @@ fn run(cli: Cli) -> anyhow::Result<()> {
             commands::lookup::run(&context.runtime, &context.registry, &request)
         }
 
+        Commands::Record { record_ids, result } => {
+            let context = QueryContext::from_args(&cli.runtime)?;
+            let request = RecordRequest {
+                record_ids,
+                result: resolve_result_index(result.as_deref(), &context.runtime),
+            };
+            commands::record::run(&context.runtime, &context.registry, &request)
+        }
+
+        Commands::Phylopic {
+            taxon_id,
+            batch,
+            taxonomy,
+            license,
+            public_domain,
+        } => {
+            let context = QueryContext::from_args(&cli.runtime)?;
+            let filter = PhylopicFilter {
+                licenses: license,
+                public_domain,
+            };
+            let request = phylopic_request(taxon_id, batch.as_deref(), taxonomy, filter)?;
+            commands::phylopic::run(&context.runtime, &context.registry, &request)
+        }
+
+        Commands::Metadata { command } => {
+            let context = QueryContext::from_args(&cli.runtime)?;
+            let request = match command {
+                None => MetadataRequest::Aggregate,
+                Some(MetadataCommand::Indices) => MetadataRequest::Indices,
+                Some(MetadataCommand::Taxonomies) => MetadataRequest::Taxonomies,
+                Some(MetadataCommand::Ranks) => MetadataRequest::Ranks,
+                Some(MetadataCommand::Fields { index }) => MetadataRequest::Fields {
+                    index: resolve_result_index(index.as_deref(), &context.runtime),
+                },
+            };
+            commands::metadata::run(&context.runtime, &context.registry, &request)
+        }
+
+        Commands::Status => {
+            let context = QueryContext::from_args(&cli.runtime)?;
+            commands::status::run(&context.runtime, &context.registry)
+        }
+
         Commands::Describe { query, verbose } => {
             let context = QueryContext::from_args(&cli.runtime)?;
-            let input = query.into_input(&context.runtime);
+            let input = query.into_input(&context.runtime)?;
             commands::describe::run(
                 &context.runtime,
                 &context.registry,
@@ -406,7 +609,7 @@ fn run(cli: Cli) -> anyhow::Result<()> {
 
         Commands::Validate { query } => {
             let context = QueryContext::from_args(&cli.runtime)?;
-            let input = query.into_input(&context.runtime);
+            let input = query.into_input(&context.runtime)?;
             commands::validate::run(
                 &context.runtime,
                 &context.registry,
@@ -416,6 +619,44 @@ fn run(cli: Cli) -> anyhow::Result<()> {
         }
 
         Commands::Check { repo } => commands::check::run(&repo),
+
+        Commands::Report {
+            mut query,
+            report_yaml,
+            plot,
+        } => {
+            if query.taxon_filter.is_none() && !query.taxa.is_empty() {
+                // A name match only hits the taxon itself, so reports default to descendants.
+                query.taxon_filter = Some("tree".to_string());
+            }
+            let context = QueryContext::from_args(&cli.runtime)?;
+            let input = query.into_input(&context.runtime)?;
+            let options = PlotOptions::from_flags(plot.include_plot_spec, plot.display.as_deref())?;
+            commands::report::run(
+                &context.runtime,
+                &context.registry,
+                &input,
+                &report_yaml,
+                &options,
+            )
+        }
+
+        Commands::Positional {
+            query,
+            positional_yaml,
+            plot,
+        } => {
+            let context = QueryContext::from_args(&cli.runtime)?;
+            let input = query.into_input(&context.runtime)?;
+            let options = PlotOptions::from_flags(plot.include_plot_spec, plot.display.as_deref())?;
+            commands::positional::run(
+                &context.runtime,
+                &context.registry,
+                &input,
+                &positional_yaml,
+                &options,
+            )
+        }
 
         Commands::LocalReport {
             input,

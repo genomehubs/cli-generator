@@ -1500,13 +1500,9 @@ fn vl_arc_batch(spec: &serde_json::Value, mut base: serde_json::Value) -> serde_
 fn arc_values_from_report_data(report_data: &serde_json::Value) -> Vec<serde_json::Value> {
     let mut entries = vec![];
 
-    fn get_count(report_data: &serde_json::Value, key: &str) -> f64 {
-        report_data.get(key).and_then(|v| v.as_f64()).unwrap_or(0.0)
-    }
-
-    let feature_count = get_count(report_data, "feature_count");
-    let reference_count = get_count(report_data, "reference_count");
-    let context_count = get_count(report_data, "context_count");
+    let feature_count = count_field(report_data, "feature_count");
+    let reference_count = count_field(report_data, "reference_count");
+    let context_count = count_field(report_data, "context_count");
 
     // add feature segment
     let feature_portion = if feature_count > 0.0 {
@@ -1559,87 +1555,616 @@ fn arc_values_from_report_data(report_data: &serde_json::Value) -> Vec<serde_jso
     entries
 }
 
+/// Donut for a single arc; a list under `arc` renders one ring per entry.
 fn vl_arc(spec: &serde_json::Value, mut base: serde_json::Value) -> serde_json::Value {
-    let _mode = "grouped"; // for now only support grouped mode with explicit offsets; could add facet mode later if needed
-    let shape = "ring"; // for now only support ring shape; could add rainbow shape later if needed
-    let data_entries = [spec.get("data")];
-    // for simplicity only support a single arc for now
-    if data_entries.is_empty() {
-        return serde_json::json!({"error": "No data entries found"});
-    }
-    let maybe_data = data_entries[0];
-    if maybe_data.is_none() {
+    let Some(report_data) = spec.get("data") else {
         return serde_json::json!({"error": "No data found"});
+    };
+    if let Some(rings) = report_data.get("arc").and_then(|v| v.as_array()) {
+        return vl_arc_rings(rings, base);
     }
-    let data = maybe_data.unwrap();
-    let inner_radius = 50.0;
-    let outer_radius = 100.0;
-    let start_angle = match shape {
-        "ring" => 0.0, // start at top of circle
-        "rainbow" => -std::f64::consts::PI / 2.0,
-        _ => -std::f64::consts::PI / 2.0,
-    };
-    let end_angle = match shape {
-        "ring" => start_angle + 2.0 * std::f64::consts::PI,
-        "rainbow" => start_angle + std::f64::consts::PI, // for rainbow we would need to encode each segment separately with different colors
-        _ => start_angle + 2.0 * std::f64::consts::PI,
-    };
-    let mut values = arc_values_from_report_data(data);
+    let width = base["width"].as_f64().unwrap_or(600.0);
+    let height = base["height"].as_f64().unwrap_or(400.0);
+    let outer_radius = width.min(height) / 2.0;
+    let inner_radius = outer_radius * 0.5;
+    let (headline, detail) = arc_centre_labels(report_data);
+    let segments = arc_segment_angles(arc_values_from_report_data(report_data));
+    let mid_radius = (outer_radius + inner_radius) / 2.0;
+    let segment_font_size = outer_radius * 0.12;
+    let headline_font_size = outer_radius * 0.2;
+    let detail_font_size = outer_radius * 0.1;
+    let segment_labels = arc_segment_label_values(&segments, mid_radius, segment_font_size);
 
-    // draw simple ring with one segment per entry, using the portion field to determine the angle
-    for v in values.iter_mut() {
-        if let Some(obj) = v.as_object_mut() {
-            let portion = obj.get("portion").and_then(|v| v.as_f64()).unwrap_or(0.0);
-            let angle = portion * (end_angle - start_angle);
-            obj.insert(
-                "start_angle".to_string(),
-                serde_json::Value::from(start_angle),
-            );
-            obj.insert(
-                "end_angle".to_string(),
-                serde_json::Value::from(start_angle + angle),
-            );
-            obj.insert(
-                "inner_radius".to_string(),
-                serde_json::Value::from(inner_radius),
-            );
-            obj.insert(
-                "outer_radius".to_string(),
-                serde_json::Value::from(outer_radius),
-            );
-        }
-    }
-    base["data"] = serde_json::json!({"values": values});
-    // For grouped mode we can use Vega-Lite's built-in arc mark with theta encoding and explicit offsets
-    base["mark"] = serde_json::json!({
-        "type": "arc",
-        "innerRadius": inner_radius,
-        "outerRadius": outer_radius,
-        "thetaOffset": start_angle,
-        "theta2Offset": start_angle
-    });
-    // set color encoding based on label
-    base["encoding"] = serde_json::json!({
-        "theta": {
-            "field": "portion",
-            "type": "quantitative",
-            "scale": {"domain": [1.0, match shape {
-                "ring" => 0.0,
-                "rainbow" => -1.0,
-                _ => 0.0,
-            }]}
+    let donut_layer = serde_json::json!({
+        "data": {"values": segments},
+        "mark": {
+            "type": "arc",
+            "innerRadius": inner_radius,
+            "outerRadius": outer_radius,
+            "stroke": "#ffffff",
+            "strokeWidth": 2
         },
-        "theta2": {"value": 0},
-        "color": {
-            "field": "label",
-            "type": "nominal",
-            "scale": {
-                "scheme": "category10",
-                "domain":["feature","reference","context"]
+        "encoding": {
+            "theta": {"field": "start", "type": "quantitative", "scale": null},
+            "theta2": {"field": "end", "type": "quantitative", "scale": null},
+            "color": {
+                "field": "label",
+                "type": "nominal",
+                "scale": {"scheme": "category10", "domain": ["feature", "reference", "context"]},
+                "legend": null
             }
         }
     });
+    let mut layers = vec![donut_layer];
+    if let Some(cumulative) = arc_cumulative_fraction(report_data) {
+        layers.push(cumulative_arc_layer(cumulative, inner_radius));
+    }
+    layers.push(segment_label_layer(
+        segment_labels,
+        mid_radius,
+        segment_font_size,
+    ));
+    layers.push(centre_text_layer(
+        &headline,
+        width,
+        height,
+        -headline_font_size / 3.0,
+        headline_font_size,
+        "normal",
+    ));
+    layers.push(centre_text_layer(
+        &detail,
+        width,
+        height,
+        detail_font_size * 1.2,
+        detail_font_size,
+        "normal",
+    ));
+
+    base["view"] = serde_json::json!({"stroke": null});
+    base["layer"] = serde_json::Value::Array(layers);
     base
+}
+
+/// Colour scheme for rank rings; change it to recolour the rings.
+const RING_COLOUR_SCHEME: &str = "category10";
+
+/// Neutral fill for the context span of each ring.
+const RING_TRACK_FILL: &str = "#cccccc";
+
+/// Inner radius of the innermost ring as a fraction of the outer radius.
+const RING_HOLE_RATIO: f64 = 0.11;
+
+/// Gap between adjacent ring bands as a fraction of the ring pitch.
+const RING_GAP_RATIO: f64 = 0.15;
+
+/// Gap between the arcs and the legend, as a fraction of the outer radius.
+const RING_LEGEND_GAP: f64 = 0.08;
+
+/// Height of one legend row as a fraction of the outer radius.
+const RING_LEGEND_ROW_RATIO: f64 = 0.17;
+
+/// Legend name text size as a fraction of the outer radius.
+const RING_LEGEND_NAME_RATIO: f64 = 0.055;
+
+/// Legend counts text size as a fraction of the outer radius.
+const RING_LEGEND_COUNTS_RATIO: f64 = 0.045;
+
+/// Legend bar width as a fraction of the outer radius.
+const RING_LEGEND_BAR_RATIO: f64 = 0.024;
+
+/// Legend text padding as a fraction of the outer radius.
+const RING_LEGEND_PAD_RATIO: f64 = 0.02;
+
+/// Average glyph width of legend text in em.
+const RING_LEGEND_CHAR_EM: f64 = 0.55;
+
+/// Cap height of legend text in em, used to centre the name line on its bar.
+const RING_LEGEND_CAP_EM: f64 = 0.72;
+
+/// Fill opacity of the reference-only band drawn over the track.
+const RING_REFERENCE_OPACITY: f64 = 0.4;
+
+/// Outline width shared by every ring arc so segment borders line up.
+const RING_OUTLINE_WIDTH: f64 = 2.0;
+
+/// Centre and radii of one ring band.
+#[derive(Clone, Copy)]
+struct RingBand {
+    cx: f64,
+    cy: f64,
+    inner: f64,
+    outer: f64,
+}
+
+/// Semicircular rainbow for an `arc` report list, first entry outermost.
+fn vl_arc_rings(rings: &[serde_json::Value], mut base: serde_json::Value) -> serde_json::Value {
+    let width = base["width"].as_f64().unwrap_or(600.0);
+    let height = base["height"].as_f64().unwrap_or(400.0);
+    let (outer_radius, columns) = ring_layout(width, height, rings);
+    let pitch = ring_pitch(outer_radius, rings.len());
+    let band = pitch * (1.0 - RING_GAP_RATIO);
+    let domain: Vec<String> = rings.iter().map(ring_label).collect();
+
+    let mut layers = Vec::new();
+    let mut label_layers = Vec::new();
+    for (index, ring) in rings.iter().enumerate() {
+        let outer = outer_radius - index as f64 * pitch;
+        let geometry = RingBand {
+            cx: width / 2.0,
+            cy: outer_radius,
+            inner: outer - band,
+            outer,
+        };
+        let (feature, reference) = ring_fractions(ring);
+        layers.extend(ring_band_layers(
+            ring, geometry, feature, reference, &domain,
+        ));
+        let mid = outer - band / 2.0;
+        let percent = format!("{:.1}%", reference * 100.0);
+        label_layers.push(positioned_text_layer(
+            &percent,
+            geometry.cx,
+            geometry.cy - mid,
+            band * 0.4,
+        ));
+    }
+    layers.extend(label_layers);
+    let items = ring_legend_items(rings, columns, width, outer_radius);
+    layers.extend(ring_legend_layers(items, outer_radius, &domain));
+
+    base["view"] = serde_json::json!({"stroke": null});
+    base["layer"] = serde_json::Value::Array(layers);
+    base
+}
+
+/// Distance between ring outer edges, sized so the innermost band ends at the hole.
+fn ring_pitch(outer_radius: f64, ring_count: usize) -> f64 {
+    outer_radius * (1.0 - RING_HOLE_RATIO) / (ring_count.max(1) as f64 - RING_GAP_RATIO)
+}
+
+/// Outer radius and legend columns, preferring the most columns that fit left of the arc's right edge.
+fn ring_layout(width: f64, height: f64, rings: &[serde_json::Value]) -> (f64, usize) {
+    let count = rings.len().max(1);
+    let height_radius = |columns: usize| {
+        let rows = count.div_ceil(columns) as f64;
+        (width / 2.0).min(height / (1.0 + RING_LEGEND_GAP + rows * RING_LEGEND_ROW_RATIO))
+    };
+    let width_radius = |columns: usize| {
+        let total_em: f64 = ring_legend_column_em(rings, columns).iter().sum();
+        (width / 2.0) / (total_em - 1.0).max(f64::EPSILON)
+    };
+    let columns = (1..=count)
+        .rev()
+        .find(|&columns| height_radius(columns) <= width_radius(columns))
+        .unwrap_or(1);
+    (height_radius(columns).min(width_radius(columns)), columns)
+}
+
+/// Widest legend item in each grid column when items fill `columns` columns.
+fn ring_legend_column_em(rings: &[serde_json::Value], columns: usize) -> Vec<f64> {
+    let mut column_em = vec![0.0_f64; columns];
+    for (index, ring) in rings.iter().enumerate() {
+        let column = ring_legend_column(index, rings.len(), columns);
+        column_em[column] = column_em[column].max(ring_legend_item_em(ring));
+    }
+    column_em
+}
+
+/// Grid column of legend item `index`, with the last row right-aligned.
+fn ring_legend_column(index: usize, count: usize, columns: usize) -> usize {
+    let row_start = index / columns * columns;
+    let row_len = (count - row_start).min(columns);
+    columns - row_len + index - row_start
+}
+
+/// Width of one legend item as a multiple of the outer radius, from its own text.
+fn ring_legend_item_em(ring: &serde_json::Value) -> f64 {
+    let name = ring_label(ring).chars().count() as f64 * RING_LEGEND_NAME_RATIO;
+    let counts = ring_count_summary(ring).chars().count() as f64 * RING_LEGEND_COUNTS_RATIO;
+    name.max(counts) * RING_LEGEND_CHAR_EM + 2.0 * RING_LEGEND_PAD_RATIO + RING_LEGEND_BAR_RATIO
+}
+
+/// Series label of a ring entry.
+fn ring_label(ring: &serde_json::Value) -> String {
+    ring.get("label")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string()
+}
+
+/// Feature share of a ring entry, clamped to the full circle.
+fn ring_feature_share(ring: &serde_json::Value) -> f64 {
+    ring.get("arc")
+        .and_then(|v| v.as_f64())
+        .unwrap_or(0.0)
+        .clamp(0.0, 1.0)
+}
+
+/// Feature and reference fractions of a ring's semicircle, measured against context when present.
+fn ring_fractions(ring: &serde_json::Value) -> (f64, f64) {
+    let context = count_field(ring, "context_count");
+    if context > 0.0 {
+        return (
+            count_field(ring, "feature_count") / context,
+            count_field(ring, "reference_count") / context,
+        );
+    }
+    let share = ring_feature_share(ring);
+    (share, share)
+}
+
+/// Track, reference-only band, and feature arc for one ring, in draw order.
+fn ring_band_layers(
+    ring: &serde_json::Value,
+    band: RingBand,
+    feature: f64,
+    reference: f64,
+    domain: &[String],
+) -> Vec<serde_json::Value> {
+    let label = ring_label(ring);
+    let colour = ring_colour_encoding(domain);
+    let track = ring_arc_layer(
+        serde_json::json!([{"start": semicircle_angle(0.0), "end": semicircle_angle(1.0)}]),
+        band,
+        serde_json::json!({}),
+        serde_json::json!({"color": {"value": RING_TRACK_FILL}, "stroke": {"value": RING_TRACK_FILL}}),
+    );
+    let mut layers = vec![track];
+    if reference > feature {
+        layers.push(ring_arc_layer(
+            serde_json::json!([{
+                "label": label,
+                "start": semicircle_angle(feature),
+                "end": semicircle_angle(reference)
+            }]),
+            band,
+            serde_json::json!({"fillOpacity": RING_REFERENCE_OPACITY}),
+            serde_json::json!({"color": colour.clone(), "stroke": colour.clone()}),
+        ));
+    }
+    if feature > 0.0 {
+        layers.push(ring_arc_layer(
+            serde_json::json!([{
+                "label": label,
+                "start": semicircle_angle(0.0),
+                "end": semicircle_angle(feature)
+            }]),
+            band,
+            serde_json::json!({}),
+            serde_json::json!({"color": colour.clone(), "stroke": colour}),
+        ));
+    }
+    layers
+}
+
+/// Canvas angle in radians for a fraction of the top semicircle, starting at 9 o'clock.
+fn semicircle_angle(fraction: f64) -> f64 {
+    -std::f64::consts::FRAC_PI_2 + fraction * std::f64::consts::PI
+}
+
+/// Colour channel that maps ring labels through the ring colour scheme.
+fn ring_colour_encoding(domain: &[String]) -> serde_json::Value {
+    serde_json::json!({
+        "field": "label",
+        "type": "nominal",
+        "legend": null,
+        "scale": {"scheme": RING_COLOUR_SCHEME, "domain": domain}
+    })
+}
+
+/// Arc layer across a semicircular band; `style` sets mark fields and `encodings` adds channels.
+fn ring_arc_layer(
+    values: serde_json::Value,
+    band: RingBand,
+    style: serde_json::Value,
+    encodings: serde_json::Value,
+) -> serde_json::Value {
+    let mut mark = serde_json::json!({
+        "type": "arc",
+        "innerRadius": band.inner,
+        "outerRadius": band.outer,
+        "strokeWidth": RING_OUTLINE_WIDTH
+    });
+    merge_fields(&mut mark, style);
+    let mut encoding = serde_json::json!({
+        "x": {"value": band.cx},
+        "y": {"value": band.cy},
+        "theta": {"field": "start", "type": "quantitative", "scale": null},
+        "theta2": {"field": "end", "type": "quantitative", "scale": null}
+    });
+    merge_fields(&mut encoding, encodings);
+    serde_json::json!({"data": {"values": values}, "mark": mark, "encoding": encoding})
+}
+
+/// Copies the object fields of `extra` into `target`.
+fn merge_fields(target: &mut serde_json::Value, extra: serde_json::Value) {
+    if let (Some(target), serde_json::Value::Object(extra)) = (target.as_object_mut(), extra) {
+        target.extend(extra);
+    }
+}
+
+/// Text layer at fixed pixel coordinates, vertically centred on the anchor.
+fn positioned_text_layer(text: &str, x: f64, y: f64, font_size: f64) -> serde_json::Value {
+    serde_json::json!({
+        "data": {"values": [{}]},
+        "mark": {
+            "type": "text",
+            "fontSize": font_size,
+            "fontWeight": "bold",
+            "color": "#ffffff",
+            "baseline": "middle"
+        },
+        "encoding": {
+            "text": {"value": text},
+            "x": {"value": x},
+            "y": {"value": y}
+        }
+    })
+}
+
+/// Legend items on a column-aligned grid whose right edge meets the outer arc's right edge.
+fn ring_legend_items(
+    rings: &[serde_json::Value],
+    columns: usize,
+    width: f64,
+    outer_radius: f64,
+) -> Vec<serde_json::Value> {
+    let pad = outer_radius * RING_LEGEND_PAD_RATIO;
+    let bar = outer_radius * RING_LEGEND_BAR_RATIO;
+    let name_size = outer_radius * RING_LEGEND_NAME_RATIO;
+    let counts_size = outer_radius * RING_LEGEND_COUNTS_RATIO;
+    let row_height = outer_radius * RING_LEGEND_ROW_RATIO;
+    let top = outer_radius * (1.0 + RING_LEGEND_GAP);
+    let bar_height = name_size + counts_size * 1.7;
+    let text_height = name_size * RING_LEGEND_CAP_EM + counts_size * 1.4;
+    let text_inset = (bar_height - text_height) / 2.0;
+    let column_em = ring_legend_column_em(rings, columns);
+    let grid_right = width / 2.0 + outer_radius + pad;
+    let mut column_left = Vec::with_capacity(columns);
+    let mut left = grid_right - column_em.iter().sum::<f64>() * outer_radius;
+    for em in &column_em {
+        column_left.push(left);
+        left += em * outer_radius;
+    }
+    rings
+        .iter()
+        .enumerate()
+        .map(|(index, ring)| {
+            let column = ring_legend_column(index, rings.len(), columns);
+            let row_top = top + (index / columns) as f64 * row_height;
+            let bar_x1 = column_left[column] + column_em[column] * outer_radius - pad;
+            let bar_x0 = bar_x1 - bar;
+            let name_y = row_top + text_inset + name_size * RING_LEGEND_CAP_EM;
+            let counts_y = name_y + counts_size * 1.4;
+            serde_json::json!({
+                "label": ring_label(ring),
+                "counts": ring_count_summary(ring),
+                "bar_x0": bar_x0,
+                "bar_x1": bar_x1,
+                "bar_y0": row_top,
+                "bar_y1": row_top + bar_height,
+                "text_x": bar_x0 - pad,
+                "name_y": name_y,
+                "counts_y": counts_y
+            })
+        })
+        .collect()
+}
+
+/// Legend under the arcs: rank name and counts right-aligned to a colour bar per item.
+fn ring_legend_layers(
+    items: Vec<serde_json::Value>,
+    outer_radius: f64,
+    domain: &[String],
+) -> Vec<serde_json::Value> {
+    let name_size = outer_radius * RING_LEGEND_NAME_RATIO;
+    let counts_size = outer_radius * RING_LEGEND_COUNTS_RATIO;
+    let colour = ring_colour_encoding(domain);
+    let text_x = serde_json::json!({"field": "text_x", "type": "quantitative", "scale": null});
+    vec![
+        serde_json::json!({
+            "data": {"values": items.clone()},
+            "mark": {"type": "rect"},
+            "encoding": {
+                "x": {"field": "bar_x0", "type": "quantitative", "scale": null},
+                "x2": {"field": "bar_x1", "type": "quantitative", "scale": null},
+                "y": {"field": "bar_y0", "type": "quantitative", "scale": null},
+                "y2": {"field": "bar_y1", "type": "quantitative", "scale": null},
+                "color": colour.clone()
+            }
+        }),
+        serde_json::json!({
+            "data": {"values": items.clone()},
+            "mark": {"type": "text", "align": "right", "baseline": "alphabetic", "fontSize": name_size, "fontWeight": "bold"},
+            "encoding": {
+                "x": text_x.clone(),
+                "y": {"field": "name_y", "type": "quantitative", "scale": null},
+                "text": {"field": "label", "type": "nominal"},
+                "color": colour
+            }
+        }),
+        serde_json::json!({
+            "data": {"values": items},
+            "mark": {"type": "text", "align": "right", "baseline": "alphabetic", "fontSize": counts_size, "color": "#666666"},
+            "encoding": {
+                "x": text_x,
+                "y": {"field": "counts_y", "type": "quantitative", "scale": null},
+                "text": {"field": "counts", "type": "nominal"}
+            }
+        }),
+    ]
+}
+
+/// Feature, reference, and context counts of a ring as compact text.
+fn ring_count_summary(ring: &serde_json::Value) -> String {
+    let mut counts = vec![
+        count_field(ring, "feature_count"),
+        count_field(ring, "reference_count"),
+    ];
+    let context = count_field(ring, "context_count");
+    if context > 0.0 {
+        counts.push(context);
+    }
+    counts
+        .into_iter()
+        .map(format_count_compact)
+        .collect::<Vec<_>>()
+        .join(" / ")
+}
+
+/// Count with at most three significant figures and a k or M suffix, e.g. `12583` as `12.6k`.
+fn format_count_compact(value: f64) -> String {
+    let (scaled, suffix) = if value >= 1_000_000.0 {
+        (value / 1_000_000.0, "M")
+    } else if value >= 1_000.0 {
+        (value / 1_000.0, "k")
+    } else {
+        return format!("{value:.0}");
+    };
+    let decimals = if scaled >= 100.0 {
+        0
+    } else if scaled >= 10.0 {
+        1
+    } else {
+        2
+    };
+    format!("{scaled:.decimals$}{suffix}")
+}
+
+/// Clockwise start, end and mid angles in radians from 12 o'clock for each segment.
+fn arc_segment_angles(mut segments: Vec<serde_json::Value>) -> Vec<serde_json::Value> {
+    let mut start = 0.0;
+    for segment in &mut segments {
+        let end = start + segment["portion"].as_f64().unwrap_or(0.0) * std::f64::consts::TAU;
+        segment["start"] = serde_json::json!(start);
+        segment["end"] = serde_json::json!(end);
+        segment["mid"] = serde_json::json!((start + end) / 2.0);
+        start = end;
+    }
+    segments
+}
+
+/// Approximate glyph width in em, used to test whether a segment label fits.
+const ARC_LABEL_CHAR_EM: f64 = 0.6;
+
+/// Percentage labels for segments whose arc length at `mid_radius` fits the label text.
+fn arc_segment_label_values(
+    segments: &[serde_json::Value],
+    mid_radius: f64,
+    font_size: f64,
+) -> Vec<serde_json::Value> {
+    segments
+        .iter()
+        .filter_map(|segment| {
+            let portion = segment["portion"].as_f64()?;
+            let text = format!("{:.1}%", portion * 100.0);
+            let arc_length = portion * std::f64::consts::TAU * mid_radius;
+            (arc_length >= text.len() as f64 * font_size * ARC_LABEL_CHAR_EM)
+                .then(|| serde_json::json!({"text": text, "mid": segment["mid"]}))
+        })
+        .collect()
+}
+
+/// Text layer placing segment labels on `mid_radius` at each segment's mid angle.
+fn segment_label_layer(
+    labels: Vec<serde_json::Value>,
+    mid_radius: f64,
+    font_size: f64,
+) -> serde_json::Value {
+    serde_json::json!({
+        "data": {"values": labels},
+        "mark": {"type": "text", "fontSize": font_size, "fontWeight": "normal", "color": "#ffffff"},
+        "encoding": {
+            "theta": {"field": "mid", "type": "quantitative", "scale": null},
+            "radius": {"value": mid_radius},
+            "text": {"field": "text", "type": "nominal"}
+        }
+    })
+}
+
+/// Share of context covered by reference (feature and reference-only together); `None` without context.
+fn arc_cumulative_fraction(report_data: &serde_json::Value) -> Option<f64> {
+    let context = count_field(report_data, "context_count");
+    (context > 0.0).then(|| count_field(report_data, "reference_count") / context)
+}
+
+/// Thin arc sweeping `fraction` of the circle from 12 o'clock, just inside the donut hole.
+fn cumulative_arc_layer(fraction: f64, inner_radius: f64) -> serde_json::Value {
+    let end_angle = fraction * std::f64::consts::TAU;
+    serde_json::json!({
+        "data": {"values": [{"start": 0.0, "end": end_angle}]},
+        "mark": {
+            "type": "arc",
+            "innerRadius": inner_radius - 7.0,
+            "outerRadius": inner_radius - 4.0,
+            "fill": "#2f3140"
+        },
+        "encoding": {
+            "theta": {"field": "start", "type": "quantitative", "scale": null},
+            "theta2": {"field": "end", "type": "quantitative", "scale": null}
+        }
+    })
+}
+
+/// Headline percentage and count label shown in the donut centre.
+fn arc_centre_labels(report_data: &serde_json::Value) -> (String, String) {
+    if let Some(cumulative) = arc_cumulative_fraction(report_data) {
+        let reference = count_field(report_data, "reference_count");
+        let context = count_field(report_data, "context_count");
+        return (
+            format!("{:.1}%", cumulative * 100.0),
+            format!("{} / {}", format_count(reference), format_count(context)),
+        );
+    }
+    let feature = count_field(report_data, "feature_count");
+    let reference = count_field(report_data, "reference_count");
+    let fraction = if reference > 0.0 {
+        feature / reference
+    } else {
+        0.0
+    };
+    (
+        format!("{:.1}%", fraction * 100.0),
+        format!("{} / {}", format_count(feature), format_count(reference)),
+    )
+}
+
+fn count_field(report_data: &serde_json::Value, key: &str) -> f64 {
+    report_data.get(key).and_then(|v| v.as_f64()).unwrap_or(0.0)
+}
+
+/// Formats a count with comma thousands separators, e.g. `10384` as `10,384`.
+fn format_count(value: f64) -> String {
+    let digits = format!("{:.0}", value);
+    let mut grouped = String::new();
+    for (index, digit) in digits.chars().enumerate() {
+        if index > 0 && (digits.len() - index) % 3 == 0 {
+            grouped.push(',');
+        }
+        grouped.push(digit);
+    }
+    grouped
+}
+
+/// A single-line text layer centred in the view, shifted vertically by `dy` pixels.
+fn centre_text_layer(
+    text: &str,
+    width: f64,
+    height: f64,
+    dy: f64,
+    font_size: f64,
+    font_weight: &str,
+) -> serde_json::Value {
+    serde_json::json!({
+        "data": {"values": [{"text": text}]},
+        "mark": {"type": "text", "dy": dy, "fontSize": font_size, "fontWeight": font_weight},
+        "encoding": {
+            "text": {"field": "text", "type": "nominal"},
+            "x": {"value": width / 2.0},
+            "y": {"value": height / 2.0}
+        }
+    })
 }
 
 fn vl_scatter(spec: &serde_json::Value, mut base: serde_json::Value) -> serde_json::Value {
@@ -2607,6 +3132,177 @@ fn vl_painting(spec: &serde_json::Value, mut base: serde_json::Value) -> serde_j
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn arc_vega_lite_donut_has_two_segments_and_centre_labels() {
+        let spec = serde_json::json!({
+            "report_type": "arc",
+            "data": {
+                "type": "arc",
+                "feature_count": 1538,
+                "reference_count": 10384,
+                "featureTerm": "genome_size>1000000000",
+                "referenceTerm": "assembly_level=Chromosome"
+            }
+        });
+
+        let out = plot_spec_to_vega_lite_json(&spec.to_string());
+        let parsed: serde_json::Value = serde_json::from_str(&out).unwrap();
+        let layers = parsed.get("layer").and_then(|l| l.as_array()).unwrap();
+
+        assert_eq!(
+            layers[0].pointer("/mark/type").and_then(|t| t.as_str()),
+            Some("arc")
+        );
+        let segments = layers[0]
+            .pointer("/data/values")
+            .and_then(|v| v.as_array())
+            .unwrap();
+        assert_eq!(segments.len(), 2);
+        assert_eq!(
+            layers[1]
+                .pointer("/data/values/1/text")
+                .and_then(|t| t.as_str()),
+            Some("85.2%")
+        );
+        assert_eq!(
+            layers[2]
+                .pointer("/data/values/0/text")
+                .and_then(|t| t.as_str()),
+            Some("14.8%")
+        );
+        assert_eq!(
+            layers[3]
+                .pointer("/data/values/0/text")
+                .and_then(|t| t.as_str()),
+            Some("1,538 / 10,384")
+        );
+    }
+
+    #[test]
+    fn arc_vega_lite_three_value_donut_centres_reference_share_of_context() {
+        let spec = serde_json::json!({
+            "report_type": "arc",
+            "data": {
+                "type": "arc",
+                "feature_count": 1454,
+                "reference_count": 8211,
+                "context_count": 10384,
+                "featureTerm": "genome_size>1000000000",
+                "referenceTerm": "assembly_level=Chromosome",
+                "contextTerm": ""
+            }
+        });
+
+        let out = plot_spec_to_vega_lite_json(&spec.to_string());
+        let parsed: serde_json::Value = serde_json::from_str(&out).unwrap();
+        let layers = parsed.get("layer").and_then(|l| l.as_array()).unwrap();
+
+        assert_eq!(layers.len(), 5);
+        assert_eq!(
+            layers[3]
+                .pointer("/data/values/0/text")
+                .and_then(|t| t.as_str()),
+            Some("79.1%")
+        );
+        assert_eq!(
+            layers[4]
+                .pointer("/data/values/0/text")
+                .and_then(|t| t.as_str()),
+            Some("8,211 / 10,384")
+        );
+        assert_eq!(
+            layers[1].pointer("/mark/type").and_then(|t| t.as_str()),
+            Some("arc")
+        );
+        let end_angle = layers[1]
+            .pointer("/data/values/0/end")
+            .and_then(|v| v.as_f64())
+            .unwrap();
+        assert!((end_angle - 0.7907 * std::f64::consts::TAU).abs() < 1e-3);
+    }
+
+    #[test]
+    fn arc_vega_lite_rainbow_draws_semicircle_rings_outermost_first() {
+        let spec = serde_json::json!({
+            "report_type": "arc",
+            "data": {
+                "type": "arc",
+                "featureTerm": "assembly_span>300000000",
+                "referenceTerm": "assembly_level",
+                "arc": [
+                    {"label": "species", "feature_count": 1008, "reference_count": 1155, "context_count": 12583},
+                    {"label": "genus", "feature_count": 515, "reference_count": 570, "context_count": 1447},
+                    {"label": "family", "feature_count": 139, "reference_count": 150, "context_count": 164}
+                ]
+            }
+        });
+
+        let out = plot_spec_to_vega_lite_json(&spec.to_string());
+        let parsed: serde_json::Value = serde_json::from_str(&out).unwrap();
+        let layers = parsed.get("layer").and_then(|l| l.as_array()).unwrap();
+
+        assert_eq!(layers.len(), 15);
+        let track_outer_radii: Vec<f64> = [0, 3, 6]
+            .iter()
+            .map(|&index| {
+                layers[index]
+                    .pointer("/mark/outerRadius")
+                    .and_then(|v| v.as_f64())
+                    .unwrap()
+            })
+            .collect();
+        assert!((track_outer_radii[0] - 300.0).abs() < 1e-9);
+        assert!(
+            track_outer_radii[0] > track_outer_radii[1]
+                && track_outer_radii[1] > track_outer_radii[2]
+        );
+        assert_eq!(
+            layers[0]
+                .pointer("/encoding/color/value")
+                .and_then(|v| v.as_str()),
+            Some(RING_TRACK_FILL)
+        );
+        assert_eq!(
+            layers[2]
+                .pointer("/encoding/color/scale/scheme")
+                .and_then(|v| v.as_str()),
+            Some(RING_COLOUR_SCHEME)
+        );
+        assert_eq!(
+            layers[2].pointer("/encoding/color/scale/domain"),
+            Some(&serde_json::json!(["species", "genus", "family"]))
+        );
+        let species_feature_end = layers[2]
+            .pointer("/data/values/0/end")
+            .and_then(|v| v.as_f64())
+            .unwrap();
+        let expected_end = semicircle_angle(1008.0 / 12583.0);
+        assert!((species_feature_end - expected_end).abs() < 1e-9);
+        let percent_labels: Vec<&str> = (9..12)
+            .map(|index| {
+                layers[index]
+                    .pointer("/encoding/text/value")
+                    .and_then(|v| v.as_str())
+                    .unwrap()
+            })
+            .collect();
+        assert_eq!(percent_labels, vec!["9.2%", "39.4%", "91.5%"]);
+        assert_eq!(
+            layers[14]
+                .pointer("/data/values/1/counts")
+                .and_then(|v| v.as_str()),
+            Some("515 / 570 / 1.45k")
+        );
+    }
+
+    #[test]
+    fn format_count_compact_uses_three_figures() {
+        assert_eq!(format_count_compact(570.0), "570");
+        assert_eq!(format_count_compact(1160.0), "1.16k");
+        assert_eq!(format_count_compact(12583.0), "12.6k");
+        assert_eq!(format_count_compact(2_500_000.0), "2.50M");
+    }
 
     #[test]
     fn report_yaml_from_url_histogram() {

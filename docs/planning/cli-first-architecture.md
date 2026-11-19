@@ -222,10 +222,27 @@ Recorded 2026-11-18 after user review.
    Phase 1.
 3. **Language order: decided.** Python, then R, then JS.
 4. **Default transport for CLI `search` and `count`: decided.** v3 POST with
-   `query_yaml` and `params_yaml`. The `--query` v2 path stays as legacy.
+   `query_yaml` and `params_yaml`. `--query` is translated to v3 locally, with no v2 transport.
 
 Phase 1 status (2026-11-18): C3, C4, and C5 are done. The API no longer depends on
 the root crate. C1 and C2 are retained until template migration (Phase 5), per
-user decision. Step 3 (v3 transport for CLI `search` and `count`) is next and
-needs user approval for the flag names before implementation. Batch flags come
-after the v3 transport is in place.
+user decision. Step 3 (v3 transport for CLI `search` and `count`) is done. `search`
+and `count` send POST `/api/v3/search` and `/api/v3/count`. `--query-yaml` and
+`--params-yaml` accept a file path or inline YAML. `--query-yaml` also accepts a
+combined document, either flat or nested under `query:` and `params:`. Both flags are
+optional: a bare `search` or `count` is a search-all on `--result` (default `taxon`).
+Override flags (`--size`, `--page`, `--sort-by`, `--sort-order`, `--tidy`,
+`--include-estimates`) apply on top of any YAML. `--query` is translated to v3 locally and
+takes the same overrides. Query-building overrides `--taxon` (repeatable), `--taxon-rank`, and `--taxonomy`
+replace the matching YAML values. The approved query flags `--assembly`, `--sample`,
+`--rank` (return rank columns), `--name`, `--field`, `--filter` (repeatable), and
+`--taxon-filter` (`name`, `tree`, `lineage`) are implemented. List flags accept repeat
+and comma. The API forwards assembly and sample accessions as `terms` filters. Rank-only
+queries are scoped to the root taxon discovered at API startup (the last lineage entry
+of a taxon document; `1` locally). Step 4 has started: `report` and `positional`
+are CLI commands that share the query and plot processing (`--report-yaml`,
+`--positional-yaml`, `--include-plot-spec`, `--display`). `record` (`--record-id`,
+`--result`) is done. Remaining coverage: `summary` (blocked: the API route returns
+empty summaries and ignores the `summary` stats parameter), `phylopic`, `metadata`, and
+`status`. Batch flags come after the v3 transport
+is in place.

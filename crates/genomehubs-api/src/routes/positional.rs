@@ -39,7 +39,6 @@ use genomehubs_query::report::{FilterTarget, PositionalReportType, PositionalSpe
 
 use crate::{
     es_client::execute_search,
-    es_metadata::FeatureIndexVersion,
     index_name,
     report::positional::{
         feature_query::{
@@ -203,25 +202,6 @@ pub async fn post_positional(
         Ok(s) => s,
         Err(e) => bail!(format!("invalid positional_yaml: {e}")),
     };
-
-    // Gate: require a v2 feature index.  The two-stage sequence-ID workaround
-    // used on v1 indices is removed; sites must rebuild the index.
-    {
-        let version = if let Some(lock) = &state.cache {
-            lock.read().await.feature_index_version.clone()
-        } else {
-            FeatureIndexVersion::V1
-        };
-        if version != FeatureIndexVersion::V2 {
-            let index_name = index_name::resolve_index_str("feature", &state);
-            bail!(format!(
-                "The /positional endpoint requires a v2 feature index. \
-                 The current index '{}' uses v1 structure. \
-                 Rebuild the index with the updated genomehubs-index pipeline.",
-                index_name
-            ));
-        }
-    }
 
     // Resolve assembly IDs: explicit list takes priority; otherwise resolve
     // from an assembly-index query if one is provided.
@@ -401,8 +381,8 @@ pub async fn post_positional(
     if seq_records.is_empty() {
         bail!(format!(
             "no topLevel sequences found for assemblies: {} (feature index: '{feature_idx}'). \
-             Check the feature index contains topLevel records for these assemblies. \
-             Verify es_base and index_suffix are configured correctly.",
+             The index may use the v1 feature structure, which positional does not support. \
+             Positional needs a v2 feature index; rebuild it with the updated genomehubs-index pipeline.",
             assembly_ids.join(", ")
         ))
     }

@@ -952,14 +952,17 @@ pub async fn run_tree_report(
 
     // --- Step 3: Status filter — run second paginated search, collect matching IDs ---
     let status_node_ids: Option<HashSet<String>> = if let Some(ref filter_str) = status_filter_str {
-        let filter_clause =
-            match crate::report::filter_expr::filter_expr_to_es_query(filter_str, base_query) {
-                Ok(c) => c,
-                Err(e) => {
-                    eprintln!("[tree] invalid status_filter '{}': {}", filter_str, e);
-                    base_query.clone()
-                }
-            };
+        let filter_clause = match crate::report::filter_expr::filter_expr_to_es_query(
+            filter_str,
+            base_query,
+            &state.cache,
+        ) {
+            Ok(c) => c,
+            Err(e) => {
+                eprintln!("[tree] invalid status_filter '{}': {}", filter_str, e);
+                base_query.clone()
+            }
+        };
         let mut ids: HashSet<String> = HashSet::new();
         let mut sa: Option<Value> = None;
         loop {

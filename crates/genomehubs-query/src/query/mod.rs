@@ -408,6 +408,147 @@ pub fn url_is_report(url: &str) -> bool {
     parse_url_query_string(url).contains_key("report")
 }
 
+/// Top-level keys that belong to [`QueryParams`]; every other key belongs to [`SearchQuery`].
+pub const QUERY_PARAMS_KEYS: &[&str] = &[
+    "size",
+    "page",
+    "sort_by",
+    "sort_order",
+    "sort",
+    "include_estimates",
+    "tidy",
+    "taxonomy",
+    "search_after",
+    "include_lineage",
+    "include_taxon_names",
+    "lineage_summary_mode",
+    "id_set",
+    "id_type",
+];
+
+/// Separate query and params YAML documents, as sent to `/v3/search` and `/v3/count`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SplitQueryDocument {
+    /// YAML for [`SearchQuery`].
+    pub query_yaml: String,
+    /// YAML for [`QueryParams`].
+    pub params_yaml: String,
+}
+
+/// Split a combined YAML document into query and params documents.
+///
+/// The document is either flat, with top-level keys in [`QUERY_PARAMS_KEYS`] moving to the
+/// params document, or nested under `query:` and `params:` sections. An optional
+/// `explicit_params` document follows the same two forms and may only hold params keys; a key
+/// present in both documents is an error.
+pub fn split_query_document(
+    document: &str,
+    explicit_params: Option<&str>,
+) -> Result<SplitQueryDocument, String> {
+    let (query_map, mut params_map) = split_sections(parse_yaml_mapping(document)?)?;
+    if let Some(explicit) = explicit_params {
+        let (explicit_query, explicit_map) = split_sections(parse_yaml_mapping(explicit)?)?;
+        if let Some(key) = explicit_query.keys().next() {
+            return Err(format!(
+                "params document contains a non-params key: {}",
+                key_name(key)
+            ));
+        }
+        for (key, value) in explicit_map {
+            if params_map.contains_key(&key) {
+                return Err(format!(
+                    "params key `{}` is set in both the query and params documents",
+                    key_name(&key)
+                ));
+            }
+            params_map.insert(key, value);
+        }
+    }
+    Ok(SplitQueryDocument {
+        query_yaml: mapping_to_yaml(&query_map)?,
+        params_yaml: mapping_to_yaml(&params_map)?,
+    })
+}
+
+/// Parse a YAML document into a mapping; an empty document is an empty mapping.
+fn parse_yaml_mapping(document: &str) -> Result<serde_yaml::Mapping, String> {
+    match serde_yaml::from_str::<serde_yaml::Value>(document).map_err(|error| error.to_string())? {
+        serde_yaml::Value::Mapping(mapping) => Ok(mapping),
+        serde_yaml::Value::Null => Ok(serde_yaml::Mapping::new()),
+        _ => Err("YAML document must be a mapping of keys to values".to_string()),
+    }
+}
+
+/// Split a mapping into `(non-params, params)` by top-level key.
+fn partition_params_keys(
+    mapping: serde_yaml::Mapping,
+) -> (serde_yaml::Mapping, serde_yaml::Mapping) {
+    let (params, others): (Vec<_>, Vec<_>) = mapping.into_iter().partition(|(key, _)| {
+        key.as_str()
+            .is_some_and(|name| QUERY_PARAMS_KEYS.contains(&name))
+    });
+    (others.into_iter().collect(), params.into_iter().collect())
+}
+
+/// Split a mapping into `(query, params)`, flat or nested under `query:` and `params:`.
+fn split_sections(
+    mapping: serde_yaml::Mapping,
+) -> Result<(serde_yaml::Mapping, serde_yaml::Mapping), String> {
+    if !mapping.keys().any(is_section_key) {
+        return Ok(partition_params_keys(mapping));
+    }
+    if let Some(key) = mapping.keys().find(|key| !is_section_key(key)) {
+        return Err(format!(
+            "nested document mixes `query`/`params` with key: {}",
+            key_name(key)
+        ));
+    }
+    let (query, query_params) = partition_params_keys(section_mapping(&mapping, "query")?);
+    if let Some(key) = query_params.keys().next() {
+        return Err(format!(
+            "query section contains a params key: {}",
+            key_name(key)
+        ));
+    }
+    let (params_others, params) = partition_params_keys(section_mapping(&mapping, "params")?);
+    if let Some(key) = params_others.keys().next() {
+        return Err(format!(
+            "params section contains a non-params key: {}",
+            key_name(key)
+        ));
+    }
+    Ok((query, params))
+}
+
+/// Whether a top-level key opens a nested `query:` or `params:` section.
+fn is_section_key(key: &serde_yaml::Value) -> bool {
+    key.as_str()
+        .is_some_and(|name| matches!(name, "query" | "params"))
+}
+
+/// Read a nested section as a mapping; an empty section is an empty mapping.
+fn section_mapping(
+    mapping: &serde_yaml::Mapping,
+    name: &str,
+) -> Result<serde_yaml::Mapping, String> {
+    match mapping.get(name) {
+        None | Some(serde_yaml::Value::Null) => Ok(serde_yaml::Mapping::new()),
+        Some(serde_yaml::Value::Mapping(section)) => Ok(section.clone()),
+        Some(_) => Err(format!("`{name}` section must be a mapping")),
+    }
+}
+
+/// Top-level key name for error messages.
+fn key_name(key: &serde_yaml::Value) -> String {
+    key.as_str()
+        .map_or_else(|| format!("{key:?}"), str::to_string)
+}
+
+/// Serialise a mapping as YAML text.
+fn mapping_to_yaml(mapping: &serde_yaml::Mapping) -> Result<String, String> {
+    serde_yaml::to_string(mapping).map_err(|error| error.to_string())
+}
+
 /// Parse a v2 API or UI URL into `(query_yaml, params_yaml)`.
 ///
 /// Reconstructs a [`SearchQuery`] and [`QueryParams`] from the URL query
@@ -640,7 +781,7 @@ fn extract_fn_arg<'a>(s: &'a str, func_name: &str) -> Option<&'a str> {
 ///
 /// Operators are tried longest-first to avoid prefix collisions.
 /// A bare field name with no operator is treated as an `exists` test.
-fn parse_attribute_fragment(s: &str) -> Option<attributes::Attribute> {
+pub fn parse_attribute_fragment(s: &str) -> Option<attributes::Attribute> {
     const OPERATORS: &[(&str, attributes::AttributeOperator)] = &[
         (">=", attributes::AttributeOperator::Ge),
         ("<=", attributes::AttributeOperator::Le),
@@ -710,6 +851,163 @@ fn parse_attribute_lhs(lhs: &str) -> (String, Option<attributes::Modifier>) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn split_moves_params_keys_out_of_the_query() {
+        let document = "index: taxon\ntaxa:\n  - Mammalia\nsize: 5\ninclude_estimates: true\n";
+
+        let split = split_query_document(document, None).unwrap();
+
+        let query = SearchQuery::from_yaml(&split.query_yaml).unwrap();
+        assert_eq!(
+            query.identifiers.taxa.map(|taxa| taxa.names),
+            Some(vec!["Mammalia".to_string()])
+        );
+        let params = QueryParams::from_yaml(&split.params_yaml).unwrap();
+        assert_eq!(params.size, 5);
+        assert!(params.include_estimates);
+    }
+
+    #[test]
+    fn split_merges_explicit_params_document() {
+        let split =
+            split_query_document("index: taxon\nsize: 5\n", Some("taxonomy: ncbi\n")).unwrap();
+
+        let params = QueryParams::from_yaml(&split.params_yaml).unwrap();
+        assert_eq!(params.size, 5);
+        assert_eq!(params.taxonomy, "ncbi");
+    }
+
+    #[test]
+    fn split_rejects_key_set_in_both_documents() {
+        let error = split_query_document("size: 5\n", Some("size: 10\n")).unwrap_err();
+
+        assert!(error.contains("`size`"), "unexpected error: {error}");
+    }
+
+    #[test]
+    fn split_rejects_query_key_in_params_document() {
+        let error =
+            split_query_document("index: taxon\n", Some("taxa:\n  - Mammalia\n")).unwrap_err();
+
+        assert!(error.contains("taxa"), "unexpected error: {error}");
+    }
+
+    #[test]
+    fn split_rejects_non_mapping_document() {
+        assert!(split_query_document("- a\n- b\n", None).is_err());
+    }
+
+    #[test]
+    fn split_leaves_misspelt_keys_for_the_query_parser() {
+        let split = split_query_document("index: taxon\nsise: 5\n", None).unwrap();
+
+        assert!(SearchQuery::from_yaml(&split.query_yaml).is_err());
+    }
+
+    #[test]
+    fn split_empty_document_gives_empty_mappings() {
+        let split = split_query_document("", None).unwrap();
+
+        assert!(SearchQuery::from_yaml(&split.query_yaml).is_ok());
+        assert_eq!(QueryParams::from_yaml(&split.params_yaml).unwrap().size, 10);
+    }
+
+    #[test]
+    fn split_reads_nested_query_and_params_sections() {
+        let document = "query:\n  index: taxon\n  taxa:\n    - Mammalia\nparams:\n  size: 5\n";
+
+        let split = split_query_document(document, None).unwrap();
+
+        let query = SearchQuery::from_yaml(&split.query_yaml).unwrap();
+        assert_eq!(
+            query.identifiers.taxa.map(|taxa| taxa.names),
+            Some(vec!["Mammalia".to_string()])
+        );
+        assert_eq!(QueryParams::from_yaml(&split.params_yaml).unwrap().size, 5);
+    }
+
+    #[test]
+    fn split_accepts_empty_nested_sections() {
+        let split = split_query_document("query:\nparams:\n", None).unwrap();
+
+        assert!(SearchQuery::from_yaml(&split.query_yaml).is_ok());
+        assert!(QueryParams::from_yaml(&split.params_yaml).is_ok());
+    }
+
+    #[test]
+    fn split_rejects_nested_document_mixing_sections_and_flat_keys() {
+        let error = split_query_document("query:\n  index: taxon\nsize: 5\n", None).unwrap_err();
+
+        assert!(error.contains("mixes"), "unexpected error: {error}");
+    }
+
+    #[test]
+    fn split_rejects_params_key_inside_query_section() {
+        let error = split_query_document("query:\n  size: 5\n", None).unwrap_err();
+
+        assert!(error.contains("query section"), "unexpected error: {error}");
+    }
+
+    #[test]
+    fn split_rejects_non_params_key_inside_params_section() {
+        let error = split_query_document("params:\n  taxa:\n    - Mammalia\n", None).unwrap_err();
+
+        assert!(
+            error.contains("params section"),
+            "unexpected error: {error}"
+        );
+    }
+
+    #[test]
+    fn split_merges_explicit_nested_params_section() {
+        let split = split_query_document(
+            "index: taxon\nsize: 5\n",
+            Some("params:\n  taxonomy: ncbi\n"),
+        )
+        .unwrap();
+
+        let params = QueryParams::from_yaml(&split.params_yaml).unwrap();
+        assert_eq!(params.size, 5);
+        assert_eq!(params.taxonomy, "ncbi");
+    }
+
+    #[test]
+    fn split_rejects_query_section_in_params_document() {
+        let error =
+            split_query_document("index: taxon\n", Some("query:\n  index: taxon\n")).unwrap_err();
+
+        assert!(
+            error.contains("non-params key"),
+            "unexpected error: {error}"
+        );
+    }
+
+    #[test]
+    fn query_params_keys_match_struct_fields() {
+        let params = QueryParams {
+            sort: Some(Vec::new()),
+            id_set: Some(Vec::new()),
+            id_type: Some("taxon".to_string()),
+            search_after: Some(Vec::new()),
+            ..Default::default()
+        };
+        let serialised = serde_yaml::to_value(&params).unwrap();
+        let mut field_names: Vec<String> = serialised
+            .as_mapping()
+            .unwrap()
+            .keys()
+            .map(|key| key.as_str().unwrap().to_string())
+            .collect();
+        let mut listed: Vec<String> = QUERY_PARAMS_KEYS
+            .iter()
+            .map(|key| key.to_string())
+            .collect();
+        field_names.sort();
+        listed.sort();
+
+        assert_eq!(listed, field_names);
+    }
 
     #[test]
     fn search_query_round_trips_yaml() {

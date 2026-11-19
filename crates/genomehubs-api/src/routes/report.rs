@@ -184,7 +184,7 @@ pub async fn post_report(
     let base_query = match build_report_query(
         &search_query,
         &params,
-        &state.default_taxonomy,
+        state.root_taxon_id().await,
         types_map,
         ranks_set,
         names_set,
@@ -227,7 +227,15 @@ pub async fn post_report(
             use crate::report::arc::{run_arc_report, ArcConfig};
             match ArcConfig::from_yaml(&report_config) {
                 Ok(cfg) => {
-                    run_arc_report(&state.client, &state.es_base, &idx, &base_query, &cfg).await
+                    run_arc_report(
+                        &state.client,
+                        &state.es_base,
+                        &idx,
+                        &base_query,
+                        &cfg,
+                        &state.cache,
+                    )
+                    .await
                 }
                 Err(e) => Err(e),
             }
@@ -273,13 +281,14 @@ pub async fn post_report(
 fn build_report_query(
     query: &SearchQuery,
     params: &QueryParams,
-    _default_taxonomy: &str,
+    root_taxon_id: Option<String>,
     types_map: Option<genomehubs_query::attr_types::TypesMap>,
     ranks_set: Option<HashSet<String>>,
     names_set: Option<HashSet<String>>,
 ) -> Result<Value, String> {
-    let search_body_input =
+    let mut search_body_input =
         query_to_body_input("report", query, params, types_map, ranks_set, names_set);
+    search_body_input.root_taxon_id = root_taxon_id;
 
     // Build full search body using query builder
     let body = genomehubs_query::query_builder::build_search_body(&search_body_input)

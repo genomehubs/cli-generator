@@ -69,11 +69,12 @@
 //! ```
 //!
 //! Response shape is the same multi-ring array, with `label` set to the rank name.
+//! When `context` is also set, each ring carries `context_count`, `arc2`, and `contextTerm`.
 
 use reqwest::Client;
 use serde_json::{json, Value};
 
-use crate::report::filter_expr::filter_expr_to_es_query;
+use crate::report::filter_expr::{filter_expr_to_es_query, CacheRef};
 
 // ============================================================================
 // Public API
@@ -200,22 +201,24 @@ pub async fn run_arc_report(
     index: &str,
     base_query: &Value,
     config: &ArcConfig,
+    cache: &CacheRef,
 ) -> Result<(u64, u64, Value), String> {
     if config.ranks.is_some() {
-        return run_per_rank_report(client, es_base, index, base_query, config).await;
+        return run_per_rank_report(client, es_base, index, base_query, config, cache).await;
     }
     let feature_ref_filter = filter_expr_to_es_query(
         &combine_terms(&config.feature_term, &config.reference_term),
         base_query,
+        cache,
     )?;
-    let reference_filter = filter_expr_to_es_query(&config.reference_term, base_query)?;
+    let reference_filter = filter_expr_to_es_query(&config.reference_term, base_query, cache)?;
 
     let (feature_count, reference_count) = tokio::try_join!(
         count_matching(client, es_base, index, &feature_ref_filter),
         count_matching(client, es_base, index, &reference_filter),
     )?;
     let context_count = if let Some(ref context_term) = config.context_term {
-        let context_filter = filter_expr_to_es_query(context_term, base_query)?;
+        let context_filter = filter_expr_to_es_query(context_term, base_query, cache)?;
 
         let (context_count,) =
             tokio::try_join!(count_matching(client, es_base, index, &context_filter))?;
@@ -224,7 +227,16 @@ pub async fn run_arc_report(
         None
     };
     if config.rings.is_some() {
-        return run_rings_report(client, es_base, index, base_query, config, context_count).await;
+        return run_rings_report(
+            client,
+            es_base,
+            index,
+            base_query,
+            config,
+            context_count,
+            cache,
+        )
+        .await;
     }
 
     if let Some(ref context_term) = config.context_term {
@@ -277,12 +289,13 @@ async fn run_rings_report(
     base_query: &Value,
     config: &ArcConfig,
     context_count: Option<u64>,
+    cache: &CacheRef,
 ) -> Result<(u64, u64, Value), String> {
     let rings = config.rings.as_deref().unwrap_or(&[]);
 
     // Build the list of ES queries to batch.
     // Layout: [reference_query, ring_0_query, ring_1_query, ...]
-    let reference_filter = filter_expr_to_es_query(&config.reference_term, base_query)?;
+    let reference_filter = filter_expr_to_es_query(&config.reference_term, base_query, cache)?;
 
     let mut queries: Vec<Value> = Vec::with_capacity(rings.len() + 1);
     queries.push(reference_filter.clone());
@@ -293,7 +306,7 @@ async fn run_rings_report(
             .as_deref()
             .unwrap_or(&config.reference_term);
         let combined = combine_terms(&ring.feature_term, ring_ref);
-        let ring_filter = filter_expr_to_es_query(&combined, base_query)?;
+        let ring_filter = filter_expr_to_es_query(&combined, base_query, cache)?;
         queries.push(ring_filter);
     }
 
@@ -351,7 +364,7 @@ async fn run_rings_report(
 /// Run an `arcPerRank` report: same `feature`/`reference`, one ring per rank.
 ///
 /// Each ring's base query is scoped to the given `taxon_rank` value before
-/// the attribute filters are applied.  All 2N count queries are batched in a
+/// the attribute filters are applied.  All count queries are batched in a
 /// single `_msearch` request.
 async fn run_per_rank_report(
     client: &Client,
@@ -359,42 +372,17 @@ async fn run_per_rank_report(
     index: &str,
     base_query: &Value,
     config: &ArcConfig,
+    cache: &CacheRef,
 ) -> Result<(u64, u64, Value), String> {
     let ranks = config.ranks.as_deref().unwrap_or(&[]);
-
-    // Build query pairs: [ref_rank0, feat_rank0, ref_rank1, feat_rank1, ...]
-    let mut queries: Vec<Value> = Vec::with_capacity(ranks.len() * 2);
-    for rank in ranks {
-        let rank_base = rank_scoped_base_query(base_query, rank);
-        let reference_filter = filter_expr_to_es_query(&config.reference_term, &rank_base)?;
-        let feature_ref_filter = filter_expr_to_es_query(
-            &combine_terms(&config.feature_term, &config.reference_term),
-            &rank_base,
-        )?;
-        queries.push(reference_filter);
-        queries.push(feature_ref_filter);
-    }
-
+    let queries = per_rank_queries(base_query, config, cache)?;
     let counts = msearch_counts(client, es_base, index, &queries).await?;
 
-    let ring_entries: Vec<Value> = ranks
-        .iter()
+    let ring_entries: Vec<Value> = counts
+        .chunks(per_rank_stride(config))
+        .zip(ranks)
         .enumerate()
-        .map(|(i, rank)| {
-            let reference_count = counts[i * 2];
-            let feature_count = counts[i * 2 + 1];
-            let arc = safe_fraction(feature_count, reference_count);
-            json!({
-                "ring": i,
-                "label": rank,
-                "arc": arc,
-                "feature_count": feature_count,
-                "reference_count": reference_count,
-                "featureTerm": &config.feature_term,
-                "referenceTerm": &config.reference_term,
-                "rank": rank,
-            })
-        })
+        .map(|(i, (ring_counts, rank))| per_rank_ring_entry(i, rank, ring_counts, config))
         .collect();
 
     let total_hits = ring_entries
@@ -409,6 +397,64 @@ async fn run_per_rank_report(
         "referenceTerm": &config.reference_term,
     });
     Ok((total_hits, 0, report_data))
+}
+
+/// Build the count queries for an `arcPerRank` report, grouped by rank.
+///
+/// Each rank contributes `reference`, `feature AND reference`, and `context` when set.
+fn per_rank_queries(
+    base_query: &Value,
+    config: &ArcConfig,
+    cache: &CacheRef,
+) -> Result<Vec<Value>, String> {
+    let ranks = config.ranks.as_deref().unwrap_or(&[]);
+    let feature_ref_term = combine_terms(&config.feature_term, &config.reference_term);
+    let mut queries = Vec::with_capacity(ranks.len() * per_rank_stride(config));
+    for rank in ranks {
+        let rank_base = rank_scoped_base_query(base_query, rank);
+        queries.push(filter_expr_to_es_query(
+            &config.reference_term,
+            &rank_base,
+            cache,
+        )?);
+        queries.push(filter_expr_to_es_query(
+            &feature_ref_term,
+            &rank_base,
+            cache,
+        )?);
+        if let Some(context_term) = &config.context_term {
+            queries.push(filter_expr_to_es_query(context_term, &rank_base, cache)?);
+        }
+    }
+    Ok(queries)
+}
+
+/// Number of count queries per rank: 2, or 3 when `context` is set.
+fn per_rank_stride(config: &ArcConfig) -> usize {
+    2 + usize::from(config.context_term.is_some())
+}
+
+/// Build one ring object from a rank's counts, in [`per_rank_queries`] order.
+fn per_rank_ring_entry(ring: usize, rank: &str, counts: &[u64], config: &ArcConfig) -> Value {
+    let reference_count = counts[0];
+    let feature_count = counts[1];
+    let mut entry = json!({
+        "ring": ring,
+        "label": rank,
+        "arc": safe_fraction(feature_count, reference_count),
+        "feature_count": feature_count,
+        "reference_count": reference_count,
+        "featureTerm": &config.feature_term,
+        "referenceTerm": &config.reference_term,
+        "rank": rank,
+    });
+    if let Some(context_term) = &config.context_term {
+        let context_count = counts[2];
+        entry["arc2"] = json!(safe_fraction(reference_count, context_count));
+        entry["context_count"] = json!(context_count);
+        entry["contextTerm"] = json!(context_term);
+    }
+    entry
 }
 
 // ============================================================================
@@ -487,7 +533,9 @@ async fn count_matching(
         .json()
         .await
         .map_err(|e| format!("arc count parse error: {e}"))?;
-    Ok(data.get("count").and_then(|v| v.as_u64()).unwrap_or(0))
+    data.get("count")
+        .and_then(|v| v.as_u64())
+        .ok_or_else(|| format!("arc count query failed: {data}"))
 }
 
 /// Build a rank-scoped base query by ANDing a `term: taxon_rank` filter into
@@ -626,5 +674,38 @@ mod tests {
         let base = json!({ "match_all": {} });
         let scoped = rank_scoped_base_query(&base, "genus");
         assert_eq!(scoped["bool"]["must"][1]["term"]["taxon_rank"], "genus");
+    }
+
+    #[test]
+    fn per_rank_ring_entry_adds_context_fields() {
+        let yaml: serde_yaml::Value =
+            serde_yaml::from_str("feature: a\nreference: b\ncontext: \"\"\nranks:\n  - family")
+                .unwrap();
+        let cfg = ArcConfig::from_yaml(&yaml).unwrap();
+        let entry = per_rank_ring_entry(0, "family", &[150, 104, 164], &cfg);
+        assert_eq!(entry["context_count"], 164);
+        assert!((entry["arc2"].as_f64().unwrap() - 150.0 / 164.0).abs() < 1e-9);
+        assert_eq!(entry["contextTerm"], "");
+    }
+
+    #[test]
+    fn per_rank_ring_entry_omits_context_fields_without_context() {
+        let yaml: serde_yaml::Value =
+            serde_yaml::from_str("feature: a\nreference: b\nranks:\n  - family").unwrap();
+        let cfg = ArcConfig::from_yaml(&yaml).unwrap();
+        let entry = per_rank_ring_entry(0, "family", &[150, 104], &cfg);
+        assert!(entry.get("context_count").is_none());
+        assert!(entry.get("arc2").is_none());
+    }
+
+    #[test]
+    fn per_rank_stride_counts_context_query() {
+        let without: serde_yaml::Value =
+            serde_yaml::from_str("feature: a\nreference: b\nranks:\n  - family").unwrap();
+        let with: serde_yaml::Value =
+            serde_yaml::from_str("feature: a\nreference: b\ncontext: \"\"\nranks:\n  - family")
+                .unwrap();
+        assert_eq!(per_rank_stride(&ArcConfig::from_yaml(&without).unwrap()), 2);
+        assert_eq!(per_rank_stride(&ArcConfig::from_yaml(&with).unwrap()), 3);
     }
 }

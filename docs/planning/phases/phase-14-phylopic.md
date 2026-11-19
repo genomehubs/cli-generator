@@ -116,7 +116,7 @@ For a single taxon, the resolution pipeline is:
 2. If result is Ancestral → try PhyloPic name search
    GET /nodes?build=N&filter_name={normalised_name}&page=0
    Match returned nodes against scientific_name + taxon_names synonyms
-   (see corrected synonym matching below)
+   (see v2 parity synonym matching below)
 
 3. If name search fails → try GBIF bridge (if GBIF ID available in record)
    GET /resolve/gbif.org/species
@@ -223,23 +223,42 @@ pub enum PhylopicSource {
 
 ---
 
+## CLI
+
+```
+cli-generator phylopic --taxon-id <ID> [--taxonomy <NAME>] [--license <SPDX>...] [--public-domain]
+cli-generator phylopic --batch <FILE>  [--taxonomy <NAME>] [--license <SPDX>...] [--public-domain]
+```
+
+- `--taxon-id` and `--batch` are mutually exclusive; one is required.
+- `--taxon-id` takes one ID or several; repeat the flag or separate with commas. One ID uses `GET /v3/phylopic`; two or more use `POST /v3/phylopic/batch`.
+- `--batch` reads either a JSON array of taxon IDs (strings or integers) or a bare list with one numeric ID per line. Objects and nested arrays are rejected.
+- `--license` takes SPDX IDs; repeat the flag or separate with commas. Each flag maps to the `license` API param.
+- `--public-domain` maps to the `public_domain=true` API param.
+- Output is the pretty-printed JSON response from the API.
+
 ## API Endpoints
 
 ### `GET /api/v3/phylopic`
 
 **Query parameters:**
 
-| Parameter  | Required | Description                 |
-| ---------- | -------- | --------------------------- |
-| `taxon_id` | yes      | NCBI taxon ID               |
-| `taxonomy` | yes      | Taxonomy name (e.g. `ncbi`) |
+| Parameter       | Required | Description                                                                                                |
+| --------------- | -------- | ---------------------------------------------------------------------------------------------------------- |
+| `taxon_id`      | yes      | NCBI taxon ID                                                                                              |
+| `taxonomy`      | yes      | Taxonomy name (e.g. `ncbi`)                                                                                |
+| `license`       | no       | Comma-separated SPDX licence IDs (e.g. `CC0-1.0,CC-BY-4.0`). Case-insensitive. Omit to accept any licence. |
+| `public_domain` | no       | `true` accepts only public-domain images (licence URL contains `publicdomain`).                            |
 
 The route handler:
 
 1. Checks `phylopic_cache` (valid if `build_at_fetch[taxon_id] == current_build`)
 2. If miss: fetches the taxon record from ES (`/api/v3/record`) to get lineage, rank, scientific_name, taxon_names, and optionally the GBIF ID
 3. Delegates to `phylopic_client::resolve()`
-4. Stores result in cache; returns `PhylopicRecord`
+4. Stores the unfiltered result in cache; returns `PhylopicRecord`
+5. Applies `LicenceFilter` after the cache, so one cache entry serves any filter
+
+If the resolved image fails the filter, the response is `success: false` with the error `no image matching licence filter for taxon_id {id}`.
 
 **Response (success):**
 
@@ -285,9 +304,13 @@ For tree reports. Accepts up to 200 taxon IDs.
 ```json
 {
   "taxon_ids": ["9606", "10090", "7227"],
-  "taxonomy": "ncbi"
+  "taxonomy": "ncbi",
+  "license": "CC0-1.0,CC-BY-4.0",
+  "public_domain": false
 }
 ```
+
+`license` (string or null) and `public_domain` (bool, default `false`) apply the same filter as the GET route to every ID.
 
 **Response:**
 
@@ -342,7 +365,7 @@ With `embed_primaryImage=true`, the image metadata (including `rasterFiles` and
 `vectorFile`) is available in the resolve response directly — no second node fetch
 needed.
 
-### `resolve_by_name()` — corrected synonym matching
+### `resolve_by_name()` — v2 parity synonym matching
 
 ```rust
 // Build synonym set: scientific_name + all taxon_names entries
@@ -350,28 +373,22 @@ let synonyms: HashSet<String> = std::iter::once(scientific_name.to_lowercase())
     .chain(taxon_names.iter().map(|n| n.name.to_lowercase()))
     .collect();
 
-// Search PhyloPic nodes
-// filter_name must be lowercase, alphanumeric + spaces only
-let normalised = normalise_name(scientific_name);
+// Search PhyloPic nodes; filter_name is the lowercased scientific name only (as v2)
 let url = format!(
     "https://api.phylopic.org/nodes?build={build}&filter_name={name}&page=0",
-    name = urlencoding::encode(&normalised),
+    name = urlencoding::encode(&scientific_name.to_lowercase()),
 );
 let items: Vec<NodeLink> = response._links.items.unwrap_or_default();
 
-// v3 corrected logic: prefer synonym match; fall back to first result
-let matched = items.iter()
-    .find(|item| synonyms.contains(&item.title.to_lowercase()))
-    .or_else(|| items.first());
-
-match matched {
-    None => return Err(PhylopicError::NotFound),
-    Some(node_link) => { /* fetch primaryImage for this node */ }
-}
+// Exactly one item must have a synonym title; zero or several matches fail
+let matched = unique_synonym_match(items, &synonyms)?;
 ```
 
-The `|| items[0]` bug from v2 is fixed: `or_else(|| items.first())` correctly falls
-back to the first item when no synonym matches.
+There is no first-result fallback. The v2 `|| items[0]` expression never fired
+because an empty filtered array is truthy, so v2 requires exactly one synonym match.
+
+The matched node is classified as a self match: `Primary` when its title equals
+`scientific_name` (or the rank is species), otherwise `Descendant`.
 
 ### `resolve_by_gbif()` — new in v3
 
@@ -453,8 +470,7 @@ tokio::spawn(async move {
 ## Testing
 
 - Unit test: `licence_to_spdx` maps all known PhyloPic licence URLs correctly
-- Unit test: `resolve_by_name` synonym matching prefers exact synonym match over first result
-- Unit test: `resolve_by_name` falls back to first result when no synonyms match (v2 bug regression test)
+- Unit test: `resolve_by_name` requires exactly one synonym match (no first-result fallback)
 - Unit test: matched taxon ID extracted from external href using prefix strip (not index)
 - Unit test: `extract_image_files` returns second raster and vector URL when both present
 - Unit test: cache entry is stale when `build_at_fetch[id] != current_build`

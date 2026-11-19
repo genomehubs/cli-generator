@@ -255,8 +255,8 @@ progress is written to stderr so you can pipe stdout:
 ## Positional subcommand
 
 The `positional` subcommand queries the **feature index** to compare genomic
-marker positions across assemblies.  It requires a v2 feature index
-(`feature_index_structure` in `/v3/status`).
+marker positions across assemblies.  It requires a v2 feature index;
+on a v1 index the command returns an error.
 
 ```bash
 {{ site_name }}-cli positional --help

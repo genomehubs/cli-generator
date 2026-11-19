@@ -44,7 +44,7 @@ pub struct SummaryResponse {
     path = "/api/v3/summary",
     tag = "Data",
     summary = "Fetch aggregated summary statistics for a record",
-    description = "Returns aggregated summary statistics (min, max, mean, etc.) for specific fields of a given record.",
+    description = "Deprecated. Returns aggregated summary statistics (min, max, mean, etc.) for specific fields of a given record.",
     params(
         ("recordId" = String, Query, description = "Record ID"),
         ("result" = Option<String>, Query, description = "Result type (taxon|assembly|sample)"),
@@ -55,6 +55,7 @@ pub struct SummaryResponse {
         (status = 200, description = "Summary results", body = SummaryResponse)
     )
 )]
+#[deprecated(note = "summary is deprecated; no CLI or SDK wrapper exists")]
 pub async fn get_summary(
     Query(q): Query<SummaryQuery>,
     Extension(state): Extension<Arc<AppState>>,

@@ -49,6 +49,7 @@ file written is the architecture note.
 | 6    | User  | Approved batch flag, deletions C1/C2/C4/C5, Python-R-JS order, v3 POST                                                                                                                                    |
 | 7    | User  | Asked to start Phase 1; approval required for any CLI flag or option                                                                                                                                      |
 | 8    | Agent | Surveyed C1 and C2; found generator copy lists and templates still use them. Deferred. Moved C3 types into subcrate, deleted C4 and C5, dropped API root-crate dependency. Build, clippy, and tests pass. |
+| 11   | User  | Asked for query-building overrides (`--taxon`, `--taxon-rank`, `--taxonomy`) and `report` and `positional` commands sharing the query and plot processing; flags approved one at a time                   |
 
 ## Changes made
 
@@ -78,6 +79,79 @@ file written is the architecture note.
 - **Verification:** `cargo fmt --all`, `cargo clippy --workspace --all-targets -- -D warnings`,
   `cargo test --workspace` pass. The API builds without the root crate.
 - **Not done:** the CLI v3 transport (Phase 1 step 3) needs approval for flags.
+
+### Phase 1 step 3 (interaction turn 9)
+
+- **Approved flags:** `--query-yaml` and `--params-yaml`. The user asked for
+  file-or-text input on both flags, and for one combined YAML carrying query and
+  params keys via `--query-yaml`.
+- **Subcrate:** `split_query_document` in `crates/genomehubs-query/src/query/mod.rs`
+  splits a combined document by `QUERY_PARAMS_KEYS`, merges an explicit params
+  document, and rejects keys set in both. It has no I/O.
+- **Nested sections:** a combined document may use `query:` and `params:` sections
+  instead of flat keys. Mixing the two forms, or placing keys in the wrong section,
+  is an error.
+- **CLI:** `src/core/runtime_query.rs` reads an existing path as a file. A missing
+  `.yaml` or `.yml` path is an error. Anything else is inline YAML. `search` and
+  `count` send POST `{query_yaml, params_yaml}`. `validate` and `describe` use the
+  query half. `validate` also reports params errors. `search --size` conflicts
+  with `--query-yaml`. `--params-yaml` requires `--query-yaml`.
+- **Verification:** `cargo fmt --all`, `cargo clippy --workspace --all-targets
+-- -D warnings`, and `cargo test --workspace` pass. Smoke tests against
+  `localhost:3000/api` covered inline and file combined documents, `--params-yaml`,
+  `size` from both documents (2 hits, 1 result), and the conflict and requires
+  errors.
+
+### Phase 1 step 3 (interaction turn 10)
+
+- **Request:** `--query-yaml` and `--params-yaml` are not required. Flags combine to
+  build the query, and a bare `search` or `count` is a search-all.
+- **Default:** with neither YAML flag, the query is `index: {--result}` (preset
+  index, then `taxon`) and params are empty. The API returns results for this query
+  (2,521,138 hits, 10 returned by default).
+- **Params only:** `--params-yaml` works without `--query-yaml`. It supersedes the
+  turn 9 rule that `--params-yaml` requires `--query-yaml`.
+- **Overrides:** `--size`, `--page`, `--sort-by`, `--sort-order`, `--tidy`, and
+  `--include-estimates` no longer carry a clap `requires` constraint. They apply on
+  top of any YAML. On the v2 `--query` path, only `--size` applies; the others error.
+- **Verification:** `cargo fmt --all`, `cargo clippy --workspace --all-targets
+-- -D warnings`, and `cargo test --workspace` pass. Smoke tests against
+  `localhost:3000/api`: bare `search` (10 results), `--params-yaml 'size: 3'` (3),
+  `--page 2 --size 2` (2), `--query-yaml 'index: taxon' --sort-order desc --size 2`
+  (2), bare `count` (success), and `--query 'tax_tree(Mammalia)' --page 2` (error).
+- **Open:** flag-driven query building (taxa, rank, attributes, filters) needs
+  flag names approved before implementation.
+
+### Phase 1 step 4 (interaction turn 11)
+
+- **Approved flags:** `--taxon` (repeatable), `--taxon-rank`, `--taxonomy` (overrides on
+  `search` and `count`), `--report-yaml`, `--positional-yaml`, `--include-plot-spec`
+  (bare flag), and `--display` (JSON string).
+- **Overrides:** `QueryOverrides` in `src/core/runtime_query.rs`. `--taxon` replaces
+  `identifiers.taxa.names` and keeps `taxon_filter_type`. `--taxon-rank` sets
+  `identifiers.rank`, which maps to `tax_rank(X)`. `--taxonomy` sets the params
+  `taxonomy`. Overrides apply only when set. On the v2 `--query` path they error.
+- **New commands:** `report` (`src/commands/report.rs`) and `positional`
+  (`src/commands/positional.rs`) POST `/api/v3/report` and `/api/v3/positional`.
+  Both use the shared `run_v3_plot` and `PlotOptions` path with the query flags.
+  The v2 input path is rejected.
+- **Verification:** `cargo fmt --all`, `cargo clippy --workspace --all-targets
+-- -D warnings`, and `cargo test --workspace` pass. Smoke tests against
+  `localhost:3000/api`: `--taxon Mammalia --taxon Aves --size 2` (2 hits);
+  `report` with `report: histogram` and `x: genome_size` (plot_spec only with
+  `--include-plot-spec` or `--display`); `positional` reached the server and
+  returned the v1 index error.
+- **Open findings:** `--taxon-rank species` returns 0 hits. The v3 API returns 0 for
+  `rank: species` and `rank: class` sent raw, so the client sends the expected
+  query and the issue is server-side. `positional` needs a v2 feature index
+  (`feature--ncbi--goat--2026.11.17` is v1). The `boat` search exit 1 is not
+  investigated.
+- **Approved and added since:** list flags accept repeat and comma (`--taxon`,
+  `--field`, `--assembly`, `--sample`, `--rank`, `--name`). `--rank` sets return
+  rank columns, `--name` sets name classes, `--field` sets return fields,
+  `--filter` (repeatable) sets attribute filters, `--assembly` and `--sample`
+  filter identifiers, and `--taxon-filter` (`name`, `tree`, `lineage`) sets the
+  taxon filter type. See `2026-11-18_002_api-identifier-filters-and-rank-scope.md`.
 
 ## Notes / warnings
 

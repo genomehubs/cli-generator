@@ -71,6 +71,8 @@ pub struct SearchBodyInput {
     pub attributes: Option<Vec<Attribute>>,
     pub include_estimates: bool,
     pub rank: Option<String>,
+    pub assemblies: Option<Vec<String>>,
+    pub samples: Option<Vec<String>>,
     pub names: Option<Vec<String>>,
     pub ranks: Option<Vec<String>>,
     pub exclusions: Option<HashMap<String, Vec<String>>>,
@@ -82,6 +84,8 @@ pub struct SearchBodyInput {
     pub ranks_set: Option<HashSet<String>>,
     pub names_set: Option<HashSet<String>>,
     pub group: Option<String>,
+    /// Taxonomy root that scopes queries without a taxon filter; `None` leaves them unscoped.
+    pub root_taxon_id: Option<String>,
 }
 
 /// extract prefix, name and negation flag from a name string like "name", "scienticic_name:name", "!name", "!common_name:name"
@@ -200,6 +204,8 @@ pub fn build_search_body(input: &SearchBodyInput) -> Result<Value> {
         && input.optional_fields.is_none()
         && input.attributes.is_none()
         && input.rank.is_none()
+        && input.assemblies.is_none()
+        && input.samples.is_none()
     {
         body["query"] = json!({ "match_all": {} });
         return Ok(body);
@@ -888,29 +894,8 @@ pub fn build_search_body(input: &SearchBodyInput) -> Result<Value> {
     }
 
     // taxon filter: match taxon_names.name or taxon_id, or lineage for tree/lineage queries
-    // If no explicit taxa expression was provided but a `rank` was given, add a
-    // taxon-identifiers wrapper (taxon_names / taxon_id / lineage) to
-    // mirror the fixture shape which often includes an identifier search.
-    if taxa_expr.is_none() {
-        // Always add a taxon-identifiers wrapper when no explicit taxa expression
-        // was provided. Use the `rank` string if present. When neither a
-        // taxa expression nor a rank is provided, many fixtures expect a default
-        // taxonomy root identifier (e.g. NCBI Eukaryota `2759`). Use the
-        // `group` hint to choose a safe default for taxon queries.
-        let idq = match input.rank.as_ref() {
-            Some(r) => r.to_string(),
-            None => {
-                if let Some(g) = input.group.as_ref() {
-                    if g == "taxon" || g == "assembly" || g == "sample" {
-                        "2759".to_string()
-                    } else {
-                        "".to_string()
-                    }
-                } else {
-                    "".to_string()
-                }
-            }
-        };
+    // Without an explicit taxa expression, non-empty queries are scoped to the taxonomy root.
+    if let (true, Some(idq)) = (taxa_expr.is_none(), input.root_taxon_id.as_deref()) {
         let id_wrapper = json!({
             "bool": {
                 "should": [
@@ -1088,6 +1073,19 @@ pub fn build_search_body(input: &SearchBodyInput) -> Result<Value> {
             .as_array_mut()
             .unwrap()
             .push(tax_filter);
+    }
+
+    if let Some(assembly_ids) = input.assemblies.as_ref() {
+        body["query"]["bool"]["filter"]
+            .as_array_mut()
+            .unwrap()
+            .push(json!({ "terms": { "assembly_id": assembly_ids } }));
+    }
+    if let Some(sample_ids) = input.samples.as_ref() {
+        body["query"]["bool"]["filter"]
+            .as_array_mut()
+            .unwrap()
+            .push(json!({ "terms": { "sample_id": sample_ids } }));
     }
 
     // rank restriction: mirror JS behaviour that adds a `match` on `taxon_rank`
@@ -1295,5 +1293,72 @@ mod tests {
             filters.get("assembly_level"),
             Some(&json!({ "term": { "attributes.key": "assembly_level" } }))
         );
+    }
+
+    #[test]
+    fn rank_only_query_is_scoped_to_root_taxon() {
+        let body = build_search_body(&SearchBodyInput {
+            rank: Some("species".to_string()),
+            group: Some("taxon".to_string()),
+            root_taxon_id: Some("1".to_string()),
+            ..Default::default()
+        })
+        .unwrap();
+        let body_str = body.to_string();
+        assert!(body_str.contains("\"taxon_id\":\"1\""));
+        assert!(body_str.contains("\"taxon_rank\":\"species\""));
+        assert!(!body_str.contains("\"match_all\""));
+    }
+
+    #[test]
+    fn rank_only_query_without_root_is_unscoped() {
+        let body = build_search_body(&SearchBodyInput {
+            rank: Some("species".to_string()),
+            group: Some("taxon".to_string()),
+            ..Default::default()
+        })
+        .unwrap();
+        let body_str = body.to_string();
+        assert!(!body_str.contains("\"lineage\""));
+        assert!(body_str.contains("\"taxon_rank\":\"species\""));
+    }
+
+    #[test]
+    fn empty_query_stays_match_all() {
+        let body = build_search_body(&SearchBodyInput {
+            group: Some("taxon".to_string()),
+            ..Default::default()
+        })
+        .unwrap();
+        assert_eq!(body["query"], json!({ "match_all": {} }));
+    }
+
+    #[test]
+    fn assemblies_and_samples_emit_terms_filters() {
+        let body = build_search_body(&SearchBodyInput {
+            group: Some("assembly".to_string()),
+            assemblies: Some(vec!["GCA_000001405.29".to_string()]),
+            samples: Some(vec!["SAMN00000001".to_string()]),
+            ..Default::default()
+        })
+        .unwrap();
+        let filters = body["query"]["bool"]["filter"].as_array().unwrap();
+        assert!(filters
+            .iter()
+            .any(|f| f == &json!({ "terms": { "assembly_id": ["GCA_000001405.29"] } })));
+        assert!(filters
+            .iter()
+            .any(|f| f == &json!({ "terms": { "sample_id": ["SAMN00000001"] } })));
+    }
+
+    #[test]
+    fn assemblies_alone_are_not_match_all() {
+        let body = build_search_body(&SearchBodyInput {
+            group: Some("assembly".to_string()),
+            assemblies: Some(vec!["GCA_000001405.29".to_string()]),
+            ..Default::default()
+        })
+        .unwrap();
+        assert!(body["query"].get("match_all").is_none());
     }
 }

@@ -2,7 +2,7 @@
 //!
 //! Implements the three-step resolution pipeline described in phase-14:
 //! 1. NCBI batch resolve (primary, lineage-aware)
-//! 2. PhyloPic name search with corrected synonym fallback
+//! 2. PhyloPic name search requiring a single synonym match (v2 rule)
 //! 3. GBIF bridge (when GBIF species keys are available)
 
 use serde::{Deserialize, Serialize};
@@ -98,6 +98,8 @@ pub struct TaxonInfo {
     pub taxon_names: Vec<TaxonName>,
     /// Lineage IDs, most-specific first (excluding the taxon itself).
     pub lineage_ids: Vec<String>,
+    /// Rank of each lineage ID, keyed by taxon ID.
+    pub lineage_ranks: HashMap<String, String>,
     /// Optional GBIF species key list for GBIF bridge fallback.
     pub gbif_lineage_keys: Vec<String>,
 }
@@ -144,6 +146,8 @@ struct ResolveResponse {
 
 #[derive(Deserialize)]
 struct ResolveLinks {
+    #[serde(rename = "self")]
+    self_link: Option<SelfLink>,
     external: Option<Vec<ExternalLink>>,
     #[serde(rename = "primaryImage")]
     #[allow(dead_code)]
@@ -244,6 +248,23 @@ struct LicenseLinks {
 }
 
 #[derive(Deserialize)]
+struct ImagesResponse {
+    #[serde(rename = "_embedded", default)]
+    embedded: ImagesEmbedded,
+}
+
+#[derive(Deserialize, Default)]
+struct ImagesEmbedded {
+    #[serde(default)]
+    items: Vec<ImageItem>,
+}
+
+#[derive(Deserialize)]
+struct ImageItem {
+    uuid: String,
+}
+
+#[derive(Deserialize)]
 struct NodesResponse {
     #[serde(rename = "_links")]
     links: NodesLinks,
@@ -307,7 +328,7 @@ pub async fn fetch_current_build(client: &reqwest::Client) -> Result<u32, Phylop
 ///
 /// Steps:
 /// 1. NCBI batch resolve (primary + lineage IDs)
-/// 2. Name search with corrected synonym fallback (if step 1 yields Ancestral)
+/// 2. Name search for a single synonym match (if step 1 yields Ancestral)
 /// 3. GBIF bridge (if GBIF keys are available and steps 1–2 both fail)
 pub async fn resolve(
     client: &reqwest::Client,
@@ -426,7 +447,16 @@ async fn resolve_by_ncbi(
         })
         .ok_or(PhylopicError::MalformedResponse)?;
 
-    let source = classify_source(&matched_id, &info.taxon_id, &info.lineage_ids);
+    let is_self = matched_id == info.taxon_id;
+    let image_rank = if is_self {
+        info.rank.clone()
+    } else {
+        info.lineage_ranks
+            .get(&matched_id)
+            .cloned()
+            .unwrap_or_else(|| "lineage".to_string())
+    };
+    let source = classify_source(is_self, false, &image_rank);
 
     // With embed_primaryImage=true the image node is inline.
     let image_node = data
@@ -438,8 +468,9 @@ async fn resolve_by_ncbi(
     build_record(
         client,
         image_node,
+        data.links.self_link.as_ref().map(|s| s.href.as_str()),
         &info.taxon_id,
-        &info.rank,
+        &image_rank,
         source,
         build,
     )
@@ -456,8 +487,8 @@ async fn resolve_by_name(
         .chain(info.taxon_names.iter().map(|n| n.name.to_lowercase()))
         .collect();
 
-    let normalised = normalise_name(&info.scientific_name);
-    let encoded = urlencoding::encode(&normalised);
+    let lowercase_name = info.scientific_name.to_lowercase();
+    let encoded = urlencoding::encode(&lowercase_name);
     let url = format!("{PHYLOPIC_API}/nodes?build={build}&filter_name={encoded}&page=0");
 
     let resp = client
@@ -479,18 +510,7 @@ async fn resolve_by_name(
         .map_err(|_| PhylopicError::MalformedResponse)?;
 
     let items = data.links.items.unwrap_or_default();
-
-    // Corrected synonym matching: prefer exact synonym, fall back to first result.
-    // (Fixes v2 bug where `|| items[0]` never fired because empty arrays are truthy.)
-    let matched = items
-        .iter()
-        .find(|item| {
-            item.title
-                .as_deref()
-                .is_some_and(|t| synonyms.contains(&t.to_lowercase()))
-        })
-        .or_else(|| items.first())
-        .ok_or(PhylopicError::NotFound)?;
+    let matched = unique_synonym_match(items, &synonyms)?;
 
     // Fetch the node to get its primaryImage
     let node_resp = client
@@ -533,12 +553,14 @@ async fn resolve_by_name(
         .await
         .map_err(|_| PhylopicError::MalformedResponse)?;
 
+    let title_matches = matched.title.as_deref() == Some(info.scientific_name.as_str());
     build_record(
         client,
         &image_node,
+        Some(matched.href.as_str()),
         &info.taxon_id,
         &info.rank,
-        PhylopicSource::Ancestral,
+        classify_source(true, title_matches, &info.rank),
         build,
     )
     .await
@@ -585,8 +607,9 @@ async fn resolve_by_gbif(
     build_record(
         client,
         image_node,
+        data.links.self_link.as_ref().map(|s| s.href.as_str()),
         &info.taxon_id,
-        &info.rank,
+        "lineage",
         PhylopicSource::Ancestral,
         build,
     )
@@ -595,13 +618,14 @@ async fn resolve_by_gbif(
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-fn classify_source(matched_id: &str, taxon_id: &str, lineage_ids: &[String]) -> PhylopicSource {
-    if matched_id == taxon_id {
+/// Classify a match as Primary, Descendant or Ancestral (v2 rules).
+fn classify_source(is_self: bool, title_matches: bool, rank: &str) -> PhylopicSource {
+    if title_matches || (is_self && rank.ends_with("species")) {
         PhylopicSource::Primary
-    } else if lineage_ids.contains(&matched_id.to_string()) {
-        PhylopicSource::Ancestral
-    } else {
+    } else if is_self {
         PhylopicSource::Descendant
+    } else {
+        PhylopicSource::Ancestral
     }
 }
 
@@ -641,14 +665,108 @@ fn ratio_from_raster_url(url: &str) -> f32 {
         .unwrap_or(1.0)
 }
 
-/// Normalise a scientific name for the PhyloPic `filter_name` parameter.
-///
-/// Converts to lowercase; keeps alphanumeric characters and spaces only.
-fn normalise_name(name: &str) -> String {
-    name.to_lowercase()
-        .chars()
-        .filter(|c| c.is_alphanumeric() || *c == ' ')
-        .collect()
+/// Return the only item whose title is a synonym; zero or several matches fail, as in v2.
+fn unique_synonym_match(
+    items: Vec<NodeItem>,
+    synonyms: &HashSet<String>,
+) -> Result<NodeItem, PhylopicError> {
+    let mut matches = items.into_iter().filter(|item| {
+        item.title
+            .as_deref()
+            .is_some_and(|t| synonyms.contains(&t.to_lowercase()))
+    });
+    match (matches.next(), matches.next()) {
+        (Some(only), None) => Ok(only),
+        _ => Err(PhylopicError::NotFound),
+    }
+}
+
+/// Whether a licence URL is a public-domain dedication (no BY, NC or SA terms).
+fn is_public_domain(license_url: &str) -> bool {
+    license_url.contains("publicdomain")
+}
+
+/// Licence restrictions applied to a resolved record after resolution.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct LicenceFilter {
+    /// Accepted SPDX identifiers; empty accepts any licence.
+    pub licenses: Vec<String>,
+    /// Accept only public-domain images.
+    pub public_domain: bool,
+}
+
+impl LicenceFilter {
+    /// Build a filter from a comma-separated SPDX list and the public-domain flag.
+    pub fn new(license: Option<&str>, public_domain: bool) -> Self {
+        let licenses = license
+            .unwrap_or_default()
+            .split(',')
+            .map(str::trim)
+            .filter(|id| !id.is_empty())
+            .map(str::to_string)
+            .collect();
+        Self {
+            licenses,
+            public_domain,
+        }
+    }
+
+    /// Whether a resolved record satisfies every restriction.
+    pub fn accepts(&self, record: &PhylopicRecord) -> bool {
+        let licence_ok = self.licenses.is_empty()
+            || self
+                .licenses
+                .iter()
+                .any(|id| id.eq_ignore_ascii_case(&record.license));
+        let domain_ok = !self.public_domain || is_public_domain(&record.license_url);
+        licence_ok && domain_ok
+    }
+}
+
+/// Extract the node UUID from a node href such as `/nodes/{uuid}?build=N`.
+fn node_uuid_from_href(href: &str) -> Option<&str> {
+    let uuid = href.split("nodes/").nth(1)?.split(['/', '?']).next()?;
+    (!uuid.is_empty()).then_some(uuid)
+}
+
+/// GET a PhyloPic JSON document, mapping transport and parse failures to `PhylopicError`.
+async fn get_json<T: serde::de::DeserializeOwned>(
+    client: &reqwest::Client,
+    url: &str,
+) -> Result<T, PhylopicError> {
+    let resp = client
+        .get(url)
+        .send()
+        .await
+        .map_err(|e| PhylopicError::Http(e.to_string()))?;
+    if !resp.status().is_success() {
+        return Err(PhylopicError::Http(format!(
+            "PhyloPic returned {}",
+            resp.status()
+        )));
+    }
+    resp.json()
+        .await
+        .map_err(|_| PhylopicError::MalformedResponse)
+}
+
+/// Find a public-domain image of a node, as v2 did; returns `None` on any failure.
+async fn fetch_public_domain_image(
+    client: &reqwest::Client,
+    node_href: Option<&str>,
+    build: u32,
+) -> Option<ImageNode> {
+    let node_uuid = node_uuid_from_href(node_href?)?;
+    let list_url = format!(
+        "{PHYLOPIC_API}/images?build={build}&filter_node={node_uuid}\
+         &filter_license_by=false&filter_license_nc=false&filter_license_sa=false\
+         &page=0&embed_items=true"
+    );
+    let list: ImagesResponse = get_json(client, &list_url).await.ok()?;
+    let image_uuid = list.embedded.items.into_iter().next()?.uuid;
+    let image_url =
+        format!("{PHYLOPIC_API}/images/{image_uuid}?build={build}&embed_primaryImage=true");
+    get_json(client, &image_url).await.ok()
 }
 
 /// Map a PhyloPic licence URL to an SPDX identifier.
@@ -666,12 +784,35 @@ pub fn licence_to_spdx(url: &str) -> &'static str {
     }
 }
 
+/// Build a `PhylopicRecord`, preferring a public-domain image of the same node (v2 rule).
+async fn build_record(
+    client: &reqwest::Client,
+    image_node: &ImageNode,
+    node_href: Option<&str>,
+    taxon_id: &str,
+    image_rank: &str,
+    source: PhylopicSource,
+    build: u32,
+) -> Result<PhylopicRecord, PhylopicError> {
+    let record = record_from_image(client, image_node, taxon_id, image_rank, source, build).await?;
+    if is_public_domain(&record.license_url) {
+        return Ok(record);
+    }
+    let Some(alternative) = fetch_public_domain_image(client, node_href, build).await else {
+        return Ok(record);
+    };
+    match record_from_image(client, &alternative, taxon_id, image_rank, source, build).await {
+        Ok(public_domain_record) => Ok(public_domain_record),
+        Err(_) => Ok(record),
+    }
+}
+
 /// Build a `PhylopicRecord` from a resolved image node.
 ///
 /// When the image node doesn't carry embedded contributor/licence details, those
 /// fields are populated with sensible defaults so the caller always gets a complete
 /// record.
-async fn build_record(
+async fn record_from_image(
     client: &reqwest::Client,
     image_node: &ImageNode,
     taxon_id: &str,
@@ -720,11 +861,7 @@ async fn extract_attribution(
     _client: &reqwest::Client,
 ) -> (Option<String>, Option<String>, String) {
     let Some(emb) = embedded else {
-        return (
-            None,
-            None,
-            "https://creativecommons.org/publicdomain/zero/1.0".to_string(),
-        );
+        return (None, None, String::new());
     };
 
     let contributor = emb.contributor.as_ref().and_then(|c| c.name.clone());
@@ -737,7 +874,7 @@ async fn extract_attribution(
         .and_then(|lv| lv.links.as_ref())
         .and_then(|l| l.self_link.as_ref())
         .map(|s| s.href.clone())
-        .unwrap_or_else(|| "https://creativecommons.org/publicdomain/zero/1.0".to_string());
+        .unwrap_or_default();
 
     (contributor, attribution, license_url)
 }
@@ -947,35 +1084,41 @@ mod tests {
     }
 
     #[test]
-    fn classify_source_primary_when_ids_match() {
+    fn classify_source_primary_for_self_species() {
         assert_eq!(
-            classify_source("9606", "9606", &[]),
+            classify_source(true, false, "species"),
             PhylopicSource::Primary
         );
     }
 
     #[test]
-    fn classify_source_ancestral_when_in_lineage() {
-        let lineage = vec!["40674".to_string(), "7711".to_string()];
+    fn classify_source_primary_when_title_matches() {
         assert_eq!(
-            classify_source("40674", "9606", &lineage),
-            PhylopicSource::Ancestral
+            classify_source(true, true, "genus"),
+            PhylopicSource::Primary
         );
     }
 
     #[test]
-    fn classify_source_descendant_when_not_in_lineage() {
+    fn classify_source_descendant_for_self_above_species() {
         assert_eq!(
-            classify_source("99999", "9606", &[]),
+            classify_source(true, false, "genus"),
             PhylopicSource::Descendant
         );
     }
 
     #[test]
-    fn synonym_fallback_to_first_result_when_no_exact_match() {
-        // Simulate the corrected resolve_by_name synonym logic
+    fn classify_source_ancestral_for_other_matches() {
+        assert_eq!(
+            classify_source(false, false, "species"),
+            PhylopicSource::Ancestral
+        );
+    }
+
+    #[test]
+    fn unique_synonym_match_returns_single_synonym_hit() {
         let synonyms: HashSet<String> = ["homo sapiens".to_string()].into_iter().collect();
-        let items = [
+        let items = vec![
             NodeItem {
                 href: "https://api.phylopic.org/nodes/abc".to_string(),
                 title: Some("Homo sapiens var. idaltu".to_string()),
@@ -986,44 +1129,108 @@ mod tests {
             },
         ];
 
-        let matched = items
-            .iter()
-            .find(|item| {
-                item.title
-                    .as_deref()
-                    .is_some_and(|t| synonyms.contains(&t.to_lowercase()))
-            })
-            .or_else(|| items.first())
-            .unwrap();
+        let matched = unique_synonym_match(items, &synonyms).unwrap();
 
-        assert_eq!(matched.title.as_deref(), Some("Homo sapiens"));
+        assert_eq!(matched.href, "https://api.phylopic.org/nodes/def");
     }
 
     #[test]
-    fn synonym_fallback_uses_first_when_no_synonyms_match() {
-        let synonyms: HashSet<String> = ["no match here".to_string()].into_iter().collect();
-        let items = [
+    fn unique_synonym_match_rejects_several_synonym_hits() {
+        let synonyms: HashSet<String> = ["homo sapiens".to_string()].into_iter().collect();
+        let items = vec![
             NodeItem {
                 href: "https://api.phylopic.org/nodes/abc".to_string(),
-                title: Some("Unrelated taxon A".to_string()),
+                title: Some("Homo sapiens".to_string()),
             },
             NodeItem {
                 href: "https://api.phylopic.org/nodes/def".to_string(),
-                title: Some("Unrelated taxon B".to_string()),
+                title: Some("homo sapiens".to_string()),
             },
         ];
 
-        let matched = items
-            .iter()
-            .find(|item| {
-                item.title
-                    .as_deref()
-                    .is_some_and(|t| synonyms.contains(&t.to_lowercase()))
-            })
-            .or_else(|| items.first())
-            .unwrap();
+        assert!(unique_synonym_match(items, &synonyms).is_err());
+    }
 
-        // Falls back to first item (v2 regression test)
-        assert_eq!(matched.title.as_deref(), Some("Unrelated taxon A"));
+    #[test]
+    fn unique_synonym_match_rejects_first_item_without_synonym() {
+        let synonyms: HashSet<String> = ["no match here".to_string()].into_iter().collect();
+        let items = vec![NodeItem {
+            href: "https://api.phylopic.org/nodes/abc".to_string(),
+            title: Some("Unrelated taxon A".to_string()),
+        }];
+
+        assert!(unique_synonym_match(items, &synonyms).is_err());
+    }
+
+    #[test]
+    fn node_uuid_extracted_from_node_href() {
+        assert_eq!(
+            node_uuid_from_href("https://api.phylopic.org/nodes/abc-123?build=5"),
+            Some("abc-123")
+        );
+        assert_eq!(node_uuid_from_href("/nodes/abc-123"), Some("abc-123"));
+        assert_eq!(node_uuid_from_href("/images/abc"), None);
+    }
+
+    #[test]
+    fn public_domain_detected_from_licence_url() {
+        assert!(is_public_domain(
+            "https://creativecommons.org/publicdomain/zero/1.0"
+        ));
+        assert!(!is_public_domain(
+            "https://creativecommons.org/licenses/by/4.0"
+        ));
+        assert!(!is_public_domain(""));
+    }
+
+    fn record_with_licence(license: &str, license_url: &str) -> PhylopicRecord {
+        PhylopicRecord {
+            taxon_id: "9606".to_string(),
+            raster_url: String::new(),
+            vector_url: None,
+            ratio: 1.0,
+            attribution: None,
+            license: license.to_string(),
+            license_url: license_url.to_string(),
+            contributor: None,
+            image_name: String::new(),
+            source_url: String::new(),
+            image_rank: "species".to_string(),
+            source: PhylopicSource::Primary,
+            build: 1,
+        }
+    }
+
+    #[test]
+    fn licence_filter_parses_comma_separated_list() {
+        let filter = LicenceFilter::new(Some("CC0-1.0, CC-BY-4.0,"), false);
+        assert_eq!(filter.licenses, vec!["CC0-1.0", "CC-BY-4.0"]);
+        assert_eq!(LicenceFilter::new(None, false), LicenceFilter::default());
+    }
+
+    #[test]
+    fn licence_filter_default_accepts_any_licence() {
+        let by = record_with_licence("CC-BY-4.0", "https://creativecommons.org/licenses/by/4.0");
+        assert!(LicenceFilter::default().accepts(&by));
+    }
+
+    #[test]
+    fn licence_filter_rejects_licence_not_in_list() {
+        let by = record_with_licence("CC-BY-4.0", "https://creativecommons.org/licenses/by/4.0");
+        let filter = LicenceFilter::new(Some("CC0-1.0"), false);
+        assert!(!filter.accepts(&by));
+        assert!(LicenceFilter::new(Some("cc-by-4.0"), false).accepts(&by));
+    }
+
+    #[test]
+    fn licence_filter_public_domain_rejects_attribution_licence() {
+        let by = record_with_licence("CC-BY-4.0", "https://creativecommons.org/licenses/by/4.0");
+        let cc0 = record_with_licence(
+            "CC0-1.0",
+            "https://creativecommons.org/publicdomain/zero/1.0",
+        );
+        let filter = LicenceFilter::new(None, true);
+        assert!(!filter.accepts(&by));
+        assert!(filter.accepts(&cc0));
     }
 }

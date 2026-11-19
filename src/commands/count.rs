@@ -3,17 +3,16 @@
 use anyhow::Result;
 
 use crate::core::config::{RuntimeConfig, SitePresetRegistry};
-use crate::core::metadata::MetadataOptions;
-use crate::core::runtime_query::{run_query, QueryRequest};
+use crate::core::runtime_query::run_v3_query;
+use genomehubs_query::query::SplitQueryDocument;
 
-/// Run a count request and print the pretty-printed JSON response to stdout.
+/// Run a v3 count and print the pretty-printed JSON response to stdout.
 pub fn run(
     runtime: &RuntimeConfig,
     registry: &SitePresetRegistry,
-    request: &QueryRequest,
-    metadata: &MetadataOptions,
+    documents: &SplitQueryDocument,
 ) -> Result<()> {
-    let response = run_query(runtime, registry, "count", request, metadata)?;
+    let response = run_v3_query(runtime, registry, "count", documents)?;
     println!("{}", serde_json::to_string_pretty(&response)?);
     Ok(())
 }

@@ -11,7 +11,7 @@ use std::{collections::HashMap, sync::Arc};
 
 use crate::{
     fetch_records, index_name,
-    phylopic_client::{self, PhylopicRecord, TaxonInfo, TaxonName},
+    phylopic_client::{self, LicenceFilter, PhylopicRecord, TaxonInfo, TaxonName},
     routes::ApiStatus,
     AppState,
 };
@@ -24,6 +24,11 @@ pub struct PhylopicQuery {
     pub taxon_id: String,
     /// Taxonomy name (e.g. `"ncbi"`).
     pub taxonomy: String,
+    /// Comma-separated SPDX licence IDs the image must carry.
+    pub license: Option<String>,
+    /// Accept only public-domain images.
+    #[serde(default)]
+    pub public_domain: bool,
 }
 
 #[derive(Serialize, utoipa::ToSchema)]
@@ -39,6 +44,11 @@ pub struct PhylopicBatchRequest {
     pub taxon_ids: Vec<String>,
     /// Taxonomy name (e.g. `"ncbi"`).
     pub taxonomy: String,
+    /// Comma-separated SPDX licence IDs the image must carry.
+    pub license: Option<String>,
+    /// Accept only public-domain images.
+    #[serde(default)]
+    pub public_domain: bool,
 }
 
 #[derive(Serialize, utoipa::ToSchema)]
@@ -58,6 +68,8 @@ pub struct PhylopicBatchResponse {
     params(
         ("taxon_id" = String, Query, description = "NCBI taxon ID"),
         ("taxonomy" = String, Query, description = "Taxonomy name (e.g. ncbi)"),
+        ("license" = Option<String>, Query, description = "Comma-separated SPDX licence IDs; omit to accept any licence"),
+        ("public_domain" = Option<bool>, Query, description = "Accept only public-domain images when true"),
     ),
     responses(
         (status = 200, description = "PhyloPic silhouette record", body = PhylopicResponse)
@@ -67,53 +79,9 @@ pub async fn get_phylopic(
     Query(q): Query<PhylopicQuery>,
     Extension(state): Extension<Arc<AppState>>,
 ) -> Json<PhylopicResponse> {
-    // Consult cache first
-    {
-        let cache = state.phylopic_cache.read().await;
-        if let Some(record) = cache.get(&q.taxon_id) {
-            return Json(PhylopicResponse {
-                status: ApiStatus::ok(),
-                phylopic: Some(record.clone()),
-            });
-        }
-    }
-
-    let build = {
-        let cache = state.phylopic_cache.read().await;
-        cache.current_build
-    };
-
-    // Fetch taxon info from ES to populate the resolution pipeline
-    let info = match fetch_taxon_info(&state, &q.taxon_id, &q.taxonomy).await {
-        Ok(info) => info,
-        Err(msg) => {
-            return Json(PhylopicResponse {
-                status: ApiStatus::error(msg),
-                phylopic: None,
-            })
-        }
-    };
-
-    // Resolve via PhyloPic
-    match phylopic_client::resolve(&state.client, &info, build).await {
-        Ok(mut record) => {
-            record.image_name = info.scientific_name.clone();
-            let mut cache = state.phylopic_cache.write().await;
-            cache.insert(q.taxon_id.clone(), record.clone());
-            Json(PhylopicResponse {
-                status: ApiStatus::ok(),
-                phylopic: Some(record),
-            })
-        }
-        Err(phylopic_client::PhylopicError::NotFound) => Json(PhylopicResponse {
-            status: ApiStatus::error(format!("no image found for taxon_id {}", q.taxon_id)),
-            phylopic: None,
-        }),
-        Err(e) => Json(PhylopicResponse {
-            status: ApiStatus::error(e.to_string()),
-            phylopic: None,
-        }),
-    }
+    let filter = LicenceFilter::new(q.license.as_deref(), q.public_domain);
+    let result = resolve_taxon(&state, &q.taxon_id, &q.taxonomy).await;
+    Json(phylopic_response(result, &filter))
 }
 
 // ── POST /api/v3/phylopic/batch ───────────────────────────────────────────────
@@ -146,66 +114,72 @@ pub async fn post_phylopic_batch(
         });
     }
 
-    let build = {
-        let cache = state.phylopic_cache.read().await;
-        cache.current_build
-    };
-
+    let filter = LicenceFilter::new(body.license.as_deref(), body.public_domain);
     let mut results: HashMap<String, PhylopicResponse> = HashMap::new();
-    let mut uncached_ids: Vec<String> = Vec::new();
-
-    // Serve cache hits immediately
-    {
-        let cache = state.phylopic_cache.read().await;
-        for id in &body.taxon_ids {
-            if let Some(record) = cache.get(id) {
-                results.insert(
-                    id.clone(),
-                    PhylopicResponse {
-                        status: ApiStatus::ok(),
-                        phylopic: Some(record.clone()),
-                    },
-                );
-            } else {
-                uncached_ids.push(id.clone());
-            }
-        }
-    }
-
-    // Fetch taxon info for cache misses and resolve
-    for id in &uncached_ids {
-        let response = match fetch_taxon_info(&state, id, &body.taxonomy).await {
-            Err(msg) => PhylopicResponse {
-                status: ApiStatus::error(msg),
-                phylopic: None,
-            },
-            Ok(info) => match phylopic_client::resolve(&state.client, &info, build).await {
-                Ok(mut record) => {
-                    record.image_name = info.scientific_name.clone();
-                    let mut cache = state.phylopic_cache.write().await;
-                    cache.insert(id.clone(), record.clone());
-                    PhylopicResponse {
-                        status: ApiStatus::ok(),
-                        phylopic: Some(record),
-                    }
-                }
-                Err(phylopic_client::PhylopicError::NotFound) => PhylopicResponse {
-                    status: ApiStatus::error(format!("no image found for taxon_id {id}")),
-                    phylopic: None,
-                },
-                Err(e) => PhylopicResponse {
-                    status: ApiStatus::error(e.to_string()),
-                    phylopic: None,
-                },
-            },
-        };
-        results.insert(id.clone(), response);
+    for id in &body.taxon_ids {
+        let result = resolve_taxon(&state, id, &body.taxonomy).await;
+        results.insert(id.clone(), phylopic_response(result, &filter));
     }
 
     Json(PhylopicBatchResponse {
         status: ApiStatus::ok(),
         results,
     })
+}
+
+// ── Shared resolution ─────────────────────────────────────────────────────────
+
+/// Return a taxon's record from the cache, or resolve it from PhyloPic and cache it.
+async fn resolve_taxon(
+    state: &AppState,
+    taxon_id: &str,
+    taxonomy: &str,
+) -> Result<PhylopicRecord, String> {
+    if let Some(record) = state.phylopic_cache.read().await.get(taxon_id) {
+        return Ok(record.clone());
+    }
+
+    let build = state.phylopic_cache.read().await.current_build;
+    let info = fetch_taxon_info(state, taxon_id, taxonomy).await?;
+    match phylopic_client::resolve(&state.client, &info, build).await {
+        Ok(mut record) => {
+            record.image_name = info.scientific_name.clone();
+            state
+                .phylopic_cache
+                .write()
+                .await
+                .insert(taxon_id.to_string(), record.clone());
+            Ok(record)
+        }
+        Err(phylopic_client::PhylopicError::NotFound) => {
+            Err(format!("no image found for taxon_id {taxon_id}"))
+        }
+        Err(e) => Err(e.to_string()),
+    }
+}
+
+/// Convert a resolved record into a response, rejecting it when the licence filter excludes it.
+fn phylopic_response(
+    result: Result<PhylopicRecord, String>,
+    filter: &LicenceFilter,
+) -> PhylopicResponse {
+    match result {
+        Ok(record) if filter.accepts(&record) => PhylopicResponse {
+            status: ApiStatus::ok(),
+            phylopic: Some(record),
+        },
+        Ok(record) => PhylopicResponse {
+            status: ApiStatus::error(format!(
+                "no image matching licence filter for taxon_id {}",
+                record.taxon_id
+            )),
+            phylopic: None,
+        },
+        Err(msg) => PhylopicResponse {
+            status: ApiStatus::error(msg),
+            phylopic: None,
+        },
+    }
 }
 
 // ── ES taxon info fetch ───────────────────────────────────────────────────────
@@ -264,6 +238,18 @@ async fn fetch_taxon_info(
         })
         .unwrap_or_default();
 
+    let lineage_ranks: HashMap<String, String> = source["lineage"]
+        .as_array()
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|v| {
+                    let id = v["taxon_id"].as_u64()?.to_string();
+                    Some((id, v["taxon_rank"].as_str()?.to_string()))
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+
     let gbif_lineage_keys: Vec<String> = source["lineage"]
         .as_array()
         .map(|arr| {
@@ -284,6 +270,7 @@ async fn fetch_taxon_info(
         rank,
         taxon_names,
         lineage_ids,
+        lineage_ranks,
         gbif_lineage_keys,
     })
 }

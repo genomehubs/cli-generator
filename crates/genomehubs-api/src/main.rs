@@ -145,6 +145,7 @@ fn write_patched_openapi(openapi_val: &serde_json::Value) {
 }
 
 #[tokio::main]
+#[allow(deprecated)]
 async fn main() {
     // ── Logging setup ────────────────────────────────────────────────────────
     // Honour RUST_LOG for level filtering; default to "info".

@@ -5,12 +5,9 @@
 //! minimal so it can be used as a building block for higher-level API functions
 //! (reports, aggregations) implemented later.
 
-use crate::core::query::SearchQuery;
 use crate::core::query_builder::build_count_body;
-use crate::core::runtime_query::{search_query_from_request, QueryRequest};
 use anyhow::{Context, Result};
 use reqwest::blocking::Client;
-use serde_json::json;
 use serde_json::Value;
 
 /// Post `query` to `base_url/{index}/_count` and return the resulting count.
@@ -62,40 +59,6 @@ pub fn count_docs_from_query_str(
 ) -> Result<u64> {
     let body = build_count_body(query_str, false).context("building count body")?;
     count_docs(base_url, index, &body)
-}
-
-/// Count documents matching a v2 request, converted by the canonical URL converter.
-///
-/// Taxa and fields become `match_phrase` filters on `_all`, so the count is best-effort.
-pub fn count_docs_from_request(base_url: &str, index: &str, request: &QueryRequest) -> Result<u64> {
-    let query = search_query_from_request(request).context("converting request to SearchQuery")?;
-    count_docs(base_url, index, &match_body(&query))
-}
-
-/// Build an ES body from a `SearchQuery`'s taxa and fields.
-///
-/// Returns `match_all` when neither taxa nor fields are present.
-fn match_body(query: &SearchQuery) -> Value {
-    let mut filters: Vec<Value> = Vec::new();
-
-    if let Some(taxa_ident) = &query.identifiers.taxa {
-        let joined = taxa_ident.names.join(" ");
-        if !joined.is_empty() {
-            filters.push(json!({ "match_phrase": { "_all": joined } }));
-        }
-    }
-
-    for field in &query.attributes.fields {
-        if !field.name.is_empty() {
-            filters.push(json!({ "match_phrase": { "_all": field.name } }));
-        }
-    }
-
-    if filters.is_empty() {
-        json!({ "query": { "match_all": {} } })
-    } else {
-        json!({ "query": { "bool": { "filter": filters } } })
-    }
 }
 
 #[cfg(test)]
@@ -151,31 +114,4 @@ mod tests {
         mock.assert();
     }
 
-    #[test]
-    fn count_docs_from_request_posts_match_filters() {
-        let mut server = Server::new();
-        let mock = server
-            .mock("POST", "/taxon/_count")
-            .with_status(200)
-            .with_body(r#"{"count": 7}"#)
-            .create();
-
-        let base = server.url();
-        let request = QueryRequest {
-            result: "taxon".to_string(),
-            query: Some("tax_name(Mammalia)".to_string()),
-            fields: vec!["genome_size".to_string()],
-            size: None,
-        };
-
-        let result = count_docs_from_request(&base, "taxon", &request).unwrap();
-        assert_eq!(result, 7);
-        mock.assert();
-    }
-
-    #[test]
-    fn match_body_is_match_all_without_taxa_or_fields() {
-        let body = match_body(&SearchQuery::default());
-        assert_eq!(body, json!({ "query": { "match_all": {} } }));
-    }
 }

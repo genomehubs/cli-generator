@@ -18,15 +18,24 @@
 //!
 //! `AND` is case-insensitive. `OR` and parentheses are deferred.
 
+use std::sync::Arc;
+
 use serde_json::{json, Value};
+use tokio::sync::RwLock;
+
+use crate::es_metadata::MetadataCache;
+use crate::report::field::get_attribute_value_field;
+
+/// Shared metadata cache used to resolve each attribute's declared value field.
+pub type CacheRef = Option<Arc<RwLock<MetadataCache>>>;
 
 // ─── Public types ────────────────────────────────────────────────────────────
 
 /// A single parsed filter term.
 #[derive(Debug, Clone, PartialEq)]
 pub enum FilterTerm {
-    /// `field OP value` — matched against `long_value`, `float_value`, and
-    /// `half_float_value` sub-fields with `minimum_should_match: 1`.
+    /// `field OP value` — matched against the `*_value` sub-field declared for
+    /// the attribute in the metadata cache.
     NumericRange {
         field: String,
         op: &'static str,
@@ -62,26 +71,36 @@ pub fn parse_filter_string(expr: &str) -> Result<Vec<FilterTerm>, String> {
 ///
 /// Each term becomes a `nested` query over `attributes[]`. Multiple terms are
 /// wrapped in `bool.must`. An empty slice returns `{"match_all": {}}`.
-pub fn build_nested_attribute_query(terms: &[FilterTerm]) -> Value {
-    let nested_clauses: Vec<Value> = terms.iter().map(term_to_nested_query).collect();
-    match nested_clauses.len() {
+pub fn build_nested_attribute_query(
+    terms: &[FilterTerm],
+    cache: &CacheRef,
+) -> Result<Value, String> {
+    let nested_clauses: Vec<Value> = terms
+        .iter()
+        .map(|term| term_to_nested_query(term, cache))
+        .collect::<Result<_, _>>()?;
+    Ok(match nested_clauses.len() {
         0 => json!({ "match_all": {} }),
         1 => nested_clauses.into_iter().next().unwrap(),
         _ => json!({ "bool": { "must": nested_clauses } }),
-    }
+    })
 }
 
 /// Parse, compile, and AND with `base_query` in one step.
 ///
 /// Returns the combined ES clause, or an error if the expression is invalid.
 /// When the expression is empty the original `base_query` is returned unchanged.
-pub fn filter_expr_to_es_query(expr: &str, base_query: &Value) -> Result<Value, String> {
+pub fn filter_expr_to_es_query(
+    expr: &str,
+    base_query: &Value,
+    cache: &CacheRef,
+) -> Result<Value, String> {
     let trimmed = expr.trim();
     if trimmed.is_empty() {
         return Ok(base_query.clone());
     }
     let terms = parse_filter_string(trimmed)?;
-    let filter_clause = build_nested_attribute_query(&terms);
+    let filter_clause = build_nested_attribute_query(&terms, cache)?;
     Ok(json!({
         "bool": {
             "must": [ base_query.clone(), filter_clause ]
@@ -255,20 +274,16 @@ fn make_range(field: &str, op: &str, value: f64) -> Value {
 }
 
 /// Compile a single [`FilterTerm`] into a nested ES clause.
-fn term_to_nested_query(term: &FilterTerm) -> Value {
+///
+/// Numeric terms target only the value sub-field declared in the metadata cache.
+fn term_to_nested_query(term: &FilterTerm, cache: &CacheRef) -> Result<Value, String> {
     match term {
         FilterTerm::NumericRange { field, op, value } => {
-            let inner = json!({
-                "bool": {
-                    "should": [
-                        make_range("attributes.long_value", op, *value),
-                        make_range("attributes.float_value", op, *value),
-                        make_range("attributes.half_float_value", op, *value)
-                    ],
-                    "minimum_should_match": 1
-                }
-            });
-            nested_attr_query(field, inner)
+            let value_field = get_attribute_value_field(field, cache)?;
+            Ok(nested_attr_query(
+                field,
+                make_range(&value_field, op, *value),
+            ))
         }
         FilterTerm::AggRange {
             field,
@@ -278,22 +293,22 @@ fn term_to_nested_query(term: &FilterTerm) -> Value {
         } => {
             let sub_field = format!("attributes.{agg}");
             let inner = make_range(&sub_field, op, *value);
-            nested_attr_query(field, inner)
+            Ok(nested_attr_query(field, inner))
         }
         FilterTerm::KeywordMatch { field, value } => {
             let inner = json!({ "term": { "attributes.keyword_value": value } });
-            nested_attr_query(field, inner)
+            Ok(nested_attr_query(field, inner))
         }
         FilterTerm::Exists { field } => {
             // Just match on the key — any document that has this attribute.
-            json!({
+            Ok(json!({
                 "nested": {
                     "path": "attributes",
                     "query": {
                         "term": { "attributes.key": field }
                     }
                 }
-            })
+            }))
         }
     }
 }
@@ -320,6 +335,46 @@ fn nested_attr_query(field: &str, inner: Value) -> Value {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Cache where `genome_size` and `assembly_span` are `long`, and `c_value` is `half_float`.
+    fn test_cache() -> CacheRef {
+        let attr_types = json!({
+            "taxon": {
+                "genome_size": { "type": "long", "processed_summary": "long_value" },
+                "assembly_span": { "type": "long", "processed_summary": "long_value" },
+                "c_value": { "type": "half_float", "processed_summary": "half_float_value" }
+            }
+        });
+        Some(Arc::new(RwLock::new(MetadataCache {
+            attr_types,
+            ..Default::default()
+        })))
+    }
+
+    #[test]
+    fn numeric_range_uses_only_declared_long_value_field() {
+        let terms = parse_filter_string("genome_size>3000000000").unwrap();
+        let query = build_nested_attribute_query(&terms, &test_cache()).unwrap();
+        let range = &query["nested"]["query"]["bool"]["must"][1]["range"];
+        assert_eq!(range["attributes.long_value"]["gt"], 3_000_000_000.0);
+        assert!(range.get("attributes.half_float_value").is_none());
+        assert!(range.get("attributes.float_value").is_none());
+    }
+
+    #[test]
+    fn numeric_range_uses_declared_half_float_value_field() {
+        let terms = parse_filter_string("c_value>3").unwrap();
+        let query = build_nested_attribute_query(&terms, &test_cache()).unwrap();
+        let range = &query["nested"]["query"]["bool"]["must"][1]["range"];
+        assert_eq!(range["attributes.half_float_value"]["gt"], 3.0);
+    }
+
+    #[test]
+    fn numeric_range_unknown_attribute_returns_error() {
+        let terms = parse_filter_string("unknown_attr>1").unwrap();
+        let result = build_nested_attribute_query(&terms, &test_cache());
+        assert!(result.is_err());
+    }
 
     #[test]
     fn test_parse_numeric_gt() {
@@ -398,14 +453,14 @@ mod tests {
     #[test]
     fn test_empty_expr_returns_base_query() {
         let base = json!({ "match_all": {} });
-        let result = filter_expr_to_es_query("", &base).unwrap();
+        let result = filter_expr_to_es_query("", &base, &None).unwrap();
         assert_eq!(result, base);
     }
 
     #[test]
     fn test_build_numeric_nested_structure() {
         let terms = parse_filter_string("genome_size>3e9").unwrap();
-        let clause = build_nested_attribute_query(&terms);
+        let clause = build_nested_attribute_query(&terms, &test_cache()).unwrap();
         assert_eq!(clause["nested"]["path"], "attributes");
         let must = &clause["nested"]["query"]["bool"]["must"];
         assert_eq!(must[0]["term"]["attributes.key"], "genome_size");
@@ -414,7 +469,7 @@ mod tests {
     #[test]
     fn test_build_agg_nested_structure() {
         let terms = parse_filter_string("min(c_value)<3").unwrap();
-        let clause = build_nested_attribute_query(&terms);
+        let clause = build_nested_attribute_query(&terms, &test_cache()).unwrap();
         assert_eq!(clause["nested"]["path"], "attributes");
         let must = &clause["nested"]["query"]["bool"]["must"];
         assert_eq!(must[0]["term"]["attributes.key"], "c_value");
@@ -424,7 +479,7 @@ mod tests {
     #[test]
     fn test_build_keyword_nested_structure() {
         let terms = parse_filter_string("assembly_level=Chromosome").unwrap();
-        let clause = build_nested_attribute_query(&terms);
+        let clause = build_nested_attribute_query(&terms, &test_cache()).unwrap();
         let must = &clause["nested"]["query"]["bool"]["must"];
         assert_eq!(must[1]["term"]["attributes.keyword_value"], "Chromosome");
     }
@@ -432,7 +487,7 @@ mod tests {
     #[test]
     fn test_filter_expr_to_es_query_wraps_base() {
         let base = json!({ "term": { "taxon_rank": "species" } });
-        let result = filter_expr_to_es_query("genome_size>1e9", &base).unwrap();
+        let result = filter_expr_to_es_query("genome_size>1e9", &base, &test_cache()).unwrap();
         let must = result["bool"]["must"].as_array().unwrap();
         assert_eq!(must.len(), 2);
         assert_eq!(must[0], base);
@@ -441,7 +496,7 @@ mod tests {
     #[test]
     fn test_compound_and_produces_bool_must() {
         let terms = parse_filter_string("genome_size>1e9 AND assembly_level=Chromosome").unwrap();
-        let clause = build_nested_attribute_query(&terms);
+        let clause = build_nested_attribute_query(&terms, &test_cache()).unwrap();
         // Two terms → wrapped in bool.must
         let inner = clause["bool"]["must"].as_array().unwrap();
         assert_eq!(inner.len(), 2);
@@ -460,7 +515,7 @@ mod tests {
     #[test]
     fn test_bare_field_nested_query() {
         let terms = parse_filter_string("assembly_span").unwrap();
-        let clause = build_nested_attribute_query(&terms);
+        let clause = build_nested_attribute_query(&terms, &test_cache()).unwrap();
         assert_eq!(clause["nested"]["path"], "attributes");
         assert_eq!(
             clause["nested"]["query"]["term"]["attributes.key"],

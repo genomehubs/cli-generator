@@ -1,17 +1,6 @@
 {
-  "query": {
-    "index": "taxon",
-    "taxa": ["Mammalia"],
-    "taxon_filter_type": "tree",
-    "rank": "species"
-  },
-  "params": {
-    "taxonomy": "ncbi"
-  },
-  "report": {
-    "report": "arc",
-    "feature": "genome_size>3000000000",
-    "reference": "assembly_level",
-    "context": ""
-  }
+  "report": "arc",
+  "feature": "assembly_span>300000000",
+  "reference": "assembly_level",
+  "context": ""
 }

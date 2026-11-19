@@ -73,7 +73,7 @@ pub struct SummaryBatchResponse {
     path = "/api/v3/summary/batch",
     tag = "Data",
     summary = "Fetch aggregated summary statistics for multiple records in parallel",
-    description = "Runs multiple `/summary` queries in a single request.  Each item in `queries` is processed independently and results are returned in the same order.",
+    description = "Deprecated. Runs multiple `/summary` queries in a single request.  Each item in `queries` is processed independently and results are returned in the same order.",
     request_body(
         content = SummaryBatchRequest,
         examples(
@@ -93,6 +93,7 @@ pub struct SummaryBatchResponse {
     )
 )]
 #[axum::debug_handler]
+#[deprecated(note = "summary is deprecated; no CLI or SDK wrapper exists")]
 pub async fn post_summary_batch(
     Extension(state): Extension<Arc<AppState>>,
     Json(req): Json<SummaryBatchRequest>,

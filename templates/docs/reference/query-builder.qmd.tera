@@ -1988,8 +1988,8 @@ final <- combine_builders(id_qb, attr_qb)
 ## Positional reports (Oxford / Ribbon / Painting)
 
 Positional reports compare genomic marker positions across one or more assemblies.
-They POST to `/v3/positional` and require a **v2 feature index** (see
-`feature_index_structure` in `/v3/status`).
+They POST to `/v3/positional` and require a **v2 feature index**; a v1
+index returns an error.
 
 ---
 

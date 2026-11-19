@@ -1,0 +1,11 @@
+{
+  "query": {
+    "index": "taxon",
+    "taxa": ["Mammalia"],
+    "taxon_filter_type": "tree",
+    "rank": "species"
+  },
+  "params": {
+    "taxonomy": "ncbi"
+  }
+}

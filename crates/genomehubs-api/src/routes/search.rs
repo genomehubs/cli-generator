@@ -231,7 +231,7 @@ pub async fn post_search(
                     })
                 }
             };
-            let search_body_input = query_to_body_input(
+            let mut search_body_input = query_to_body_input(
                 "search",
                 &n_query,
                 &params,
@@ -239,6 +239,7 @@ pub async fn post_search(
                 ranks_set.clone(),
                 names_set.clone(),
             );
+            search_body_input.root_taxon_id = state.root_taxon_id().await;
             let body = match genomehubs_query::query_builder::build_search_body(&search_body_input)
             {
                 Ok(b) => b,
@@ -333,7 +334,7 @@ pub async fn post_search(
         }
     };
 
-    let search_body_input = query_to_body_input(
+    let mut search_body_input = query_to_body_input(
         "search",
         &query,
         &params,
@@ -341,6 +342,7 @@ pub async fn post_search(
         ranks_set.clone(),
         names_set.clone(),
     );
+    search_body_input.root_taxon_id = state.root_taxon_id().await;
 
     let mut body = match genomehubs_query::query_builder::build_search_body(&search_body_input) {
         Ok(b) => b,

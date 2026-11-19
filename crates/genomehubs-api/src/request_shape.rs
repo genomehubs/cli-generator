@@ -113,6 +113,9 @@ pub fn query_to_body_input(
         query: taxa_query,
         attributes: attributes_slice,
         rank: query.identifiers.rank.clone(),
+        assemblies: (!query.identifiers.assemblies.is_empty())
+            .then(|| query.identifiers.assemblies.clone()),
+        samples: (!query.identifiers.samples.is_empty()).then(|| query.identifiers.samples.clone()),
         group: Some(group.to_string()),
         fields: fields_slice,
         optional_fields: None, // not currently supported in the API
@@ -127,5 +130,6 @@ pub fn query_to_body_input(
         size,
         offset,
         search_after: params.search_after.clone(),
+        root_taxon_id: None,
     }
 }

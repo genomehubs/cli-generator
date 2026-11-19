@@ -108,3 +108,38 @@ fn pagination_offset() {
         body_str
     );
 }
+
+#[test]
+fn assembly_and_sample_identifiers_reach_body() {
+    let q = make_query(
+        "index: assembly\nassemblies:\n  - GCA_000001405.29\nsamples:\n  - SAMN00000001\n",
+    );
+    let params = default_params();
+    let search_body_input = query_to_body_input("search", &q, &params, None, None, None);
+    let body = build_search_body(&search_body_input).unwrap();
+    let body_str = serde_json::to_string(&body).unwrap();
+    assert!(body_str.contains("\"assembly_id\":[\"GCA_000001405.29\"]"));
+    assert!(body_str.contains("\"sample_id\":[\"SAMN00000001\"]"));
+}
+
+#[test]
+fn rank_only_query_is_not_scoped_to_rank_string() {
+    let q = make_query("index: taxon\nrank: species\n");
+    let params = default_params();
+    let mut search_body_input = query_to_body_input("search", &q, &params, None, None, None);
+    search_body_input.root_taxon_id = Some("1".to_string());
+    let body = build_search_body(&search_body_input).unwrap();
+    let body_str = serde_json::to_string(&body).unwrap();
+    assert!(body_str.contains("\"taxon_id\":\"1\""));
+    assert!(!body_str.contains("\"taxon_id\":\"species\""));
+}
+
+#[test]
+fn rank_only_query_without_discovered_root_is_unscoped() {
+    let q = make_query("index: taxon\nrank: species\n");
+    let params = default_params();
+    let search_body_input = query_to_body_input("search", &q, &params, None, None, None);
+    let body = build_search_body(&search_body_input).unwrap();
+    let body_str = serde_json::to_string(&body).unwrap();
+    assert!(!body_str.contains("\"lineage\""));
+}

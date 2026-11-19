@@ -132,7 +132,8 @@ pub async fn post_count(
             })
         }
     };
-    let search_body_input = query_to_body_input("count", &query, &params, None, None, None);
+    let mut search_body_input = query_to_body_input("count", &query, &params, None, None, None);
+    search_body_input.root_taxon_id = state.root_taxon_id().await;
 
     let mut body = match genomehubs_query::query_builder::build_search_body(&search_body_input) {
         Ok(b) => b,

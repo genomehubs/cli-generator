@@ -40,9 +40,8 @@ __all__ = ["QueryBuilder", "ReportBuilder", "probe_api_capability"]
 def probe_api_capability(api_base: str) -> str:
     """Probe an API base URL and return its capability level.
 
-    Calls ``{api_base}/v3/status``. If the response includes ``/search`` in
-    the ``supported`` list, returns ``"v3"``. Falls back to ``"v2"`` on any
-    error or missing endpoint.
+    Calls ``{api_base}/v3/status``. Returns ``"v3"`` if that endpoint responds,
+    otherwise ``"v2"``.
 
     Args:
         api_base: Base URL of the API, e.g. ``"https://goat.genomehubs.org/api"``.
@@ -50,17 +49,13 @@ def probe_api_capability(api_base: str) -> str:
     Returns:
         ``"v3"`` or ``"v2"``.
     """
-    import json
     import urllib.request
 
     try:
-        with urllib.request.urlopen(f"{api_base}/v3/status", timeout=5) as resp:
-            data = json.loads(resp.read().decode())
-        if "/search" in data.get("supported", []):
+        with urllib.request.urlopen(f"{api_base}/v3/status", timeout=5):
             return "v3"
     except Exception:
-        pass
-    return "v2"
+        return "v2"
 
 
 class QueryBuilder:

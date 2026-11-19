@@ -1,0 +1,7 @@
+{
+  "report": "arc",
+  "feature": "assembly_span>300000000",
+  "reference": "assembly_level",
+  "context": "",
+  "ranks": ["phylum", "class", "order", "family", "genus", "species"]
+}
