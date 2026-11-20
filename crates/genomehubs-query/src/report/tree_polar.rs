@@ -10,6 +10,7 @@ use std::f64::consts::PI;
 
 use serde_json::{json, Map, Value};
 
+use super::tree_category::{category_marks, link_rows, BoxShape};
 use super::tree_layout::{LabelOrientation, TipAlignment, TreeLayoutNode, TreeRenderOptions};
 use super::tree_rect::{
     layout_nodes_from_tree_nodes, leader_path, spread_positions, tip_font_for_row, tip_label,
@@ -108,16 +109,17 @@ fn polar_tree_vega(
         .unwrap_or_else(|| tip_font_for_row(arc_row));
     let centre = (plot_width / 2.0, plot_height / 2.0);
     let label_radius = outer_radius(plot_width, plot_height) + LABEL_OFFSET_PX;
-    let links: Vec<Value> = polar_nodes
-        .iter()
-        .flat_map(|node| [node.arm_path.as_deref(), node.bar_path.as_deref()])
-        .flatten()
-        .map(|path| json!({ "d": path }))
-        .collect();
+    let links = link_rows(&polar_nodes, tree_nodes, options.category_display);
     let (tips, leaders) = polar_tip_marks(tree_nodes, &polar_nodes, centre, label_radius, options);
-    Ok(tree_vega_spec(
-        links, leaders, tips, width, height, title, font_size,
-    ))
+    let mut spec = tree_vega_spec(links, leaders, tips, width, height, title, font_size);
+    category_marks(
+        tree_nodes,
+        &polar_nodes,
+        options.category_display,
+        BoxShape::Sector { centre },
+    )
+    .insert_into(&mut spec);
+    Ok(spec)
 }
 
 /// Tip label anchors and dotted leaders for the leaves of a polar layout.

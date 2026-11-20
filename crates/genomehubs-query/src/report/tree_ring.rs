@@ -12,6 +12,7 @@ use std::f64::consts::{FRAC_PI_2, PI};
 
 use serde_json::{json, Map, Value};
 
+use super::tree_category::node_colour;
 use super::tree_layout::{LabelOrientation, TipAlignment, TreeLayoutNode, TreeRenderOptions};
 use super::tree_polar::{validate_angles, CENTRE_HOLE_PX};
 use super::tree_rect::{layout_nodes_from_tree_nodes, tip_label, topology, PADDING_PX};
@@ -77,7 +78,10 @@ pub fn ring_tree_vega(
     let centre = (plot_width / 2.0, plot_height / 2.0);
     let paths: Vec<Value> = arcs
         .iter()
-        .map(|arc| json!({ "d": arc_path(arc, centre) }))
+        .map(|arc| {
+            let colour = node_colour(tree_nodes, &arc.taxon_id).unwrap_or(RING_FILL);
+            json!({ "d": arc_path(arc, centre), "colour": colour })
+        })
         .collect();
     let font_px = options.font_size.unwrap_or(DEFAULT_RING_FONT_PX);
     let labels = ring_labels(
@@ -387,7 +391,7 @@ fn ring_vega_spec(
                 "from": {"data": "arcs"},
                 "encode": {"enter": {
                     "path": {"field": "d"},
-                    "fill": {"value": RING_FILL},
+                    "fill": {"field": "colour"},
                     "stroke": {"value": RING_LIGHT},
                     "strokeWidth": {"value": RING_BORDER_PX}
                 }}

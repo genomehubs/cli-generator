@@ -55,6 +55,46 @@ impl LabelOrientation {
     }
 }
 
+/// How category labels are drawn on a tree.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum CategoryDisplay {
+    /// Ring arcs are filled with their category colour.
+    #[default]
+    Fill,
+    /// Each categorised node gets a coloured dot.
+    Dot,
+    /// Each branch is coloured by the category of the node it leads to.
+    Branch,
+    /// Each clade of connected nodes sharing a category is enclosed in a coloured box.
+    Box,
+}
+
+impl CategoryDisplay {
+    /// Parse the `category_display` option; a missing value means `"fill"` on ring and `"dot"` elsewhere.
+    ///
+    /// `"fill"` applies to ring layouts only, and `"dot"`, `"branch"`, and `"box"` apply to the other layouts only.
+    pub fn resolve(value: Option<&str>, ring: bool) -> Result<Self, String> {
+        let display = match value {
+            None if ring => Self::Fill,
+            None => Self::Dot,
+            Some("fill") => Self::Fill,
+            Some("dot") => Self::Dot,
+            Some("branch") => Self::Branch,
+            Some("box") => Self::Box,
+            Some(other) => return Err(format!("unknown category_display: {other}")),
+        };
+        match (display, ring) {
+            (Self::Fill, true) | (Self::Dot | Self::Branch | Self::Box, false) => Ok(display),
+            (Self::Fill, false) => {
+                Err("category_display \"fill\" applies to tree_style \"ring\" only".to_string())
+            }
+            (_, true) => {
+                Err("category_display \"ring\" layouts colour arcs with \"fill\" only".to_string())
+            }
+        }
+    }
+}
+
 /// Display options shared by every tree layout.
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct TreeRenderOptions {
@@ -64,6 +104,8 @@ pub struct TreeRenderOptions {
     pub label_orientation: LabelOrientation,
     /// Label font size in pixels; `None` keeps each layout's default size.
     pub font_size: Option<f64>,
+    /// How category labels are drawn; ring uses `Fill`, other layouts use `Dot`, `Branch`, or `Box`.
+    pub category_display: CategoryDisplay,
 }
 
 impl TreeRenderOptions {
@@ -412,6 +454,48 @@ mod tests {
         let nodes = vec![node("a", Some("missing"), None)];
 
         assert!(ultrametric_depths(&nodes).is_err());
+    }
+
+    #[test]
+    fn category_display_defaults_to_fill_on_ring_and_dot_elsewhere() {
+        assert_eq!(
+            CategoryDisplay::resolve(None, true),
+            Ok(CategoryDisplay::Fill)
+        );
+        assert_eq!(
+            CategoryDisplay::resolve(None, false),
+            Ok(CategoryDisplay::Dot)
+        );
+    }
+
+    #[test]
+    fn category_display_accepts_modes_valid_for_the_layout() {
+        assert_eq!(
+            CategoryDisplay::resolve(Some("branch"), false),
+            Ok(CategoryDisplay::Branch)
+        );
+        assert_eq!(
+            CategoryDisplay::resolve(Some("box"), false),
+            Ok(CategoryDisplay::Box)
+        );
+        assert_eq!(
+            CategoryDisplay::resolve(Some("fill"), true),
+            Ok(CategoryDisplay::Fill)
+        );
+    }
+
+    #[test]
+    fn category_display_rejects_modes_for_the_wrong_layout() {
+        assert!(CategoryDisplay::resolve(Some("fill"), false).is_err());
+        assert!(CategoryDisplay::resolve(Some("dot"), true).is_err());
+        assert!(CategoryDisplay::resolve(Some("box"), true).is_err());
+    }
+
+    #[test]
+    fn category_display_rejects_unknown_value() {
+        let err = CategoryDisplay::resolve(Some("stripes"), false).unwrap_err();
+
+        assert!(err.contains("stripes"), "unexpected error: {err}");
     }
 
     proptest! {

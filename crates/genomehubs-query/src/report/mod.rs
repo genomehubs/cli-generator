@@ -12,6 +12,7 @@ pub mod layout;
 pub mod plot_spec;
 pub mod positional;
 pub mod spec_builder;
+pub mod tree_category;
 pub mod tree_layout;
 pub mod tree_polar;
 pub mod tree_rect;
@@ -175,8 +176,10 @@ pub fn plot_spec_to_render_json(input: &str) -> String {
 /// Read the tree display options from `display.tree`; missing values take their defaults.
 ///
 /// `font_size` and `font_scale` are resolved against the canvas. Setting both is an error.
+/// A `category_display` mode that does not suit `style` is also an error.
 fn tree_render_options(
     tree: &serde_json::Value,
+    style: &str,
     width: f64,
     height: f64,
 ) -> Result<tree_layout::TreeRenderOptions, String> {
@@ -191,10 +194,15 @@ fn tree_render_options(
         width,
         height,
     )?;
+    let category_display = tree_layout::CategoryDisplay::resolve(
+        tree.get("category_display").and_then(|v| v.as_str()),
+        style == "ring",
+    )?;
     Ok(tree_layout::TreeRenderOptions {
         alignment,
         label_orientation,
         font_size,
+        category_display,
     })
 }
 
@@ -236,15 +244,23 @@ pub fn plot_spec_to_vega_json(input: &str) -> String {
         .get("start_angle")
         .and_then(|v| v.as_f64())
         .unwrap_or(-90.0);
-    let tree_nodes = spec_val
+    let mut tree_nodes = spec_val
         .pointer("/data/treeNodes")
         .and_then(|v| v.as_object())
         .cloned()
         .unwrap_or_default();
-    let options = match tree_render_options(tree, width as f64, height as f64) {
+    let options = match tree_render_options(tree, style, width as f64, height as f64) {
         Ok(options) => options,
         Err(e) => return serde_json::json!({"error": e}).to_string(),
     };
+    let legend = tree_category::annotate_category_colours(
+        &mut tree_nodes,
+        spec_val.pointer("/data/catBounds"),
+    );
+    let legend_title = spec_val
+        .pointer("/data/catBounds/field")
+        .and_then(|v| v.as_str())
+        .unwrap_or("category");
     let rendered = match style {
         "rect" => tree_rect::rect_tree_vega(&tree_nodes, width, height, title, options),
         "circ" => tree_polar::circ_tree_vega(
@@ -271,7 +287,10 @@ pub fn plot_spec_to_vega_json(input: &str) -> String {
         other => Err(format!("unknown tree_style: {other}")),
     };
     match rendered {
-        Ok(spec) => spec.to_string(),
+        Ok(mut spec) => {
+            tree_category::add_category_legend(&mut spec, &legend, legend_title);
+            spec.to_string()
+        }
         Err(e) => serde_json::json!({"error": e}).to_string(),
     }
 }

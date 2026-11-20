@@ -802,8 +802,12 @@ pub async fn run_tree_report(
 
     // --- Cat axis: resolve full AxisSpec + bounds (same pipeline as histogram) ---
     let cat_spec_opt = resolve_axis_spec(AxisRole::Cat, report_config, state).await;
-    let cat_bounds_opt = if let Some(ref cat_spec) = cat_spec_opt {
-        Some(
+    // Rank categories are labelled from tree node names, so they skip attribute bounds.
+    let cat_is_rank = cat_spec_opt
+        .as_ref()
+        .is_some_and(|spec| matches!(spec.value_type, ValueType::TaxonRank));
+    let cat_bounds_opt = match cat_spec_opt.as_ref() {
+        Some(cat_spec) if !cat_is_rank => Some(
             compute_bounds(
                 &state.client,
                 &state.es_base,
@@ -813,15 +817,19 @@ pub async fn run_tree_report(
                 &state.cache,
             )
             .await?,
-        )
-    } else {
-        None
+        ),
+        _ => None,
     };
     let cat_field: Option<String> = cat_spec_opt.as_ref().map(|s| s.field.clone());
     let cat_labels: Vec<String> = cat_bounds_opt
         .as_ref()
-        .map(|b| b.cat_labels.clone())
+        .map(|b| fold_case_labels(&b.cat_labels))
         .unwrap_or_default();
+    let attr_cat_field: Option<&str> = if cat_is_rank {
+        None
+    } else {
+        cat_field.as_deref()
+    };
 
     // --- Optional propagation rank for cat labels ---
     let cat_rank: Option<String> = report_config
@@ -907,7 +915,7 @@ pub async fn run_tree_report(
                     src,
                     &lca_id,
                     &tree_field_specs,
-                    cat_field.as_deref(),
+                    attr_cat_field,
                     &cat_labels,
                     &mut tree_nodes,
                     &mut direct_results,
@@ -976,7 +984,10 @@ pub async fn run_tree_report(
         None
     };
 
-    // --- Step 4: Propagate cat labels up to cat_rank ancestors ---
+    // --- Step 4: Assign rank categories, then propagate cat labels up to cat_rank ancestors ---
+    if let Some(rank) = cat_field.as_deref().filter(|_| cat_is_rank) {
+        apply_rank_categories(&mut tree_nodes, &lca_id, rank);
+    }
     if let Some(ref rank) = cat_rank {
         propagate_cat_to_rank(&mut tree_nodes, &lca_id, rank);
     }
@@ -1026,6 +1037,8 @@ pub async fn run_tree_report(
     let (max_depth, min_depth) = compute_tree_depths(&tree_nodes, &lca_id);
 
     // --- Step 9: Build response ---
+    let rank_cat_labels: Option<Vec<String>> =
+        cat_is_rank.then(|| distinct_cat_labels(&tree_nodes));
     let lca = json!({
         "taxon_id": lca_id,
         "scientific_name": lca_name,
@@ -1054,11 +1067,18 @@ pub async fn run_tree_report(
     });
 
     // Include catBounds in the response when a cat axis was resolved
-    if let (Some(cat_spec), Some(cat_bounds)) = (&cat_spec_opt, &cat_bounds_opt) {
+    if let (Some(cat_spec), Some(labels)) = (&cat_spec_opt, &rank_cat_labels) {
+        report_data["catBounds"] = json!({
+            "field": cat_spec.field,
+            "domain": labels,
+            "labels": labels,
+            "scale": "ordinal"
+        });
+    } else if let (Some(cat_spec), Some(cat_bounds)) = (&cat_spec_opt, &cat_bounds_opt) {
         report_data["catBounds"] = json!({
             "field": cat_spec.field,
             "domain": cat_bounds.domain,
-            "labels": cat_bounds.cat_labels,
+            "labels": fold_case_labels(&cat_bounds.cat_labels),
             "scale": format!("{:?}", cat_spec.opts.scale).to_lowercase()
         });
     }
@@ -1133,7 +1153,7 @@ pub async fn run_map_report(
     let cat_field: Option<String> = cat_spec_opt.as_ref().map(|s| s.field.clone());
     let cat_labels: Vec<String> = cat_bounds_opt
         .as_ref()
-        .map(|b| b.cat_labels.clone())
+        .map(|b| fold_case_labels(&b.cat_labels))
         .unwrap_or_default();
 
     // --- Step 1: Count taxa that have location data ---
@@ -1318,7 +1338,7 @@ pub async fn run_map_report(
     if let (Some(ref spec), Some(ref bounds)) = (cat_spec_opt, cat_bounds_opt) {
         report_data["catBounds"] = json!({
             "field": spec.field,
-            "labels": bounds.cat_labels,
+            "labels": fold_case_labels(&bounds.cat_labels),
             "domain": bounds.domain,
             "scale": "linear"
         });
@@ -2050,8 +2070,11 @@ fn resolve_cat_label(src: &Value, cat_field: &str, cat_labels: &[String]) -> Opt
         }
         // Try keyword value first (direct label match)
         if let Some(kw) = attr.get("keyword_value").and_then(|v| v.as_str()) {
-            // Direct match in cat_labels
-            if let Some(label) = cat_labels.iter().find(|l| l.as_str() == kw) {
+            // Direct match in cat_labels, ignoring case
+            if let Some(label) = cat_labels
+                .iter()
+                .find(|l| l.to_lowercase() == kw.to_lowercase())
+            {
                 return Some(label.clone());
             }
             // Fall through to "other" if present
@@ -2074,6 +2097,16 @@ fn resolve_cat_label(src: &Value, cat_field: &str, cat_labels: &[String]) -> Opt
         return cat_labels.first().cloned();
     }
     None
+}
+
+/// Keeps the first spelling of each case-insensitive label group, so the most frequent term wins.
+fn fold_case_labels(labels: &[String]) -> Vec<String> {
+    let mut seen: std::collections::HashSet<String> = std::collections::HashSet::new();
+    labels
+        .iter()
+        .filter(|label| seen.insert(label.to_lowercase()))
+        .cloned()
+        .collect()
 }
 
 /// Propagate cat labels from ancestors at `cat_rank` down to unlabelled descendants.
@@ -2141,6 +2174,43 @@ fn propagate_cat_to_rank(
             queue.push_back((child, propagate.clone()));
         }
     }
+}
+
+/// Assigns each node at `cat_rank` its scientific name as its category, then propagates it down.
+///
+/// Nodes above `cat_rank` and nodes without a scientific name stay uncategorised.
+fn apply_rank_categories(
+    tree_nodes: &mut std::collections::BTreeMap<String, serde_json::Map<String, Value>>,
+    lca_id: &str,
+    cat_rank: &str,
+) {
+    for node in tree_nodes.values_mut() {
+        if node.get("taxon_rank").and_then(|v| v.as_str()) != Some(cat_rank) {
+            continue;
+        }
+        let Some(name) = node
+            .get("scientific_name")
+            .and_then(|v| v.as_str())
+            .filter(|name| !name.is_empty())
+            .map(str::to_string)
+        else {
+            continue;
+        };
+        node.insert("cat".to_string(), json!(name));
+    }
+    propagate_cat_to_rank(tree_nodes, lca_id, cat_rank);
+}
+
+/// Returns the sorted distinct `cat` values present on the tree nodes.
+fn distinct_cat_labels(
+    tree_nodes: &std::collections::BTreeMap<String, serde_json::Map<String, Value>>,
+) -> Vec<String> {
+    let labels: std::collections::BTreeSet<String> = tree_nodes
+        .values()
+        .filter_map(|node| node.get("cat").and_then(|v| v.as_str()))
+        .map(str::to_string)
+        .collect();
+    labels.into_iter().collect()
 }
 
 /// Remove monotypic internal nodes (nodes with exactly one child whose rank
@@ -3424,5 +3494,68 @@ mod tests {
     fn parse_tree_y_axes_rejects_entry_missing_field() {
         let report = config("axes:\n  - {position: y}\n");
         assert!(parse_tree_y_axes(&report).is_err());
+    }
+
+    fn tree_from_json(
+        value: Value,
+    ) -> std::collections::BTreeMap<String, serde_json::Map<String, Value>> {
+        serde_json::from_value(value).expect("valid tree fixture")
+    }
+
+    #[test]
+    fn apply_rank_categories_labels_rank_nodes_and_propagates_down() {
+        let mut tree = tree_from_json(json!({
+            "root": {"taxon_rank": "order", "scientific_name": "Carnivora", "children": {"fam": {}}},
+            "fam": {"taxon_rank": "family", "scientific_name": "Canidae", "children": {"gen": {}}},
+            "gen": {"taxon_rank": "genus", "scientific_name": "Canis", "children": {}}
+        }));
+        apply_rank_categories(&mut tree, "root", "family");
+        assert!(!tree["root"].contains_key("cat"));
+        assert_eq!(tree["fam"]["cat"], "Canidae");
+        assert_eq!(tree["gen"]["cat"], "Canidae");
+    }
+
+    #[test]
+    fn apply_rank_categories_skips_rank_nodes_without_name() {
+        let mut tree = tree_from_json(json!({
+            "root": {"taxon_rank": "family", "scientific_name": "", "children": {"gen": {}}},
+            "gen": {"taxon_rank": "genus", "scientific_name": "Canis", "children": {}}
+        }));
+        apply_rank_categories(&mut tree, "root", "family");
+        assert!(!tree["root"].contains_key("cat"));
+        assert!(!tree["gen"].contains_key("cat"));
+    }
+
+    #[test]
+    fn distinct_cat_labels_are_sorted_and_unique() {
+        let tree = tree_from_json(json!({
+            "a": {"cat": "Felidae"},
+            "b": {"cat": "Canidae"},
+            "c": {"cat": "Felidae"},
+            "d": {}
+        }));
+        assert_eq!(distinct_cat_labels(&tree), vec!["Canidae", "Felidae"]);
+    }
+
+    #[test]
+    fn fold_case_labels_keeps_first_spelling_of_each_group() {
+        let labels = vec![
+            "scaffold".to_string(),
+            "Scaffold".to_string(),
+            "contig".to_string(),
+        ];
+        assert_eq!(fold_case_labels(&labels), vec!["scaffold", "contig"]);
+    }
+
+    #[test]
+    fn resolve_cat_label_matches_keyword_ignoring_case() {
+        let src = json!({
+            "attributes": [{"key": "assembly_level", "keyword_value": "Scaffold"}]
+        });
+        let labels = vec!["scaffold".to_string(), "contig".to_string()];
+        assert_eq!(
+            resolve_cat_label(&src, "assembly_level", &labels),
+            Some("scaffold".to_string())
+        );
     }
 }

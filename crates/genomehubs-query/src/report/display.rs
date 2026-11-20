@@ -197,6 +197,8 @@ pub struct TreeOptions {
     pub font_size: Option<f64>,
     /// Label font size as a share of the shorter canvas side for tree layouts. Set at most one of `font_size` and `font_scale`.
     pub font_scale: Option<f64>,
+    /// How the category axis is drawn: `"fill"` (ring arcs only, default for `"ring"`), `"dot"` (dot on each node, default elsewhere), `"branch"` (branch coloured by its node's category), or `"box"` (box around each clade sharing a category). `"fill"` is only valid for `"ring"`; the other modes are only valid for the other styles.
+    pub category_display: Option<String>,
     /// Hide source colour bars on tree nodes.
     pub hide_source_colors: Option<bool>,
     /// Hide error bars on tree node summary boxes.

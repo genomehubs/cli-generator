@@ -1,5 +1,8 @@
 {
   "report": "tree",
   "rank": "genus",
-  "axes": [{ "position": "y", "field": "genome_size" }]
+  "axes": [
+    { "position": "y", "field": "genome_size" },
+    { "position": "cat", "field": "assembly_level" }
+  ]
 }

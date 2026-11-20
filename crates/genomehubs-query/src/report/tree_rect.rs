@@ -9,6 +9,7 @@ use std::collections::HashMap;
 
 use serde_json::{json, Map, Value};
 
+use super::tree_category::{category_marks, link_rows, parent_by_child, BoxShape};
 use super::tree_layout::{
     cumulative_depths, tip_aligned_depths, ultrametric_depths, TipAlignment, TreeLayoutNode,
     TreeRenderOptions,
@@ -105,14 +106,7 @@ pub fn tip_font_size(height: f64, leaf_count: usize) -> f64 {
 ///
 /// A node's optional numeric `branch_length` is used as its edge length.
 pub fn layout_nodes_from_tree_nodes(tree_nodes: &Map<String, Value>) -> Vec<TreeLayoutNode> {
-    let mut parent_of: HashMap<&str, &str> = HashMap::new();
-    for (parent_id, node) in tree_nodes {
-        if let Some(kids) = node.get("children").and_then(Value::as_object) {
-            for child_id in kids.keys() {
-                parent_of.insert(child_id.as_str(), parent_id.as_str());
-            }
-        }
-    }
+    let parent_of = parent_by_child(tree_nodes);
     tree_nodes
         .iter()
         .map(|(taxon_id, node)| TreeLayoutNode {
@@ -147,16 +141,17 @@ pub fn rect_tree_vega(
     let font_size = options
         .font_size
         .unwrap_or_else(|| tip_font_size(plot_height, leaf_count));
-    let links: Vec<Value> = rect_nodes
-        .iter()
-        .flat_map(|node| [node.arm_path.as_deref(), node.bar_path.as_deref()])
-        .flatten()
-        .map(|path| json!({ "d": path }))
-        .collect();
+    let links = link_rows(&rect_nodes, tree_nodes, options.category_display);
     let (tips, leaders) = rect_tip_marks(tree_nodes, &rect_nodes, plot_width, options.alignment);
-    Ok(tree_vega_spec(
-        links, leaders, tips, width, height, title, font_size,
-    ))
+    let mut spec = tree_vega_spec(links, leaders, tips, width, height, title, font_size);
+    category_marks(
+        tree_nodes,
+        &rect_nodes,
+        options.category_display,
+        BoxShape::Rect,
+    )
+    .insert_into(&mut spec);
+    Ok(spec)
 }
 
 /// Tip label anchors and dotted leaders for the leaves of a rectangular layout.
@@ -225,7 +220,7 @@ pub(super) fn tree_vega_spec(
                 "from": {"data": "links"},
                 "encode": {"enter": {
                     "path": {"field": "d"},
-                    "stroke": {"value": "#555555"},
+                    "stroke": {"field": "colour"},
                     "strokeWidth": {"value": 1}
                 }}
             },
