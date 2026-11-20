@@ -12,6 +12,7 @@ use cli_generator::cli_meta;
 use cli_generator::commands;
 use cli_generator::core::config::{RuntimeConfig, SitePresetRegistry};
 use cli_generator::core::metadata::MetadataOptions;
+use cli_generator::core::report_document::resolve_report_request;
 use cli_generator::core::runtime_query::{
     apply_overrides, parse_taxon_filter, phylopic_request, resolve_result_index, v3_query_input,
     v3_query_input_from_v2, LookupRequest, MetadataRequest, PhylopicFilter, PlotOptions,
@@ -369,8 +370,13 @@ enum Commands {
         query: QueryArgs,
 
         /// Report config YAML, e.g. `report: histogram`. File path or inline YAML.
-        #[arg(long = "report-yaml", value_name = "YAML")]
-        report_yaml: String,
+        /// May be omitted when `--query-yaml` is a combined document with a `report` key.
+        #[arg(
+            long = "report-yaml",
+            value_name = "YAML",
+            required_unless_present = "query_yaml"
+        )]
+        report_yaml: Option<String>,
 
         #[command(flatten)]
         plot: PlotArgs,
@@ -625,18 +631,25 @@ fn run(cli: Cli) -> anyhow::Result<()> {
             report_yaml,
             plot,
         } => {
+            let resolved =
+                resolve_report_request(query.query_yaml.as_deref(), report_yaml.as_deref())?;
+            query.query_yaml = resolved.query_yaml;
             if query.taxon_filter.is_none() && !query.taxa.is_empty() {
                 // A name match only hits the taxon itself, so reports default to descendants.
                 query.taxon_filter = Some("tree".to_string());
             }
             let context = QueryContext::from_args(&cli.runtime)?;
             let input = query.into_input(&context.runtime)?;
-            let options = PlotOptions::from_flags(plot.include_plot_spec, plot.display.as_deref())?;
+            let mut options = PlotOptions::from_flags(
+                plot.include_plot_spec || resolved.include_plot_spec,
+                plot.display.as_deref(),
+            )?;
+            options.display = options.display.or(resolved.display);
             commands::report::run(
                 &context.runtime,
                 &context.registry,
                 &input,
-                &report_yaml,
+                &resolved.report_yaml,
                 &options,
             )
         }

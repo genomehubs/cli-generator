@@ -15,5 +15,6 @@ pub mod config;
 pub mod fetch;
 pub mod metadata;
 pub mod query;
+pub mod report_document;
 pub mod runtime_query;
 pub mod snippet;

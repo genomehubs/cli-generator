@@ -388,7 +388,7 @@ pub fn plot_spec_to_vega_lite_json(input: &str) -> String {
     crate::report::plot_spec_to_vega_lite_json(input)
 }
 
-/// Convert a `PlotSpec` JSON string into a render specification: Vega v5 for tree reports, Vega-Lite otherwise.
+/// Convert a `PlotSpec` JSON string into a render specification: Vega v6 for tree reports, Vega-Lite otherwise.
 ///
 /// Returns the spec JSON as a string, or `{"error":"..."}` on failure.
 pub fn plot_spec_to_render_json(input: &str) -> String {

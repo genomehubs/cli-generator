@@ -185,6 +185,12 @@ pub struct MapOptions {
 pub struct TreeOptions {
     /// Tree layout style: `"rect"` (default), `"circ"` (circular), `"radial"`.
     pub tree_style: Option<String>,
+    /// Arc span in degrees for `"circ"` layouts (default: `360.0`, range `(0, 360]`). Ignored for `"radial"`.
+    pub total_angle: Option<f64>,
+    /// Angle in degrees of the first tip for `"circ"` and `"radial"` layouts, measured clockwise from 3 o'clock (default: `-90.0`, 12 o'clock).
+    pub start_angle: Option<f64>,
+    /// Tip placement for all layouts: `"none"` (default, branch lengths set depth), `"tips"` (ignore branch lengths so all tips align), `"ultrametric"` (keep branch lengths, extend terminal branches so all tips align), or `"labels"` (keep branch lengths, align labels in a column with dotted leaders).
+    pub tip_alignment: Option<String>,
     /// Hide source colour bars on tree nodes.
     pub hide_source_colors: Option<bool>,
     /// Hide error bars on tree node summary boxes.
@@ -391,6 +397,14 @@ mod tests {
         assert_eq!(tree.hide_ancestral_bars, Some(true));
         assert_eq!(tree.show_phylopics, Some(true));
         assert_eq!(tree.phylopic_rank.as_deref(), Some("class"));
+    }
+
+    #[test]
+    fn tree_options_tip_alignment_round_trip() {
+        let yaml = "tree:\n  tip_alignment: labels\n";
+        let spec: DisplaySpec = serde_yaml::from_str(yaml).unwrap();
+        let tree = spec.tree.as_ref().unwrap();
+        assert_eq!(tree.tip_alignment.as_deref(), Some("labels"));
     }
 
     #[test]

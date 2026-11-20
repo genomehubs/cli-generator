@@ -5,7 +5,34 @@
 //! not used. A missing length counts as 1.0, which makes an all-default tree report
 //! hop counts.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
+
+/// How tip positions are chosen for a tree report.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum TipAlignment {
+    /// Depths follow branch lengths and tip labels sit at their tips.
+    #[default]
+    None,
+    /// Branch lengths are ignored and every tip sits at the same depth.
+    Tips,
+    /// Branch lengths are kept and tip labels sit in a column joined by dotted leaders.
+    Labels,
+    /// Branch lengths are kept and terminal branches extend so all tips share one depth.
+    Ultrametric,
+}
+
+impl TipAlignment {
+    /// Parse the `tip_alignment` display option; a missing value means `None`.
+    pub fn parse(value: Option<&str>) -> Result<Self, String> {
+        match value {
+            None | Some("none") => Ok(Self::None),
+            Some("tips") => Ok(Self::Tips),
+            Some("labels") => Ok(Self::Labels),
+            Some("ultrametric") => Ok(Self::Ultrametric),
+            Some(other) => Err(format!("unknown tip_alignment: {other}")),
+        }
+    }
+}
 
 /// One node of a tree to lay out.
 #[derive(Debug, Clone, PartialEq)]
@@ -36,6 +63,67 @@ pub fn cumulative_depths(nodes: &[TreeLayoutNode]) -> Result<HashMap<String, f64
             Ok((node.taxon_id.clone(), depth_from_root(node, &by_id)?))
         })
         .collect()
+}
+
+/// Compute tip-aligned depths that ignore branch lengths, keyed by `taxon_id`.
+///
+/// Each node sits at `max_height - height`, where `height` is the most hops from
+/// the node down to a tip. Every tip therefore shares the maximum depth, and
+/// shorter internal branches stretch to reach it.
+pub fn tip_aligned_depths(nodes: &[TreeLayoutNode]) -> Result<HashMap<String, f64>, String> {
+    let hop_nodes: Vec<TreeLayoutNode> = nodes
+        .iter()
+        .map(|node| TreeLayoutNode {
+            branch_length: None,
+            ..node.clone()
+        })
+        .collect();
+    let hop_depths = cumulative_depths(&hop_nodes)?;
+    let mut deepest_first: Vec<&TreeLayoutNode> = nodes.iter().collect();
+    deepest_first.sort_by(|a, b| hop_depths[&b.taxon_id].total_cmp(&hop_depths[&a.taxon_id]));
+    let mut heights: HashMap<&str, f64> = nodes
+        .iter()
+        .map(|node| (node.taxon_id.as_str(), 0.0))
+        .collect();
+    // Every child is strictly deeper than its parent, so children settle before their parent reads them.
+    for node in deepest_first {
+        let Some(parent_id) = node.parent_id.as_deref() else {
+            continue;
+        };
+        let candidate = heights[node.taxon_id.as_str()] + 1.0;
+        if let Some(parent_height) = heights.get_mut(parent_id) {
+            *parent_height = parent_height.max(candidate);
+        }
+    }
+    let max_height = heights.values().copied().fold(0.0, f64::max);
+    Ok(heights
+        .into_iter()
+        .map(|(taxon_id, height)| (taxon_id.to_string(), max_height - height))
+        .collect())
+}
+
+/// Compute cumulative depths with every tip extended to the deepest tip's depth.
+///
+/// Internal nodes keep their cumulative depth; only terminal branches are lengthened.
+pub fn ultrametric_depths(nodes: &[TreeLayoutNode]) -> Result<HashMap<String, f64>, String> {
+    let mut depths = cumulative_depths(nodes)?;
+    let parent_ids: HashSet<&str> = nodes
+        .iter()
+        .filter_map(|node| node.parent_id.as_deref())
+        .collect();
+    let tip_ids: Vec<&str> = nodes
+        .iter()
+        .map(|node| node.taxon_id.as_str())
+        .filter(|taxon_id| !parent_ids.contains(taxon_id))
+        .collect();
+    let deepest_tip = tip_ids
+        .iter()
+        .map(|taxon_id| depths[*taxon_id])
+        .fold(0.0, f64::max);
+    for taxon_id in tip_ids {
+        depths.insert(taxon_id.to_string(), deepest_tip);
+    }
+    Ok(depths)
 }
 
 /// Sum edge lengths from `start` up to the root.
@@ -152,6 +240,74 @@ mod tests {
         let err = cumulative_depths(&nodes).unwrap_err();
 
         assert!(err.contains("cycle"), "unexpected error: {err}");
+    }
+
+    #[test]
+    fn tip_alignment_parses_known_values_and_rejects_others() {
+        assert_eq!(TipAlignment::parse(None), Ok(TipAlignment::None));
+        assert_eq!(TipAlignment::parse(Some("none")), Ok(TipAlignment::None));
+        assert_eq!(TipAlignment::parse(Some("tips")), Ok(TipAlignment::Tips));
+        assert_eq!(
+            TipAlignment::parse(Some("labels")),
+            Ok(TipAlignment::Labels)
+        );
+        assert_eq!(
+            TipAlignment::parse(Some("ultrametric")),
+            Ok(TipAlignment::Ultrametric)
+        );
+        assert!(TipAlignment::parse(Some("sideways")).is_err());
+    }
+
+    #[test]
+    fn tip_aligned_depths_ignore_branch_lengths_and_stretch_internal_nodes() {
+        let nodes = vec![
+            node("root", None, None),
+            TreeLayoutNode {
+                taxon_id: "a".to_string(),
+                parent_id: Some("root".to_string()),
+                branch_length: Some(5.0),
+            },
+            node("a1", Some("a"), Some(1.0)),
+            node("b", Some("root"), Some(1.0)),
+        ];
+
+        let depths = tip_aligned_depths(&nodes).unwrap();
+
+        assert_eq!(depths["root"], 0.0);
+        assert_eq!(depths["a"], 1.0);
+        assert_eq!(depths["a1"], 2.0);
+        assert_eq!(depths["b"], 2.0);
+    }
+
+    #[test]
+    fn tip_aligned_depths_reject_invalid_tree() {
+        let nodes = vec![node("a", Some("missing"), None)];
+
+        assert!(tip_aligned_depths(&nodes).is_err());
+    }
+
+    #[test]
+    fn ultrametric_extends_only_terminal_branches() {
+        let nodes = vec![
+            node("root", None, None),
+            node("a", Some("root"), Some(5.0)),
+            node("a1", Some("a"), Some(1.0)),
+            node("b", Some("root"), Some(1.0)),
+        ];
+
+        let depths = ultrametric_depths(&nodes).unwrap();
+
+        assert_eq!(depths["root"], 0.0);
+        assert_eq!(depths["a"], 5.0);
+        assert_eq!(depths["a1"], 6.0);
+        assert_eq!(depths["b"], 6.0);
+    }
+
+    #[test]
+    fn ultrametric_depths_reject_invalid_tree() {
+        let nodes = vec![node("a", Some("missing"), None)];
+
+        assert!(ultrametric_depths(&nodes).is_err());
     }
 
     proptest! {

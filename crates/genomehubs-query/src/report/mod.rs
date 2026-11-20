@@ -13,6 +13,7 @@ pub mod plot_spec;
 pub mod positional;
 pub mod spec_builder;
 pub mod tree_layout;
+pub mod tree_polar;
 pub mod tree_rect;
 
 pub use axis::{
@@ -161,7 +162,7 @@ pub fn report_yaml_from_url_params(url: &str) -> Result<(String, String, String)
 
 /// Convert a `PlotSpec` JSON string into a render specification.
 ///
-/// Tree reports produce Vega v5 via [`plot_spec_to_vega_json`]; all other reports
+/// Tree reports produce Vega v6 via [`plot_spec_to_vega_json`]; all other reports
 /// produce Vega-Lite v6 via [`plot_spec_to_vega_lite_json`].
 pub fn plot_spec_to_render_json(input: &str) -> String {
     match report_type_of(input).as_deref() {
@@ -170,11 +171,18 @@ pub fn plot_spec_to_render_json(input: &str) -> String {
     }
 }
 
-/// Convert a tree `PlotSpec` JSON string into a Vega v5 specification JSON string.
+/// Read `display.tree.tip_alignment`; a missing value means `"none"`.
+fn tip_alignment_option(tree: &serde_json::Value) -> Result<tree_layout::TipAlignment, String> {
+    tree_layout::TipAlignment::parse(tree.get("tip_alignment").and_then(|v| v.as_str()))
+}
+
+/// Convert a tree `PlotSpec` JSON string into a Vega v6 specification JSON string.
 ///
-/// Lays out `data.treeNodes` as a rectangular cladogram via [`tree_rect::rect_tree_vega`].
+/// Chooses the layout from `display.tree`: `tree_style` is `"rect"` (default), `"circ"`, or `"radial"`.
+/// `total_angle` (default `360.0`) and `start_angle` (default `-90.0`) apply to `"circ"` and `"radial"`.
+/// `tip_alignment` is `"none"` (default), `"tips"`, `"ultrametric"`, or `"labels"`, and applies to every style.
 /// A spec without `treeNodes` yields an empty tree sized from `display`.
-/// Returns an error JSON on failure.
+/// Returns an error JSON on failure, including an unknown `tree_style`.
 pub fn plot_spec_to_vega_json(input: &str) -> String {
     let parsed: serde_json::Value = match serde_json::from_str(input) {
         Ok(v) => v,
@@ -191,12 +199,45 @@ pub fn plot_spec_to_vega_json(input: &str) -> String {
         .and_then(|v| v.as_u64())
         .unwrap_or(400);
     let title = display.get("title").and_then(|v| v.as_str());
+    let tree = display.get("tree").unwrap_or(&serde_json::Value::Null);
+    let style = tree
+        .get("tree_style")
+        .and_then(|v| v.as_str())
+        .unwrap_or("rect");
+    let total_angle = tree
+        .get("total_angle")
+        .and_then(|v| v.as_f64())
+        .unwrap_or(360.0);
+    let start_angle = tree
+        .get("start_angle")
+        .and_then(|v| v.as_f64())
+        .unwrap_or(-90.0);
     let tree_nodes = spec_val
         .pointer("/data/treeNodes")
         .and_then(|v| v.as_object())
         .cloned()
         .unwrap_or_default();
-    match tree_rect::rect_tree_vega(&tree_nodes, width, height, title) {
+    let alignment = match tip_alignment_option(tree) {
+        Ok(alignment) => alignment,
+        Err(e) => return serde_json::json!({"error": e}).to_string(),
+    };
+    let rendered = match style {
+        "rect" => tree_rect::rect_tree_vega(&tree_nodes, width, height, title, alignment),
+        "circ" => tree_polar::circ_tree_vega(
+            &tree_nodes,
+            width,
+            height,
+            title,
+            total_angle,
+            start_angle,
+            alignment,
+        ),
+        "radial" => {
+            tree_polar::radial_tree_vega(&tree_nodes, width, height, title, start_angle, alignment)
+        }
+        other => Err(format!("unknown tree_style: {other}")),
+    };
+    match rendered {
         Ok(spec) => spec.to_string(),
         Err(e) => serde_json::json!({"error": e}).to_string(),
     }
@@ -3138,7 +3179,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn render_dispatch_sends_tree_to_vega_v5() {
+    fn render_dispatch_sends_tree_to_vega_v6() {
         let spec = serde_json::json!({
             "report_type": "tree",
             "display": {"title": "Tree", "width": 800}
@@ -3147,9 +3188,84 @@ mod tests {
         let out: serde_json::Value =
             serde_json::from_str(&plot_spec_to_render_json(&spec.to_string())).unwrap();
 
-        assert_eq!(out["$schema"], "https://vega.github.io/schema/vega/v5.json");
+        assert_eq!(out["$schema"], "https://vega.github.io/schema/vega/v6.json");
         assert_eq!(out["width"], 800);
         assert_eq!(out["title"]["text"], "Tree");
+    }
+
+    #[test]
+    fn render_dispatch_defaults_tree_to_rect_layout() {
+        let out = tree_vega_for(serde_json::json!({}));
+        let links = out["data"][0]["values"].as_array().unwrap();
+        assert!(links
+            .iter()
+            .all(|link| !link["d"].as_str().unwrap().contains('A')));
+        assert!(links
+            .iter()
+            .any(|link| link["d"].as_str().unwrap().contains('H')));
+    }
+
+    #[test]
+    fn render_dispatch_routes_circ_style_to_arcs() {
+        let out = tree_vega_for(serde_json::json!({"tree_style": "circ"}));
+        let links = out["data"][0]["values"].as_array().unwrap();
+        assert!(links
+            .iter()
+            .any(|link| link["d"].as_str().unwrap().contains('A')));
+    }
+
+    #[test]
+    fn render_dispatch_routes_radial_style_to_rays() {
+        let out = tree_vega_for(serde_json::json!({"tree_style": "radial"}));
+        let links = out["data"][0]["values"].as_array().unwrap();
+        assert!(!links.is_empty());
+        assert!(links
+            .iter()
+            .all(|link| !link["d"].as_str().unwrap().contains('A')));
+    }
+
+    #[test]
+    fn render_dispatch_rejects_unknown_tree_style() {
+        let out = tree_vega_for(serde_json::json!({"tree_style": "spiral"}));
+        assert!(out["error"]
+            .as_str()
+            .unwrap()
+            .contains("unknown tree_style"));
+    }
+
+    #[test]
+    fn render_dispatch_rejects_unknown_tip_alignment() {
+        let out = tree_vega_for(serde_json::json!({"tip_alignment": "sideways"}));
+        assert!(out["error"]
+            .as_str()
+            .unwrap()
+            .contains("unknown tip_alignment"));
+    }
+
+    #[test]
+    fn render_dispatch_accepts_tip_alignment_for_every_style() {
+        for style in ["rect", "circ", "radial"] {
+            let out =
+                tree_vega_for(serde_json::json!({"tree_style": style, "tip_alignment": "labels"}));
+            assert!(out.get("error").is_none(), "{style}: {out}");
+            assert_eq!(out["data"][2]["name"], "leaders");
+        }
+    }
+
+    /// Render a nested tree whose `display.tree` object is `tree`.
+    fn tree_vega_for(tree: serde_json::Value) -> serde_json::Value {
+        let spec = serde_json::json!({
+            "report_type": "tree",
+            "display": {"width": 800, "height": 600, "tree": tree},
+            "data": {"treeNodes": {
+                "r": {"children": {"a": {}, "b": {}}},
+                "a": {"children": {"a1": {}, "a2": {}}, "branch_length": 1.0},
+                "a1": {"scientific_name": "A1", "branch_length": 1.0},
+                "a2": {"scientific_name": "A2", "branch_length": 1.0},
+                "b": {"scientific_name": "B", "branch_length": 1.0}
+            }}
+        });
+        serde_json::from_str(&plot_spec_to_render_json(&spec.to_string())).unwrap()
     }
 
     #[test]
@@ -3159,7 +3275,7 @@ mod tests {
         let out: serde_json::Value =
             serde_json::from_str(&plot_spec_to_render_json(&envelope.to_string())).unwrap();
 
-        assert_eq!(out["$schema"], "https://vega.github.io/schema/vega/v5.json");
+        assert_eq!(out["$schema"], "https://vega.github.io/schema/vega/v6.json");
     }
 
     #[test]

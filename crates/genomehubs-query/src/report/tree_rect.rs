@@ -1,4 +1,4 @@
-//! Rectangular cladogram geometry and Vega v5 marks for tree reports.
+//! Rectangular cladogram geometry and Vega v6 marks for tree reports.
 //!
 //! Horizontal position is the cumulative branch length scaled across the plot
 //! area, so default lengths give hop depth. Tips share the vertical range evenly
@@ -9,12 +9,16 @@ use std::collections::HashMap;
 
 use serde_json::{json, Map, Value};
 
-use super::tree_layout::{cumulative_depths, TreeLayoutNode};
+use super::tree_layout::{
+    cumulative_depths, tip_aligned_depths, ultrametric_depths, TipAlignment, TreeLayoutNode,
+};
 
 /// Share of the plot width reserved on the right for tip labels.
 const TIP_LABEL_FRACTION: f64 = 0.25;
 /// Pixel margin between the plot edge and the outermost root, tips, and label band.
-const PADDING_PX: f64 = 10.0;
+pub(super) const PADDING_PX: f64 = 10.0;
+/// Pixel gap between a leaf and its tip label.
+pub(super) const LABEL_OFFSET_PX: f64 = 4.0;
 /// Smallest tip label font size in pixels; keeps the spec valid when rows are very tight.
 const MIN_TIP_FONT_PX: f64 = 1.0;
 /// Largest tip label font size in pixels.
@@ -24,7 +28,7 @@ const TIP_ROW_FILL: f64 = 0.8;
 
 /// Pixel geometry for one node of a rectangular cladogram.
 #[derive(Debug, Clone, PartialEq)]
-pub struct RectNode {
+pub struct LayoutNode {
     /// Taxon identifier.
     pub taxon_id: String,
     /// Horizontal position in pixels.
@@ -56,24 +60,36 @@ pub fn layout_rectangular(
     nodes: &[TreeLayoutNode],
     width: f64,
     height: f64,
-) -> Result<Vec<RectNode>, String> {
+    alignment: TipAlignment,
+) -> Result<Vec<LayoutNode>, String> {
     if nodes.is_empty() {
         return Ok(Vec::new());
     }
-    let depths = cumulative_depths(nodes)?;
-    let children = children_by_parent(nodes);
-    let order = depth_first_order(find_root(nodes)?, &children);
-    let y_by_id = vertical_positions(&order, &children, height);
+    let topo = topology(nodes, alignment)?;
+    let y_span = (height - 2.0 * PADDING_PX).max(0.0);
+    let y_by_id = spread_positions(&topo.order, &topo.children, |row, leaf_count| {
+        if leaf_count > 1 {
+            PADDING_PX + row as f64 / (leaf_count - 1) as f64 * y_span
+        } else {
+            height / 2.0
+        }
+    });
     let geometry = Geometry {
-        parent_of: nodes
-            .iter()
-            .filter_map(|node| Some((node.taxon_id.as_str(), node.parent_id.as_deref()?)))
-            .collect(),
-        x_by_id: horizontal_positions(nodes, &depths, width),
+        x_by_id: horizontal_positions(nodes, &topo.depths, width),
         y_by_id,
-        children,
+        parent_of: topo.parent_of,
+        children: topo.children,
     };
-    Ok(order.iter().map(|id| rect_node(id, &geometry)).collect())
+    Ok(topo
+        .order
+        .iter()
+        .map(|id| rect_node(id, &geometry))
+        .collect())
+}
+
+/// Font size in pixels for a tip label given the spacing between neighbouring leaves.
+pub(super) fn tip_font_for_row(row_px: f64) -> f64 {
+    (row_px * TIP_ROW_FILL).clamp(MIN_TIP_FONT_PX, MAX_TIP_FONT_PX)
 }
 
 /// Font size in pixels for tip labels, shrinking as leaf rows get tighter.
@@ -81,8 +97,7 @@ pub fn tip_font_size(height: f64, leaf_count: usize) -> f64 {
     if leaf_count <= 1 {
         return MAX_TIP_FONT_PX;
     }
-    let row_px = (height - 2.0 * PADDING_PX) / (leaf_count - 1) as f64;
-    (row_px * TIP_ROW_FILL).clamp(MIN_TIP_FONT_PX, MAX_TIP_FONT_PX)
+    tip_font_for_row((height - 2.0 * PADDING_PX) / (leaf_count - 1) as f64)
 }
 
 /// Build layout nodes from a `treeNodes` object, taking each parent from its `children`.
@@ -109,7 +124,7 @@ pub fn layout_nodes_from_tree_nodes(tree_nodes: &Map<String, Value>) -> Vec<Tree
         .collect()
 }
 
-/// Build a Vega v5 specification for a rectangular cladogram from a `treeNodes` object.
+/// Build a Vega v6 specification for a rectangular cladogram from a `treeNodes` object.
 ///
 /// Elbow connectors are emitted as `links` and tip labels as `tips`, both in pixels.
 /// Returns an error when the tree has no single root or a branch length is invalid.
@@ -118,12 +133,14 @@ pub fn rect_tree_vega(
     width: u64,
     height: u64,
     title: Option<&str>,
+    alignment: TipAlignment,
 ) -> Result<Value, String> {
     let (plot_width, plot_height) = (width as f64, height as f64);
     let rect_nodes = layout_rectangular(
         &layout_nodes_from_tree_nodes(tree_nodes),
         plot_width,
         plot_height,
+        alignment,
     )?;
     let leaf_count = rect_nodes.iter().filter(|node| node.is_leaf).count();
     let font_size = tip_font_size(plot_height, leaf_count);
@@ -133,24 +150,71 @@ pub fn rect_tree_vega(
         .flatten()
         .map(|path| json!({ "d": path }))
         .collect();
+    let (tips, leaders) = rect_tip_marks(tree_nodes, &rect_nodes, plot_width, alignment);
+    Ok(tree_vega_spec(
+        links, leaders, tips, width, height, title, font_size,
+    ))
+}
+
+/// Tip label anchors and dotted leaders for the leaves of a rectangular layout.
+///
+/// With `TipAlignment::Labels` every label moves to the label column and a leader
+/// runs from its tip to that column. Otherwise labels sit just past their tips.
+fn rect_tip_marks(
+    tree_nodes: &Map<String, Value>,
+    rect_nodes: &[LayoutNode],
+    plot_width: f64,
+    alignment: TipAlignment,
+) -> (Vec<Value>, Vec<Value>) {
+    let label_x = label_column_x(plot_width);
+    let mut leaders: Vec<Value> = Vec::new();
     let tips: Vec<Value> = rect_nodes
         .iter()
         .filter(|node| node.is_leaf)
         .map(|node| {
+            let x = match alignment {
+                TipAlignment::Labels => {
+                    let leader = leader_path((node.x, node.y), (label_x, node.y));
+                    leaders.push(json!({ "d": leader }));
+                    label_x
+                }
+                TipAlignment::None | TipAlignment::Tips | TipAlignment::Ultrametric => {
+                    node.x + LABEL_OFFSET_PX
+                }
+            };
             json!({
-                "x": node.x,
+                "x": x,
                 "y": node.y,
-                "label": tip_label(tree_nodes, &node.taxon_id)
+                "label": tip_label(tree_nodes, &node.taxon_id),
+                "angle": 0,
+                "align": "left"
             })
         })
         .collect();
+    (tips, leaders)
+}
+
+/// Build a Vega v6 spec from link, leader, and tip label data in pixel coordinates.
+///
+/// Each tip carries its anchor, rotation in degrees, and alignment, so the text
+/// mark only maps fields to channels.
+pub(super) fn tree_vega_spec(
+    links: Vec<Value>,
+    leaders: Vec<Value>,
+    tips: Vec<Value>,
+    width: u64,
+    height: u64,
+    title: Option<&str>,
+    font_size: f64,
+) -> Value {
     let mut spec = json!({
-        "$schema": "https://vega.github.io/schema/vega/v5.json",
+        "$schema": "https://vega.github.io/schema/vega/v6.json",
         "width": width,
         "height": height,
         "data": [
             {"name": "links", "values": links},
-            {"name": "tips", "values": tips}
+            {"name": "tips", "values": tips},
+            {"name": "leaders", "values": leaders}
         ],
         "marks": [
             {
@@ -163,14 +227,24 @@ pub fn rect_tree_vega(
                 }}
             },
             {
+                "type": "path",
+                "from": {"data": "leaders"},
+                "encode": {"enter": {
+                    "path": {"field": "d"},
+                    "stroke": {"value": "#999999"},
+                    "strokeWidth": {"value": 1},
+                    "strokeDash": {"value": [2, 3]}
+                }}
+            },
+            {
                 "type": "text",
                 "from": {"data": "tips"},
                 "encode": {"enter": {
                     "x": {"field": "x"},
                     "y": {"field": "y"},
                     "text": {"field": "label"},
-                    "dx": {"value": 4},
-                    "align": {"value": "left"},
+                    "angle": {"field": "angle"},
+                    "align": {"field": "align"},
                     "baseline": {"value": "middle"},
                     "fontSize": {"value": font_size},
                     "fontStyle": {"value": "italic"}
@@ -181,7 +255,45 @@ pub fn rect_tree_vega(
     if let Some(text) = title {
         spec["title"] = json!({"text": text});
     }
-    Ok(spec)
+    spec
+}
+
+/// Parent, child, depth, and depth-first structure shared by every tree layout.
+pub(super) struct Topology<'a> {
+    /// Children of each taxon, sorted by `taxon_id`.
+    pub(super) children: HashMap<&'a str, Vec<&'a str>>,
+    /// Parent of each non-root taxon.
+    pub(super) parent_of: HashMap<&'a str, &'a str>,
+    /// Taxa in depth-first order from the root.
+    pub(super) order: Vec<&'a str>,
+    /// Cumulative branch length from the root to each taxon.
+    pub(super) depths: HashMap<String, f64>,
+}
+
+/// Build the shared topology for non-empty `nodes`.
+///
+/// Returns an error when the tree has no single root or a branch length is invalid.
+pub(super) fn topology(
+    nodes: &[TreeLayoutNode],
+    alignment: TipAlignment,
+) -> Result<Topology<'_>, String> {
+    let children = children_by_parent(nodes);
+    let order = depth_first_order(find_root(nodes)?, &children);
+    let parent_of = nodes
+        .iter()
+        .filter_map(|node| Some((node.taxon_id.as_str(), node.parent_id.as_deref()?)))
+        .collect();
+    let depths = match alignment {
+        TipAlignment::Tips => tip_aligned_depths(nodes)?,
+        TipAlignment::Ultrametric => ultrametric_depths(nodes)?,
+        TipAlignment::None | TipAlignment::Labels => cumulative_depths(nodes)?,
+    };
+    Ok(Topology {
+        children,
+        parent_of,
+        order,
+        depths,
+    })
 }
 
 /// Map each taxon to its children, sorted by `taxon_id`. Every node has an entry.
@@ -246,39 +358,34 @@ fn horizontal_positions<'a>(
         .collect()
 }
 
-/// Place tips evenly down the plot in depth-first order, then centre each internal node.
-fn vertical_positions<'a>(
+/// Place leaves with `place_leaf(row, leaf_count)` in depth-first order, then centre each internal node.
+pub(super) fn spread_positions<'a>(
     order: &[&'a str],
     children: &HashMap<&'a str, Vec<&'a str>>,
-    height: f64,
+    place_leaf: impl Fn(usize, usize) -> f64,
 ) -> HashMap<&'a str, f64> {
     let leaves: Vec<&'a str> = order
         .iter()
         .copied()
         .filter(|id| children[id].is_empty())
         .collect();
-    let y_span = (height - 2.0 * PADDING_PX).max(0.0);
-    let mut ys: HashMap<&'a str, f64> = HashMap::new();
-    for (row, &leaf) in leaves.iter().enumerate() {
-        let y = if leaves.len() > 1 {
-            PADDING_PX + row as f64 / (leaves.len() - 1) as f64 * y_span
-        } else {
-            height / 2.0
-        };
-        ys.insert(leaf, y);
-    }
+    let mut positions: HashMap<&'a str, f64> = leaves
+        .iter()
+        .enumerate()
+        .map(|(row, &leaf)| (leaf, place_leaf(row, leaves.len())))
+        .collect();
     // Pre-order puts every child after its parent, so reverse order sees children first.
     for &id in order.iter().rev() {
         if let (Some(first), Some(last)) = (children[id].first(), children[id].last()) {
-            let midpoint = (ys[first] + ys[last]) / 2.0;
-            ys.insert(id, midpoint);
+            let midpoint = (positions[first] + positions[last]) / 2.0;
+            positions.insert(id, midpoint);
         }
     }
-    ys
+    positions
 }
 
 /// Build the pixel geometry for one node from the shared lookup tables.
-fn rect_node(id: &str, geometry: &Geometry) -> RectNode {
+fn rect_node(id: &str, geometry: &Geometry) -> LayoutNode {
     let x = geometry.x_by_id[id];
     let y = geometry.y_by_id[id];
     let kids = &geometry.children[id];
@@ -294,7 +401,7 @@ fn rect_node(id: &str, geometry: &Geometry) -> RectNode {
         }
         _ => None,
     };
-    RectNode {
+    LayoutNode {
         taxon_id: id.to_string(),
         x,
         y,
@@ -304,8 +411,18 @@ fn rect_node(id: &str, geometry: &Geometry) -> RectNode {
     }
 }
 
+/// Horizontal position of the tip label column for a plot `plot_width` pixels wide.
+fn label_column_x(plot_width: f64) -> f64 {
+    plot_width * (1.0 - TIP_LABEL_FRACTION) - PADDING_PX + LABEL_OFFSET_PX
+}
+
+/// SVG path for a straight line between two pixel points.
+pub(super) fn leader_path(from: (f64, f64), to: (f64, f64)) -> String {
+    format!("M{:.2},{:.2}L{:.2},{:.2}", from.0, from.1, to.0, to.1)
+}
+
 /// Return the scientific name for a taxon, or its id when the name is absent.
-fn tip_label(tree_nodes: &Map<String, Value>, taxon_id: &str) -> String {
+pub(super) fn tip_label(tree_nodes: &Map<String, Value>, taxon_id: &str) -> String {
     tree_nodes
         .get(taxon_id)
         .and_then(|node| node.get("scientific_name"))
@@ -330,11 +447,11 @@ mod tests {
         }
     }
 
-    fn layout(nodes: &[TreeLayoutNode]) -> Vec<RectNode> {
-        layout_rectangular(nodes, WIDTH as f64, HEIGHT as f64).unwrap()
+    fn layout(nodes: &[TreeLayoutNode]) -> Vec<LayoutNode> {
+        layout_rectangular(nodes, WIDTH as f64, HEIGHT as f64, TipAlignment::None).unwrap()
     }
 
-    fn by_id<'a>(rect: &'a [RectNode], taxon_id: &str) -> &'a RectNode {
+    fn by_id<'a>(rect: &'a [LayoutNode], taxon_id: &str) -> &'a LayoutNode {
         rect.iter().find(|n| n.taxon_id == taxon_id).unwrap()
     }
 
@@ -445,7 +562,8 @@ mod tests {
     fn multiple_roots_is_error() {
         let nodes = vec![node("a", None), node("b", None)];
 
-        let err = layout_rectangular(&nodes, WIDTH as f64, HEIGHT as f64).unwrap_err();
+        let err = layout_rectangular(&nodes, WIDTH as f64, HEIGHT as f64, TipAlignment::None)
+            .unwrap_err();
 
         assert!(
             err.contains("more than one root"),
@@ -470,7 +588,7 @@ mod tests {
         });
         let map = tree_nodes.as_object().unwrap();
 
-        let spec = rect_tree_vega(map, WIDTH, HEIGHT, Some("Tree")).unwrap();
+        let spec = rect_tree_vega(map, WIDTH, HEIGHT, Some("Tree"), TipAlignment::None).unwrap();
 
         // Three arms (a, a1, b) and two bars (root, a).
         let links = spec["data"][0]["values"].as_array().unwrap();
@@ -485,11 +603,88 @@ mod tests {
 
     #[test]
     fn rect_tree_vega_empty_tree_has_no_marks_data() {
-        let spec = rect_tree_vega(&Map::new(), WIDTH, HEIGHT, None).unwrap();
+        let spec = rect_tree_vega(&Map::new(), WIDTH, HEIGHT, None, TipAlignment::None).unwrap();
 
         assert_eq!(spec["data"][0]["values"].as_array().unwrap().len(), 0);
         assert_eq!(spec["data"][1]["values"].as_array().unwrap().len(), 0);
         assert!(spec.get("title").is_none());
+    }
+
+    #[test]
+    fn tips_alignment_puts_every_leaf_in_one_column() {
+        let nodes = vec![
+            node("root", None),
+            node("a", Some("root")),
+            node("a1", Some("a")),
+            node("b", Some("root")),
+        ];
+
+        let rect =
+            layout_rectangular(&nodes, WIDTH as f64, HEIGHT as f64, TipAlignment::Tips).unwrap();
+
+        let a1_x = by_id(&rect, "a1").x;
+        assert_eq!(a1_x, by_id(&rect, "b").x);
+        assert_eq!(a1_x, PADDING_PX + (WIDTH as f64 * 0.75 - 2.0 * PADDING_PX));
+        assert!(by_id(&rect, "a").x > by_id(&rect, "root").x);
+        assert!(by_id(&rect, "a").x < a1_x);
+    }
+
+    #[test]
+    fn ultrametric_alignment_aligns_tips_and_keeps_internal_lengths() {
+        let nodes = vec![
+            TreeLayoutNode {
+                taxon_id: "root".to_string(),
+                parent_id: None,
+                branch_length: None,
+            },
+            TreeLayoutNode {
+                taxon_id: "a".to_string(),
+                parent_id: Some("root".to_string()),
+                branch_length: Some(5.0),
+            },
+            node("a1", Some("a")),
+            node("b", Some("root")),
+        ];
+
+        let ultrametric = layout_rectangular(
+            &nodes,
+            WIDTH as f64,
+            HEIGHT as f64,
+            TipAlignment::Ultrametric,
+        )
+        .unwrap();
+        let tips =
+            layout_rectangular(&nodes, WIDTH as f64, HEIGHT as f64, TipAlignment::Tips).unwrap();
+
+        assert_eq!(by_id(&ultrametric, "a1").x, by_id(&ultrametric, "b").x);
+        assert!(by_id(&ultrametric, "a").x > by_id(&tips, "a").x);
+    }
+
+    #[test]
+    fn labels_alignment_moves_tips_to_label_column_with_leaders() {
+        let tree_nodes = json!({
+            "root": {"scientific_name": "Root", "children": {"a": true, "b": true}},
+            "a": {"scientific_name": "Alpha", "children": {}, "branch_length": 1.0},
+            "b": {"scientific_name": "Beta", "children": {}, "branch_length": 3.0}
+        });
+        let map = tree_nodes.as_object().unwrap();
+
+        let spec = rect_tree_vega(map, WIDTH, HEIGHT, None, TipAlignment::Labels).unwrap();
+
+        let tips = spec["data"][1]["values"].as_array().unwrap();
+        let leaders = spec["data"][2]["values"].as_array().unwrap();
+        let label_x = label_column_x(WIDTH as f64);
+        assert_eq!(tips.len(), 2);
+        assert!(tips.iter().all(|tip| tip["x"].as_f64() == Some(label_x)));
+        assert_eq!(leaders.len(), 2);
+        assert!(leaders
+            .iter()
+            .all(|leader| leader["d"].as_str().unwrap().contains('L')));
+    }
+
+    #[test]
+    fn leader_path_joins_two_points() {
+        assert_eq!(leader_path((1.0, 2.0), (3.5, 4.0)), "M1.00,2.00L3.50,4.00");
     }
 
     proptest! {
