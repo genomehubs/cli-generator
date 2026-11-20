@@ -34,6 +34,76 @@ impl TipAlignment {
     }
 }
 
+/// How circular tip labels are rotated.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum LabelOrientation {
+    /// Labels read outward, and the left half is turned around so the text stays upright.
+    #[default]
+    Flip,
+    /// Labels read outward all the way round, so the left half reads upside down.
+    Continuous,
+}
+
+impl LabelOrientation {
+    /// Parse the `label_orientation` display option; a missing value means `Flip`.
+    pub fn parse(value: Option<&str>) -> Result<Self, String> {
+        match value {
+            None | Some("flip") => Ok(Self::Flip),
+            Some("continuous") => Ok(Self::Continuous),
+            Some(other) => Err(format!("unknown label_orientation: {other}")),
+        }
+    }
+}
+
+/// Display options shared by every tree layout.
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub struct TreeRenderOptions {
+    /// Tip placement for `"rect"`, `"circ"`, and `"radial"` layouts.
+    pub alignment: TipAlignment,
+    /// Label rotation for `"circ"`, `"radial"`, and `"ring"` layouts.
+    pub label_orientation: LabelOrientation,
+    /// Label font size in pixels; `None` keeps each layout's default size.
+    pub font_size: Option<f64>,
+}
+
+impl TreeRenderOptions {
+    /// Options with the given tip alignment and every other option at its default.
+    pub fn with_alignment(alignment: TipAlignment) -> Self {
+        Self {
+            alignment,
+            ..Self::default()
+        }
+    }
+}
+
+/// Resolve the label font size in pixels from `font_size` or `font_scale`.
+///
+/// `font_scale` is a share of the shorter canvas side. Returns an error when both
+/// are set or either value is not a positive finite number.
+pub fn resolve_font_size(
+    font_size: Option<f64>,
+    font_scale: Option<f64>,
+    width: f64,
+    height: f64,
+) -> Result<Option<f64>, String> {
+    match (font_size, font_scale) {
+        (Some(_), Some(_)) => Err("set either font_size or font_scale, not both".to_string()),
+        (Some(px), None) => positive(px, "font_size").map(Some),
+        (None, Some(scale)) => {
+            positive(scale, "font_scale").map(|scale| Some(scale * width.min(height)))
+        }
+        (None, None) => Ok(None),
+    }
+}
+
+/// Return `value` when it is a positive finite number, otherwise an error naming `name`.
+fn positive(value: f64, name: &str) -> Result<f64, String> {
+    if value.is_finite() && value > 0.0 {
+        return Ok(value);
+    }
+    Err(format!("{name} must be a positive number, got {value}"))
+}
+
 /// One node of a tree to lay out.
 #[derive(Debug, Clone, PartialEq)]
 pub struct TreeLayoutNode {
@@ -240,6 +310,40 @@ mod tests {
         let err = cumulative_depths(&nodes).unwrap_err();
 
         assert!(err.contains("cycle"), "unexpected error: {err}");
+    }
+
+    #[test]
+    fn label_orientation_parses_known_values_and_rejects_others() {
+        assert_eq!(LabelOrientation::parse(None), Ok(LabelOrientation::Flip));
+        assert_eq!(
+            LabelOrientation::parse(Some("flip")),
+            Ok(LabelOrientation::Flip)
+        );
+        assert_eq!(
+            LabelOrientation::parse(Some("continuous")),
+            Ok(LabelOrientation::Continuous)
+        );
+        assert!(LabelOrientation::parse(Some("upside")).is_err());
+    }
+
+    #[test]
+    fn font_size_is_absolute_or_scaled_to_shorter_side() {
+        assert_eq!(resolve_font_size(None, None, 800.0, 600.0), Ok(None));
+        assert_eq!(
+            resolve_font_size(Some(7.0), None, 800.0, 600.0),
+            Ok(Some(7.0))
+        );
+        assert_eq!(
+            resolve_font_size(None, Some(0.02), 800.0, 600.0),
+            Ok(Some(12.0))
+        );
+    }
+
+    #[test]
+    fn font_size_rejects_both_options_and_non_positive_values() {
+        assert!(resolve_font_size(Some(7.0), Some(0.02), 800.0, 600.0).is_err());
+        assert!(resolve_font_size(Some(0.0), None, 800.0, 600.0).is_err());
+        assert!(resolve_font_size(None, Some(f64::NAN), 800.0, 600.0).is_err());
     }
 
     #[test]

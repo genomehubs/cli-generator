@@ -15,6 +15,7 @@ pub mod spec_builder;
 pub mod tree_layout;
 pub mod tree_polar;
 pub mod tree_rect;
+pub mod tree_ring;
 
 pub use axis::{
     AxisOpts, AxisRole, AxisSpec, AxisSummary, DateInterval, Scale, SortMode, ValueType,
@@ -171,16 +172,39 @@ pub fn plot_spec_to_render_json(input: &str) -> String {
     }
 }
 
-/// Read `display.tree.tip_alignment`; a missing value means `"none"`.
-fn tip_alignment_option(tree: &serde_json::Value) -> Result<tree_layout::TipAlignment, String> {
-    tree_layout::TipAlignment::parse(tree.get("tip_alignment").and_then(|v| v.as_str()))
+/// Read the tree display options from `display.tree`; missing values take their defaults.
+///
+/// `font_size` and `font_scale` are resolved against the canvas. Setting both is an error.
+fn tree_render_options(
+    tree: &serde_json::Value,
+    width: f64,
+    height: f64,
+) -> Result<tree_layout::TreeRenderOptions, String> {
+    let alignment =
+        tree_layout::TipAlignment::parse(tree.get("tip_alignment").and_then(|v| v.as_str()))?;
+    let label_orientation = tree_layout::LabelOrientation::parse(
+        tree.get("label_orientation").and_then(|v| v.as_str()),
+    )?;
+    let font_size = tree_layout::resolve_font_size(
+        tree.get("font_size").and_then(|v| v.as_f64()),
+        tree.get("font_scale").and_then(|v| v.as_f64()),
+        width,
+        height,
+    )?;
+    Ok(tree_layout::TreeRenderOptions {
+        alignment,
+        label_orientation,
+        font_size,
+    })
 }
 
 /// Convert a tree `PlotSpec` JSON string into a Vega v6 specification JSON string.
 ///
-/// Chooses the layout from `display.tree`: `tree_style` is `"rect"` (default), `"circ"`, or `"radial"`.
-/// `total_angle` (default `360.0`) and `start_angle` (default `-90.0`) apply to `"circ"` and `"radial"`.
-/// `tip_alignment` is `"none"` (default), `"tips"`, `"ultrametric"`, or `"labels"`, and applies to every style.
+/// Chooses the layout from `display.tree`: `tree_style` is `"rect"` (default), `"circ"`, `"radial"`, or `"ring"`.
+/// `total_angle` (default `360.0`) applies to `"circ"` and `"ring"`. `start_angle` (default `-90.0`) applies to `"circ"`, `"radial"`, and `"ring"`.
+/// `tip_alignment` is `"none"` (default), `"tips"`, `"ultrametric"`, or `"labels"`. It applies to `"rect"`, `"circ"`, and `"radial"`.
+/// `label_orientation` is `"flip"` (default) or `"continuous"`. It applies to `"circ"`, `"radial"`, and `"ring"`.
+/// `font_size` sets label size in pixels, and `font_scale` sets it as a share of the shorter canvas side. Set at most one.
 /// A spec without `treeNodes` yields an empty tree sized from `display`.
 /// Returns an error JSON on failure, including an unknown `tree_style`.
 pub fn plot_spec_to_vega_json(input: &str) -> String {
@@ -217,12 +241,12 @@ pub fn plot_spec_to_vega_json(input: &str) -> String {
         .and_then(|v| v.as_object())
         .cloned()
         .unwrap_or_default();
-    let alignment = match tip_alignment_option(tree) {
-        Ok(alignment) => alignment,
+    let options = match tree_render_options(tree, width as f64, height as f64) {
+        Ok(options) => options,
         Err(e) => return serde_json::json!({"error": e}).to_string(),
     };
     let rendered = match style {
-        "rect" => tree_rect::rect_tree_vega(&tree_nodes, width, height, title, alignment),
+        "rect" => tree_rect::rect_tree_vega(&tree_nodes, width, height, title, options),
         "circ" => tree_polar::circ_tree_vega(
             &tree_nodes,
             width,
@@ -230,11 +254,20 @@ pub fn plot_spec_to_vega_json(input: &str) -> String {
             title,
             total_angle,
             start_angle,
-            alignment,
+            options,
         ),
         "radial" => {
-            tree_polar::radial_tree_vega(&tree_nodes, width, height, title, start_angle, alignment)
+            tree_polar::radial_tree_vega(&tree_nodes, width, height, title, start_angle, options)
         }
+        "ring" => tree_ring::ring_tree_vega(
+            &tree_nodes,
+            width,
+            height,
+            title,
+            total_angle,
+            start_angle,
+            options,
+        ),
         other => Err(format!("unknown tree_style: {other}")),
     };
     match rendered {
@@ -3225,6 +3258,30 @@ mod tests {
     }
 
     #[test]
+    fn render_dispatch_routes_ring_style_to_sector_arcs() {
+        let out = tree_vega_for(serde_json::json!({"tree_style": "ring"}));
+        assert!(out.get("error").is_none(), "{out}");
+        assert_eq!(out["data"][0]["name"], "arcs");
+        let arcs = out["data"][0]["values"].as_array().unwrap();
+        assert_eq!(arcs.len(), 4);
+        assert!(arcs
+            .iter()
+            .all(|arc| arc["d"].as_str().unwrap().contains('A')));
+    }
+
+    #[test]
+    fn render_dispatch_ring_style_has_no_leaders_dataset() {
+        let out = tree_vega_for(serde_json::json!({"tree_style": "ring"}));
+        let names: Vec<&str> = out["data"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|data| data["name"].as_str().unwrap())
+            .collect();
+        assert_eq!(names, ["arcs", "labels"]);
+    }
+
+    #[test]
     fn render_dispatch_rejects_unknown_tree_style() {
         let out = tree_vega_for(serde_json::json!({"tree_style": "spiral"}));
         assert!(out["error"]
@@ -3250,6 +3307,61 @@ mod tests {
             assert!(out.get("error").is_none(), "{style}: {out}");
             assert_eq!(out["data"][2]["name"], "leaders");
         }
+    }
+
+    #[test]
+    fn render_dispatch_applies_font_size_to_every_style() {
+        for style in ["rect", "circ", "radial"] {
+            let out = tree_vega_for(serde_json::json!({"tree_style": style, "font_size": 8}));
+            assert!(out.get("error").is_none(), "{style}: {out}");
+            assert!(
+                out.to_string().contains("\"fontSize\":{\"value\":8.0}"),
+                "{style}: {out}"
+            );
+        }
+    }
+
+    #[test]
+    fn render_dispatch_accepts_font_scale_for_every_style() {
+        for style in ["rect", "circ", "radial", "ring"] {
+            let out = tree_vega_for(serde_json::json!({"tree_style": style, "font_scale": 0.02}));
+            assert!(out.get("error").is_none(), "{style}: {out}");
+        }
+    }
+
+    #[test]
+    fn render_dispatch_rejects_font_size_with_font_scale() {
+        let out = tree_vega_for(serde_json::json!({"font_size": 8, "font_scale": 0.02}));
+        assert!(out["error"].as_str().unwrap().contains("not both"));
+    }
+
+    #[test]
+    fn render_dispatch_rejects_unknown_label_orientation() {
+        let out =
+            tree_vega_for(serde_json::json!({"tree_style": "circ", "label_orientation": "upside"}));
+        assert!(out["error"]
+            .as_str()
+            .unwrap()
+            .contains("unknown label_orientation"));
+    }
+
+    #[test]
+    fn render_dispatch_accepts_label_orientation_for_circular_styles() {
+        for style in ["circ", "radial", "ring"] {
+            let out = tree_vega_for(
+                serde_json::json!({"tree_style": style, "label_orientation": "continuous"}),
+            );
+            assert!(out.get("error").is_none(), "{style}: {out}");
+        }
+    }
+
+    #[test]
+    fn render_dispatch_routes_ring_total_angle_to_sweep() {
+        let full = tree_vega_for(serde_json::json!({"tree_style": "ring"}));
+        let half = tree_vega_for(serde_json::json!({"tree_style": "ring", "total_angle": 180.0}));
+
+        assert!(half.get("error").is_none(), "{half}");
+        assert_ne!(full["data"][0]["values"], half["data"][0]["values"]);
     }
 
     /// Render a nested tree whose `display.tree` object is `tree`.

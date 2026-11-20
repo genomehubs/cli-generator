@@ -8,11 +8,14 @@
     "taxonomy": "ncbi"
   },
   "display": {
-    "width": 800,
-    "height": 600,
+    "width": 900,
+    "height": 900,
     "tree": {
-      "tree_style": "circ",
-      "tip_alignment": "labels"
+      "tree_style": "ring",
+      "tip_alignment": "labels",
+      "label_orientation": "continuous",
+      "start_angle": 90,
+      "total_angle": 300
     }
   }
 }

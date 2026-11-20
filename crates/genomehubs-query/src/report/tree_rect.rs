@@ -11,6 +11,7 @@ use serde_json::{json, Map, Value};
 
 use super::tree_layout::{
     cumulative_depths, tip_aligned_depths, ultrametric_depths, TipAlignment, TreeLayoutNode,
+    TreeRenderOptions,
 };
 
 /// Share of the plot width reserved on the right for tip labels.
@@ -133,24 +134,26 @@ pub fn rect_tree_vega(
     width: u64,
     height: u64,
     title: Option<&str>,
-    alignment: TipAlignment,
+    options: TreeRenderOptions,
 ) -> Result<Value, String> {
     let (plot_width, plot_height) = (width as f64, height as f64);
     let rect_nodes = layout_rectangular(
         &layout_nodes_from_tree_nodes(tree_nodes),
         plot_width,
         plot_height,
-        alignment,
+        options.alignment,
     )?;
     let leaf_count = rect_nodes.iter().filter(|node| node.is_leaf).count();
-    let font_size = tip_font_size(plot_height, leaf_count);
+    let font_size = options
+        .font_size
+        .unwrap_or_else(|| tip_font_size(plot_height, leaf_count));
     let links: Vec<Value> = rect_nodes
         .iter()
         .flat_map(|node| [node.arm_path.as_deref(), node.bar_path.as_deref()])
         .flatten()
         .map(|path| json!({ "d": path }))
         .collect();
-    let (tips, leaders) = rect_tip_marks(tree_nodes, &rect_nodes, plot_width, alignment);
+    let (tips, leaders) = rect_tip_marks(tree_nodes, &rect_nodes, plot_width, options.alignment);
     Ok(tree_vega_spec(
         links, leaders, tips, width, height, title, font_size,
     ))
@@ -588,7 +591,14 @@ mod tests {
         });
         let map = tree_nodes.as_object().unwrap();
 
-        let spec = rect_tree_vega(map, WIDTH, HEIGHT, Some("Tree"), TipAlignment::None).unwrap();
+        let spec = rect_tree_vega(
+            map,
+            WIDTH,
+            HEIGHT,
+            Some("Tree"),
+            TreeRenderOptions::with_alignment(TipAlignment::None),
+        )
+        .unwrap();
 
         // Three arms (a, a1, b) and two bars (root, a).
         let links = spec["data"][0]["values"].as_array().unwrap();
@@ -603,7 +613,14 @@ mod tests {
 
     #[test]
     fn rect_tree_vega_empty_tree_has_no_marks_data() {
-        let spec = rect_tree_vega(&Map::new(), WIDTH, HEIGHT, None, TipAlignment::None).unwrap();
+        let spec = rect_tree_vega(
+            &Map::new(),
+            WIDTH,
+            HEIGHT,
+            None,
+            TreeRenderOptions::with_alignment(TipAlignment::None),
+        )
+        .unwrap();
 
         assert_eq!(spec["data"][0]["values"].as_array().unwrap().len(), 0);
         assert_eq!(spec["data"][1]["values"].as_array().unwrap().len(), 0);
@@ -669,7 +686,14 @@ mod tests {
         });
         let map = tree_nodes.as_object().unwrap();
 
-        let spec = rect_tree_vega(map, WIDTH, HEIGHT, None, TipAlignment::Labels).unwrap();
+        let spec = rect_tree_vega(
+            map,
+            WIDTH,
+            HEIGHT,
+            None,
+            TreeRenderOptions::with_alignment(TipAlignment::Labels),
+        )
+        .unwrap();
 
         let tips = spec["data"][1]["values"].as_array().unwrap();
         let leaders = spec["data"][2]["values"].as_array().unwrap();

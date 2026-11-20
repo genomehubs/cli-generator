@@ -1,7 +1,8 @@
 //! Circular and radial tree layouts for tree reports.
 //!
 //! Radius is the cumulative branch length scaled to the outer ring, so the root
-//! sits at the centre. Each leaf takes an equal share of the arc, and an internal
+//! sits at the centre hole (circular) or the centre (radial). Each leaf takes an
+//! equal share of the arc, and an internal
 //! node sits at the mid-angle of its first and last child. Coordinates are pixels.
 
 use std::collections::HashMap;
@@ -9,7 +10,7 @@ use std::f64::consts::PI;
 
 use serde_json::{json, Map, Value};
 
-use super::tree_layout::{TipAlignment, TreeLayoutNode};
+use super::tree_layout::{LabelOrientation, TipAlignment, TreeLayoutNode, TreeRenderOptions};
 use super::tree_rect::{
     layout_nodes_from_tree_nodes, leader_path, spread_positions, tip_font_for_row, tip_label,
     topology, tree_vega_spec, LayoutNode, Topology, LABEL_OFFSET_PX, PADDING_PX,
@@ -17,6 +18,9 @@ use super::tree_rect::{
 
 /// Share of the half-size reserved for tip labels outside the outer ring.
 const LABEL_BAND_FRACTION: f64 = 0.25;
+
+/// Radius of the empty centre in circular and ring layouts, in pixels.
+pub(super) const CENTRE_HOLE_PX: f64 = 12.0;
 
 /// How a node connects to its parent.
 #[derive(Clone, Copy)]
@@ -33,6 +37,8 @@ struct PolarSweep {
     total_angle: f64,
     start_angle: f64,
     connector: Connector,
+    /// Radius of the empty centre in pixels; the root sits here.
+    hole_px: f64,
 }
 
 /// Build a Vega v6 spec for a circular tree whose leaves span `total_angle` degrees from `start_angle`.
@@ -46,14 +52,15 @@ pub fn circ_tree_vega(
     title: Option<&str>,
     total_angle: f64,
     start_angle: f64,
-    alignment: TipAlignment,
+    options: TreeRenderOptions,
 ) -> Result<Value, String> {
     let sweep = PolarSweep {
         total_angle,
         start_angle,
         connector: Connector::Arc,
+        hole_px: CENTRE_HOLE_PX,
     };
-    polar_tree_vega(tree_nodes, width, height, title, sweep, alignment)
+    polar_tree_vega(tree_nodes, width, height, title, sweep, options)
 }
 
 /// Build a Vega v6 spec for a radial tree that fills the full circle from `start_angle`.
@@ -65,14 +72,15 @@ pub fn radial_tree_vega(
     height: u64,
     title: Option<&str>,
     start_angle: f64,
-    alignment: TipAlignment,
+    options: TreeRenderOptions,
 ) -> Result<Value, String> {
     let sweep = PolarSweep {
         total_angle: 360.0,
         start_angle,
         connector: Connector::Ray,
+        hole_px: 0.0,
     };
-    polar_tree_vega(tree_nodes, width, height, title, sweep, alignment)
+    polar_tree_vega(tree_nodes, width, height, title, sweep, options)
 }
 
 /// Lay out a polar tree from a `treeNodes` object and assemble its Vega v6 spec.
@@ -82,22 +90,22 @@ fn polar_tree_vega(
     height: u64,
     title: Option<&str>,
     sweep: PolarSweep,
-    alignment: TipAlignment,
+    options: TreeRenderOptions,
 ) -> Result<Value, String> {
     let (plot_width, plot_height) = (width as f64, height as f64);
     let polar_nodes = layout_polar(
         &layout_nodes_from_tree_nodes(tree_nodes),
         plot_width,
         plot_height,
-        sweep.total_angle,
-        sweep.start_angle,
-        sweep.connector,
-        alignment,
+        sweep,
+        options.alignment,
     )?;
     let leaf_count = polar_nodes.iter().filter(|node| node.is_leaf).count();
     let arc_row = outer_radius(plot_width, plot_height) * sweep.total_angle.to_radians()
         / leaf_count.max(1) as f64;
-    let font_size = tip_font_for_row(arc_row);
+    let font_size = options
+        .font_size
+        .unwrap_or_else(|| tip_font_for_row(arc_row));
     let centre = (plot_width / 2.0, plot_height / 2.0);
     let label_radius = outer_radius(plot_width, plot_height) + LABEL_OFFSET_PX;
     let links: Vec<Value> = polar_nodes
@@ -106,8 +114,7 @@ fn polar_tree_vega(
         .flatten()
         .map(|path| json!({ "d": path }))
         .collect();
-    let (tips, leaders) =
-        polar_tip_marks(tree_nodes, &polar_nodes, centre, label_radius, alignment);
+    let (tips, leaders) = polar_tip_marks(tree_nodes, &polar_nodes, centre, label_radius, options);
     Ok(tree_vega_spec(
         links, leaders, tips, width, height, title, font_size,
     ))
@@ -123,7 +130,7 @@ fn polar_tip_marks(
     polar_nodes: &[LayoutNode],
     centre: (f64, f64),
     label_radius: f64,
-    alignment: TipAlignment,
+    options: TreeRenderOptions,
 ) -> (Vec<Value>, Vec<Value>) {
     let mut leaders: Vec<Value> = Vec::new();
     let tips: Vec<Value> = polar_nodes
@@ -131,8 +138,8 @@ fn polar_tip_marks(
         .filter(|node| node.is_leaf)
         .map(|node| {
             let angle = (node.y - centre.1).atan2(node.x - centre.0);
-            let (rotation, align) = label_orientation(angle);
-            let (x, y) = match alignment {
+            let (rotation, align) = label_orientation(angle, options.label_orientation);
+            let (x, y) = match options.alignment {
                 TipAlignment::Labels => {
                     let anchor = (
                         centre.0 + label_radius * angle.cos(),
@@ -159,7 +166,7 @@ fn polar_tip_marks(
     (tips, leaders)
 }
 
-/// Lay out every taxon on the polar grid, in depth-first order.
+/// Lay out every taxon on the polar grid described by `sweep`, in depth-first order.
 ///
 /// Returns an error when `total_angle` is outside `(0, 360]`, `start_angle` is not
 /// finite, or the tree is invalid.
@@ -167,35 +174,38 @@ fn layout_polar(
     nodes: &[TreeLayoutNode],
     width: f64,
     height: f64,
-    total_angle: f64,
-    start_angle: f64,
-    connector: Connector,
+    sweep: PolarSweep,
     alignment: TipAlignment,
 ) -> Result<Vec<LayoutNode>, String> {
-    validate_angles(total_angle, start_angle)?;
+    validate_angles(sweep.total_angle, sweep.start_angle)?;
     if nodes.is_empty() {
         return Ok(Vec::new());
     }
     let topo = topology(nodes, alignment)?;
-    let total = total_angle.to_radians();
-    let start = start_angle.to_radians();
+    let total = sweep.total_angle.to_radians();
+    let start = sweep.start_angle.to_radians();
     let angles = spread_positions(&topo.order, &topo.children, |row, leaf_count| {
         start + total * (row as f64 + 0.5) / leaf_count as f64
     });
     let polar = Polar {
         centre: (width / 2.0, height / 2.0),
-        radii: radii_by_id(&topo.order, &topo.depths, outer_radius(width, height)),
+        radii: radii_by_id(
+            &topo.order,
+            &topo.depths,
+            sweep.hole_px,
+            outer_radius(width, height),
+        ),
         angles,
     };
     Ok(topo
         .order
         .iter()
-        .map(|id| polar_node(id, &topo, &polar, connector))
+        .map(|id| polar_node(id, &topo, &polar, sweep.connector))
         .collect())
 }
 
 /// Reject angle settings that cannot produce a valid layout.
-fn validate_angles(total_angle: f64, start_angle: f64) -> Result<(), String> {
+pub(super) fn validate_angles(total_angle: f64, start_angle: f64) -> Result<(), String> {
     if !(total_angle > 0.0 && total_angle <= 360.0) {
         return Err(format!(
             "total_angle must be in (0, 360], got {total_angle}"
@@ -213,20 +223,22 @@ fn outer_radius(width: f64, height: f64) -> f64 {
     (half * (1.0 - LABEL_BAND_FRACTION) - PADDING_PX).max(0.0)
 }
 
-/// Scale each node's cumulative depth onto `[0, outer]`, so the root sits at radius 0.
+/// Scale each node's cumulative depth onto `[hole, outer]`, so the root sits at `hole`.
 fn radii_by_id<'a>(
     order: &[&'a str],
     depths: &HashMap<String, f64>,
+    hole: f64,
     outer: f64,
 ) -> HashMap<&'a str, f64> {
+    let hole = hole.min(outer);
     let max_depth = depths.values().copied().fold(0.0, f64::max);
     order
         .iter()
         .map(|&id| {
             let radius = if max_depth > 0.0 {
-                depths[id] / max_depth * outer
+                hole + depths[id] / max_depth * (outer - hole)
             } else {
-                0.0
+                hole
             };
             (id, radius)
         })
@@ -309,14 +321,17 @@ fn arc_path(taxon_id: &str, first_id: &str, last_id: &str, polar: &Polar<'_>) ->
 
 /// Rotation in degrees and alignment for a tip label at `angle` radians.
 ///
-/// Labels read outward. On the left half they are turned around, so the text
-/// stays upright and is aligned to the anchor's inner side.
-fn label_orientation(angle: f64) -> (f64, &'static str) {
+/// `Flip` turns labels on the left half around, so the text stays upright and is
+/// aligned to the anchor's inner side. `Continuous` keeps the radial rotation on
+/// every half, so the left half reads upside down.
+pub(super) fn label_orientation(angle: f64, orientation: LabelOrientation) -> (f64, &'static str) {
     let degrees = angle.to_degrees();
-    if angle.cos() < 0.0 {
-        ((degrees + 180.0).rem_euclid(360.0), "right")
-    } else {
-        (degrees.rem_euclid(360.0), "left")
+    match orientation {
+        LabelOrientation::Continuous => (degrees.rem_euclid(360.0), "left"),
+        LabelOrientation::Flip if angle.cos() < 0.0 => {
+            ((degrees + 180.0).rem_euclid(360.0), "right")
+        }
+        LabelOrientation::Flip => (degrees.rem_euclid(360.0), "left"),
     }
 }
 
@@ -377,15 +392,13 @@ mod tests {
         start_angle: f64,
         connector: Connector,
     ) -> Result<Vec<LayoutNode>, String> {
-        layout_polar(
-            nodes,
-            WIDTH,
-            HEIGHT,
+        let sweep = PolarSweep {
             total_angle,
             start_angle,
             connector,
-            TipAlignment::None,
-        )
+            hole_px: 0.0,
+        };
+        layout_polar(nodes, WIDTH, HEIGHT, sweep, TipAlignment::None)
     }
 
     fn radius_of(point: &LayoutNode) -> f64 {
@@ -405,6 +418,23 @@ mod tests {
         let (cx, cy) = centre();
         assert!((root.x - cx).abs() < 1e-9);
         assert!((root.y - cy).abs() < 1e-9);
+    }
+
+    #[test]
+    fn centre_hole_keeps_root_off_the_centre() {
+        let sweep = PolarSweep {
+            total_angle: 360.0,
+            start_angle: -90.0,
+            connector: Connector::Arc,
+            hole_px: CENTRE_HOLE_PX,
+        };
+        let laid_out =
+            layout_polar(&four_leaves(), WIDTH, HEIGHT, sweep, TipAlignment::None).unwrap();
+        assert!((radius_of(by_id(&laid_out, "r")) - CENTRE_HOLE_PX).abs() < 1e-9);
+        let outer = outer_radius(WIDTH, HEIGHT);
+        for leaf in laid_out.iter().filter(|n| n.is_leaf) {
+            assert!((radius_of(leaf) - outer).abs() < 1e-9);
+        }
     }
 
     #[test]
@@ -453,14 +483,21 @@ mod tests {
 
     #[test]
     fn labels_on_left_half_are_flipped() {
-        let (rotation, align) = label_orientation(0.0);
+        let (rotation, align) = label_orientation(0.0, LabelOrientation::Flip);
         assert_eq!(align, "left");
         assert!(rotation.abs() < 1e-9);
 
-        let (rotation, align) = label_orientation(PI);
+        let (rotation, align) = label_orientation(PI, LabelOrientation::Flip);
         assert_eq!(align, "right");
         let normalised = rotation.rem_euclid(360.0);
         assert!(normalised < 1e-9 || 360.0 - normalised < 1e-9);
+    }
+
+    #[test]
+    fn continuous_labels_keep_radial_rotation_on_left_half() {
+        let (rotation, align) = label_orientation(PI, LabelOrientation::Continuous);
+        assert_eq!(align, "left");
+        assert!((rotation - 180.0).abs() < 1e-9);
     }
 
     #[test]
@@ -487,16 +524,14 @@ mod tests {
 
     #[test]
     fn tips_alignment_puts_every_leaf_on_outer_ring() {
-        let laid_out = layout_polar(
-            &nested_tree(),
-            WIDTH,
-            HEIGHT,
-            360.0,
-            -90.0,
-            Connector::Arc,
-            TipAlignment::Tips,
-        )
-        .unwrap();
+        let sweep = PolarSweep {
+            total_angle: 360.0,
+            start_angle: -90.0,
+            connector: Connector::Arc,
+            hole_px: 0.0,
+        };
+        let laid_out =
+            layout_polar(&nested_tree(), WIDTH, HEIGHT, sweep, TipAlignment::Tips).unwrap();
         let outer = outer_radius(WIDTH, HEIGHT);
         for leaf in laid_out.iter().filter(|n| n.is_leaf) {
             assert!((radius_of(leaf) - outer).abs() < 1e-9);
@@ -512,7 +547,16 @@ mod tests {
         });
         let map = tree_nodes.as_object().unwrap();
 
-        let spec = circ_tree_vega(map, 800, 600, None, 360.0, -90.0, TipAlignment::Labels).unwrap();
+        let spec = circ_tree_vega(
+            map,
+            800,
+            600,
+            None,
+            360.0,
+            -90.0,
+            TreeRenderOptions::with_alignment(TipAlignment::Labels),
+        )
+        .unwrap();
 
         let tips = spec["data"][1]["values"].as_array().unwrap();
         let leaders = spec["data"][2]["values"].as_array().unwrap();

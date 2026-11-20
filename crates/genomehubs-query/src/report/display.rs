@@ -183,14 +183,20 @@ pub struct MapOptions {
 /// Set via `display.tree` in the API request.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct TreeOptions {
-    /// Tree layout style: `"rect"` (default), `"circ"` (circular), `"radial"`.
+    /// Tree layout style: `"rect"` (default), `"circ"` (circular), `"radial"`, or `"ring"` (sunburst, one ring per hop from the root; branch lengths ignored).
     pub tree_style: Option<String>,
-    /// Arc span in degrees for `"circ"` layouts (default: `360.0`, range `(0, 360]`). Ignored for `"radial"`.
+    /// Arc span in degrees for `"circ"` and `"ring"` layouts (default: `360.0`, range `(0, 360]`). Ignored for `"radial"`.
     pub total_angle: Option<f64>,
-    /// Angle in degrees of the first tip for `"circ"` and `"radial"` layouts, measured clockwise from 3 o'clock (default: `-90.0`, 12 o'clock).
+    /// Angle in degrees of the first tip for `"circ"`, `"radial"`, and `"ring"` layouts, measured clockwise from 3 o'clock (default: `-90.0`, 12 o'clock).
     pub start_angle: Option<f64>,
-    /// Tip placement for all layouts: `"none"` (default, branch lengths set depth), `"tips"` (ignore branch lengths so all tips align), `"ultrametric"` (keep branch lengths, extend terminal branches so all tips align), or `"labels"` (keep branch lengths, align labels in a column with dotted leaders).
+    /// Tip placement for `"rect"`, `"circ"`, and `"radial"`: `"none"` (default, branch lengths set depth), `"tips"` (ignore branch lengths so all tips align), `"ultrametric"` (keep branch lengths, extend terminal branches so all tips align), or `"labels"` (keep branch lengths, align labels in a column with dotted leaders).
     pub tip_alignment: Option<String>,
+    /// Label rotation for `"circ"`, `"radial"`, and `"ring"` layouts: `"flip"` (default, left-half labels turned around to stay upright) or `"continuous"` (labels read outward all the way round).
+    pub label_orientation: Option<String>,
+    /// Label font size in pixels for tree layouts, shared by every label. Default: a size fitted to the layout. Set at most one of `font_size` and `font_scale`.
+    pub font_size: Option<f64>,
+    /// Label font size as a share of the shorter canvas side for tree layouts. Set at most one of `font_size` and `font_scale`.
+    pub font_scale: Option<f64>,
     /// Hide source colour bars on tree nodes.
     pub hide_source_colors: Option<bool>,
     /// Hide error bars on tree node summary boxes.
@@ -405,6 +411,16 @@ mod tests {
         let spec: DisplaySpec = serde_yaml::from_str(yaml).unwrap();
         let tree = spec.tree.as_ref().unwrap();
         assert_eq!(tree.tip_alignment.as_deref(), Some("labels"));
+    }
+
+    #[test]
+    fn tree_options_font_and_orientation_round_trip() {
+        let yaml = "tree:\n  font_size: 8\n  label_orientation: continuous\n";
+        let spec: DisplaySpec = serde_yaml::from_str(yaml).unwrap();
+        let tree = spec.tree.as_ref().unwrap();
+        assert_eq!(tree.font_size, Some(8.0));
+        assert_eq!(tree.font_scale, None);
+        assert_eq!(tree.label_orientation.as_deref(), Some("continuous"));
     }
 
     #[test]
